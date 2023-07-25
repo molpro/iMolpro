@@ -186,7 +186,7 @@ class ProjectWindow(QMainWindow):
                 project_path = pathlib.Path(tmpdirname) / pathlib.Path(self.project.filename(run=-1)).name
                 project = Project(str(project_path))
                 project.clean(0)
-                open(project.filename('inp', run=-1), 'a').write('---')
+                open(project.filename('inp', run=-1), 'a').write('hf\n---')
                 with open(pathlib.Path(project.filename(run=-1)) / 'molpro.rc', 'a') as f:
                     f.write(' --geometry')
                 project.run(wait=True, force=True, backend='local')
