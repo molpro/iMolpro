@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QWidget, \
-    QPushButton
+    QPushButton, QMessageBox
 from PyQt5.QtGui import QFont, QFontDatabase
 from pymolpro import Project
 import sys
@@ -30,6 +30,9 @@ class EditFile(QPlainTextEdit):
 
     def flush(self):
         current = self.toPlainText()
+        if current[-1] != '\n':
+            current += '\n'
+            self.setPlainText(current)
         if current != self.savedText:
             with open(self.filename, 'w') as f:
                 f.write(current)
@@ -123,7 +126,7 @@ class ProjectWindow(QMainWindow):
 
             def setAction(self, f):
                 self.action = f
-                self.clicked.connect(lambda: self.action('',self.text()))
+                self.clicked.connect(lambda: self.action('', self.text()))
 
         for t, f in self.putfiles():
             putButtons.append(visoutButton(f))
@@ -187,6 +190,11 @@ class ProjectWindow(QMainWindow):
                 with open(pathlib.Path(project.filename(run=-1)) / 'molpro.rc', 'a') as f:
                     f.write(' --geometry')
                 project.run(wait=True, force=True, backend='local')
+                if not project.geometries():
+                    msg = QMessageBox()
+                    msg.setText('Error in calculating input geometry')
+                    msg.exec_()
+                    return
                 geometry = project.geometry()
                 with open(xyzFile, 'w') as f:
                     f.write(str(len(geometry)) + '\n\n')
