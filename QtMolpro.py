@@ -30,7 +30,7 @@ class EditFile(QPlainTextEdit):
 
     def flush(self):
         current = self.toPlainText()
-        if current[-1] != '\n':
+        if not current or current[-1] != '\n':
             current += '\n'
             self.setPlainText(current)
         if current != self.savedText:
