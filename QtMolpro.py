@@ -45,23 +45,25 @@ class ViewFile(QPlainTextEdit):
         super().__init__()
         self.setReadOnly(True)
         self.latency = latency
-        self.reset(filename)
         f = QFont(QFontDatabase.systemFont(QFontDatabase.FixedFont))
         f.setPointSize(10)
         self.setFont(f)
+        self.modtime = 0.0
+        self.reset(filename)
 
     def refresh(self):
         scrollbar = self.verticalScrollBar()
-        scrollbarAtBottom = scrollbar.value() >= (scrollbar.maximum() - 4)
+        scrollbarAtBottom = scrollbar.value() >= (scrollbar.maximum() - 1)
         scrollbarPrevValue = scrollbar.value()
-        if os.path.isfile(self.filename):  # should not do this if the file hasn't changed
-            with  open(self.filename, 'r') as f:  # TODO make more efficient, and read only needed updates
-                self.setPlainText(f.read())  # should just read the increment
+        if os.path.isfile(self.filename):
+            if os.path.getmtime(self.filename) > self.modtime:
+                self.modtime = os.path.getmtime(self.filename)
+                with open(self.filename, 'r') as f:
+                    self.setPlainText(f.read())
             if scrollbarAtBottom:
                 self.verticalScrollBar().setValue(scrollbar.maximum())
             else:
                 self.verticalScrollBar().setValue(scrollbarPrevValue)
-        return
 
     def reset(self, filename):
         self.filename = str(filename)
@@ -120,7 +122,7 @@ class ProjectWindow(QMainWindow):
         buttonLayout.addWidget(self.visoutButton)
         putButtons = []
 
-        class visoutButton(QPushButton):
+        class VisoutButton(QPushButton):
             def __init__(self, name):
                 super().__init__(name)
 
@@ -129,7 +131,7 @@ class ProjectWindow(QMainWindow):
                 self.clicked.connect(lambda: self.action('', self.text()))
 
         for t, f in self.putfiles():
-            putButtons.append(visoutButton(f))
+            putButtons.append(VisoutButton(f))
             putButtons[-1].setAction(self.visout)
             buttonLayout.addWidget(putButtons[-1])
         leftLayout.addLayout(buttonLayout)
