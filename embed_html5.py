@@ -28,7 +28,7 @@ var Info = {
   color: "#FFFFFF",
   height: 600,
   width: 600,
-  script: "load malo.molden; mo 19; mo nomesh fill translucent 0.4; mo resolution 6",
+  script: "load malo.molden; mo 1; mo nomesh fill translucent 0.3; mo resolution 7; set antialiasDisplay ON",
   use: "HTML5",
   j2sPath: "j2s",
   serverURL: "php/jsmol.php",
@@ -38,7 +38,7 @@ Jmol.getApplet("myJmol", Info);
 </script>
 
 <script>
-Jmol.script(myJmol, "mo 18");
+Jmol.script(myJmol, "mo HOMO");
 </script>
 
 
