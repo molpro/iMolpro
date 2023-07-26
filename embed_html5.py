@@ -37,6 +37,10 @@ var Info = {
 Jmol.getApplet("myJmol", Info);
 </script>
 
+<script>
+Jmol.script(myJmol, "mo 18");
+</script>
+
 
 <!--
 <h2>Use JavaScript to Change Text</h2>
