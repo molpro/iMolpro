@@ -88,7 +88,16 @@ class StatusBar(QLabel):
 
 def launchExternalViewer(file):
     import subprocess
-    subprocess.Popen(['jmol', file])
+    try:
+        viewer = 'jmol'
+        subprocess.Popen([viewer, file])
+    except:
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        msg.setWindowTitle("Error")
+        msg.setText('Cannot launch ' + viewer)
+        msg.setInformativeText('Perhaps needs to be installed somewhere in $PATH?')
+        msg.exec_()
 
 
 class ProjectWindow(QMainWindow):
@@ -127,7 +136,7 @@ class ProjectWindow(QMainWindow):
                 self.clicked.connect(lambda: self.action('', self.text()))
 
         for t, f in self.putfiles():
-            putButtons.append(VisoutButton(f,self.visout))
+            putButtons.append(VisoutButton(f, self.visout))
             buttonLayout.addWidget(putButtons[-1])
         leftLayout.addLayout(buttonLayout)
         leftLayout.addWidget(self.statusBar)
@@ -187,8 +196,11 @@ class ProjectWindow(QMainWindow):
                 with open(pathlib.Path(project.filename(run=-1)) / 'molpro.rc', 'a') as f:
                     f.write(' --geometry')
                 project.run(wait=True, force=True, backend='local')
-                if not project.geometries():
+                if not project.xpath_search('//*/cml:atomArray'):
+                    print(project.out)
                     msg = QMessageBox()
+                    msg.setIcon(QMessageBox.Critical)
+                    msg.setWindowTitle("Error")
                     msg.setText('Error in calculating input geometry')
                     msg.exec_()
                     return
