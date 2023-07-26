@@ -37,7 +37,6 @@ class EditFile(QPlainTextEdit):
             with open(self.filename, 'w') as f:
                 f.write(current)
             self.savedText = current
-        return
 
 
 class ViewFile(QPlainTextEdit):
@@ -71,7 +70,6 @@ class ViewFile(QPlainTextEdit):
         self.refreshTimer = QTimer()
         self.refreshTimer.timeout.connect(self.refresh)
         self.refreshTimer.start(self.latency)
-        return
 
 
 class StatusBar(QLabel):
@@ -123,16 +121,13 @@ class ProjectWindow(QMainWindow):
         putButtons = []
 
         class VisoutButton(QPushButton):
-            def __init__(self, name):
+            def __init__(self, name, f):
                 super().__init__(name)
-
-            def setAction(self, f):
                 self.action = f
                 self.clicked.connect(lambda: self.action('', self.text()))
 
         for t, f in self.putfiles():
-            putButtons.append(VisoutButton(f))
-            putButtons[-1].setAction(self.visout)
+            putButtons.append(VisoutButton(f,self.visout))
             buttonLayout.addWidget(putButtons[-1])
         leftLayout.addLayout(buttonLayout)
         leftLayout.addWidget(self.statusBar)
