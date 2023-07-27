@@ -153,13 +153,27 @@ class ProjectWindow(QMainWindow):
         self.refreshOutputFileTimer.timeout.connect(self.refreshOutputFile)
         self.refreshOutputFileTimer.start(2000)  # find a better way
 
-        layout = QHBoxLayout()
-        layout.addLayout(leftLayout)
-        layout.addWidget(self.outputPane)
+        toplayout = QHBoxLayout()
+        toplayout.addLayout(leftLayout)
+        toplayout.addWidget(self.outputPane)
+
+        self.layout=QVBoxLayout()
+        self.layout.addLayout(toplayout)
+        self.VOD=None
+
 
         container = QWidget()
-        container.setLayout(layout)
+        container.setLayout(self.layout)
         self.setCentralWidget(container)
+
+    def addVOD(self, vod:QWidget):
+        if not self.VOD:
+            self.layout.addWidget(vod)
+        else:
+            self.layout.replaceWidget(self.VOD,vod)
+            self.VOD.hide()
+        self.VOD=vod
+        self.VOD.show()
 
     def putfiles(self):
         result = []
@@ -181,6 +195,7 @@ class ProjectWindow(QMainWindow):
         # with open(filename, 'w') as f:
         #     f.write(to_molden(self.project))
         # launchExternalViewer(filename)
+        self.addVOD(QLabel('placeholder for embedded output viewer'))
         if name:
             launchExternalViewer(self.project.filename(typ, name))
         else:
@@ -218,6 +233,7 @@ class ProjectWindow(QMainWindow):
                         for c in atom['xyz']: f.write(' ' + str(c * .529177210903))
                         f.write('\n')
         launchExternalViewer(xyzFile)
+        self.addVOD(QLabel('placeholder for embedded input viewer'))
 
 
 if __name__ == '__main__':
