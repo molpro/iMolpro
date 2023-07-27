@@ -15,12 +15,14 @@ class EditFile(QPlainTextEdit):
         if os.path.isfile(self.filename):
             with open(self.filename, 'r') as f:
                 self.savedText = f.read()
+            if not self.savedText or self.savedText[-1] != '\n': self.savedText += '\n'
         else:
-            self.savedText = ''
+            self.savedText = '\n'
         self.setPlainText(self.savedText)
         f = QFont(QFontDatabase.systemFont(QFontDatabase.FixedFont))
         f.setPointSize(12)
         self.setFont(f)
+        self.flush()
 
         import atexit
         atexit.register(self.flush)
@@ -37,6 +39,10 @@ class EditFile(QPlainTextEdit):
             with open(self.filename, 'w') as f:
                 f.write(current)
             self.savedText = current
+
+    def setPlainText(self, text):
+        super().setPlainText(text)
+        self.flush()
 
 
 class ViewFile(QPlainTextEdit):
