@@ -1,8 +1,8 @@
 from PyQt5.QtCore import QTimer, QUrl
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QWidget, \
-    QPushButton, QMessageBox
-from PyQt5.QtGui import QFont, QFontDatabase
+    QPushButton, QMessageBox, QComboBox, QLayout, QShortcut
+from PyQt5.QtGui import QFont, QFontDatabase, QKeySequence
 from pymolpro import Project
 import sys
 import os
@@ -113,11 +113,16 @@ class ProjectWindow(QMainWindow):
 
         assert filename is not None  # TODO eventually pop dialog for this
 
+        menubar = self.menuBar()
+        menubar.addMenu('&File')
+
         self.project = Project(filename)  # TODO some error checking needed
         self.inputPane = EditFile(self.project.filename('inp', run=-1), latency)
         self.setWindowTitle(filename)
-        self.runButton = QPushButton('Run')
+        self.runButton = QPushButton('&Run')
         self.runButton.clicked.connect(self.run)
+        self.runShortcut=QShortcut(QKeySequence('Ctrl+R'),self)
+        self.runShortcut.activated.connect(self.run)
         self.visoutButton = QPushButton('Visualise output')
         self.visoutButton.clicked.connect(lambda: self.visout('xml'))
         self.visinpButton = QPushButton('Visualise input')
@@ -131,20 +136,23 @@ class ProjectWindow(QMainWindow):
         self.inputPane.setMinimumWidth(400)
         self.statusBar.setMaximumWidth(400)
         buttonLayout = QHBoxLayout()
-        buttonLayout.addWidget(self.visinpButton)
+        # buttonLayout.addWidget(self.visinpButton)
         buttonLayout.addWidget(self.runButton)
-        buttonLayout.addWidget(self.visoutButton)
-        putButtons = []
+        # buttonLayout.addWidget(self.visoutButton)
+        self.VODselector=QComboBox()
+        # putButtons = []
 
-        class VisoutButton(QPushButton):
-            def __init__(self, name, f):
-                super().__init__(name)
-                self.action = f
-                self.clicked.connect(lambda: self.action('', self.text()))
-
-        for t, f in self.putfiles():
-            putButtons.append(VisoutButton(f, self.visout))
-            buttonLayout.addWidget(putButtons[-1])
+        # class VisoutButton(QPushButton):
+        #     def __init__(self, name, f):
+        #         super().__init__(name)
+        #         self.action = f
+        #         self.clicked.connect(lambda: self.action('', self.text()))
+        #
+        # for t, f in self.putfiles():
+        #     putButtons.append(VisoutButton(f, self.visout))
+        #     buttonLayout.addWidget(putButtons[-1])
+        buttonLayout.addWidget(QLabel('Visual object display:'))
+        buttonLayout.addWidget(self.VODselector)
         leftLayout.addLayout(buttonLayout)
         leftLayout.addWidget(self.statusBar)
 
@@ -162,10 +170,44 @@ class ProjectWindow(QMainWindow):
         self.layout.addLayout(toplayout)
         self.VOD = None
 
+        self.rebuildVODselector()
+        self.outputPane.textChanged.connect(self.rebuildVODselector)
+        self.VODselector.currentTextChanged.connect(self.VODselectorAction)
+        self.minimumWindowSize=self.window().size()
+
+        # self.layout.setSizeConstraint(QLayout.SetFixedSize)
+
         container = QWidget()
         container.setLayout(self.layout)
         self.setCentralWidget(container)
 
+
+
+    def VODselectorAction(self):
+        text = self.VODselector.currentText().strip()
+        if text == '': return
+        elif text == 'None':
+            if self.VOD:
+                self.VOD.hide()
+                self.window().resize(self.minimumWindowSize) # TODO find a way of shrinking back the main window
+                # self.inputPane.adjustSize()
+                # self.outputPane.adjustSize()
+                # self.adjustSize()
+        elif text=='Input':
+            self.visinp()
+        elif text=='Output':
+            self.visout('xml')
+        else:
+            self.visout('',text)
+
+    def rebuildVODselector(self):
+        self.VODselector.clear()
+        self.VODselector.addItem('None')
+        self.VODselector.addItem('Input')
+        if self.project.status == 'completed' or open(self.project.filename('xml'),'r').read().rstrip()[-9:]=='</molpro>':
+            self.VODselector.addItem('Output')
+            for t, f in self.putfiles():
+                self.VODselector.addItem(f)
     def addVOD(self, vod: QWidget):
         if not self.VOD:
             self.layout.addWidget(vod)
@@ -216,8 +258,8 @@ class ProjectWindow(QMainWindow):
 <script>
 var Info = {
   color: "#FFFFFF",
-  height: 600,
-  width: 600,
+  height: 400,
+  width: 400,
   script: "load """ + file + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7; set antialiasDisplay ON",
   use: "HTML5",
   j2sPath: "j2s",
@@ -231,7 +273,7 @@ Jmol.getApplet("myJmol", Info);
         cwd = str(pathlib.Path(__file__).resolve())
         webview.setHtml(html, QUrl.fromLocalFile(cwd))
 
-        webview.setMinimumSize(800, 900)
+        webview.setMinimumSize(400, 420)
         self.addVOD(webview)
 
     def visinp(self):
