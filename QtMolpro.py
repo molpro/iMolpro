@@ -1,4 +1,5 @@
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, QUrl
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QWidget, \
     QPushButton, QMessageBox
 from PyQt5.QtGui import QFont, QFontDatabase
@@ -157,22 +158,21 @@ class ProjectWindow(QMainWindow):
         toplayout.addLayout(leftLayout)
         toplayout.addWidget(self.outputPane)
 
-        self.layout=QVBoxLayout()
+        self.layout = QVBoxLayout()
         self.layout.addLayout(toplayout)
-        self.VOD=None
-
+        self.VOD = None
 
         container = QWidget()
         container.setLayout(self.layout)
         self.setCentralWidget(container)
 
-    def addVOD(self, vod:QWidget):
+    def addVOD(self, vod: QWidget):
         if not self.VOD:
             self.layout.addWidget(vod)
         else:
-            self.layout.replaceWidget(self.VOD,vod)
+            self.layout.replaceWidget(self.VOD, vod)
             self.VOD.hide()
-        self.VOD=vod
+        self.VOD = vod
         self.VOD.show()
 
     def putfiles(self):
@@ -195,11 +195,44 @@ class ProjectWindow(QMainWindow):
         # with open(filename, 'w') as f:
         #     f.write(to_molden(self.project))
         # launchExternalViewer(filename)
-        self.addVOD(QLabel('placeholder for embedded output viewer'))
+
         if name:
-            launchExternalViewer(self.project.filename(typ, name))
+            self.embedded_VOD(self.project.filename(typ, name), command='mo HOMO')
+            # launchExternalViewer(self.project.filename(typ, name))
         else:
-            launchExternalViewer(self.project.filename(typ))
+            self.embedded_VOD(self.project.filename(typ), command='mo HOMO')
+            # launchExternalViewer(self.project.filename(typ))
+
+    def embedded_VOD(self, file, command='', **kwargs):
+        webview = QWebEngineView()
+
+        html = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script type="text/javascript" src="JSmol.min.js"> </script>
+</head>
+<body>
+<script>
+var Info = {
+  color: "#FFFFFF",
+  height: 600,
+  width: 600,
+  script: "load """ + file + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7; set antialiasDisplay ON",
+  use: "HTML5",
+  j2sPath: "j2s",
+  serverURL: "php/jsmol.php",
+};
+
+Jmol.getApplet("myJmol", Info);
+</script>
+</body>
+</html>"""
+        cwd = str(pathlib.Path(__file__).resolve())
+        webview.setHtml(html, QUrl.fromLocalFile(cwd))
+
+        webview.setMinimumSize(800, 900)
+        self.addVOD(webview)
 
     def visinp(self):
         import tempfile
@@ -232,8 +265,9 @@ class ProjectWindow(QMainWindow):
                         f.write(atom['elementType'])
                         for c in atom['xyz']: f.write(' ' + str(c * .529177210903))
                         f.write('\n')
-        launchExternalViewer(xyzFile)
-        self.addVOD(QLabel('placeholder for embedded input viewer'))
+        # launchExternalViewer(xyzFile)
+        # self.addVOD(QLabel('placeholder for embedded input viewer'))
+        self.embedded_VOD(xyzFile, command='')
 
 
 if __name__ == '__main__':
