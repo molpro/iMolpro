@@ -49,13 +49,13 @@ class Chooser(QMainWindow):
             self.setStyleSheet("recentProjectButton { background-color: #F7F7F7, border: none}")
             boxlayout = QVBoxLayout(box)
             LHpanel.addWidget(box)
-            boxlayout.addWidget(QLabel('Open a recently-used project:'))
+            boxlayout.addWidget(QLabel('Open a recently-used project:'),0,QtCore.Qt.AlignLeft)
             for i in range(1, 10):
                 f = pymolpro.recent_project('molpro', i)
                 if f:
                     self.recentProjects[f] = recentProjectButton(f)
                     # self.recentProjects[f].clicked.connect(lambda: windowManager.register(lambda: ProjectWindow(f)))
-                    boxlayout.addWidget(self.recentProjects[f])
+                    boxlayout.addWidget(self.recentProjects[f],-1,QtCore.Qt.AlignLeft)
                 else:
                     break
 

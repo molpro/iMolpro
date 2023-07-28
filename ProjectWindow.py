@@ -185,13 +185,14 @@ var Info = {
 };
 
 Jmol.getApplet("myJmol", Info);
+Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </script>
 </body>
 </html>"""
         cwd = str(pathlib.Path(__file__).resolve())
         webview.setHtml(html, QUrl.fromLocalFile(cwd))
 
-        webview.setMinimumSize(400, 420)
+        webview.setMinimumSize(400, 450)
         self.addVOD(webview)
 
     def visinp(self):
