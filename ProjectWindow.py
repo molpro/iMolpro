@@ -172,6 +172,8 @@ class ProjectWindow(QMainWindow):
 <script type="text/javascript" src="JSmol.min.js"> </script>
 </head>
 <body>
+<table>
+<tr valign="top"><td>
 <script>
 var Info = {
   color: "#FFFFFF",
@@ -184,14 +186,20 @@ var Info = {
 };
 
 Jmol.getApplet("myJmol", Info);
+</script>
+</td>
+<td>
+<script>
 Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </script>
+</td>
+</tr>
 </body>
 </html>"""
         cwd = str(pathlib.Path(__file__).resolve())
         webview.setHtml(html, QUrl.fromLocalFile(cwd))
 
-        webview.setMinimumSize(400, 450)
+        webview.setMinimumSize(400, 420)
         self.addVOD(webview)
 
     def visinp(self):
