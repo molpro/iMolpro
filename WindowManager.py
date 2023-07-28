@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QWidget, QFileDialog, QMessageBox
+from utilities import force_suffix
 
 
 class WindowManager:
@@ -12,6 +13,8 @@ class WindowManager:
             self.fullAction()
         self.openWindows.append(widget)
         widget.closeSignal.connect(self.unregister)
+        widget.newSignal.connect(self.new)
+        widget.chooserSignal.connect(self.emptyAction)
         widget.show()
 
     def unregister(self, widget: QWidget):
@@ -26,3 +29,8 @@ class WindowManager:
 
     def setFullAction(self, fun):
         self.fullAction = fun
+
+    def new(self, data):
+        filename = force_suffix(QFileDialog.getSaveFileName(caption='Save new project as ...')[0])
+        if filename:
+            self.register(type(data)(filename))

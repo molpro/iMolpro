@@ -6,7 +6,7 @@ from PyQt5.QtCore import QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QShortcut, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox
+    QMessageBox, QMenuBar, QAction
 from pymolpro import Project
 
 from utilities import EditFile, ViewFile
@@ -28,16 +28,28 @@ class StatusBar(QLabel):
 
 class ProjectWindow(QMainWindow):
     closeSignal = pyqtSignal(QWidget)
+    newSignal = pyqtSignal(QWidget)
+    chooserSignal = pyqtSignal(QWidget)
 
     def __init__(self, filename=None, latency=1000):
         super().__init__()
 
         assert filename is not None  # TODO eventually pop dialog for this
 
-        menubar = self.menuBar()
-        menubar.addMenu('&File')
+        # menubar = self.menuBar()
+        menubar = QMenuBar()
+        self.setMenuBar(menubar)
+        filemenu=menubar.addMenu(' &File')
+        newAction=filemenu.addAction(' &New')
+        newAction.triggered.connect(self.newAction)
+        closeAction=filemenu.addAction('Close')
+        closeAction.triggered.connect(self.close)
         self.closeShortcut = QShortcut(QKeySequence('Ctrl+W'), self)
         self.closeShortcut.activated.connect(self.close)
+        chooserAction=filemenu.addAction('Open')
+        chooserAction.triggered.connect(self.chooserOpen)
+        self.chooserShortcut = QShortcut(QKeySequence('Ctrl+O'), self)
+        self.chooserShortcut.activated.connect(self.chooserOpen)
 
         self.project = Project(filename)  # TODO some error checking needed
         self.inputPane = EditFile(self.project.filename('inp', run=-1), latency)
@@ -59,21 +71,8 @@ class ProjectWindow(QMainWindow):
         self.inputPane.setMinimumWidth(400)
         self.statusBar.setMaximumWidth(400)
         buttonLayout = QHBoxLayout()
-        # buttonLayout.addWidget(self.visinpButton)
         buttonLayout.addWidget(self.runButton)
-        # buttonLayout.addWidget(self.visoutButton)
         self.VODselector = QComboBox()
-        # putButtons = []
-
-        # class VisoutButton(QPushButton):
-        #     def __init__(self, name, f):
-        #         super().__init__(name)
-        #         self.action = f
-        #         self.clicked.connect(lambda: self.action('', self.text()))
-        #
-        # for t, f in self.putfiles():
-        #     putButtons.append(VisoutButton(f, self.visout))
-        #     buttonLayout.addWidget(putButtons[-1])
         buttonLayout.addWidget(QLabel('Visual object display:'))
         buttonLayout.addWidget(self.VODselector)
         leftLayout.addLayout(buttonLayout)
@@ -230,3 +229,10 @@ Jmol.getApplet("myJmol", Info);
 
     def closeEvent(self, a0):
         self.closeSignal.emit(self)
+
+
+    def newAction(self):
+        self.newSignal.emit(self)
+
+    def chooserOpen(self):
+        self.chooserSignal.emit(self)

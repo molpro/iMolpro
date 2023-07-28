@@ -1,4 +1,5 @@
 import pathlib
+from utilities import force_suffix
 
 import pymolpro
 from PyQt5 import QtCore
@@ -16,8 +17,6 @@ class Chooser(QMainWindow):
         self.windowManager = windowManager
 
         self.layout = QHBoxLayout()
-        # temp = QLabel('Chooser')
-        # self.layout.addWidget(temp)
         container = QWidget()
         container.setLayout(self.layout)
         self.setCentralWidget(container)
@@ -91,26 +90,12 @@ class Chooser(QMainWindow):
         linkLayout.addWidget(linkLabel('Molpro Manual', 'https://www.molpro.net/manual/doku.php'))
 
     def openProjectDialog(self):
-        filename = self.sanitise(QFileDialog.getExistingDirectory(self, 'Open existing project...', ))
+        filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', ))
         if filename:
             self.windowManager.register(ProjectWindow(filename))
 
     def newProjectDialog(self):
-        filename, filter = QFileDialog.getSaveFileName(self, 'Save new project as ...')
-        filename = self.sanitise(filename)
+        filename = force_suffix(QFileDialog.getSaveFileName(self, 'Save new project as ...')[0])
         if filename:
             self.windowManager.register(ProjectWindow(filename))
 
-    @staticmethod
-    def sanitise(filename):
-        fn = filename
-        from pathlib import Path
-        if not Path(fn).suffix: fn += '.molpro'
-        if Path(fn).suffix != '.molpro':
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
-            msg.setText('Invalid project file name: ' + fn + '\nThe suffix must be ".molpro"')
-            msg.setWindowTitle('Error')
-            msg.exec_()
-            return ''
-        return fn

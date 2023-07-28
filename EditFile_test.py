@@ -1,8 +1,10 @@
 from QtMolpro import EditFile
 import time
 
-def ensure_trailing_newline(txt:str):
-    return txt if txt and txt[-1]=='\n' else str(txt+'\n')
+
+def ensure_trailing_newline(txt: str):
+    return txt if txt and txt[-1] == '\n' else str(txt + '\n')
+
 
 def test_content(qtbot, tmpdir):
     test_file = tmpdir / 'test-Editfile.txt'

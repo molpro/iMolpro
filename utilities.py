@@ -2,7 +2,7 @@ import os
 
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QFont, QFontDatabase
-from PyQt5.QtWidgets import QPlainTextEdit
+from PyQt5.QtWidgets import QPlainTextEdit, QMessageBox
 
 
 class EditFile(QPlainTextEdit):
@@ -73,3 +73,19 @@ class ViewFile(QPlainTextEdit):
         self.refreshTimer = QTimer()
         self.refreshTimer.timeout.connect(self.refresh)
         self.refreshTimer.start(self.latency)
+
+
+def force_suffix(filename, suffix='molpro'):
+    if not filename:
+        return ''
+    fn = filename
+    from pathlib import Path
+    if not Path(fn).suffix: fn += '.' + suffix
+    if Path(fn).suffix != '.' + suffix:
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        msg.setText('Invalid project file name: ' + fn + '\nThe suffix must be ".' + suffix + '"')
+        msg.setWindowTitle('Error')
+        msg.exec_()
+        return ''
+    return fn
