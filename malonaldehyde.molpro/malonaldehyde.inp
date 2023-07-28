@@ -1,0 +1,9 @@
+geometry=malonaldehyde.xyz
+set,charge=1
+basis,minao
+rhf
+put,molden,first.molden 
+optg
+put,molden,second.molden
+frequencies,analytic
+put,molden,malo.molden
