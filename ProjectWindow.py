@@ -34,9 +34,8 @@ class ProjectWindow(QMainWindow):
     def __init__(self, filename=None, latency=1000):
         super().__init__()
 
-        assert filename is not None  # TODO eventually pop dialog for this
+        assert filename is not None
 
-        # menubar = self.menuBar()
         menubar = QMenuBar()
         self.setMenuBar(menubar)
         filemenu=menubar.addMenu(' &File')
@@ -51,7 +50,7 @@ class ProjectWindow(QMainWindow):
         self.chooserShortcut = QShortcut(QKeySequence('Ctrl+O'), self)
         self.chooserShortcut.activated.connect(self.chooserOpen)
 
-        self.project = Project(filename)  # TODO some error checking needed
+        self.project = Project(filename)
         self.inputPane = EditFile(self.project.filename('inp', run=-1), latency)
         self.setWindowTitle(filename)
         self.runButton = QPushButton('&Run')
