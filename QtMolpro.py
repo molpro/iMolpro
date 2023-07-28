@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QTimer, QUrl
+from PyQt5.QtCore import QTimer, QUrl, pyqtSignal
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QWidget, \
     QPushButton, QMessageBox, QComboBox, QLayout, QShortcut
@@ -93,21 +93,8 @@ class StatusBar(QLabel):
             run=-1) else '') + self.project.status)
 
 
-def launchExternalViewer(file):
-    import subprocess
-    try:
-        viewer = 'jmol'
-        subprocess.Popen([viewer, file])
-    except:
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Critical)
-        msg.setWindowTitle("Error")
-        msg.setText('Cannot launch ' + viewer)
-        msg.setInformativeText('Perhaps needs to be installed somewhere in $PATH?')
-        msg.exec_()
-
-
 class ProjectWindow(QMainWindow):
+    closeSignal = pyqtSignal(QWidget)
     def __init__(self, filename=None, latency=1000):
         super().__init__()
 
@@ -121,7 +108,7 @@ class ProjectWindow(QMainWindow):
         self.setWindowTitle(filename)
         self.runButton = QPushButton('&Run')
         self.runButton.clicked.connect(self.run)
-        self.runShortcut=QShortcut(QKeySequence('Ctrl+R'),self)
+        self.runShortcut = QShortcut(QKeySequence('Ctrl+R'), self)
         self.runShortcut.activated.connect(self.run)
         self.visoutButton = QPushButton('Visualise output')
         self.visoutButton.clicked.connect(lambda: self.visout('xml'))
@@ -139,7 +126,7 @@ class ProjectWindow(QMainWindow):
         # buttonLayout.addWidget(self.visinpButton)
         buttonLayout.addWidget(self.runButton)
         # buttonLayout.addWidget(self.visoutButton)
-        self.VODselector=QComboBox()
+        self.VODselector = QComboBox()
         # putButtons = []
 
         # class VisoutButton(QPushButton):
@@ -173,7 +160,7 @@ class ProjectWindow(QMainWindow):
         self.rebuildVODselector()
         self.outputPane.textChanged.connect(self.rebuildVODselector)
         self.VODselector.currentTextChanged.connect(self.VODselectorAction)
-        self.minimumWindowSize=self.window().size()
+        self.minimumWindowSize = self.window().size()
 
         # self.layout.setSizeConstraint(QLayout.SetFixedSize)
 
@@ -181,33 +168,34 @@ class ProjectWindow(QMainWindow):
         container.setLayout(self.layout)
         self.setCentralWidget(container)
 
-
-
     def VODselectorAction(self):
         text = self.VODselector.currentText().strip()
-        if text == '': return
+        if text == '':
+            return
         elif text == 'None':
             if self.VOD:
                 self.VOD.hide()
-                self.window().resize(self.minimumWindowSize) # TODO find a way of shrinking back the main window
+                self.window().resize(self.minimumWindowSize)  # TODO find a way of shrinking back the main window
                 # self.inputPane.adjustSize()
                 # self.outputPane.adjustSize()
                 # self.adjustSize()
-        elif text=='Input':
+        elif text == 'Input':
             self.visinp()
-        elif text=='Output':
+        elif text == 'Output':
             self.visout('xml')
         else:
-            self.visout('',text)
+            self.visout('', text)
 
     def rebuildVODselector(self):
         self.VODselector.clear()
         self.VODselector.addItem('None')
         self.VODselector.addItem('Input')
-        if self.project.status == 'completed' or open(self.project.filename('xml'),'r').read().rstrip()[-9:]=='</molpro>':
+        if self.project.status == 'completed' or open(self.project.filename('xml'), 'r').read().rstrip()[
+                                                 -9:] == '</molpro>':
             self.VODselector.addItem('Output')
             for t, f in self.putfiles():
                 self.VODselector.addItem(f)
+
     def addVOD(self, vod: QWidget):
         if not self.VOD:
             self.layout.addWidget(vod)
@@ -233,17 +221,10 @@ class ProjectWindow(QMainWindow):
         self.project.run()
 
     def visout(self, typ='xml', name=None):
-        # filename = self.project.filename('molden')
-        # with open(filename, 'w') as f:
-        #     f.write(to_molden(self.project))
-        # launchExternalViewer(filename)
-
         if name:
             self.embedded_VOD(self.project.filename(typ, name), command='mo HOMO')
-            # launchExternalViewer(self.project.filename(typ, name))
         else:
             self.embedded_VOD(self.project.filename(typ), command='mo HOMO')
-            # launchExternalViewer(self.project.filename(typ))
 
     def embedded_VOD(self, file, command='', **kwargs):
         webview = QWebEngineView()
@@ -307,17 +288,60 @@ Jmol.getApplet("myJmol", Info);
                         f.write(atom['elementType'])
                         for c in atom['xyz']: f.write(' ' + str(c * .529177210903))
                         f.write('\n')
-        # launchExternalViewer(xyzFile)
-        # self.addVOD(QLabel('placeholder for embedded input viewer'))
         self.embedded_VOD(xyzFile, command='')
+
+    def closeEvent(self, a0):
+        self.closeSignal.emit(self)
+
+
+class Chooser(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.layout = QHBoxLayout()
+        temp = QLabel('Chooser')
+        self.layout.addWidget(temp)
+        container = QWidget()
+        container.setLayout(self.layout)
+        self.setCentralWidget(container)
+
+
+class WindowManager:
+    def __init__(self):
+        self.openWindows = []
+        self.emptyAction = None
+        self.fullAction=None
+
+    def register(self, widget: QWidget):
+        if self.fullAction and not self.openWindows:
+            self.fullAction()
+        self.openWindows.append(widget)
+
+    def unregister(self, widget: QWidget):
+        self.openWindows.remove(widget)
+        if self.emptyAction and not self.openWindows:
+            self.emptyAction()
+
+    def setEmptyAction(self, fun):
+        self.emptyAction = fun
+        if not self.openWindows:
+            self.emptyAction()
+
+    def setFullAction(self, fun):
+        self.fullAction = fun
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 
-    windows = []
+    chooser = Chooser()
+    windowManager = WindowManager()
+    windowManager.setEmptyAction(chooser.show)
+    windowManager.setFullAction(chooser.hide)
     for arg in sys.argv[1:]:
-        windows.append(ProjectWindow(arg))
-        windows[-1].show()
+        window = ProjectWindow(arg)
+        windowManager.register(window)
+        window.closeSignal.connect(windowManager.unregister)
+        window.show()
 
     app.exec()

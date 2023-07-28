@@ -83,3 +83,17 @@ def to_molden(project: Project, vibrations_instance=-1, orbitals_instance=-1):
 #     return json.dumps(result)
 
 
+def launchExternalViewer(file):
+    import subprocess
+    try:
+        viewer = 'jmol'
+        subprocess.Popen([viewer, file])
+    except:
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        msg.setWindowTitle("Error")
+        msg.setText('Cannot launch ' + viewer)
+        msg.setInformativeText('Perhaps needs to be installed somewhere in $PATH?')
+        msg.exec_()
+
+
