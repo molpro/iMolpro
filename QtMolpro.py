@@ -1,45 +1,30 @@
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton
 import sys
 from Chooser import Chooser
 from ProjectWindow import ProjectWindow
-
-
-class WindowManager:
-    def __init__(self):
-        self.openWindows = []
-        self.emptyAction = None
-        self.fullAction = None
-
-    def register(self, widget: QWidget):
-        if self.fullAction and not self.openWindows:
-            self.fullAction()
-        self.openWindows.append(widget)
-
-    def unregister(self, widget: QWidget):
-        self.openWindows.remove(widget)
-        if self.emptyAction and not self.openWindows:
-            self.emptyAction()
-
-    def setEmptyAction(self, fun):
-        self.emptyAction = fun
-        if not self.openWindows:
-            self.emptyAction()
-
-    def setFullAction(self, fun):
-        self.fullAction = fun
-
+from WindowManager import WindowManager
 
 if __name__ == '__main__':
+
+    class newProject():
+        def __init__(self,windowManager,file):
+            print('newProject',file)
+            window = ProjectWindow(file)
+            windowManager.register(window)
+            window.closeSignal.connect(windowManager.unregister)
+            window.show()
+
     app = QApplication(sys.argv)
 
-    chooser = Chooser()
     windowManager = WindowManager()
+    chooser = Chooser(windowManager)
+    chooser.quitButton.clicked.connect(app.quit)
+    # for k,v in chooser.recentProjects.items():
+    #     v.clicked.connect(lambda: newProject(windowManager,k))
     windowManager.setEmptyAction(chooser.show)
     windowManager.setFullAction(chooser.hide)
+
     for arg in sys.argv[1:]:
-        window = ProjectWindow(arg)
-        windowManager.register(window)
-        window.closeSignal.connect(windowManager.unregister)
-        window.show()
+        windowManager.register(ProjectWindow(arg))
 
     app.exec()

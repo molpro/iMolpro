@@ -1,5 +1,6 @@
 import os
 import pathlib
+import sys
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import QKeySequence
@@ -35,6 +36,8 @@ class ProjectWindow(QMainWindow):
 
         menubar = self.menuBar()
         menubar.addMenu('&File')
+        self.closeShortcut = QShortcut(QKeySequence('Ctrl+W'), self)
+        self.closeShortcut.activated.connect(self.close)
 
         self.project = Project(filename)  # TODO some error checking needed
         self.inputPane = EditFile(self.project.filename('inp', run=-1), latency)
@@ -123,8 +126,10 @@ class ProjectWindow(QMainWindow):
         self.VODselector.clear()
         self.VODselector.addItem('None')
         self.VODselector.addItem('Input')
-        if self.project.status == 'completed' or open(self.project.filename('xml'), 'r').read().rstrip()[
-                                                 -9:] == '</molpro>':
+        if self.project.status == 'completed' or (
+                os.path.isfile(self.project.filename('xml')) and open(self.project.filename('xml'),
+                                                                      'r').read().rstrip()[
+                                                                 -9:] == '</molpro>'):
             self.VODselector.addItem('Output')
             for t, f in self.putfiles():
                 self.VODselector.addItem(f)
