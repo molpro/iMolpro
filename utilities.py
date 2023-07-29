@@ -1,3 +1,4 @@
+import atexit
 import os
 
 from PyQt5.QtCore import QTimer
@@ -40,6 +41,10 @@ class EditFile(QPlainTextEdit):
     def setPlainText(self, text):
         super().setPlainText(text)
         self.flush()
+
+    def __del__(self):
+        self.flush()
+        atexit.unregister(self.flush)
 
 
 class ViewFile(QPlainTextEdit):

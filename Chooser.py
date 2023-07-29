@@ -30,7 +30,8 @@ class Chooser(QMainWindow):
         self.recentProjects = {}
 
         class recentProjectButton(QPushButton):
-            def __init__(self, filename):
+            def __init__(self, filename, parent):
+                self.parent = parent
                 import os
                 self.filename = os.path.expanduser(filename)
                 homedir = os.path.expanduser('~')
@@ -42,6 +43,7 @@ class Chooser(QMainWindow):
 
             def action(self):
                 windowManager.register(ProjectWindow(self.filename))
+                self.parent.hide()
 
         if pymolpro.recent_project('molpro', 1):
             box = QWidget()
@@ -53,7 +55,7 @@ class Chooser(QMainWindow):
             for i in range(1, 10):
                 f = pymolpro.recent_project('molpro', i)
                 if f:
-                    self.recentProjects[f] = recentProjectButton(f)
+                    self.recentProjects[f] = recentProjectButton(f,self)
                     # self.recentProjects[f].clicked.connect(lambda: windowManager.register(lambda: ProjectWindow(f)))
                     boxlayout.addWidget(self.recentProjects[f],-1,QtCore.Qt.AlignLeft)
                 else:
@@ -93,9 +95,14 @@ class Chooser(QMainWindow):
         filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', ))
         if filename:
             self.windowManager.register(ProjectWindow(filename))
+            self.hide()
 
     def newProjectDialog(self):
         filename = force_suffix(QFileDialog.getSaveFileName(self, 'Save new project as ...')[0])
         if filename:
             self.windowManager.register(ProjectWindow(filename))
+            self.hide()
 
+    def activate(self):
+        self.show()
+        self.raise_()

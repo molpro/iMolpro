@@ -11,7 +11,7 @@ if __name__ == '__main__':
     windowManager = WindowManager()
     chooser = Chooser(windowManager)
     chooser.quitButton.clicked.connect(app.quit)
-    windowManager.setEmptyAction(chooser.show)
+    windowManager.setEmptyAction(chooser.activate)
     windowManager.setFullAction(chooser.hide)
 
     for arg in sys.argv[1:]:
