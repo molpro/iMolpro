@@ -5,7 +5,7 @@ import pymolpro
 from PyQt5 import QtCore
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-    QMessageBox
+    QMessageBox, QDesktopWidget
 
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
@@ -82,6 +82,7 @@ class Chooser(QMainWindow):
         linkLayout = QHBoxLayout()
         RHpanel.addLayout(linkLayout)
 
+
         class linkLabel(QLabel):
             def __init__(self, text, url):
                 super().__init__()
@@ -104,5 +105,8 @@ class Chooser(QMainWindow):
             self.hide()
 
     def activate(self):
+        resolution = QDesktopWidget().screenGeometry()
+        self.move((resolution.width() // 2) - (self.frameSize().width() // 2),
+                  (resolution.height() // 2) - (self.frameSize().height() // 2))
         self.show()
         self.raise_()
