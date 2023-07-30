@@ -13,9 +13,11 @@ from utilities import EditFile, ViewFile
 
 
 class StatusBar(QLabel):
-    def __init__(self, project, latency=1000):
+    def __init__(self, project: Project, runButton: QPushButton, killButton: QPushButton, latency=1000):
         super().__init__()
         self.project = project
+        self.runButton = runButton
+        self.killButton = killButton
         self.refreshTimer = QTimer()
         self.refreshTimer.timeout.connect(self.refresh)
         self.refreshTimer.start(latency)
@@ -24,6 +26,8 @@ class StatusBar(QLabel):
         self.setText('Status: ' + ('run ' + pathlib.Path(
             self.project.filename()).stem + ' ' if self.project.filename() != self.project.filename(
             run=-1) else '') + self.project.status)
+        self.runButton.setDisabled(not self.project.run_needed())
+        self.killButton.setDisabled(self.project.status != 'running' and self.project.status != 'waiting')
 
 
 class ProjectWindow(QMainWindow):
@@ -38,14 +42,14 @@ class ProjectWindow(QMainWindow):
 
         menubar = QMenuBar()
         self.setMenuBar(menubar)
-        filemenu=menubar.addMenu(' &File')
-        newAction=filemenu.addAction(' &New')
+        filemenu = menubar.addMenu(' &File')
+        newAction = filemenu.addAction(' &New')
         newAction.triggered.connect(self.newAction)
-        closeAction=filemenu.addAction('Close')
+        closeAction = filemenu.addAction('Close')
         closeAction.triggered.connect(self.close)
         self.closeShortcut = QShortcut(QKeySequence('Ctrl+W'), self)
         self.closeShortcut.activated.connect(self.close)
-        chooserAction=filemenu.addAction('Open')
+        chooserAction = filemenu.addAction('Open')
         chooserAction.triggered.connect(self.chooserOpen)
         self.chooserShortcut = QShortcut(QKeySequence('Ctrl+O'), self)
         self.chooserShortcut.activated.connect(self.chooserOpen)
@@ -57,12 +61,15 @@ class ProjectWindow(QMainWindow):
         self.runButton.clicked.connect(self.run)
         self.runShortcut = QShortcut(QKeySequence('Ctrl+R'), self)
         self.runShortcut.activated.connect(self.run)
+        self.killButton = QPushButton('Kill')
+        self.killButton.clicked.connect(self.kill)
         self.visoutButton = QPushButton('Visualise output')
         self.visoutButton.clicked.connect(lambda: self.visout('xml'))
         self.visinpButton = QPushButton('Visualise input')
         self.visinpButton.clicked.connect(self.visinp)
 
-        self.statusBar = StatusBar(self.project)
+        self.statusBar = StatusBar(self.project, self.runButton, self.killButton)
+        self.statusBar.refresh()
 
         leftLayout = QVBoxLayout()
         leftLayout.addWidget(self.inputPane)
@@ -71,6 +78,7 @@ class ProjectWindow(QMainWindow):
         self.statusBar.setMaximumWidth(400)
         buttonLayout = QHBoxLayout()
         buttonLayout.addWidget(self.runButton)
+        buttonLayout.addWidget(self.killButton)
         self.VODselector = QComboBox()
         buttonLayout.addWidget(QLabel('Visual object display:'))
         buttonLayout.addWidget(self.VODselector)
@@ -156,6 +164,9 @@ class ProjectWindow(QMainWindow):
     def run(self):
         self.project.run()
 
+    def kill(self):
+        self.project.kill()
+
     def visout(self, typ='xml', name=None):
         if name:
             self.embedded_VOD(self.project.filename(typ, name), command='mo HOMO')
@@ -237,7 +248,6 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 
     def closeEvent(self, a0):
         self.closeSignal.emit(self)
-
 
     def newAction(self):
         self.newSignal.emit(self)

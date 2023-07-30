@@ -23,7 +23,7 @@ class Chooser(QMainWindow):
 
         LHpanel = QVBoxLayout()
         self.layout.addLayout(LHpanel)
-        newButton = QPushButton('New project')
+        newButton = QPushButton(' &New project')
         newButton.clicked.connect(self.newProjectDialog)
         newButton.setStyleSheet(":hover { background-color: #D0D0D0 }")
         LHpanel.addWidget(newButton)
