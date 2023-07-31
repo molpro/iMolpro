@@ -197,7 +197,7 @@ class ProjectWindow(QMainWindow):
         else:
             firstvib = 2
             vibrations = False  # TODO discover
-        print('frequencies:',frequencies)
+        # print('frequencies:',frequencies)
         html = """<!DOCTYPE html>
 <html>
 <head>
@@ -240,7 +240,8 @@ Jmol.jmolBr()
 Jmol.jmolMenu(myJmol,[
 """
              for frequency in frequencies:
-                 html += '["frame ' + str(firstvib) + '", "' + str(frequency) + '"],'
+                 if abs(frequency) > 1.0:
+                    html += '["frame ' + str(firstvib) + '", "' + str(frequency) + '"],'
                  firstvib += 1
              html += """
 ],10);
