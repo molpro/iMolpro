@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QShortcut, QVBoxL
     QMessageBox, QMenuBar, QAction
 from pymolpro import Project
 
-from utilities import EditFile, ViewFile, factoryVibrationSet
+from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet
 
 
 class StatusBar(QLabel):
@@ -176,11 +176,20 @@ class ProjectWindow(QMainWindow):
     def embedded_VOD(self, file, command='', **kwargs):
         # print('file', file)
         webview = QWebEngineView()
+        firstmodel = 1
         try:
             vibs = factoryVibrationSet(file, **kwargs)
-            firstvib = vibs.firstCoordinateSet
+            firstmodel = firstvib = vibs.coordinateSet
+            # print('vibs found, number=',len(vibs.modes),'firstvib=',firstvib)
         except:
             vibs = None
+        try:
+            orbs = factoryOrbitalSet(file, **kwargs)
+            firstmodel = firstorb = orbs.coordinateSet
+            # print('orbs found, number=',len(orbs.orbitals),'firstorb=',firstorb,'energies=',orbs.energies)
+        except:
+            orbs = None
+        # print('firstmodel',firstmodel)
         html = """<!DOCTYPE html>
 <html>
 <head>
@@ -195,7 +204,7 @@ var Info = {
   color: "#FFFFFF",
   height: 400,
   width: 400,
-  script: "load """ + file + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7; set antialiasDisplay ON",
+  script: "load """ + file + """; model """+str(firstmodel)+"""; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7; set antialiasDisplay ON",
   use: "HTML5",
   j2sPath: "j2s",
   serverURL: "php/jsmol.php",
@@ -208,11 +217,12 @@ Jmol.getApplet("myJmol", Info);
 <script>
 Jmol.jmolLink(myJmol,'menu','Jmol menu')
 </script>
+<br><table><tr>
 """
         if vibs and vibs.frequencies:
             html += """
 <script>
-Jmol.jmolHtml('<br>Vibrations: ')
+Jmol.jmolHtml('<td>Vibrations: ')
 Jmol.jmolHtml(' ')
 Jmol.jmolCheckbox(myJmol,"vibration on", "vibration off", "animate")
 Jmol.jmolHtml(' ')
@@ -230,9 +240,35 @@ Jmol.jmolMenu(myJmol,[
 ],10);
 Jmol.jmolBr()
 </script>
+</td>
+             """
+
+        # print('orbs',orbs)
+        if orbs and orbs.energies:
+            html += """
+<script>
+Jmol.script(myJmol, 'frame  """
+            html+=str(firstorb)
+            html+="""')
+Jmol.jmolHtml('<td>Orbitals: ')
+Jmol.jmolBr()
+Jmol.jmolMenu(myJmol,[
+"""
+            energy_reverse = list(orbs.energies)
+            energy_reverse.reverse()
+            i=len(energy_reverse)
+            for energy in energy_reverse:
+                html += '["mo ' + str(i) + '", "' + str(energy) + '"],'
+                i-=1
+            html += """
+],10);
+Jmol.jmolBr()
+</script>
+</td>
              """
 
         html += """
+        </tr>
 <script>
 Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </script>

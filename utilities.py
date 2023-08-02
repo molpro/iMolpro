@@ -96,6 +96,83 @@ def force_suffix(filename, suffix='molpro'):
     return fn
 
 
+class OrbitalSet:
+    r"""
+    Container for a set of molecular orbitals
+    """
+
+    def __init__(self, content: str, instance=-1):
+        pass
+
+    def __str__(self):
+        return 'OrbitalSet ' + str(type(self)) + '\n' + str(self.orbitals) + str('\n\ncoordinateSet: ') + str(
+            self.coordinateSet)
+
+    @property
+    def energies(self):
+        return [orbital['energy'] for orbital in self.orbitals]
+
+
+def factoryOrbitalSet(input: str, fileType=None, instance=-1):
+    implementors = {
+        'xml': OrbitalSetXML,
+        'molden': OrbitalSetMolden,
+    }
+    if not fileType:
+        import os
+        base, suffix = os.path.splitext(input)
+        return implementors[suffix[1:]](open(input, 'r').read(), instance)
+    else:
+        return implementors[fileType](input, instance)
+
+
+class OrbitalSetMolden(OrbitalSet):
+    def __init__(self, content: str, instance=-1):
+        print('OrbitalSetMolden')
+        import re
+        self.coordinateSet = 2
+        super().__init__(content, instance)
+        self.orbitals = []
+        vibact = False
+        for line in content.split('\n'):
+            if line.strip() == '[MO]':
+                print('found [MO]')
+                vibact = True
+            elif vibact and line.strip() and line.strip()[0] == '[':
+                vibact = False
+            elif vibact and line.strip()[:3] == 'Ene':
+                self.orbitals.append({'energy': float(re.sub(' +', ' ', line.strip()).split(' ')[1])})
+
+
+class OrbitalSetXML(OrbitalSet):
+    def __init__(self, content: str, instance=-1):
+        super().__init__(content, instance)
+        import lxml
+        root = lxml.etree.fromstring(content)
+        namespaces_ = {'molpro-output': 'http://www.molpro.net/schema/molpro-output',
+                       'xsd': 'http://www.w3.org/1999/XMLSchema',
+                       'cml': 'http://www.xml-cml.org/schema',
+                       'stm': 'http://www.xml-cml.org/schema',
+                       'xhtml': 'http://www.w3.org/1999/xhtml'}
+        orbitalsNode = root.xpath('//molpro-output:orbitals',
+                                  namespaces=namespaces_)
+        if -len(orbitalsNode) > instance or len(orbitalsNode) <= instance:
+            raise IndexError('instance in OrbitalSet')
+        self.coordinateSet = 0 + len(
+            orbitalsNode[instance].xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
+                                         namespaces=namespaces_))
+        xpath = orbitalsNode[instance].xpath('molpro-output:orbital', namespaces=namespaces_)
+        self.orbitals = [
+            {
+                'vector': [float(v) for v in c.text.split()],
+                'energy': float(c.attrib['energy']),
+                'ID': c.attrib['ID'],
+                'symmetryID': c.attrib['symmetryID'],
+            }
+            for c in xpath
+        ]
+
+
 class VibrationSet:
     r"""
     Container for a set of molecular normal coordinates
@@ -105,8 +182,8 @@ class VibrationSet:
         pass
 
     def __str__(self):
-        return 'VibrationSet ' + str(type(self)) + '\n' + str(self.modes) + str('\n\nfirstCoordinateSet: ') + str(
-            self.firstCoordinateSet)
+        return 'VibrationSet ' + str(type(self)) + '\n' + str(self.modes) + str('\n\ncoordinateSet: ') + str(
+            self.coordinateSet)
 
     @property
     def frequencies(self):
@@ -132,7 +209,7 @@ def factoryVibrationSet(input: str, fileType=None, instance=-1):
 
 class VibrationSetMolden(VibrationSet):
     def __init__(self, content: str, instance=-1):
-        self.firstCoordinateSet = 2
+        self.coordinateSet = 2
         super().__init__(content, instance)
         self.modes = []
         vibact = False
@@ -145,7 +222,7 @@ class VibrationSetMolden(VibrationSet):
             elif vibact and float(line.strip()) != 0.0:
                 self.modes.append({'wavenumber': float(line.strip())})
             elif vibact:
-                self.firstCoordinateSet += 1
+                self.coordinateSet += 1
 
 
 class VibrationSetXML(VibrationSet):
@@ -154,20 +231,17 @@ class VibrationSetXML(VibrationSet):
         import lxml
         root = lxml.etree.fromstring(content)
         namespaces_ = {'molpro-output': 'http://www.molpro.net/schema/molpro-output',
-                  'xsd': 'http://www.w3.org/1999/XMLSchema',
-                  'cml': 'http://www.xml-cml.org/schema',
-                  'stm': 'http://www.xml-cml.org/schema',
-                  'xhtml': 'http://www.w3.org/1999/xhtml'}
-        vib = root.xpath('//molpro-output:vibrations',
-                         namespaces=namespaces_)
-        if -len(vib) > instance or len(vib) <= instance:
+                       'xsd': 'http://www.w3.org/1999/XMLSchema',
+                       'cml': 'http://www.xml-cml.org/schema',
+                       'stm': 'http://www.xml-cml.org/schema',
+                       'xhtml': 'http://www.w3.org/1999/xhtml'}
+        vibrationsNode = root.xpath('//molpro-output:vibrations',
+                                    namespaces=namespaces_)
+        if -len(vibrationsNode) > instance or len(vibrationsNode) <= instance:
             raise IndexError('instance in VibrationSet')
-        self.firstCoordinateSet = 1 + len(
-            vib[instance].xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
-                                namespaces=namespaces_))
-        coordinates = vib[instance].xpath(
-            'molpro-output:normalCoordinate[not(@real_zero_imag) or @real_zero_imag!="Z"]',
-            namespaces=namespaces_)
+        self.coordinateSet = 1 + len(
+            vibrationsNode[instance].xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
+                                           namespaces=namespaces_))
         self.modes = [
             {
                 'vector': [float(v) for v in c.text.split()],
@@ -178,5 +252,7 @@ class VibrationSetXML(VibrationSet):
                 'symmetry': c.attrib['symmetry'],
                 'real_zero_imag': c.attrib['real_zero_imag'],
             }
-            for c in coordinates
+            for c in (vibrationsNode[instance].xpath(
+                'molpro-output:normalCoordinate[not(@real_zero_imag) or @real_zero_imag!="Z"]',
+                namespaces=namespaces_))
         ]
