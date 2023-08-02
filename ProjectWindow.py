@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QShortcut, QVBoxL
     QMessageBox, QMenuBar, QAction
 from pymolpro import Project
 
-from utilities import EditFile, ViewFile
+from utilities import EditFile, ViewFile, factoryVibrationSet
 
 
 class StatusBar(QLabel):
@@ -174,30 +174,10 @@ class ProjectWindow(QMainWindow):
             self.embedded_VOD(self.project.filename(typ), command='mo HOMO')
 
     def embedded_VOD(self, file, command='', **kwargs):
+        # print('file', file)
         webview = QWebEngineView()
-        root, ext = os.path.splitext(file)
-        natom = len(self.project.geometry())
-        nvib = natom*3
-        frequencies=[0.0 for mode in range(nvib)] # TODO discover
-        if ext == '.xml':
-            firstvib = 2  # TODO discover
-            vibrations = True  # TODO discover
-        elif ext == '.molden':
-            firstvib = 2
-            vibrations = True  # TODO discover
-            frequencies=[]
-            vibact=False
-            for line in  open(file,'r').readlines():
-                if line.strip()=='[FREQ]':
-                    vibact=True
-                elif vibact and line.strip() and line.strip()[0]=='[':
-                    vibact=False
-                elif vibact:
-                    frequencies.append(float(line.strip()))
-        else:
-            firstvib = 2
-            vibrations = False  # TODO discover
-        # print('frequencies:',frequencies)
+        vibs = factoryVibrationSet(file, **kwargs)
+        firstvib = vibs.firstCoordinateSet
         html = """<!DOCTYPE html>
 <html>
 <head>
@@ -226,8 +206,8 @@ Jmol.getApplet("myJmol", Info);
 Jmol.jmolLink(myJmol,'menu','Jmol menu')
 </script>
 """
-        if vibrations:
-             html += """
+        if vibs.frequencies:
+            html += """
 <script>
 Jmol.jmolHtml('<br>Vibrations: ')
 Jmol.jmolHtml(' ')
@@ -239,11 +219,11 @@ Jmol.jmolHtml(' ')
 Jmol.jmolBr()
 Jmol.jmolMenu(myJmol,[
 """
-             for frequency in frequencies:
-                 if abs(frequency) > 1.0:
+            for frequency in vibs.frequencies:
+                if abs(frequency) > 1.0:
                     html += '["frame ' + str(firstvib) + '", "' + str(frequency) + '"],'
-                 firstvib += 1
-             html += """
+                firstvib += 1
+            html += """
 ],10);
 Jmol.jmolBr()
 </script>
