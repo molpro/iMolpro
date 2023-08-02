@@ -153,23 +153,21 @@ class VibrationSetXML(VibrationSet):
         super().__init__(content, instance)
         import lxml
         root = lxml.etree.fromstring(content)
-        import pymolpro # TODO remove dependency
-        vib = pymolpro.xpath(root, '//vibrations')
+        namespaces_ = {'molpro-output': 'http://www.molpro.net/schema/molpro-output',
+                  'xsd': 'http://www.w3.org/1999/XMLSchema',
+                  'cml': 'http://www.xml-cml.org/schema',
+                  'stm': 'http://www.xml-cml.org/schema',
+                  'xhtml': 'http://www.w3.org/1999/xhtml'}
+        vib = root.xpath('//molpro-output:vibrations',
+                         namespaces=namespaces_)
         if -len(vib) > instance or len(vib) <= instance:
             raise IndexError('instance in VibrationSet')
         self.firstCoordinateSet = 1 + len(
             vib[instance].xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
-                                namespaces={'molpro-output': 'http://www.molpro.net/schema/molpro-output',
-                                            'xsd': 'http://www.w3.org/1999/XMLSchema',
-                                            'cml': 'http://www.xml-cml.org/schema',
-                                            'stm': 'http://www.xml-cml.org/schema',
-                                            'xhtml': 'http://www.w3.org/1999/xhtml'}))
+                                namespaces=namespaces_))
         coordinates = vib[instance].xpath(
             'molpro-output:normalCoordinate[not(@real_zero_imag) or @real_zero_imag!="Z"]',
-            namespaces={'molpro-output': 'http://www.molpro.net/schema/molpro-output',
-                        'xsd': 'http://www.w3.org/1999/XMLSchema',
-                        'cml': 'http://www.xml-cml.org/schema', 'stm': 'http://www.xml-cml.org/schema',
-                        'xhtml': 'http://www.w3.org/1999/xhtml'})
+            namespaces=namespaces_)
         self.modes = [
             {
                 'vector': [float(v) for v in c.text.split()],
