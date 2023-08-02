@@ -176,8 +176,11 @@ class ProjectWindow(QMainWindow):
     def embedded_VOD(self, file, command='', **kwargs):
         # print('file', file)
         webview = QWebEngineView()
-        vibs = factoryVibrationSet(file, **kwargs)
-        firstvib = vibs.firstCoordinateSet
+        try:
+            vibs = factoryVibrationSet(file, **kwargs)
+            firstvib = vibs.firstCoordinateSet
+        except:
+            vibs = None
         html = """<!DOCTYPE html>
 <html>
 <head>
@@ -206,7 +209,7 @@ Jmol.getApplet("myJmol", Info);
 Jmol.jmolLink(myJmol,'menu','Jmol menu')
 </script>
 """
-        if vibs.frequencies:
+        if vibs and vibs.frequencies:
             html += """
 <script>
 Jmol.jmolHtml('<br>Vibrations: ')
