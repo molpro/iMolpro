@@ -239,7 +239,7 @@ Jmol.jmolLink(myJmol,'menu','Jmol menu')
 <script>
 Jmol.jmolHtml('<td>Vibrations: ')
 Jmol.jmolHtml(' ')
-Jmol.jmolCheckbox(myJmol,"vibration on", "vibration off", "animate")
+Jmol.jmolCheckbox(myJmol,"vibration on", "vibration off", "animate", 1)
 Jmol.jmolHtml(' ')
 Jmol.script(myJmol, 'color vectors yellow')
 Jmol.jmolCheckbox(myJmol,"vectors on", "vectors off", "vectors")
@@ -249,7 +249,7 @@ Jmol.jmolMenu(myJmol,[
 """
             for frequency in vibs.frequencies:
                 if abs(frequency) > 1.0:
-                    html += '["frame ' + str(firstvib) + '", "' + str(frequency) + '"],'
+                    html += '["frame ' + str(firstvib) + '; vibration on", "' + str(frequency) + '"],'
                 firstvib += 1
             html += """
 ],10);
@@ -272,7 +272,7 @@ Jmol.jmolMenu(myJmol,[
             energy_reverse.reverse()
             i = len(energy_reverse)
             for energy in energy_reverse:
-                html += '["mo ' + str(i) + '", "' + str(energy) + '"],'
+                html += '["model '+str(firstorb)+'; vibration off; mo ' + str(i) + '", "' + str(energy) + '"],'
                 i -= 1
             html += """
 ],10);

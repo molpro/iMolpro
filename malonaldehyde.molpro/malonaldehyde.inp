@@ -6,4 +6,6 @@ put,molden,first.molden
 optg
 put,molden,second.molden
 frequencies,analytic
+put,xml
 put,molden,malo.molden
+put,xml,malo.xml
