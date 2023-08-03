@@ -326,8 +326,12 @@ Jmol.getApplet("myJmol", Info);
 </td>
 <td>
 Click in the top left corner of the display pane for options.<br/>
-Saving is not yet implemented.<br/>
+Saving does not yet work.<br/>
 <script>
+Jmol.jmolButton(myJmol, 'write \""""
+        filetype='xyz'
+        html += filetype+' '+file
+        html += """\"','Save structure')
 Jmol.jmolLink(myJmol,'menu','Jmol menu')
 Jmol.jmolBr()
 Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
@@ -336,6 +340,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </tr>
 </body>
 </html>"""
+        # print(html)
         cwd = str(pathlib.Path(__file__).resolve())
         webview.setHtml(html, QUrl.fromLocalFile(cwd))
 
