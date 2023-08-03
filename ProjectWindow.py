@@ -121,6 +121,12 @@ class ProjectWindow(QMainWindow):
                 # self.inputPane.adjustSize()
                 # self.outputPane.adjustSize()
                 # self.adjustSize()
+        elif text[:5] == 'Edit ':
+            filename = self.project.filename('', text[5:], run=-1)
+            if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
+                with open(filename, 'w') as f:
+                    f.write('1\n\nC 0.0 0.0 0.0\n')
+            self.embedded_builder(filename)
         elif text == 'Input':
             self.visinp()
         elif text == 'Output':
@@ -131,6 +137,8 @@ class ProjectWindow(QMainWindow):
     def rebuildVODselector(self):
         self.VODselector.clear()
         self.VODselector.addItem('None')
+        for t, f in self.geometryfiles():
+            self.VODselector.addItem('Edit ' + f)
         self.VODselector.addItem('Input')
         if self.project.status == 'completed' or (
                 os.path.isfile(self.project.filename('xml')) and open(self.project.filename('xml'),
@@ -158,6 +166,17 @@ class ProjectWindow(QMainWindow):
                 result.append((fields[1], fields[2]))
         return result
 
+    def geometryfiles(self):
+        import re
+        result = []
+        lines = self.inputPane.toPlainText().replace(';', '\n').split('\n')
+        for line in lines:
+            fields = line.replace(' ', ',').split(',')
+            regex = r'geometry=([-@#&A-Za-z0-9_]+)\.(xyz)'
+            if len(fields) == 1 and re.match(regex, fields[0], re.IGNORECASE):
+                result.append((re.sub(regex, r'\2', fields[0]), re.sub(regex, r'\1.\2', fields[0])))
+        return result
+
     def refreshOutputFile(self):
         self.outputPane.reset(self.project.filename('out'))
 
@@ -174,22 +193,18 @@ class ProjectWindow(QMainWindow):
             self.embedded_VOD(self.project.filename(typ), command='mo HOMO')
 
     def embedded_VOD(self, file, command='', **kwargs):
-        # print('file', file)
         webview = QWebEngineView()
         firstmodel = 1
         try:
             vibs = factoryVibrationSet(file, **kwargs)
             firstmodel = firstvib = vibs.coordinateSet
-            # print('vibs found, number=',len(vibs.modes),'firstvib=',firstvib)
         except:
             vibs = None
         try:
             orbs = factoryOrbitalSet(file, **kwargs)
             firstmodel = firstorb = orbs.coordinateSet
-            # print('orbs found, number=',len(orbs.orbitals),'firstorb=',firstorb,'energies=',orbs.energies)
         except:
             orbs = None
-        # print('firstmodel',firstmodel)
         html = """<!DOCTYPE html>
 <html>
 <head>
@@ -204,7 +219,7 @@ var Info = {
   color: "#FFFFFF",
   height: 400,
   width: 400,
-  script: "load """ + file + """; model """+str(firstmodel)+"""; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7; set antialiasDisplay ON",
+  script: "load """ + file + """; model """ + str(firstmodel) + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7; set antialiasDisplay ON; set showFrank OFF",
   use: "HTML5",
   j2sPath: "j2s",
   serverURL: "php/jsmol.php",
@@ -243,23 +258,22 @@ Jmol.jmolBr()
 </td>
              """
 
-        # print('orbs',orbs)
         if orbs and orbs.energies:
             html += """
 <script>
 Jmol.script(myJmol, 'frame  """
-            html+=str(firstorb)
-            html+="""')
+            html += str(firstorb)
+            html += """')
 Jmol.jmolHtml('<td>Orbitals: ')
 Jmol.jmolBr()
 Jmol.jmolMenu(myJmol,[
 """
             energy_reverse = list(orbs.energies)
             energy_reverse.reverse()
-            i=len(energy_reverse)
+            i = len(energy_reverse)
             for energy in energy_reverse:
                 html += '["mo ' + str(i) + '", "' + str(energy) + '"],'
-                i-=1
+                i -= 1
             html += """
 ],10);
 Jmol.jmolBr()
@@ -270,6 +284,52 @@ Jmol.jmolBr()
         html += """
         </tr>
 <script>
+Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
+</script>
+</td>
+</tr>
+</body>
+</html>"""
+        cwd = str(pathlib.Path(__file__).resolve())
+        webview.setHtml(html, QUrl.fromLocalFile(cwd))
+
+        webview.setMinimumSize(400, 420)
+        self.addVOD(webview)
+
+    def embedded_builder(self, file=None, command='', **kwargs):
+        webview = QWebEngineView()
+        html = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script type="text/javascript" src="JSmol.min.js"> </script>
+</head>
+<body>
+<table>
+<tr valign="top"><td>
+<script>
+var Info = {
+  color: "#FFFFFF",
+  height: 400,
+  width: 400,
+  script: "set antialiasDisplay ON;"""
+        if file:
+            html += ' load ' + file + ';'
+        html += """ set showFrank OFF; set modelKitMode on",
+  use: "HTML5",
+  j2sPath: "j2s",
+  serverURL: "php/jsmol.php",
+};
+
+Jmol.getApplet("myJmol", Info);
+</script>
+</td>
+<td>
+Click in the top left corner of the display pane for options.<br/>
+Saving is not yet implemented.<br/>
+<script>
+Jmol.jmolLink(myJmol,'menu','Jmol menu')
+Jmol.jmolBr()
 Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </script>
 </td>
