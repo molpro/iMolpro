@@ -2,9 +2,11 @@ import os
 import pathlib
 import sys
 
+from PyQt5 import QtWebEngineWidgets
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import QKeySequence
-from PyQt5.QtWebEngineWidgets import QWebEngineView
+from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
+from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QShortcut, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QMenuBar, QAction
 from pymolpro import Project
@@ -209,7 +211,7 @@ class ProjectWindow(QMainWindow):
 <html>
 <head>
 <meta charset="utf-8">
-<script type="text/javascript" src="JSmol.min.js"> </script>
+<script type="text/javascript" src="./JSmol.min.js"> </script>
 </head>
 <body>
 <table>
@@ -291,13 +293,35 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </body>
 </html>"""
         cwd = str(pathlib.Path(__file__).resolve())
+        open('test.html','w').write(html)
         webview.setHtml(html, QUrl.fromLocalFile(cwd))
 
         webview.setMinimumSize(400, 420)
         self.addVOD(webview)
 
     def embedded_builder(self, file=None, command='', **kwargs):
+
+        class WebEngineUrlRequestInterceptor(QWebEngineUrlRequestInterceptor):
+            def interceptRequest(self, info):
+                # info.setHttpHeader("X-Frame-Options", "ALLOWALL")
+                print("interceptRequest")
+                print(info.requestUrl())
+
+        class MyWebEnginePage(QWebEnginePage):
+            def acceptNavigationRequest(self, url, _type, isMainFrame):
+
+                print("acceptNavigationRequest")
+                print(url)
+                return QWebEnginePage.acceptNavigationRequest(self, url, _type, isMainFrame)
+
+
         webview = QWebEngineView()
+        interceptor = WebEngineUrlRequestInterceptor()
+        self.profile = QWebEngineProfile()
+        self.profile.setRequestInterceptor(interceptor)
+        viewsettings = webview.settings();
+        viewsettings.setAttribute(QtWebEngineWidgets.QWebEngineSettings.LocalStorageEnabled, True)
+        # viewsettings.setLocalStoragePath('/tmp')
         html = """<!DOCTYPE html>
 <html>
 <head>
@@ -332,6 +356,11 @@ Jmol.jmolButton(myJmol, 'write \""""
         filetype='xyz'
         html += filetype+' '+file
         html += """\"','Save structure')
+var x=Jmol.evaluateVar(myJmol,"{*}.length")
+// var x=1
+alert(x.toString())
+//alert(Jmol.scriptEcho(myJmol,'write coord'))
+//alert(Jmol.evaluateVar(myJmol,'scriptEcho(myJmol,"write coord")'))
 Jmol.jmolLink(myJmol,'menu','Jmol menu')
 Jmol.jmolBr()
 Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
@@ -341,8 +370,11 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </body>
 </html>"""
         # print(html)
+        open('test.html','w').write(html)
         cwd = str(pathlib.Path(__file__).resolve())
-        webview.setHtml(html, QUrl.fromLocalFile(cwd))
+        page = MyWebEnginePage(self.profile,webview)
+        page.setHtml(html, QUrl.fromLocalFile(cwd))
+        webview.setPage(page)
 
         webview.setMinimumSize(400, 420)
         self.addVOD(webview)
