@@ -315,13 +315,6 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                 return QWebEnginePage.acceptNavigationRequest(self, url, _type, isMainFrame)
 
 
-        webview = QWebEngineView()
-        interceptor = WebEngineUrlRequestInterceptor()
-        self.profile = QWebEngineProfile()
-        self.profile.setRequestInterceptor(interceptor)
-        viewsettings = webview.settings();
-        viewsettings.setAttribute(QtWebEngineWidgets.QWebEngineSettings.LocalStorageEnabled, True)
-        # viewsettings.setLocalStoragePath('/tmp')
         html = """<!DOCTYPE html>
 <html>
 <head>
@@ -352,15 +345,20 @@ Jmol.getApplet("myJmol", Info);
 Click in the top left corner of the display pane for options.<br/>
 Saving does not yet work.<br/>
 <script>
-Jmol.jmolButton(myJmol, 'write \""""
+Jmol.jmolButton(myJmol, 'write """
         filetype='xyz'
-        html += filetype+' '+file
+        html += filetype+' "'+file
         html += """\"','Save structure')
-var x=Jmol.evaluateVar(myJmol,"{*}.length")
+Jmol.jmolButton(myJmol, 'c=write(\"coord\",\"xyz\"); write var c \""""
+        html += file
+        html += """\"','Save structure')
+//c = write("coord", "mol");
+//write var c "test-coord.mol";
+//var x=Jmol.evaluateVar(myJmol,"{*}.length")
 // var x=1
-alert(x.toString())
+//alert(x.toString())
 //alert(Jmol.scriptEcho(myJmol,'write coord'))
-//alert(Jmol.evaluateVar(myJmol,'scriptEcho(myJmol,"write coord")'))
+//alert(Jmol.evaluateVar(myJmol,'scriptEcho(myJmol,"c=write(\"coord\",\"mol\"); write var c \"test.mol\""")'))
 Jmol.jmolLink(myJmol,'menu','Jmol menu')
 Jmol.jmolBr()
 Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
@@ -371,6 +369,13 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </html>"""
         # print(html)
         open('test.html','w').write(html)
+        webview = QWebEngineView()
+        interceptor = WebEngineUrlRequestInterceptor()
+        self.profile = QWebEngineProfile()
+        self.profile.setRequestInterceptor(interceptor)
+        viewsettings = webview.settings();
+        viewsettings.setAttribute(QtWebEngineWidgets.QWebEngineSettings.LocalStorageEnabled, True)
+        # viewsettings.setLocalStoragePath('/tmp')
         cwd = str(pathlib.Path(__file__).resolve())
         page = MyWebEnginePage(self.profile,webview)
         page.setHtml(html, QUrl.fromLocalFile(cwd))
