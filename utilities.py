@@ -11,9 +11,7 @@ class EditFile(QPlainTextEdit):
         super().__init__()
         self.filename = str(filename)
         if os.path.isfile(self.filename):
-            with open(self.filename, 'r') as f:
-                self.savedText = f.read()
-            if not self.savedText or self.savedText[-1] != '\n': self.savedText += '\n'
+            self.load()
         else:
             self.savedText = '\n'
         self.setPlainText(self.savedText)
@@ -28,7 +26,16 @@ class EditFile(QPlainTextEdit):
         self.flushTimer.timeout.connect(self.flush)
         self.flushTimer.start(latency)
 
+    def load(self):
+        with open(self.filename, 'r') as f:
+            self.savedText = f.read()
+        if not self.savedText or self.savedText[-1] != '\n': self.savedText += '\n'
+        self.setPlainText(self.savedText)
+        self.fileTime = os.path.getmtime(self.filename)
+
     def flush(self):
+        if self.fileTime and self.fileTime < os.path.getmtime(self.filename):
+            self.load()
         current = self.toPlainText()
         if not current or current[-1] != '\n':
             current += '\n'
@@ -37,6 +44,7 @@ class EditFile(QPlainTextEdit):
             with open(self.filename, 'w') as f:
                 f.write(current)
             self.savedText = current
+            self.fileTime = os.path.getmtime(self.filename)
 
     def setPlainText(self, text):
         super().setPlainText(text)

@@ -1,4 +1,4 @@
-from QtMolpro import EditFile
+from utilities import EditFile
 import time
 
 
