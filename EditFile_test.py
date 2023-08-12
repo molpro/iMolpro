@@ -1,3 +1,5 @@
+import os.path
+
 from utilities import EditFile
 import time
 
@@ -24,6 +26,19 @@ def test_content(qtbot, tmpdir):
     ]:
         editor.setPlainText(test_text)
         assert editor.toPlainText() == ensure_trailing_newline(test_text)
-        editor.flush()
+        editor.sync()
         with open(test_file, 'r') as f:
             assert f.read() == ensure_trailing_newline(test_text)
+
+        replacement_text = 'new stuff\n' + test_text
+        with open(test_file, 'w') as f:
+            f.write(replacement_text)
+        file_written_time = os.path.getmtime(test_file)
+        from time import sleep, time
+        # print('written replacement', time(),os.path.getmtime(test_file))
+        sleep(0.001)
+        # print('after sleep', time(),os.path.getmtime(test_file))
+        editor.sync()
+        # print('after sync', time(),os.path.getmtime(test_file))
+        assert editor.toPlainText() == ensure_trailing_newline(replacement_text)
+        assert os.path.getmtime(test_file) == file_written_time # editor should not have written unnecessarily
