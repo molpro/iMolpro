@@ -9,42 +9,52 @@ from PyQt5.QtWidgets import QPlainTextEdit, QMessageBox
 class EditFile(QPlainTextEdit):
     def __init__(self, filename: str, latency=1000):
         super().__init__()
+        self.fileTime = None
         self.filename = str(filename)
         if os.path.isfile(self.filename):
-            with open(self.filename, 'r') as f:
-                self.savedText = f.read()
-            if not self.savedText or self.savedText[-1] != '\n': self.savedText += '\n'
+            self.load()
         else:
             self.savedText = '\n'
         self.setPlainText(self.savedText)
         f = QFont(QFontDatabase.systemFont(QFontDatabase.FixedFont))
         f.setPointSize(12)
         self.setFont(f)
-        self.flush()
+        self.sync()
 
         import atexit
-        atexit.register(self.flush)
+        atexit.register(self.sync)
         self.flushTimer = QTimer()
-        self.flushTimer.timeout.connect(self.flush)
+        self.flushTimer.timeout.connect(self.sync)
         self.flushTimer.start(latency)
 
-    def flush(self):
+    def load(self):
+        with open(self.filename, 'r') as f:
+            self.savedText = f.read()
+        if not self.savedText or self.savedText[-1] != '\n': self.savedText += '\n'
+        super().setPlainText(self.savedText)
+        self.fileTime = os.path.getmtime(self.filename)
+
+    def sync(self):
+        from time import time
+        if os.path.isfile(self.filename) and (not self.fileTime or self.fileTime < os.path.getmtime(self.filename)):
+            self.load()
         current = self.toPlainText()
         if not current or current[-1] != '\n':
             current += '\n'
-            self.setPlainText(current)
+            super().setPlainText(current)
         if current != self.savedText:
             with open(self.filename, 'w') as f:
                 f.write(current)
             self.savedText = current
+            self.fileTime = os.path.getmtime(self.filename)
 
     def setPlainText(self, text):
         super().setPlainText(text)
-        self.flush()
+        self.sync()
 
     def __del__(self):
-        self.flush()
-        atexit.unregister(self.flush)
+        self.sync()
+        atexit.unregister(self.sync)
 
 
 class ViewFile(QPlainTextEdit):
@@ -128,7 +138,6 @@ def factoryOrbitalSet(input: str, fileType=None, instance=-1):
 
 class OrbitalSetMolden(OrbitalSet):
     def __init__(self, content: str, instance=-1):
-        print('OrbitalSetMolden')
         import re
         self.coordinateSet = 2
         super().__init__(content, instance)
@@ -136,7 +145,6 @@ class OrbitalSetMolden(OrbitalSet):
         vibact = False
         for line in content.split('\n'):
             if line.strip() == '[MO]':
-                print('found [MO]')
                 vibact = True
             elif vibact and line.strip() and line.strip()[0] == '[':
                 vibact = False
