@@ -31,12 +31,13 @@ def test_content(qtbot, tmpdir):
             assert f.read() == ensure_trailing_newline(test_text)
 
         replacement_text = 'new stuff\n' + test_text
+        from time import sleep
+        sleep(0.1) # to give filesystem a chance to record different time
         with open(test_file, 'w') as f:
             f.write(replacement_text)
         file_written_time = os.path.getmtime(test_file)
-        from time import sleep, time
+        # from time import time
         # print('written replacement', time(),os.path.getmtime(test_file))
-        sleep(0.001)
         # print('after sleep', time(),os.path.getmtime(test_file))
         editor.sync()
         # print('after sync', time(),os.path.getmtime(test_file))
