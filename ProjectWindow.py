@@ -1,12 +1,11 @@
 import os
 import pathlib
-import sys
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import QKeySequence
-from PyQt5.QtWebEngineWidgets import QWebEngineView
+from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QShortcut, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QMenuBar, QAction
+    QMessageBox, QMenuBar
 from pymolpro import Project
 
 from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet
@@ -40,6 +39,7 @@ class ProjectWindow(QMainWindow):
 
         assert filename is not None
 
+        self.webEngineProfiles = []
         menubar = QMenuBar()
         self.setMenuBar(menubar)
         filemenu = menubar.addMenu(' &File')
@@ -148,15 +148,6 @@ class ProjectWindow(QMainWindow):
             for t, f in self.putfiles():
                 self.VODselector.addItem(f)
 
-    def addVOD(self, vod: QWidget):
-        if not self.VOD:
-            self.layout.addWidget(vod)
-        else:
-            self.layout.replaceWidget(self.VOD, vod)
-            self.VOD.hide()
-        self.VOD = vod
-        self.VOD.show()
-
     def putfiles(self):
         result = []
         lines = self.inputPane.toPlainText().replace(';', '\n').split('\n')
@@ -209,7 +200,7 @@ class ProjectWindow(QMainWindow):
 <html>
 <head>
 <meta charset="utf-8">
-<script type="text/javascript" src="JSmol.min.js"> </script>
+<script type="text/javascript" src="./JSmol.min.js"> </script>
 </head>
 <body>
 <table>
@@ -272,7 +263,7 @@ Jmol.jmolMenu(myJmol,[
             energy_reverse.reverse()
             i = len(energy_reverse)
             for energy in energy_reverse:
-                html += '["model '+str(firstorb)+'; vibration off; mo ' + str(i) + '", "' + str(energy) + '"],'
+                html += '["model ' + str(firstorb) + '; vibration off; mo ' + str(i) + '", "' + str(energy) + '"],'
                 i -= 1
             html += """
 ],10);
@@ -290,14 +281,10 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </tr>
 </body>
 </html>"""
-        cwd = str(pathlib.Path(__file__).resolve())
-        webview.setHtml(html, QUrl.fromLocalFile(cwd))
+        self.addVOD(html, **kwargs)
 
-        webview.setMinimumSize(400, 420)
-        self.addVOD(webview)
+    def embedded_builder(self, file, **kwargs):
 
-    def embedded_builder(self, file=None, command='', **kwargs):
-        webview = QWebEngineView()
         html = """<!DOCTYPE html>
 <html>
 <head>
@@ -313,8 +300,7 @@ var Info = {
   height: 400,
   width: 400,
   script: "set antialiasDisplay ON;"""
-        if file:
-            html += ' load ' + file + ';'
+        html += ' load ' + file + ';'
         html += """ set showFrank OFF; set modelKitMode on",
   use: "HTML5",
   j2sPath: "j2s",
@@ -326,11 +312,10 @@ Jmol.getApplet("myJmol", Info);
 </td>
 <td>
 Click in the top left corner of the display pane for options.<br/>
-Saving does not yet work.<br/>
 <script>
-Jmol.jmolButton(myJmol, 'write \""""
-        filetype='xyz'
-        html += filetype+' '+file
+Jmol.jmolButton(myJmol, 'write """
+        filetype = os.path.splitext(file)[1][1:]
+        html += filetype + ' "' + file
         html += """\"','Save structure')
 Jmol.jmolLink(myJmol,'menu','Jmol menu')
 Jmol.jmolBr()
@@ -340,20 +325,47 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </tr>
 </body>
 </html>"""
-        # print(html)
-        cwd = str(pathlib.Path(__file__).resolve())
-        webview.setHtml(html, QUrl.fromLocalFile(cwd))
 
-        webview.setMinimumSize(400, 420)
-        self.addVOD(webview)
+        self.addVOD(html, **kwargs)
+
+    def addVOD(self, html, width=400, height=420, verbosity=0):
+        if verbosity:
+            print(html)
+            open('test.html', 'w').write(html)
+        webview = QWebEngineView()
+        profile = QWebEngineProfile()
+        self.webEngineProfiles.append(profile)  # FIXME This to avoid premature garbage collection. A resource leak. Need to find a way to delete the previous QWebEnginePage instead
+        profile.downloadRequested.connect(self._download_requested)
+        page = QWebEnginePage(profile, webview)
+        page.setHtml(html, QUrl.fromLocalFile(str(pathlib.Path(__file__).resolve())))
+        webview.setPage(page)
+
+        webview.setMinimumSize(width, height)
+        if not self.VOD:
+            self.layout.addWidget(webview)
+        else:
+            self.layout.replaceWidget(self.VOD, webview)
+            self.VOD.hide()
+        self.VOD = webview
+        self.VOD.show()
+
+    def _download_requested(self, item):
+        import re
+        if item.downloadFileName():
+            item.setDownloadFileName(re.sub(r' \(\d+\)\.', r'.', item.downloadFileName()))
+            item.setDownloadDirectory(self.project.filename(run=-1))
+            item.accept()
 
     def visinp(self):
         import tempfile
         geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
         geometry_directory.mkdir(exist_ok=True)
         xyzFile = str(geometry_directory / pathlib.Path(self.project.filename(run=-1)).stem) + '.xyz'
+        if os.path.isfile(xyzFile):
+            for gfile in self.geometryfiles():
+                fn=self.project.filename('',gfile[1],run=-1)
         if not os.path.isfile(xyzFile) or os.path.getmtime(xyzFile) < os.path.getmtime(
-                self.project.filename('inp', run=-1)):
+                self.project.filename('inp', run=-1)) or any([os.path.getmtime(xyzFile) < os.path.getmtime(self.project.filename('',gfile[1],run=-1)) for gfile in self.geometryfiles()]):
             with tempfile.TemporaryDirectory() as tmpdirname:
                 self.project.copy(pathlib.Path(self.project.filename(run=-1)).name, location=tmpdirname)
                 project_path = pathlib.Path(tmpdirname) / pathlib.Path(self.project.filename(run=-1)).name
