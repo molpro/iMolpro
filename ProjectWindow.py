@@ -5,7 +5,7 @@ from PyQt5.QtCore import QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QShortcut, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QMenuBar
+    QMessageBox, QMenuBar, QTabWidget
 from pymolpro import Project
 
 from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet
@@ -107,7 +107,15 @@ class ProjectWindow(QMainWindow):
 
         toplayout = QHBoxLayout()
         toplayout.addLayout(leftLayout)
-        toplayout.addWidget(self.outputPanes['out'].outputPane)
+        self.outputTabs = QTabWidget()
+        self.outputTabs.setTabBarAutoHide(True)
+        self.outputTabs.setDocumentMode(True)
+        self.outputTabs.setTabPosition(QTabWidget.South)
+        self.refreshOutputTabs()
+        self.timerOutputTabs = QTimer()
+        self.timerOutputTabs.timeout.connect(self.refreshOutputTabs)
+        self.timerOutputTabs.start(2000)
+        toplayout.addWidget(self.outputTabs)
 
         self.layout = QVBoxLayout()
         self.layout.addLayout(toplayout)
@@ -123,6 +131,15 @@ class ProjectWindow(QMainWindow):
         container = QWidget()
         container.setLayout(self.layout)
         self.setCentralWidget(container)
+
+    def refreshOutputTabs(self):
+        if len(self.outputTabs) != len(
+                [suffix for suffix, pane in self.outputPanes.items() if os.path.exists(self.project.filename(suffix))]):
+            self.outputTabs.clear()
+            for suffix, pane in self.outputPanes.items():
+                if os.path.exists(self.project.filename(suffix)):
+                    self.outputTabs.addTab(pane.outputPane, suffix)
+
 
     def VODselectorAction(self):
         text = self.VODselector.currentText().strip()
