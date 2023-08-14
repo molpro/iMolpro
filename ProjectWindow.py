@@ -307,12 +307,6 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                 print("interceptRequest")
                 print(info.requestUrl())
 
-        class MyWebEnginePage(QWebEnginePage):
-            def acceptNavigationRequest(self, url, _type, isMainFrame):
-
-                print("acceptNavigationRequest")
-                print(url)
-                return QWebEnginePage.acceptNavigationRequest(self, url, _type, isMainFrame)
 
 
         html = """<!DOCTYPE html>
@@ -330,6 +324,7 @@ var Info = {
   height: 400,
   width: 400,
   script: "set antialiasDisplay ON;"""
+        self.current_geometry_file = file
         if file:
             html += ' load ' + file + ';'
         html += """ set showFrank OFF; set modelKitMode on",
@@ -369,6 +364,13 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </html>"""
         # print(html)
         open('test.html','w').write(html)
+        class MyWebEnginePage(QWebEnginePage):
+            def acceptNavigationRequest(self, url, _type, isMainFrame):
+
+                print("acceptNavigationRequest")
+                print(url)
+                return QWebEnginePage.acceptNavigationRequest(self, url, _type, isMainFrame)
+
         webview = QWebEngineView()
         interceptor = WebEngineUrlRequestInterceptor()
         self.profile = QWebEngineProfile()
@@ -377,12 +379,20 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         viewsettings.setAttribute(QtWebEngineWidgets.QWebEngineSettings.LocalStorageEnabled, True)
         # viewsettings.setLocalStoragePath('/tmp')
         cwd = str(pathlib.Path(__file__).resolve())
+        self.profile.downloadRequested.connect(self._download_requested)
         page = MyWebEnginePage(self.profile,webview)
         page.setHtml(html, QUrl.fromLocalFile(cwd))
         webview.setPage(page)
 
         webview.setMinimumSize(400, 420)
         self.addVOD(webview)
+
+    def _download_requested(self,item):
+        if self.current_geometry_file:
+            item.setDownloadFileName(os.path.basename(self.current_geometry_file))
+            item.setDownloadDirectory(self.project.filename(run=-1))
+            print('_download_requested',item.downloadDirectory(),item.downloadFileName())
+            item.accept()
 
     def visinp(self):
         import tempfile
