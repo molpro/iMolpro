@@ -274,7 +274,7 @@ Jmol.jmolMenu(myJmol,[
             energy_reverse.reverse()
             i = len(energy_reverse)
             for energy in energy_reverse:
-                html += '["model '+str(firstorb)+'; vibration off; mo ' + str(i) + '", "' + str(energy) + '"],'
+                html += '["model ' + str(firstorb) + '; vibration off; mo ' + str(i) + '", "' + str(energy) + '"],'
                 i -= 1
             html += """
 ],10);
@@ -292,22 +292,9 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </tr>
 </body>
 </html>"""
-        cwd = str(pathlib.Path(__file__).resolve())
-        open('test.html','w').write(html)
-        webview.setHtml(html, QUrl.fromLocalFile(cwd))
+        self.addVODFromHtml(html, **kwargs)
 
-        webview.setMinimumSize(400, 420)
-        self.addVOD(webview)
-
-    def embedded_builder(self, file=None, command='', **kwargs):
-
-        class WebEngineUrlRequestInterceptor(QWebEngineUrlRequestInterceptor):
-            def interceptRequest(self, info):
-                # info.setHttpHeader("X-Frame-Options", "ALLOWALL")
-                print("interceptRequest")
-                print(info.requestUrl())
-
-
+    def embedded_builder(self, file, **kwargs):
 
         html = """<!DOCTYPE html>
 <html>
@@ -324,9 +311,7 @@ var Info = {
   height: 400,
   width: 400,
   script: "set antialiasDisplay ON;"""
-        self.current_geometry_file = file
-        if file:
-            html += ' load ' + file + ';'
+        html += ' load ' + file + ';'
         html += """ set showFrank OFF; set modelKitMode on",
   use: "HTML5",
   j2sPath: "j2s",
@@ -341,8 +326,8 @@ Click in the top left corner of the display pane for options.<br/>
 Saving does not yet work.<br/>
 <script>
 Jmol.jmolButton(myJmol, 'write """
-        filetype='xyz'
-        html += filetype+' "'+file
+        filetype = 'xyz'
+        html += filetype + ' "' + file
         html += """\"','Save structure')
 Jmol.jmolButton(myJmol, 'c=write(\"coord\",\"xyz\"); write var c \""""
         html += file
@@ -362,36 +347,28 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </tr>
 </body>
 </html>"""
-        # print(html)
-        open('test.html','w').write(html)
-        class MyWebEnginePage(QWebEnginePage):
-            def acceptNavigationRequest(self, url, _type, isMainFrame):
 
-                print("acceptNavigationRequest")
-                print(url)
-                return QWebEnginePage.acceptNavigationRequest(self, url, _type, isMainFrame)
+        self.addVODFromHtml(html, **kwargs)
 
+    def addVODFromHtml(self,html, width=400, height=420, verbosity=0):
+        if verbosity:
+            print(html)
+            open('test.html','w').write(html)
         webview = QWebEngineView()
-        interceptor = WebEngineUrlRequestInterceptor()
         self.profile = QWebEngineProfile()
-        self.profile.setRequestInterceptor(interceptor)
-        viewsettings = webview.settings();
-        viewsettings.setAttribute(QtWebEngineWidgets.QWebEngineSettings.LocalStorageEnabled, True)
-        # viewsettings.setLocalStoragePath('/tmp')
-        cwd = str(pathlib.Path(__file__).resolve())
         self.profile.downloadRequested.connect(self._download_requested)
-        page = MyWebEnginePage(self.profile,webview)
-        page.setHtml(html, QUrl.fromLocalFile(cwd))
+        page = QWebEnginePage(self.profile, webview)
+        page.setHtml(html, QUrl.fromLocalFile(str(pathlib.Path(__file__).resolve())))
         webview.setPage(page)
 
-        webview.setMinimumSize(400, 420)
+        webview.setMinimumSize(width, height)
         self.addVOD(webview)
 
-    def _download_requested(self,item):
-        if self.current_geometry_file:
-            item.setDownloadFileName(os.path.basename(self.current_geometry_file))
+    def _download_requested(self, item):
+        import re
+        if item.downloadFileName():
+            item.setDownloadFileName(re.sub(r' \(\d+\)\.', r'.', item.downloadFileName()))
             item.setDownloadDirectory(self.project.filename(run=-1))
-            print('_download_requested',item.downloadDirectory(),item.downloadFileName())
             item.accept()
 
     def visinp(self):
