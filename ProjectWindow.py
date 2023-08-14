@@ -361,8 +361,11 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
         geometry_directory.mkdir(exist_ok=True)
         xyzFile = str(geometry_directory / pathlib.Path(self.project.filename(run=-1)).stem) + '.xyz'
+        if os.path.isfile(xyzFile):
+            for gfile in self.geometryfiles():
+                fn=self.project.filename('',gfile[1],run=-1)
         if not os.path.isfile(xyzFile) or os.path.getmtime(xyzFile) < os.path.getmtime(
-                self.project.filename('inp', run=-1)):
+                self.project.filename('inp', run=-1)) or any([os.path.getmtime(xyzFile) < os.path.getmtime(self.project.filename('',gfile[1],run=-1)) for gfile in self.geometryfiles()]):
             with tempfile.TemporaryDirectory() as tmpdirname:
                 self.project.copy(pathlib.Path(self.project.filename(run=-1)).name, location=tmpdirname)
                 project_path = pathlib.Path(tmpdirname) / pathlib.Path(self.project.filename(run=-1)).name
