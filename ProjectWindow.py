@@ -5,7 +5,7 @@ from PyQt5.QtCore import QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QShortcut, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QMenuBar
+    QMessageBox, QMenuBar, QTabWidget
 from pymolpro import Project
 
 from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet
@@ -85,22 +85,44 @@ class ProjectWindow(QMainWindow):
         leftLayout.addLayout(buttonLayout)
         leftLayout.addWidget(self.statusBar)
 
-        self.outputPane = ViewFile(self.project.filename('out'), latency=100)
-        self.outputPane.setMinimumWidth(800)
-        self.refreshOutputFileTimer = QTimer()
-        self.refreshOutputFileTimer.timeout.connect(self.refreshOutputFile)
-        self.refreshOutputFileTimer.start(2000)  # find a better way
+        class OutputPane:
+            def __init__(self, project, suffix='out', width=800, latency=100, fileNameLatency=2000):
+                self.project = project
+                self.suffix = suffix
+                self.filename = self.project.filename(suffix)
+                self.outputPane = ViewFile(self.filename, latency=latency)
+                self.outputPane.setMinimumWidth(width)
+                self.refreshOutputFileTimer = QTimer()
+                self.refreshOutputFileTimer.timeout.connect(self.refreshOutputFile)
+                self.refreshOutputFileTimer.start(fileNameLatency)  # find a better way
+
+            def refreshOutputFile(self):
+                latestFilename = self.project.filename(self.suffix)
+                if latestFilename != self.filename:
+                    self.outputPane.reset(latestFilename)
+                    self.filename = latestFilename
+
+        self.outputPanes = {
+            suffix: OutputPane(self.project, suffix) for suffix in ['out', 'log']}
 
         toplayout = QHBoxLayout()
         toplayout.addLayout(leftLayout)
-        toplayout.addWidget(self.outputPane)
+        self.outputTabs = QTabWidget()
+        self.outputTabs.setTabBarAutoHide(True)
+        self.outputTabs.setDocumentMode(True)
+        self.outputTabs.setTabPosition(QTabWidget.South)
+        self.refreshOutputTabs()
+        self.timerOutputTabs = QTimer()
+        self.timerOutputTabs.timeout.connect(self.refreshOutputTabs)
+        self.timerOutputTabs.start(2000)
+        toplayout.addWidget(self.outputTabs)
 
         self.layout = QVBoxLayout()
         self.layout.addLayout(toplayout)
         self.VOD = None
 
         self.rebuildVODselector()
-        self.outputPane.textChanged.connect(self.rebuildVODselector)
+        self.outputPanes['out'].outputPane.textChanged.connect(self.rebuildVODselector)
         self.VODselector.currentTextChanged.connect(self.VODselectorAction)
         self.minimumWindowSize = self.window().size()
 
@@ -109,6 +131,15 @@ class ProjectWindow(QMainWindow):
         container = QWidget()
         container.setLayout(self.layout)
         self.setCentralWidget(container)
+
+    def refreshOutputTabs(self):
+        if len(self.outputTabs) != len(
+                [suffix for suffix, pane in self.outputPanes.items() if os.path.exists(self.project.filename(suffix))]):
+            self.outputTabs.clear()
+            for suffix, pane in self.outputPanes.items():
+                if os.path.exists(self.project.filename(suffix)):
+                    self.outputTabs.addTab(pane.outputPane, suffix)
+
 
     def VODselectorAction(self):
         text = self.VODselector.currentText().strip()
@@ -167,9 +198,6 @@ class ProjectWindow(QMainWindow):
             if len(fields) == 1 and re.match(regex, fields[0], re.IGNORECASE):
                 result.append((re.sub(regex, r'\2', fields[0]), re.sub(regex, r'\1.\2', fields[0])))
         return result
-
-    def refreshOutputFile(self):
-        self.outputPane.reset(self.project.filename('out'))
 
     def run(self):
         self.project.run()
@@ -334,7 +362,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             open('test.html', 'w').write(html)
         webview = QWebEngineView()
         profile = QWebEngineProfile()
-        self.webEngineProfiles.append(profile)  # FIXME This to avoid premature garbage collection. A resource leak. Need to find a way to delete the previous QWebEnginePage instead
+        self.webEngineProfiles.append(
+            profile)  # FIXME This to avoid premature garbage collection. A resource leak. Need to find a way to delete the previous QWebEnginePage instead
         profile.downloadRequested.connect(self._download_requested)
         page = QWebEnginePage(profile, webview)
         page.setHtml(html, QUrl.fromLocalFile(str(pathlib.Path(__file__).resolve())))
@@ -363,9 +392,11 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         xyzFile = str(geometry_directory / pathlib.Path(self.project.filename(run=-1)).stem) + '.xyz'
         if os.path.isfile(xyzFile):
             for gfile in self.geometryfiles():
-                fn=self.project.filename('',gfile[1],run=-1)
+                fn = self.project.filename('', gfile[1], run=-1)
         if not os.path.isfile(xyzFile) or os.path.getmtime(xyzFile) < os.path.getmtime(
-                self.project.filename('inp', run=-1)) or any([os.path.getmtime(xyzFile) < os.path.getmtime(self.project.filename('',gfile[1],run=-1)) for gfile in self.geometryfiles()]):
+                self.project.filename('inp', run=-1)) or any(
+            [os.path.getmtime(xyzFile) < os.path.getmtime(self.project.filename('', gfile[1], run=-1)) for gfile in
+             self.geometryfiles()]):
             with tempfile.TemporaryDirectory() as tmpdirname:
                 self.project.copy(pathlib.Path(self.project.filename(run=-1)).name, location=tmpdirname)
                 project_path = pathlib.Path(tmpdirname) / pathlib.Path(self.project.filename(run=-1)).name
