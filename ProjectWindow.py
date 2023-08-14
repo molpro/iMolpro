@@ -312,22 +312,11 @@ Jmol.getApplet("myJmol", Info);
 </td>
 <td>
 Click in the top left corner of the display pane for options.<br/>
-Saving does not yet work.<br/>
 <script>
 Jmol.jmolButton(myJmol, 'write """
-        filetype = 'xyz'
+        filetype = os.path.splitext(file)[1][1:]
         html += filetype + ' "' + file
         html += """\"','Save structure')
-Jmol.jmolButton(myJmol, 'c=write(\"coord\",\"xyz\"); write var c \""""
-        html += file
-        html += """\"','Save structure')
-//c = write("coord", "mol");
-//write var c "test-coord.mol";
-//var x=Jmol.evaluateVar(myJmol,"{*}.length")
-// var x=1
-//alert(x.toString())
-//alert(Jmol.scriptEcho(myJmol,'write coord'))
-//alert(Jmol.evaluateVar(myJmol,'scriptEcho(myJmol,"c=write(\"coord\",\"mol\"); write var c \"test.mol\""")'))
 Jmol.jmolLink(myJmol,'menu','Jmol menu')
 Jmol.jmolBr()
 Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
@@ -345,7 +334,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             open('test.html', 'w').write(html)
         webview = QWebEngineView()
         profile = QWebEngineProfile()
-        self.webEngineProfiles.append(profile)  # to avoid premature garbage collection. A resource leak.
+        self.webEngineProfiles.append(profile)  # FIXME This to avoid premature garbage collection. A resource leak. Need to find a way to delete the previous QWebEnginePage instead
         profile.downloadRequested.connect(self._download_requested)
         page = QWebEnginePage(profile, webview)
         page.setHtml(html, QUrl.fromLocalFile(str(pathlib.Path(__file__).resolve())))
