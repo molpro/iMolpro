@@ -1,14 +1,11 @@
 import os
 import pathlib
-import sys
 
-from PyQt5 import QtWebEngineWidgets
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import QKeySequence
-from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QShortcut, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QMenuBar, QAction
+    QMessageBox, QMenuBar
 from pymolpro import Project
 
 from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet
@@ -42,6 +39,7 @@ class ProjectWindow(QMainWindow):
 
         assert filename is not None
 
+        self.webEngineProfiles = []
         menubar = QMenuBar()
         self.setMenuBar(menubar)
         filemenu = menubar.addMenu(' &File')
@@ -149,15 +147,6 @@ class ProjectWindow(QMainWindow):
             self.VODselector.addItem('Output')
             for t, f in self.putfiles():
                 self.VODselector.addItem(f)
-
-    def addVOD(self, vod: QWidget):
-        if not self.VOD:
-            self.layout.addWidget(vod)
-        else:
-            self.layout.replaceWidget(self.VOD, vod)
-            self.VOD.hide()
-        self.VOD = vod
-        self.VOD.show()
 
     def putfiles(self):
         result = []
@@ -292,7 +281,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </tr>
 </body>
 </html>"""
-        self.addVODFromHtml(html, **kwargs)
+        self.addVOD(html, **kwargs)
 
     def embedded_builder(self, file, **kwargs):
 
@@ -348,21 +337,28 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </body>
 </html>"""
 
-        self.addVODFromHtml(html, **kwargs)
+        self.addVOD(html, **kwargs)
 
-    def addVODFromHtml(self,html, width=400, height=420, verbosity=0):
+    def addVOD(self, html, width=400, height=420, verbosity=0):
         if verbosity:
             print(html)
-            open('test.html','w').write(html)
+            open('test.html', 'w').write(html)
         webview = QWebEngineView()
-        self.profile = QWebEngineProfile()
-        self.profile.downloadRequested.connect(self._download_requested)
-        page = QWebEnginePage(self.profile, webview)
+        profile = QWebEngineProfile()
+        self.webEngineProfiles.append(profile)  # to avoid premature garbage collection. A resource leak.
+        profile.downloadRequested.connect(self._download_requested)
+        page = QWebEnginePage(profile, webview)
         page.setHtml(html, QUrl.fromLocalFile(str(pathlib.Path(__file__).resolve())))
         webview.setPage(page)
 
         webview.setMinimumSize(width, height)
-        self.addVOD(webview)
+        if not self.VOD:
+            self.layout.addWidget(webview)
+        else:
+            self.layout.replaceWidget(self.VOD, webview)
+            self.VOD.hide()
+        self.VOD = webview
+        self.VOD.show()
 
     def _download_requested(self, item):
         import re
