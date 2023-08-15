@@ -21,8 +21,6 @@ class EditFile(QPlainTextEdit):
         self.setFont(f)
         self.sync()
 
-        import atexit
-        atexit.register(self.sync)
         self.flushTimer = QTimer()
         self.flushTimer.timeout.connect(self.sync)
         self.flushTimer.start(latency)
@@ -51,10 +49,6 @@ class EditFile(QPlainTextEdit):
     def setPlainText(self, text):
         super().setPlainText(text)
         self.sync()
-
-    def __del__(self):
-        self.sync()
-        atexit.unregister(self.sync)
 
 
 class ViewFile(QPlainTextEdit):
