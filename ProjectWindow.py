@@ -5,7 +5,7 @@ from PyQt5.QtCore import QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QShortcut, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QMenuBar, QTabWidget
+    QMessageBox, QMenuBar, QTabWidget, QAction
 from pymolpro import Project
 
 from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet
@@ -29,44 +29,91 @@ class StatusBar(QLabel):
         self.killButton.setDisabled(self.project.status != 'running' and self.project.status != 'waiting')
 
 
+class OutputPane:
+    def __init__(self, project, suffix='out', width=800, latency=100, fileNameLatency=2000):
+        self.project = project
+        self.suffix = suffix
+        self.filename = self.project.filename(suffix)
+        self.outputPane = ViewFile(self.filename, latency=latency)
+        self.outputPane.setMinimumWidth(width)
+        self.refreshOutputFileTimer = QTimer()
+        self.refreshOutputFileTimer.timeout.connect(self.refreshOutputFile)
+        self.refreshOutputFileTimer.start(fileNameLatency)  # find a better way
+
+    def refreshOutputFile(self):
+        latestFilename = self.project.filename(self.suffix)
+        if latestFilename != self.filename:
+            self.outputPane.reset(latestFilename)
+            self.filename = latestFilename
+
+
 class ProjectWindow(QMainWindow):
     closeSignal = pyqtSignal(QWidget)
     newSignal = pyqtSignal(QWidget)
     chooserSignal = pyqtSignal(QWidget)
 
+    def addAction(self, name: str, slot=None, menu: str = None, shortcut: str = None, tooltip: str = None):
+        if not hasattr(self, 'actions_'): self.actions_ = {}
+        key = menu + '/' + name if menu else name
+        assert key not in self.actions_.keys()
+        self.actions_[key] = QAction(name)
+        if menu: self.menus[menu].addAction(self.actions_[key])
+        if slot: self.actions_[key].triggered.connect(slot)
+        if shortcut: self.actions_[key].setShortcut(shortcut)
+        if tooltip: self.actions_[key].setToolTip(tooltip)
+        return self.actions_[key]
+
     def __init__(self, filename=None, latency=1000):
         super().__init__()
 
         assert filename is not None
-
-        self.webEngineProfiles = []
-        menubar = QMenuBar()
-        self.setMenuBar(menubar)
-        filemenu = menubar.addMenu(' &File')
-        newAction = filemenu.addAction(' &New')
-        newAction.triggered.connect(self.newAction)
-        closeAction = filemenu.addAction('Close')
-        closeAction.triggered.connect(self.close)
-        self.closeShortcut = QShortcut(QKeySequence('Ctrl+W'), self)
-        self.closeShortcut.activated.connect(self.close)
-        chooserAction = filemenu.addAction('Open')
-        chooserAction.triggered.connect(self.chooserOpen)
-        self.chooserShortcut = QShortcut(QKeySequence('Ctrl+O'), self)
-        self.chooserShortcut.activated.connect(self.chooserOpen)
-
         self.project = Project(filename)
+
         self.inputPane = EditFile(self.project.filename('inp', run=-1), latency)
         self.setWindowTitle(filename)
-        self.runButton = QPushButton('&Run')
-        self.runButton.clicked.connect(self.run)
-        self.runShortcut = QShortcut(QKeySequence('Ctrl+R'), self)
-        self.runShortcut.activated.connect(self.run)
+
+        self.outputPanes = {
+            suffix: OutputPane(self.project, suffix) for suffix in ['out', 'log']}
+
+        self.webEngineProfiles = []
+
+        menubar = QMenuBar()
+        self.setMenuBar(menubar)
+        self.menus = {m: menubar.addMenu(m) for m in ['File', 'Edit', 'Project', 'View', 'Help']}
+        for m in self.menus.values(): m.setToolTipsVisible(True)
+
+        self.addAction('New', slot=self.newAction, menu='File', shortcut='Ctrl+N', tooltip='Create a new project')
+        self.addAction('Close', self.close, 'File', 'Ctrl+W')
+        self.addAction('Open', self.chooserOpen, 'File', 'Ctrl+O', 'Open another project')
+
+        self.addAction('Build', self.editInputStructure, 'Edit', 'Ctrl+D', 'Edit molecular geometry')
+        self.addAction('Cut', self.inputPane.cut, 'Edit', 'Ctrl+X', 'Cut')
+        self.addAction('Copy', self.inputPane.copy, 'Edit', 'Ctrl+C', 'Copy')
+        self.addAction('Paste', self.inputPane.paste, 'Edit', 'Ctrl+X', 'Paste')
+        self.addAction('Undo', self.inputPane.undo, 'Edit', 'Ctrl+Z', 'Undo')
+        self.addAction('Redo', self.inputPane.redo, 'Edit', 'Shift+Ctrl+Z', 'Redo')
+        self.addAction('Select All', self.inputPane.selectAll, 'Edit', 'Ctrl+A', 'Redo')
+        self.addAction('Zoom In', self.inputPane.zoomIn, 'Edit', 'Shift+Ctrl+=', 'Increase font size')
+        self.addAction('Zoom Out', self.inputPane.zoomOut, 'Edit', 'Ctrl+-', 'Decrease font size')
+
+        runAction = self.addAction('Run', self.run, 'Project', 'Ctrl+R', 'Run Molpro on the project input')
+        killAction = self.addAction('Kill', self.kill, 'Project', tooltip='Kill the running job')
+        self.addAction('Backend', self.backend, 'Project', 'Ctrl+B', 'Configure backend')
+        self.addAction('Clean', self.project.clean, 'Project', tooltip='Remove old runs from the project')
+        menubar.show()
+
+        # self.addAction('Zoom In',self.outputPanes[0].zoomIn, 'View','Alt+Shift+=','Increase font size')
+        # self.addAction('Zoom Out',self.outputPanes[0].zoomOut, 'View','Alt+-','Decrease font size')
+        self.addAction('Input structure', self.visinp, 'View', tooltip='View the molecular structure in the job input')
+        self.addAction('Output structure', self.visout, 'View',
+                       tooltip='View the molecular structure at the end of the job')
+
+        self.runButton = QPushButton('Run')
+        self.runButton.clicked.connect(runAction.trigger)
+        self.runButton.setToolTip("Run the job")
         self.killButton = QPushButton('Kill')
-        self.killButton.clicked.connect(self.kill)
-        self.visoutButton = QPushButton('Visualise output')
-        self.visoutButton.clicked.connect(lambda: self.visout('xml'))
-        self.visinpButton = QPushButton('Visualise input')
-        self.visinpButton.clicked.connect(self.visinp)
+        self.killButton.clicked.connect(killAction.trigger)
+        self.killButton.setToolTip("Kill the running job")
 
         self.statusBar = StatusBar(self.project, self.runButton, self.killButton)
         self.statusBar.refresh()
@@ -84,26 +131,6 @@ class ProjectWindow(QMainWindow):
         buttonLayout.addWidget(self.VODselector)
         leftLayout.addLayout(buttonLayout)
         leftLayout.addWidget(self.statusBar)
-
-        class OutputPane:
-            def __init__(self, project, suffix='out', width=800, latency=100, fileNameLatency=2000):
-                self.project = project
-                self.suffix = suffix
-                self.filename = self.project.filename(suffix)
-                self.outputPane = ViewFile(self.filename, latency=latency)
-                self.outputPane.setMinimumWidth(width)
-                self.refreshOutputFileTimer = QTimer()
-                self.refreshOutputFileTimer.timeout.connect(self.refreshOutputFile)
-                self.refreshOutputFileTimer.start(fileNameLatency)  # find a better way
-
-            def refreshOutputFile(self):
-                latestFilename = self.project.filename(self.suffix)
-                if latestFilename != self.filename:
-                    self.outputPane.reset(latestFilename)
-                    self.filename = latestFilename
-
-        self.outputPanes = {
-            suffix: OutputPane(self.project, suffix) for suffix in ['out', 'log']}
 
         toplayout = QHBoxLayout()
         toplayout.addLayout(leftLayout)
@@ -132,6 +159,15 @@ class ProjectWindow(QMainWindow):
         container.setLayout(self.layout)
         self.setCentralWidget(container)
 
+    def editInputStructure(self):
+        f = self.geometryfiles()
+        if f:
+            filename = self.project.filename('', f[-1][1], run=-1)
+            if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
+                with open(filename, 'w') as f:
+                    f.write('1\n\nC 0.0 0.0 0.0\n')
+            self.embedded_builder(filename)
+
     def refreshOutputTabs(self):
         if len(self.outputTabs) != len(
                 [suffix for suffix, pane in self.outputPanes.items() if os.path.exists(self.project.filename(suffix))]):
@@ -139,7 +175,6 @@ class ProjectWindow(QMainWindow):
             for suffix, pane in self.outputPanes.items():
                 if os.path.exists(self.project.filename(suffix)):
                     self.outputTabs.addTab(pane.outputPane, suffix)
-
 
     def VODselectorAction(self):
         text = self.VODselector.currentText().strip()
@@ -161,9 +196,9 @@ class ProjectWindow(QMainWindow):
         elif text == 'Input':
             self.visinp()
         elif text == 'Output':
-            self.visout('xml')
+            self.visout(False, 'xml')
         else:
-            self.visout('', text)
+            self.visout(False, '', text)
 
     def rebuildVODselector(self):
         self.VODselector.clear()
@@ -205,7 +240,13 @@ class ProjectWindow(QMainWindow):
     def kill(self):
         self.project.kill()
 
-    def visout(self, typ='xml', name=None):
+    def clean(self):
+        self.project.clean()
+
+    def backend(self):
+        pass  # TODO implement
+
+    def visout(self, param, typ='xml', name=None):
         if name:
             self.embedded_VOD(self.project.filename(typ, name), command='mo HOMO')
         else:
@@ -385,7 +426,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             item.setDownloadDirectory(self.project.filename(run=-1))
             item.accept()
 
-    def visinp(self):
+    def visinp(self, param):
         import tempfile
         geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
         geometry_directory.mkdir(exist_ok=True)
