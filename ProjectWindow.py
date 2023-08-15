@@ -1,11 +1,12 @@
 import os
 import pathlib
+import shutil
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl
 from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QShortcut, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QMenuBar, QTabWidget, QAction
+    QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog
 from pymolpro import Project
 
 from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet
@@ -96,10 +97,13 @@ class ProjectWindow(QMainWindow):
         self.addAction('Zoom In', self.inputPane.zoomIn, 'Edit', 'Shift+Ctrl+=', 'Increase font size')
         self.addAction('Zoom Out', self.inputPane.zoomOut, 'Edit', 'Ctrl+-', 'Decrease font size')
 
+        self.addAction('Import file', self.importFile, 'Project',
+                       tooltip='Import one or more files, eg geometry definition, into the project')
+        self.addAction('Export file', self.exportFile, 'Project', tooltip='Export one or more files from the project')
         runAction = self.addAction('Run', self.run, 'Project', 'Ctrl+R', 'Run Molpro on the project input')
         killAction = self.addAction('Kill', self.kill, 'Project', tooltip='Kill the running job')
         self.addAction('Backend', self.backend, 'Project', 'Ctrl+B', 'Configure backend')
-        self.addAction('Clean', self.project.clean, 'Project', tooltip='Remove old runs from the project')
+        self.addAction('Clean', self.clean, 'Project', tooltip='Remove old runs from the project')
         menubar.show()
 
         # self.addAction('Zoom In',self.outputPanes[0].zoomIn, 'View','Alt+Shift+=','Increase font size')
@@ -279,7 +283,7 @@ var Info = {
   color: "#FFFFFF",
   height: 400,
   width: 400,
-  script: "load """ + file + """; model """ + str(firstmodel) + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7; set antialiasDisplay ON; set showFrank OFF",
+  script: "load """ + file + """; set antialiasDisplay ON; set showFrank OFF; model """ + str(firstmodel) + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7",
   use: "HTML5",
   j2sPath: "j2s",
   serverURL: "php/jsmol.php",
@@ -472,3 +476,22 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 
     def chooserOpen(self):
         self.chooserSignal.emit(self)
+
+    def clean(self):
+        self.project.clean(1)
+
+    def importFile(self):
+        filenames, junk = QFileDialog.getOpenFileNames(self, 'Import file(s) into project', )
+        for filename in filenames:
+            if os.path.isfile(filename):
+                b = os.path.basename(filename)
+                dest = self.project.filename('', b)
+                shutil.copyfile(filename, dest)
+
+    def exportFile(self):
+        filenames, junk = QFileDialog.getOpenFileNames(self, 'Export file(s) from the project', self.project.filename())
+        for filename in filenames:
+            if os.path.isfile(filename):
+                b = os.path.basename(filename)
+                dest = QFileDialog.getExistingDirectory(self, 'Destination for ' + b)
+                shutil.copy(filename, dest)
