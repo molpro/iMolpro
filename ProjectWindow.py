@@ -430,7 +430,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             item.setDownloadDirectory(self.project.filename(run=-1))
             item.accept()
 
-    def visinp(self, param):
+    def visinp(self, param=False):
         import tempfile
         geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
         geometry_directory.mkdir(exist_ok=True)
