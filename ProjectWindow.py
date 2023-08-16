@@ -42,8 +42,7 @@ class ViewProjectOutput(ViewFile):
     def refreshOutputFile(self):
         latestFilename = self.project.filename(self.suffix)
         if latestFilename != self.filename:
-            self.fileView.reset(latestFilename)
-            self.filename = latestFilename
+            self.reset(latestFilename)
 
 
 class ProjectWindow(QMainWindow):
@@ -107,7 +106,7 @@ class ProjectWindow(QMainWindow):
         # self.addAction('Zoom In',self.outputPanes[0].zoomIn, 'View','Alt+Shift+=','Increase font size')
         # self.addAction('Zoom Out',self.outputPanes[0].zoomOut, 'View','Alt+-','Decrease font size')
         self.addAction('Input structure', self.visinp, 'View', tooltip='View the molecular structure in the job input')
-        self.addAction('Output structure', self.visout, 'View',
+        self.addAction('Output structure', self.visout, 'View', 'Ctrl+Shift+D',
                        tooltip='View the molecular structure at the end of the job')
 
         self.runButton = QPushButton('Run')
