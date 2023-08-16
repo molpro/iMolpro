@@ -184,10 +184,7 @@ class ProjectWindow(QMainWindow):
         elif text == 'None':
             if self.VOD:
                 self.VOD.hide()
-                self.window().resize(self.minimumWindowSize)  # TODO find a way of shrinking back the main window
-                # self.inputPane.adjustSize()
-                # self.outputPane.adjustSize()
-                # self.adjustSize()
+                self.window().resize(self.minimumWindowSize)  # TODO find a way of shrinking back the main window # self.inputPane.adjustSize() # self.outputPane.adjustSize() # self.adjustSize()
         elif text[:5] == 'Edit ':
             filename = self.project.filename('', text[5:], run=-1)
             if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
@@ -258,12 +255,12 @@ class ProjectWindow(QMainWindow):
         try:
             vibs = factoryVibrationSet(file, **kwargs)
             firstmodel = firstvib = vibs.coordinateSet
-        except:
+        except (IndexError, KeyError):
             vibs = None
         try:
             orbs = factoryOrbitalSet(file, **kwargs)
             firstmodel = firstorb = orbs.coordinateSet
-        except:
+        except (IndexError, KeyError):
             orbs = None
         html = """<!DOCTYPE html>
 <html>
