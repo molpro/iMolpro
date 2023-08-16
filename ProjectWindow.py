@@ -3,9 +3,8 @@ import pathlib
 import shutil
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl
-from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
-from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QShortcut, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
+from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog
 from pymolpro import Project
 
