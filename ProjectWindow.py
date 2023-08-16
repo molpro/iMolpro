@@ -94,6 +94,8 @@ class ProjectWindow(QMainWindow):
         self.addAction('Zoom In', self.inputPane.zoomIn, 'Edit', 'Shift+Ctrl+=', 'Increase font size')
         self.addAction('Zoom Out', self.inputPane.zoomOut, 'Edit', 'Ctrl+-', 'Decrease font size')
 
+        self.addAction('Import input', self.importInput, 'Project',
+                       tooltip='Import a file and assign it as the input for the project')
         self.addAction('Import file', self.importFile, 'Project',
                        tooltip='Import one or more files, eg geometry definition, into the project')
         self.addAction('Export file', self.exportFile, 'Project', tooltip='Export one or more files from the project')
@@ -475,9 +477,12 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         filenames, junk = QFileDialog.getOpenFileNames(self, 'Import file(s) into project', )
         for filename in filenames:
             if os.path.isfile(filename):
-                b = os.path.basename(filename)
-                dest = self.project.filename('', b)
-                shutil.copyfile(filename, dest)
+                self.project.import_file(filename)
+
+    def importInput(self):
+        filename, junk = QFileDialog.getOpenFileName(self, 'Import file(s) into project', )
+        if os.path.isfile(filename):
+            self.project.import_input(filename)
 
     def exportFile(self):
         filenames, junk = QFileDialog.getOpenFileNames(self, 'Export file(s) from the project', self.project.filename())
