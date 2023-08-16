@@ -30,13 +30,12 @@ class StatusBar(QLabel):
         self.killButton.setDisabled(self.project.status != 'running' and self.project.status != 'waiting')
 
 
-class OutputPane:
+class ViewProjectOutput(ViewFile):
     def __init__(self, project, suffix='out', width=800, latency=100, fileNameLatency=2000):
         self.project = project
         self.suffix = suffix
-        self.filename = self.project.filename(suffix)
-        self.outputPane = ViewFile(self.filename, latency=latency)
-        self.outputPane.setMinimumWidth(width)
+        super().__init__(self.project.filename(suffix), latency=latency)
+        super().setMinimumWidth(width)
         self.refreshOutputFileTimer = QTimer()
         self.refreshOutputFileTimer.timeout.connect(self.refreshOutputFile)
         self.refreshOutputFileTimer.start(fileNameLatency)  # find a better way
@@ -44,7 +43,7 @@ class OutputPane:
     def refreshOutputFile(self):
         latestFilename = self.project.filename(self.suffix)
         if latestFilename != self.filename:
-            self.outputPane.reset(latestFilename)
+            self.fileView.reset(latestFilename)
             self.filename = latestFilename
 
 
@@ -74,7 +73,7 @@ class ProjectWindow(QMainWindow):
         self.setWindowTitle(filename)
 
         self.outputPanes = {
-            suffix: OutputPane(self.project, suffix) for suffix in ['out', 'log']}
+            suffix: ViewProjectOutput(self.project, suffix) for suffix in ['out', 'log']}
 
         self.webEngineProfiles = []
 
@@ -153,7 +152,7 @@ class ProjectWindow(QMainWindow):
         self.VOD = None
 
         self.rebuildVODselector()
-        self.outputPanes['out'].outputPane.textChanged.connect(self.rebuildVODselector)
+        self.outputPanes['out'].textChanged.connect(self.rebuildVODselector)
         self.VODselector.currentTextChanged.connect(self.VODselectorAction)
         self.minimumWindowSize = self.window().size()
 
@@ -178,7 +177,7 @@ class ProjectWindow(QMainWindow):
             self.outputTabs.clear()
             for suffix, pane in self.outputPanes.items():
                 if os.path.exists(self.project.filename(suffix)):
-                    self.outputTabs.addTab(pane.outputPane, suffix)
+                    self.outputTabs.addTab(pane, suffix)
 
     def VODselectorAction(self):
         text = self.VODselector.currentText().strip()
@@ -257,7 +256,6 @@ class ProjectWindow(QMainWindow):
             self.embedded_VOD(self.project.filename(typ), command='mo HOMO')
 
     def embedded_VOD(self, file, command='', **kwargs):
-        webview = QWebEngineView()
         firstmodel = 1
         try:
             vibs = factoryVibrationSet(file, **kwargs)
@@ -283,7 +281,8 @@ var Info = {
   color: "#FFFFFF",
   height: 400,
   width: 400,
-  script: "load """ + file + """; set antialiasDisplay ON; set showFrank OFF; model """ + str(firstmodel) + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7",
+  script: "load """ + file + """; set antialiasDisplay ON; set showFrank OFF; model """ + str(
+            firstmodel) + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7",
   use: "HTML5",
   j2sPath: "j2s",
   serverURL: "php/jsmol.php",
@@ -332,10 +331,10 @@ Jmol.jmolHtml('<td>Orbitals: ')
 Jmol.jmolBr()
 Jmol.jmolMenu(myJmol,[
 """
-            energy_reverse = list(orbs.energies)
-            energy_reverse.reverse()
-            i = len(energy_reverse)
-            for energy in energy_reverse:
+            energyReverse = list(orbs.energies)
+            energyReverse.reverse()
+            i = len(energyReverse)
+            for energy in energyReverse:
                 html += '["model ' + str(firstorb) + '; vibration off; mo ' + str(i) + '", "' + str(energy) + '"],'
                 i -= 1
             html += """
@@ -432,20 +431,17 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 
     def visinp(self, param=False):
         import tempfile
-        geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
-        geometry_directory.mkdir(exist_ok=True)
-        xyzFile = str(geometry_directory / pathlib.Path(self.project.filename(run=-1)).stem) + '.xyz'
-        if os.path.isfile(xyzFile):
-            for gfile in self.geometryfiles():
-                fn = self.project.filename('', gfile[1], run=-1)
+        geometryDirectory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
+        geometryDirectory.mkdir(exist_ok=True)
+        xyzFile = str(geometryDirectory / pathlib.Path(self.project.filename(run=-1)).stem) + '.xyz'
         if not os.path.isfile(xyzFile) or os.path.getmtime(xyzFile) < os.path.getmtime(
                 self.project.filename('inp', run=-1)) or any(
             [os.path.getmtime(xyzFile) < os.path.getmtime(self.project.filename('', gfile[1], run=-1)) for gfile in
              self.geometryfiles()]):
             with tempfile.TemporaryDirectory() as tmpdirname:
                 self.project.copy(pathlib.Path(self.project.filename(run=-1)).name, location=tmpdirname)
-                project_path = pathlib.Path(tmpdirname) / pathlib.Path(self.project.filename(run=-1)).name
-                project = Project(str(project_path))
+                projectPath = pathlib.Path(tmpdirname) / pathlib.Path(self.project.filename(run=-1)).name
+                project = Project(str(projectPath))
                 project.clean(0)
                 open(project.filename('inp', run=-1), 'a').write('\nhf\n---')
                 with open(pathlib.Path(project.filename(run=-1)) / 'molpro.rc', 'a') as f:
