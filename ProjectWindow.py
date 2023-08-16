@@ -103,10 +103,10 @@ class ProjectWindow(QMainWindow):
         self.addAction('Clean', self.clean, 'Project', tooltip='Remove old runs from the project')
         menubar.show()
 
-        # self.addAction('Zoom In',self.outputPanes[0].zoomIn, 'View','Alt+Shift+=','Increase font size')
-        # self.addAction('Zoom Out',self.outputPanes[0].zoomOut, 'View','Alt+-','Decrease font size')
+        self.addAction('Zoom In',lambda : [p.zoomIn() for p in self.outputPanes.values()], 'View','Alt+Shift+=','Increase font size')
+        self.addAction('Zoom Out',lambda : [p.zoomOut() for p in self.outputPanes.values()], 'View','Alt+-','Decrease font size')
         self.addAction('Input structure', self.visinp, 'View', tooltip='View the molecular structure in the job input')
-        self.addAction('Output structure', self.visout, 'View', 'Ctrl+Shift+D',
+        self.addAction('Output structure', self.visout, 'View', 'Alt+D',
                        tooltip='View the molecular structure at the end of the job')
 
         self.runButton = QPushButton('Run')
@@ -230,7 +230,7 @@ class ProjectWindow(QMainWindow):
         lines = self.inputPane.toPlainText().replace(';', '\n').split('\n')
         for line in lines:
             fields = line.replace(' ', ',').split(',')
-            regex = r'geometry=([-@#&A-Za-z0-9_]+)\.(xyz)'
+            regex = r'geometry=([-@#&a-z0-9_]+)\.(xyz)'
             if len(fields) == 1 and re.match(regex, fields[0], re.IGNORECASE):
                 result.append((re.sub(regex, r'\2', fields[0]), re.sub(regex, r'\1.\2', fields[0])))
         return result
