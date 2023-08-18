@@ -11,9 +11,9 @@
 		<string>87056</string>
 		<key>_status</key>
 		<string>3</string>
-		<key>backend</key>
-		<string>local</string>
 		<key>run_directories</key>
 		<string>13 </string>
+		<key>backend</key>
+		<string>local</string>
 	</dict>
 </plist>
