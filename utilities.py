@@ -1,14 +1,166 @@
 import atexit
 import os
 
-from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QFont, QFontDatabase
-from PyQt5.QtWidgets import QPlainTextEdit, QMessageBox
+from PyQt5.Qt import Qt
+from PyQt5.QtCore import QTimer, QPoint
+from PyQt5.QtGui import QFont, QFontDatabase, QTextCursor, QCursor
+from PyQt5.QtWidgets import QPlainTextEdit, QMessageBox, QLabel
+
+from enum import Enum
 
 
-class EditFile(QPlainTextEdit):
-    def __init__(self, filename: str, latency=1000):
+class VimMode(Enum):
+    normal = 1
+    insert = 2
+    visual = 3
+    commandline = 4
+    replace = 5
+    binary = 6
+    org = 7
+
+
+class QVimPlainTextEdit(QPlainTextEdit):
+    def __init__(self, initialMode=VimMode.normal):
         super().__init__()
+        self.vimMode = initialMode
+        self.lastKey = None
+        self.searching = False
+        self.shiftKey = False
+        self.searchReverse = False
+        self.lastSearch = ''
+
+        self.statusLine = QLabel(self)
+
+    def keyPressEvent(self, e):
+        # print('key', e.key(), self.vimMode, Qt.Key_Enter, Qt.Key_Return)
+        if self.searching:
+            if e.key() == Qt.Key_Enter or e.key() == Qt.Key_Return:
+                self.search_and_move(self.statusLine.text()[1:], self.searchReverse)
+                self.searching = False
+                self.statusLine.hide()
+            else:
+                self.statusLine.setText(self.statusLine.text() + e.text())
+                self.statusLine.show()
+        elif self.vimMode == VimMode.insert:
+            if e.key() == Qt.Key_Escape:
+                self.enterMode(VimMode.normal)
+            else:
+                super().keyPressEvent(e)
+        elif self.vimMode == VimMode.normal:
+            if e.key() == Qt.Key_A:
+                if self.shiftKey:
+                    self.moveCursor(QTextCursor.EndOfLine)
+                else:
+                    self.moveCursor(QTextCursor.Right)
+                self.enterMode(VimMode.insert)
+            elif e.key() == Qt.Key_B:
+                self.moveCursor(QTextCursor.StartOfWord)
+            elif e.key() == Qt.Key_D and self.lastKey == Qt.Key_D:
+                print('delete line not implemented')
+            elif e.key() == Qt.Key_E:
+                self.moveCursor(QTextCursor.EndOfWord)
+            elif e.key() == Qt.Key_I:
+                if self.shiftKey:
+                    self.moveCursor(QTextCursor.StartOfLine)
+                self.enterMode(VimMode.insert)
+            if e.key() == Qt.Key_H:
+                self.moveCursor(QTextCursor.Left)
+            elif e.key() == Qt.Key_J:
+                self.moveCursor(QTextCursor.Down)
+            elif e.key() == Qt.Key_K:
+                self.moveCursor(QTextCursor.Up)
+            elif e.key() == Qt.Key_L:
+                self.moveCursor(QTextCursor.Right)
+            elif e.key() == Qt.Key_N:
+                self.search_and_move(reverse=not self.searchReverse if self.shiftKey else self.searchReverse)
+            elif e.key() == Qt.Key_O:
+                if not self.shiftKey:
+                    self.moveCursor(QTextCursor.Down)
+                self.moveCursor(QTextCursor.StartOfLine)
+                pos = self.textCursor().position()
+                self.setPlainText(self.toPlainText()[:pos] + '\n' + self.toPlainText()[pos:])
+                cursor = self.textCursor()
+                cursor.setPosition(pos)
+                self.setTextCursor(cursor)
+                self.enterMode(VimMode.insert)
+            elif e.key() == Qt.Key_R:
+                print('replace not implemented')
+            elif e.key() == Qt.Key_U:
+                print('undo not implemented')
+            elif e.key() == Qt.Key_V:
+                print('visual mode not implemented')
+            elif e.key() == Qt.Key_X:
+                pos = self.textCursor().position()
+                self.setPlainText(self.toPlainText()[:pos] + self.toPlainText()[pos + 1:])
+                cursor = self.textCursor()
+                cursor.setPosition(pos)
+                self.setTextCursor(cursor)
+            elif e.key() == Qt.Key_0:
+                self.moveCursor(QTextCursor.StartOfLine)
+            elif e.key() == Qt.Key_Dollar:
+                self.moveCursor(QTextCursor.EndOfLine)
+            elif e.key() == Qt.Key_Colon:
+                print('command-line mode not implemented')
+            elif e.key() == Qt.Key_Slash or e.key() == Qt.Key_Question:
+                self.searchReverse = e.key() == Qt.Key_Question
+                self.searching = True
+                self.establishStatus(e.text())
+            elif e.key() == Qt.Key_Shift:
+                self.shiftKey = True
+            else:
+                pass
+        self.lastKey = e.key()
+
+    def establishStatus(self, message=''):
+        self.statusLine.setFixedWidth(self.width())
+        self.statusLine.setText(message)
+        self.statusLine.move(self.geometry().bottomLeft() - self.geometry().topLeft()
+                             - QPoint(0, 12)
+                             )
+        self.statusLine.raise_()
+        self.lower()
+        self.statusLine.show()
+
+    def enterMode(self, mode: VimMode):
+        self.vimMode = mode
+        if mode == VimMode.insert:
+            self.establishStatus('-- INSERT --')
+        elif mode == VimMode.replace:
+            self.establishStatus('-- REPLACE --')
+        elif mode == VimMode.visual:
+            self.establishStatus('-- VISUAL --')
+        elif mode == VimMode.commandline:
+            self.establishStatus(':')
+        elif mode == VimMode.normal:
+            self.statusLine.hide()
+
+    def keyReleaseEvent(self, e):
+        if e.key() == Qt.Key_Shift:
+            # print('shift off')
+            self.shiftKey = False
+
+    def search_and_move(self, searchString=None, reverse=False):
+        if searchString:
+            self.lastSearch = searchString
+        # print('searching for', self.lastSearch, self.textCursor().position())
+        if reverse:
+            newpos = self.toPlainText().rfind(self.lastSearch, 0, self.textCursor().position())
+        else:
+            newpos = self.toPlainText().find(self.lastSearch, self.textCursor().position() + 1)
+        if newpos >= 0:
+            # print('found', newpos, self.toPlainText()[newpos])
+            cursor = self.textCursor()
+            cursor.setPosition(newpos)
+            self.setTextCursor(cursor)
+            return True
+        else:
+            # print('not found')
+            return False
+
+
+class EditFile(QVimPlainTextEdit):
+    def __init__(self, filename: str, latency=1000):
+        super().__init__(VimMode.insert)
         self.fileTime = None
         self.filename = str(filename)
         if os.path.isfile(self.filename):
