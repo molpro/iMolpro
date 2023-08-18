@@ -113,9 +113,9 @@ class QVimPlainTextEdit(QPlainTextEdit):
 
     def establishStatus(self, message=''):
         self.statusLine.setFixedWidth(self.width())
-        self.statusLine.setText(message)
-        self.statusLine.move(self.geometry().bottomLeft() - self.geometry().topLeft()
-                             - QPoint(0, 12)
+        if message:
+            self.statusLine.setText(message)
+        self.statusLine.move(self.geometry().bottomLeft() - self.geometry().topLeft() + QPoint(6, -16)
                              )
         self.statusLine.raise_()
         self.lower()
@@ -156,6 +156,10 @@ class QVimPlainTextEdit(QPlainTextEdit):
         else:
             # print('not found')
             return False
+
+    def resizeEvent(self, e):
+        self.establishStatus()
+        super().resizeEvent(e)
 
 
 class EditFile(QVimPlainTextEdit):
