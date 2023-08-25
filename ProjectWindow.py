@@ -1,6 +1,7 @@
 import os
 import pathlib
 import shutil
+import sys
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
@@ -66,6 +67,14 @@ class ProjectWindow(QMainWindow):
 
         assert filename is not None
         self.project = Project(filename)
+
+        self.JSmolMinJS = str(pathlib.Path(__file__).parent/"JSmol.min.js")
+        if hasattr(sys, '_MEIPASS'):
+            os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
+                sys._MEIPASS, 'PyQt5', 'Qt5', 'lib',
+                'QtWebEngineCore.framework', 'Versions','5','Helpers', 'QtWebEngineProcess.app',
+                'Contents', 'MacOS', 'QtWebEngineProcess'
+            ))
 
         self.inputPane = EditFile(self.project.filename('inp', run=-1), latency)
         self.setWindowTitle(filename)
@@ -268,7 +277,7 @@ class ProjectWindow(QMainWindow):
 <html>
 <head>
 <meta charset="utf-8">
-<script type="text/javascript" src="./JSmol.min.js"> </script>
+<script type="text/javascript" src=" """+self.JSmolMinJS+""""> </script>
 </head>
 <body>
 <table>
@@ -358,7 +367,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 <html>
 <head>
 <meta charset="utf-8">
-<script type="text/javascript" src="JSmol.min.js"> </script>
+<script type="text/javascript" src=" """+self.JSmolMinJS+""""> </script>
 </head>
 <body>
 <table>
