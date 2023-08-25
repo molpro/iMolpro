@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton
+from PyQt5.QtCore import QEvent
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
 import sys
 from Chooser import Chooser
 from ProjectWindow import ProjectWindow
@@ -6,7 +7,18 @@ from WindowManager import WindowManager
 
 if __name__ == '__main__':
 
-    app = QApplication(sys.argv)
+    class App(QApplication):
+        def event(self, e):
+            if e.type() == QEvent.FileOpen:
+                print("FileOpen",e.url())
+                msg = QMessageBox()
+                msg.setText("FileOpen "+e.url())
+                msg.exec()
+            else:
+                return super().event(e)
+            return True
+
+    app = App(sys.argv)
 
     windowManager = WindowManager()
     chooser = Chooser(windowManager)
