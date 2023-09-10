@@ -3,7 +3,7 @@ import pathlib
 import shutil
 import sys
 
-from PyQt5.QtCore import QTimer, pyqtSignal, QUrl
+from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog
@@ -82,6 +82,9 @@ class ProjectWindow(QMainWindow):
                           tooltip='Create a new project')
         menubar.addAction('Close', 'File', self.close, 'Ctrl+W')
         menubar.addAction('Open', 'File', self.chooserOpen, 'Ctrl+O', 'Open another project')
+        menubar.addSeparator('File')
+        menubar.addAction('Quit', 'File', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
+                          tooltip='Quit')
 
         menubar.addAction('Build', 'Edit', self.editInputStructure, 'Ctrl+D', 'Edit molecular geometry')
         menubar.addAction('Cut', 'Edit', self.inputPane.cut, 'Ctrl+X', 'Cut')
