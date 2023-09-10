@@ -1,4 +1,7 @@
 import pathlib
+import platform
+
+from PyQt5.QtCore import QCoreApplication
 
 from MenuBar import MenuBar
 from help import HelpManager
@@ -32,10 +35,6 @@ class Chooser(QMainWindow):
         LHpanel.addWidget(newButton)
         self.recentProjects = {}
 
-
-
-
-
         class recentProjectButton(QPushButton):
             def __init__(self, filename, parent):
                 self.parent = parent
@@ -58,13 +57,13 @@ class Chooser(QMainWindow):
             self.setStyleSheet("recentProjectButton { background-color: #F7F7F7, border: none}")
             boxlayout = QVBoxLayout(box)
             LHpanel.addWidget(box)
-            boxlayout.addWidget(QLabel('Open a recently-used project:'),0,QtCore.Qt.AlignLeft)
+            boxlayout.addWidget(QLabel('Open a recently-used project:'), 0, QtCore.Qt.AlignLeft)
             for i in range(1, 10):
                 f = pymolpro.recent_project('molpro', i)
                 if f:
-                    self.recentProjects[f] = recentProjectButton(f,self)
+                    self.recentProjects[f] = recentProjectButton(f, self)
                     # self.recentProjects[f].clicked.connect(lambda: windowManager.register(lambda: ProjectWindow(f)))
-                    boxlayout.addWidget(self.recentProjects[f],-1,QtCore.Qt.AlignLeft)
+                    boxlayout.addWidget(self.recentProjects[f], -1, QtCore.Qt.AlignLeft)
                 else:
                     break
 
@@ -89,7 +88,6 @@ class Chooser(QMainWindow):
         linkLayout = QHBoxLayout()
         RHpanel.addLayout(linkLayout)
 
-
         class linkLabel(QLabel):
             def __init__(self, text, url):
                 super().__init__()
@@ -99,15 +97,19 @@ class Chooser(QMainWindow):
         linkLayout.addWidget(linkLabel('Documentation', 'https://www.molpro.net/manual/doku.php'))
         linkLayout.addWidget(linkLabel('Molpro Manual', 'https://www.molpro.net/manual/doku.php'))
 
-
         menubar = MenuBar()
+        if platform.system() == 'Darwin':
+            self.setMenuBar(menubar)
         menubar.addAction('New', 'File', slot=self.newProjectDialog, shortcut='Ctrl+N',
                           tooltip='Create a new project')
+        menubar.addSeparator('File')
+        menubar.addAction('Quit', 'File', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
+                          tooltip='Quit')
 
         helpManager = HelpManager(menubar)
-        helpManager.register('Overview','README')
-        helpManager.register('Another','something else')
-        helpManager.register('Backends','doc/backends.md')
+        helpManager.register('Overview', 'README')
+        helpManager.register('Another', 'something else')
+        helpManager.register('Backends', 'doc/backends.md')
 
     def openProjectDialog(self):
         filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', ))
