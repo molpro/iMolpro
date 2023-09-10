@@ -1,4 +1,7 @@
 import pathlib
+
+from MenuBar import MenuBar
+from help import HelpManager
 from utilities import force_suffix
 
 import pymolpro
@@ -28,6 +31,10 @@ class Chooser(QMainWindow):
         newButton.setStyleSheet(":hover { background-color: #D0D0D0 }")
         LHpanel.addWidget(newButton)
         self.recentProjects = {}
+
+
+
+
 
         class recentProjectButton(QPushButton):
             def __init__(self, filename, parent):
@@ -91,6 +98,16 @@ class Chooser(QMainWindow):
 
         linkLayout.addWidget(linkLabel('Documentation', 'https://www.molpro.net/manual/doku.php'))
         linkLayout.addWidget(linkLabel('Molpro Manual', 'https://www.molpro.net/manual/doku.php'))
+
+
+        menubar = MenuBar()
+        menubar.addAction('New', 'File', slot=self.newProjectDialog, shortcut='Ctrl+N',
+                          tooltip='Create a new project')
+
+        helpManager = HelpManager(menubar)
+        helpManager.register('Overview','README')
+        helpManager.register('Another','something else')
+        helpManager.register('Backends','doc/backends.md')
 
     def openProjectDialog(self):
         filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', ))

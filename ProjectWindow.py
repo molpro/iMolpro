@@ -9,6 +9,8 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBo
     QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog
 from pymolpro import Project
 
+from MenuBar import MenuBar
+from help import HelpManager
 from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet
 
 
@@ -51,17 +53,6 @@ class ProjectWindow(QMainWindow):
     newSignal = pyqtSignal(QWidget)
     chooserSignal = pyqtSignal(QWidget)
 
-    def addAction(self, name: str, slot=None, menu: str = None, shortcut: str = None, tooltip: str = None):
-        if not hasattr(self, 'actions_'): self.actions_ = {}
-        key = menu + '/' + name if menu else name
-        assert key not in self.actions_.keys()
-        self.actions_[key] = QAction(name)
-        if menu: self.menus[menu].addAction(self.actions_[key])
-        if slot: self.actions_[key].triggered.connect(slot)
-        if shortcut: self.actions_[key].setShortcut(shortcut)
-        if tooltip: self.actions_[key].setToolTip(tooltip)
-        return self.actions_[key]
-
     def __init__(self, filename=None, latency=1000):
         super().__init__()
 
@@ -84,41 +75,56 @@ class ProjectWindow(QMainWindow):
 
         self.webEngineProfiles = []
 
-        menubar = QMenuBar()
-        self.setMenuBar(menubar)
-        self.menus = {m: menubar.addMenu(m) for m in ['File', 'Edit', 'Project', 'View', 'Help']}
-        for m in self.menus.values(): m.setToolTipsVisible(True)
+        menubar = MenuBar(self)
 
-        self.addAction('New', slot=self.newAction, menu='File', shortcut='Ctrl+N', tooltip='Create a new project')
-        self.addAction('Close', self.close, 'File', 'Ctrl+W')
-        self.addAction('Open', self.chooserOpen, 'File', 'Ctrl+O', 'Open another project')
+        menubar.addAction('New', 'File', slot=self.newAction, shortcut='Ctrl+N',
+                          tooltip='Create a new project')
+        menubar.addAction('Close', 'File', self.close, 'Ctrl+W')
+        menubar.addAction('Open', 'File', self.chooserOpen, 'Ctrl+O', 'Open another project')
 
-        self.addAction('Build', self.editInputStructure, 'Edit', 'Ctrl+D', 'Edit molecular geometry')
-        self.addAction('Cut', self.inputPane.cut, 'Edit', 'Ctrl+X', 'Cut')
-        self.addAction('Copy', self.inputPane.copy, 'Edit', 'Ctrl+C', 'Copy')
-        self.addAction('Paste', self.inputPane.paste, 'Edit', 'Ctrl+X', 'Paste')
-        self.addAction('Undo', self.inputPane.undo, 'Edit', 'Ctrl+Z', 'Undo')
-        self.addAction('Redo', self.inputPane.redo, 'Edit', 'Shift+Ctrl+Z', 'Redo')
-        self.addAction('Select All', self.inputPane.selectAll, 'Edit', 'Ctrl+A', 'Redo')
-        self.addAction('Zoom In', self.inputPane.zoomIn, 'Edit', 'Shift+Ctrl+=', 'Increase font size')
-        self.addAction('Zoom Out', self.inputPane.zoomOut, 'Edit', 'Ctrl+-', 'Decrease font size')
+        menubar.addAction('Build', 'Edit', self.editInputStructure, 'Ctrl+D', 'Edit molecular geometry')
+        menubar.addAction('Cut', 'Edit', self.inputPane.cut, 'Ctrl+X', 'Cut')
+        menubar.addAction('Copy', 'Edit', self.inputPane.copy, 'Ctrl+C', 'Copy')
+        menubar.addAction('Paste', 'Edit', self.inputPane.paste, 'Ctrl+X', 'Paste')
+        menubar.addAction('Undo', 'Edit', self.inputPane.undo, 'Ctrl+Z', 'Undo')
+        menubar.addAction('Redo', 'Edit', self.inputPane.redo, 'Shift+Ctrl+Z', 'Redo')
+        menubar.addAction('Select All', 'Edit', self.inputPane.selectAll, 'Ctrl+A', 'Redo')
+        menubar.addSeparator('Edit')
+        menubar.addAction('Zoom In', 'Edit', self.inputPane.zoomIn, 'Shift+Ctrl+=', 'Increase font size')
+        menubar.addAction('Zoom Out', 'Edit', self.inputPane.zoomOut, 'Ctrl+-', 'Decrease font size')
 
-        self.addAction('Import input', self.importInput, 'Project',
-                       tooltip='Import a file and assign it as the input for the project')
-        self.addAction('Import file', self.importFile, 'Project',
-                       tooltip='Import one or more files, eg geometry definition, into the project')
-        self.addAction('Export file', self.exportFile, 'Project', tooltip='Export one or more files from the project')
-        runAction = self.addAction('Run', self.run, 'Project', 'Ctrl+R', 'Run Molpro on the project input')
-        killAction = self.addAction('Kill', self.kill, 'Project', tooltip='Kill the running job')
-        self.addAction('Backend', self.backend, 'Project', 'Ctrl+B', 'Configure backend')
-        self.addAction('Clean', self.clean, 'Project', tooltip='Remove old runs from the project')
+        menubar.addAction('Import input', 'Project', self.importInput,
+                          tooltip='Import a file and assign it as the input for the project')
+        menubar.addAction('Import file', 'Project', self.importFile,
+                          tooltip='Import one or more files, eg geometry definition, into the project')
+        menubar.addAction('Export file', 'Project', self.exportFile,
+                          tooltip='Export one or more files from the project')
+        runAction = menubar.addAction('Run', 'Project', self.run, 'Ctrl+R', 'Run Molpro on the project input')
+        killAction = menubar.addAction('Kill', 'Project', self.kill, tooltip='Kill the running job')
+        menubar.addAction('Backend', 'Project', self.backend, 'Ctrl+B', 'Configure backend')
+        menubar.addAction('Clean', 'Project', self.clean, tooltip='Remove old runs from the project')
         menubar.show()
 
-        self.addAction('Zoom In',lambda : [p.zoomIn() for p in self.outputPanes.values()], 'View','Alt+Shift+=','Increase font size')
-        self.addAction('Zoom Out',lambda : [p.zoomOut() for p in self.outputPanes.values()], 'View','Alt+-','Decrease font size')
-        self.addAction('Input structure', self.visinp, 'View', tooltip='View the molecular structure in the job input')
-        self.addAction('Output structure', self.visout, 'View', 'Alt+D',
-                       tooltip='View the molecular structure at the end of the job')
+        menubar.addAction('Zoom In', 'View', lambda: [p.zoomIn() for p in self.outputPanes.values()], 'Alt+Shift+=',
+                          'Increase font size')
+        menubar.addAction('Zoom Out', 'View', lambda: [p.zoomOut() for p in self.outputPanes.values()], 'Alt+-',
+                          'Decrease font size')
+        menubar.addSeparator('View')
+        menubar.addAction('Input structure', 'View', self.visinp,
+                          tooltip='View the molecular structure in the job input')
+        menubar.addAction('Output structure', 'View', self.visout, 'Alt+D',
+                          tooltip='View the molecular structure at the end of the job')
+        menubar.addSeparator('View')
+
+        # for a in menubar.actions():
+        #     print(a, type(a), a.menu(), a.menu().title())
+        #     for b in a.menu().actions():
+        #         print(b, b.text(), b.shortcut(), b.toolTip())
+
+        helpManager = HelpManager(menubar)
+        helpManager.register('Overview','README')
+        helpManager.register('Another','something else')
+        helpManager.register('Backends','doc/backends.md')
 
         self.runButton = QPushButton('Run')
         self.runButton.clicked.connect(runAction.trigger)
