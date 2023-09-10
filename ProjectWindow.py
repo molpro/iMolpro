@@ -76,6 +76,7 @@ class ProjectWindow(QMainWindow):
         self.webEngineProfiles = []
 
         menubar = MenuBar(self)
+        self.setMenuBar(menubar)
 
         menubar.addAction('New', 'File', slot=self.newAction, shortcut='Ctrl+N',
                           tooltip='Create a new project')
