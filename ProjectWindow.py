@@ -268,7 +268,7 @@ class ProjectWindow(QMainWindow):
             def __init__(self):
                 super().__init__(self)
                 self.setWindowTitle('Configure backend')
-        self.backendWidget =
+        # self.backendWidget =
 
     def visout(self, param, typ='xml', name=None):
         if name:
