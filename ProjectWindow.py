@@ -59,12 +59,13 @@ class ProjectWindow(QMainWindow):
         assert filename is not None
         self.project = Project(filename)
 
-        self.JSmolMinJS = str(pathlib.Path(__file__).parent/"JSmol.min.js")
+        self.JSmolMinJS = str(pathlib.Path(__file__).parent / "JSmol.min.js")
         if hasattr(sys, '_MEIPASS'):
             os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
-                sys._MEIPASS, 'PyQt5', 'Qt5', 'lib',
-                'QtWebEngineCore.framework', 'Versions','5','Helpers', 'QtWebEngineProcess.app',
-                'Contents', 'MacOS', 'QtWebEngineProcess'
+                sys._MEIPASS, 'PyQt5', 'Qt5',
+                # 'lib', 'QtWebEngineCore.framework', 'Versions','5','Helpers', 'QtWebEngineProcess.app', 'Contents', 'MacOS',
+                'libexec',
+                'QtWebEngineProcess'
             ))
 
         self.inputPane = EditFile(self.project.filename('inp', run=-1), latency)
@@ -126,9 +127,9 @@ class ProjectWindow(QMainWindow):
         #         print(b, b.text(), b.shortcut(), b.toolTip())
 
         helpManager = HelpManager(menubar)
-        helpManager.register('Overview','README')
-        helpManager.register('Another','something else')
-        helpManager.register('Backends','doc/backends.md')
+        helpManager.register('Overview', 'README')
+        helpManager.register('Another', 'something else')
+        helpManager.register('Backends', 'doc/backends.md')
 
         self.runButton = QPushButton('Run')
         self.runButton.clicked.connect(runAction.trigger)
@@ -205,7 +206,8 @@ class ProjectWindow(QMainWindow):
         elif text == 'None':
             if self.VOD:
                 self.VOD.hide()
-                self.window().resize(self.minimumWindowSize)  # TODO find a way of shrinking back the main window # self.inputPane.adjustSize() # self.outputPane.adjustSize() # self.adjustSize()
+                self.window().resize(
+                    self.minimumWindowSize)  # TODO find a way of shrinking back the main window # self.inputPane.adjustSize() # self.outputPane.adjustSize() # self.adjustSize()
         elif text[:5] == 'Edit ':
             filename = self.project.filename('', text[5:], run=-1)
             if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
@@ -292,7 +294,7 @@ class ProjectWindow(QMainWindow):
 <html>
 <head>
 <meta charset="utf-8">
-<script type="text/javascript" src=" """+self.JSmolMinJS+""""> </script>
+<script type="text/javascript" src=" """ + self.JSmolMinJS + """"> </script>
 </head>
 <body>
 <table>
@@ -382,7 +384,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 <html>
 <head>
 <meta charset="utf-8">
-<script type="text/javascript" src=" """+self.JSmolMinJS+""""> </script>
+<script type="text/javascript" src=" """ + self.JSmolMinJS + """"> </script>
 </head>
 <body>
 <table>
