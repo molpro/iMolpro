@@ -10,10 +10,7 @@ if __name__ == '__main__':
     class App(QApplication):
         def event(self, e):
             if e.type() == QEvent.FileOpen:
-                print("FileOpen",e.url())
-                msg = QMessageBox()
-                msg.setText("FileOpen "+e.url())
-                msg.exec()
+                windowManager.register(ProjectWindow(e.file()))
             else:
                 return super().event(e)
             return True
