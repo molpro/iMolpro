@@ -2,11 +2,13 @@ import atexit
 import os
 
 from PyQt5.Qt import Qt
-from PyQt5.QtCore import QTimer, QPoint
+from PyQt5.QtCore import QTimer, QPoint, QCoreApplication
 from PyQt5.QtGui import QFont, QFontDatabase, QTextCursor, QCursor
-from PyQt5.QtWidgets import QPlainTextEdit, QMessageBox, QLabel
+from PyQt5.QtWidgets import QPlainTextEdit, QMessageBox, QLabel, QMainWindow
 
 from enum import Enum
+
+from MenuBar import MenuBar
 
 
 class VimMode(Enum):
@@ -161,7 +163,6 @@ class QVimPlainTextEdit(QPlainTextEdit):
         self.establishStatus()
         super().resizeEvent(e)
 
-
 class EditFile(QVimPlainTextEdit):
     def __init__(self, filename: str, latency=1000):
         super().__init__(VimMode.insert)
@@ -205,6 +206,27 @@ class EditFile(QVimPlainTextEdit):
     def setPlainText(self, text):
         super().setPlainText(text)
         self.sync()
+
+class MainEditFile(QMainWindow):
+    def __init__(self, filename: str, latency=1000):
+        super().__init__()
+        self.w = EditFile(filename,latency)
+        self.setCentralWidget(self.w)
+        self.setWindowTitle(str(filename))
+        menubar = MenuBar(self)
+        self.setMenuBar(menubar)
+        menubar.addAction('Close', 'File', self.close, 'Ctrl+W')
+        menubar.addAction('Quit', 'File', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
+                          tooltip='Quit')
+        menubar.addAction('Cut', 'Edit', self.w.cut, 'Ctrl+X', 'Cut')
+        menubar.addAction('Copy', 'Edit', self.w.copy, 'Ctrl+C', 'Copy')
+        menubar.addAction('Paste', 'Edit', self.w.paste, 'Ctrl+X', 'Paste')
+        menubar.addAction('Undo', 'Edit', self.w.undo, 'Ctrl+Z', 'Undo')
+        menubar.addAction('Redo', 'Edit', self.w.redo, 'Shift+Ctrl+Z', 'Redo')
+        menubar.addAction('Select All', 'Edit', self.w.selectAll, 'Ctrl+A', 'Redo')
+        menubar.addSeparator('Edit')
+        menubar.addAction('Zoom In', 'Edit', self.w.zoomIn, 'Shift+Ctrl+=', 'Increase font size')
+        menubar.addAction('Zoom Out', 'Edit', self.w.zoomOut, 'Ctrl+-', 'Decrease font size')
 
 
 class ViewFile(QPlainTextEdit):

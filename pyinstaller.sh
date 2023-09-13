@@ -16,12 +16,12 @@ fi
 builddir=${TMPDIR:-/tmp}/QtMolpro
 rm -rf $builddir
 
-pyinstaller \
+PATH=/usr/bin:$PATH pyinstaller \
   --add-data JSmol.min.js:. \
   --add-data j2s:./j2s \
   --add-data Molpro_Logo_Molpro_Quantum_Chemistry_Software.png:. \
   --distpath $builddir/dist $pyinstaller_opt \
-  QtMolpro.py
+  QtMolpro.py || exit 1
 
 if [ $(uname) = Darwin ]; then
   rm -rf $builddir/dist/QtMolpro

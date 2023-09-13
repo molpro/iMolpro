@@ -6,12 +6,13 @@ import sys
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog
+    QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog, QDialog, QDialogButtonBox
 from pymolpro import Project
 
 from MenuBar import MenuBar
 from help import HelpManager
-from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet
+from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet, MainEditFile
+from backend import configureBackend
 
 
 class StatusBar(QLabel):
@@ -67,6 +68,7 @@ class ProjectWindow(QMainWindow):
                 'libexec',
                 'QtWebEngineProcess'
             ))
+        os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--no-sandbox'
 
         self.inputPane = EditFile(self.project.filename('inp', run=-1), latency)
         self.setWindowTitle(filename)
@@ -106,7 +108,8 @@ class ProjectWindow(QMainWindow):
                           tooltip='Export one or more files from the project')
         runAction = menubar.addAction('Run', 'Project', self.run, 'Ctrl+R', 'Run Molpro on the project input')
         killAction = menubar.addAction('Kill', 'Project', self.kill, tooltip='Kill the running job')
-        menubar.addAction('Backend', 'Project', self.backend, 'Ctrl+B', 'Configure backend')
+        menubar.addAction('Backend', 'Project', lambda: configureBackend(self), 'Ctrl+B', 'Configure backend')
+        menubar.addAction('Edit backend configuration file', 'Project', self.editBackendConfiguration, 'Ctrl+Shift+B', 'Edit backend configuration file')
         menubar.addAction('Clean', 'Project', self.clean, tooltip='Remove old runs from the project')
         menubar.show()
 
@@ -182,6 +185,10 @@ class ProjectWindow(QMainWindow):
         container.setLayout(self.layout)
         self.setCentralWidget(container)
 
+
+    def editBackendConfiguration(self):
+        self.backendConfigurationEditor = MainEditFile(pathlib.Path.home() / '.sjef/molpro/backends.xml')
+        self.backendConfigurationEditor.show()
     def editInputStructure(self):
         f = self.geometryfiles()
         if f:
@@ -263,9 +270,6 @@ class ProjectWindow(QMainWindow):
 
     def clean(self):
         self.project.clean()
-
-    def backend(self):
-        pass  # TODO implement
 
     def visout(self, param, typ='xml', name=None):
         if name:
