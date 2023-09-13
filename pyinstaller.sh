@@ -20,6 +20,8 @@ PATH=/usr/bin:$PATH pyinstaller \
   --add-data JSmol.min.js:. \
   --add-data j2s:./j2s \
   --add-data Molpro_Logo_Molpro_Quantum_Chemistry_Software.png:. \
+  --add-data README.md:. \
+  --add-data doc:./doc \
   --distpath $builddir/dist $pyinstaller_opt \
   Molpro.py || exit 1
 
