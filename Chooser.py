@@ -33,40 +33,10 @@ class Chooser(QMainWindow):
         newButton.clicked.connect(self.newProjectDialog)
         newButton.setStyleSheet(":hover { background-color: #D0D0D0 }")
         LHpanel.addWidget(newButton)
-        self.recentProjects = {}
+        self.recentProjectBox = QWidget()
+        self.populateRecentProjectBox()
 
-        class recentProjectButton(QPushButton):
-            def __init__(self, filename, parent):
-                self.parent = parent
-                import os
-                self.filename = os.path.expanduser(filename)
-                homedir = os.path.expanduser('~')
-                reducedFilename = self.filename.replace(homedir, '~')
-                super().__init__(reducedFilename)
-                self.clicked.connect(self.action)
-                self.setStyleSheet(":hover { background-color: #D0D0D0 }")
-                self.setStyleSheet("* {border: none } :hover { background-color: #D0D0D0}  ")
-
-            def action(self):
-                windowManager.register(ProjectWindow(self.filename))
-                self.parent.hide()
-
-        if pymolpro.recent_project('molpro', 1):
-            box = QWidget()
-            box.setStyleSheet(" background-color: #F7F7F7 ")
-            self.setStyleSheet("recentProjectButton { background-color: #F7F7F7, border: none}")
-            boxlayout = QVBoxLayout(box)
-            LHpanel.addWidget(box)
-            boxlayout.addWidget(QLabel('Open a recently-used project:'), 0, QtCore.Qt.AlignLeft)
-            for i in range(1, 10):
-                f = pymolpro.recent_project('molpro', i)
-                if f:
-                    self.recentProjects[f] = recentProjectButton(f, self)
-                    # self.recentProjects[f].clicked.connect(lambda: windowManager.register(lambda: ProjectWindow(f)))
-                    boxlayout.addWidget(self.recentProjects[f], -1, QtCore.Qt.AlignLeft)
-                else:
-                    break
-
+        LHpanel.addWidget(self.recentProjectBox)
         existingButton = QPushButton('Open an existing project...')
         existingButton.setStyleSheet(":hover { background-color: #D0D0D0 }")
         existingButton.clicked.connect(self.openProjectDialog)
@@ -111,6 +81,37 @@ class Chooser(QMainWindow):
         helpManager.register('Another', 'something else')
         helpManager.register('Backends', 'doc/backends.md')
 
+    def populateRecentProjectBox(self, maxItems=10):
+
+        class recentProjectButton(QPushButton):
+            def __init__(self, filename, parent):
+                self.parent = parent
+                import os
+                self.filename = os.path.expanduser(filename)
+                homedir = os.path.expanduser('~')
+                reducedFilename = self.filename.replace(homedir, '~')
+                super().__init__(reducedFilename)
+                self.clicked.connect(self.action)
+                self.setStyleSheet(":hover { background-color: #D0D0D0 }")
+                self.setStyleSheet("* {border: none } :hover { background-color: #D0D0D0}  ")
+
+            def action(self):
+                self.parent.windowManager.register(ProjectWindow(self.filename))
+                self.parent.hide()
+
+        self.recentProjectBox.setStyleSheet(" background-color: #F7F7F7 ")
+        if not self.recentProjectBox.layout():
+            QVBoxLayout(self.recentProjectBox)
+        layout = self.recentProjectBox.layout()
+        for item in [layout.itemAt(i) for i in range(layout.count())]:
+            self.recentProjectBox.layout().removeItem(item)
+            item.widget().setParent(None)
+        self.recentProjectBox.layout().addWidget(QLabel('Open a recently-used project:'), 0, QtCore.Qt.AlignLeft)
+        for i in range(1, maxItems):
+            f = pymolpro.recent_project('molpro', i)
+            if f:
+                self.recentProjectBox.layout().addWidget(recentProjectButton(f, self), -1, QtCore.Qt.AlignLeft)
+
     def openProjectDialog(self):
         filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', ))
         if filename:
@@ -127,5 +128,6 @@ class Chooser(QMainWindow):
         resolution = QDesktopWidget().screenGeometry()
         self.move((resolution.width() // 2) - (self.frameSize().width() // 2),
                   (resolution.height() // 2) - (self.frameSize().height() // 2))
+        self.populateRecentProjectBox()
         self.show()
         self.raise_()
