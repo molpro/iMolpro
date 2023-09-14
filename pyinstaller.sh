@@ -16,14 +16,32 @@ fi
 builddir=${TMPDIR:-/tmp}/Molpro
 rm -rf $builddir
 
-PATH=/usr/bin:$PATH pyinstaller \
+PATH=/usr/bin:$PATH pyi-makespec \
   --add-data JSmol.min.js:. \
   --add-data j2s:./j2s \
   --add-data Molpro_Logo_Molpro_Quantum_Chemistry_Software.png:. \
   --add-data README.md:. \
   --add-data doc:./doc \
-  --distpath $builddir/dist $pyinstaller_opt \
+  $pyinstaller_opt \
   Molpro.py || exit 1
+sed -i -e '$d' Molpro.spec
+cat << 'EOF' >> Molpro.spec
+    info_plist={
+      'CFBundleDocumentTypes': [
+        {
+          'CFBundleTypeExtensions': ['molpro'],
+          'LSItemContentTypes': ['net.molpro.molpro'],
+          'CFBundleTypeIconFile': 'molpro.icns',
+          'CFBundleTypeRole': 'Editor',
+          'CFBundleTypeName': 'Molpro Project'
+        }
+      ]
+    }
+)
+EOF
+PATH=/usr/bin:$PATH pyinstaller \
+  --distpath $builddir/dist \
+  Molpro.spec || exit 1
 
 if [ $(uname) = Darwin ]; then
   rm -rf $builddir/dist/Molpro
