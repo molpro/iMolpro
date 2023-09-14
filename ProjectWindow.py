@@ -60,6 +60,8 @@ class ProjectWindow(QMainWindow):
         assert filename is not None
         self.project = Project(filename)
 
+        os.environ['PATH'] = os.popen(os.environ['SHELL']+" -l -c 'echo $PATH'").read() + ':' + os.environ[
+            'PATH']  # make PATH just as if running from shell
         self.JSmolMinJS = str(pathlib.Path(__file__).parent / "JSmol.min.js")
         if hasattr(sys, '_MEIPASS'):
             os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
@@ -109,7 +111,8 @@ class ProjectWindow(QMainWindow):
         runAction = menubar.addAction('Run', 'Project', self.run, 'Ctrl+R', 'Run Molpro on the project input')
         killAction = menubar.addAction('Kill', 'Project', self.kill, tooltip='Kill the running job')
         menubar.addAction('Backend', 'Project', lambda: configureBackend(self), 'Ctrl+B', 'Configure backend')
-        menubar.addAction('Edit backend configuration file', 'Project', self.editBackendConfiguration, 'Ctrl+Shift+B', 'Edit backend configuration file')
+        menubar.addAction('Edit backend configuration file', 'Project', self.editBackendConfiguration, 'Ctrl+Shift+B',
+                          'Edit backend configuration file')
         menubar.addAction('Clean', 'Project', self.clean, tooltip='Remove old runs from the project')
         menubar.show()
 
@@ -185,10 +188,10 @@ class ProjectWindow(QMainWindow):
         container.setLayout(self.layout)
         self.setCentralWidget(container)
 
-
     def editBackendConfiguration(self):
         self.backendConfigurationEditor = MainEditFile(pathlib.Path.home() / '.sjef/molpro/backends.xml')
         self.backendConfigurationEditor.show()
+
     def editInputStructure(self):
         f = self.geometryfiles()
         if f:
