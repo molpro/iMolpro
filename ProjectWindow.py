@@ -508,7 +508,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                 self.project.import_file(filename)
 
     def importInput(self):
-        filename, junk = QFileDialog.getOpenFileName(self, 'Import file(s) into project', )
+        filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', )
         if os.path.isfile(filename):
             self.project.import_input(filename)
 
