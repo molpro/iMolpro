@@ -102,9 +102,9 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Zoom In', 'Edit', self.inputPane.zoomIn, 'Shift+Ctrl+=', 'Increase font size')
         menubar.addAction('Zoom Out', 'Edit', self.inputPane.zoomOut, 'Ctrl+-', 'Decrease font size')
 
-        menubar.addAction('Import input', 'Project', self.importInput, 'Ctrl+Shift+A',
+        menubar.addAction('Import input', 'Project', self.importInput, 'Ctrl+Shift+I',
                           tooltip='Import a file and assign it as the input for the project')
-        menubar.addAction('Import file', 'Project', self.importFile, 'Ctrl+A',
+        menubar.addAction('Import file', 'Project', self.importFile, 'Ctrl+I',
                           tooltip='Import one or more files, eg geometry definition, into the project')
         menubar.addAction('Export file', 'Project', self.exportFile, 'Ctrl+E',
                           tooltip='Export one or more files from the project')
