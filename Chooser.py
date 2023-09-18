@@ -16,6 +16,8 @@ from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayo
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
 
+from src import _version
+
 
 class Chooser(QMainWindow):
     def __init__(self, windowManager: WindowManager):
@@ -66,6 +68,8 @@ class Chooser(QMainWindow):
 
         linkLayout.addWidget(linkLabel('Documentation', 'https://www.molpro.net/manual/doku.php'))
         linkLayout.addWidget(linkLabel('Molpro Manual', 'https://www.molpro.net/manual/doku.php'))
+
+        RHpanel.addWidget(QLabel("Molpro version "+_version.get_versions()['version']+'\n('+_version.get_versions()['date']+')'))
 
         menubar = MenuBar()
         if platform.system() == 'Darwin':
