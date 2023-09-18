@@ -68,6 +68,9 @@ class ProjectWindow(QMainWindow):
                 sys._MEIPASS, 'PyQt5', 'Qt', 'libexec', 'QtWebEngineProcess'
             ))
         os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--no-sandbox'
+        likely_qtwebengineprocess=os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),'PyQt5','Qt5','libexec','QtWebEngineProcess'))
+        if os.path.exists(likely_qtwebengineprocess):
+            os.environ['QTWEBENGINEPROCESS_PATH'] = likely_qtwebengineprocess
 
         self.inputPane = EditFile(self.project.filename('inp', run=-1), latency)
         self.setWindowTitle(filename)
