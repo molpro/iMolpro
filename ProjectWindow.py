@@ -65,10 +65,7 @@ class ProjectWindow(QMainWindow):
         self.JSmolMinJS = str(pathlib.Path(__file__).parent / "JSmol.min.js")
         if hasattr(sys, '_MEIPASS'):
             os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
-                sys._MEIPASS, 'PyQt5', 'Qt5',
-                # 'lib', 'QtWebEngineCore.framework', 'Versions','5','Helpers', 'QtWebEngineProcess.app', 'Contents', 'MacOS',
-                'libexec',
-                'QtWebEngineProcess'
+                sys._MEIPASS, 'PyQt5', 'Qt', 'libexec', 'QtWebEngineProcess'
             ))
         os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--no-sandbox'
 
