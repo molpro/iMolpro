@@ -45,9 +45,9 @@ if [ $(uname) = Darwin ]; then
   cp -pr $builddir/dist/Molpro.app/Contents/MacOS/PyQt5/Qt/translations $builddir/dist/Molpro.app/Contents/
   rm -rf $builddir/dist/Molpro
   rm -f Molpro.dmg
-  create-dmg --app-drop-link 25 35 --volname Molpro  --volicon 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png' Molpro.dmg "$builddir/dist"
+  create-dmg --app-drop-link 25 35 --volname Molpro  --volicon 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png' Molpro-$(uname)-$(uname -m).dmg "$builddir/dist"
 else
   rm -rf dist build
   mv $builddir/dist .
-  tar cjf Molpro.tar.bz2 -C dist Molpro
+  tar cjf Molpro-$(uname)-$(uname -m).tar.bz2 -C dist Molpro
 fi
