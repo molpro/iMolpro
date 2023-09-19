@@ -51,7 +51,9 @@ if [ $(uname) = Darwin ]; then
   rm -rf $builddir/dist/Molpro
   rm -f Molpro-${descriptor}.dmg
   if [ -r /Volumes/Molpro-${descriptor} ]; then umount /Volumes/Molpro-${descriptor} ; fi
-  create-dmg --app-drop-link 25 35 --volname Molpro-${descriptor}  --volicon 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png' Molpro-${descriptor}.dmg "$builddir/dist"
+  rm -rf dist
+  mkdir -p dist
+  create-dmg --app-drop-link 25 35 --volname Molpro-${descriptor}  --volicon 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png' dist/Molpro-${descriptor}.dmg "$builddir/dist"
 else
   rm -rf dist build
   mv $builddir/dist .
