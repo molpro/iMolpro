@@ -2,7 +2,6 @@
 
 if [ $(uname) = Darwin ]; then
   which create-dmg > /dev/null || brew install create-dmg
-  if [ -r /Volumes/Molpro ]; then umount /Volumes/Molpro ; fi
 fi
 conda install -c conda-forge -y pyqt pyqtwebengine pyinstaller pymolpro || exit 1
 
@@ -40,14 +39,17 @@ PATH=/usr/bin:$PATH pyinstaller \
   --distpath $builddir/dist \
   Molpro.spec || exit 1
 
+version=$(python -c 'from _version import get_versions; print(get_versions()["version"])')
+descriptor=${version}.$(uname).$(uname -m)
 if [ $(uname) = Darwin ]; then
   cp -p $builddir/dist/Molpro.app/Contents/MacOS/PyQt5/Qt/resources/* $builddir/dist/Molpro.app/Contents/Resources
   cp -pr $builddir/dist/Molpro.app/Contents/MacOS/PyQt5/Qt/translations $builddir/dist/Molpro.app/Contents/
   rm -rf $builddir/dist/Molpro
-  rm -f Molpro.dmg
-  create-dmg --app-drop-link 25 35 --volname Molpro  --volicon 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png' Molpro-$(uname)-$(uname -m).dmg "$builddir/dist"
+  rm -f Molpro-${descriptor}.dmg
+  if [ -r /Volumes/Molpro-${descriptor} ]; then umount /Volumes/Molpro-${descriptor} ; fi
+  create-dmg --app-drop-link 25 35 --volname Molpro-${descriptor}  --volicon 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png' Molpro-${descriptor}.dmg "$builddir/dist"
 else
   rm -rf dist build
   mv $builddir/dist .
-  tar cjf Molpro-$(uname)-$(uname -m).tar.bz2 -C dist Molpro
+  tar cjf Molpro-${descriptor}.tar.bz2 -C dist Molpro
 fi
