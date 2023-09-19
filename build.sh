@@ -12,12 +12,17 @@ fi
 builddir=${TMPDIR:-/tmp}/Molpro
 rm -rf $builddir
 
+versionfile=${TMPDIR:-/tmp}/VERSION
+version=$(git describe --tags --dirty)
+echo $version > ${versionfile}
+
 PATH=/usr/bin:$PATH pyi-makespec \
   --add-data JSmol.min.js:. \
   --add-data j2s:./j2s \
   --add-data Molpro_Logo_Molpro_Quantum_Chemistry_Software.png:. \
   --add-data README.md:. \
   --add-data doc:./doc \
+  --add-data ${versionfile}:. \
   $pyinstaller_opt \
   Molpro.py || exit 1
 sed -i -e '$d' Molpro.spec
@@ -39,7 +44,6 @@ PATH=/usr/bin:$PATH pyinstaller \
   --distpath $builddir/dist \
   Molpro.spec || exit 1
 
-version=$(python -c 'from _version import get_versions; print(get_versions()["version"])')
 descriptor=${version}.$(uname).$(uname -m)
 if [ $(uname) = Darwin ]; then
   cp -p $builddir/dist/Molpro.app/Contents/MacOS/PyQt5/Qt/resources/* $builddir/dist/Molpro.app/Contents/Resources

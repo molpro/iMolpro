@@ -16,8 +16,6 @@ from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayo
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
 
-from _version import get_versions
-
 
 class Chooser(QMainWindow):
     def __init__(self, windowManager: WindowManager):
@@ -69,7 +67,26 @@ class Chooser(QMainWindow):
         linkLayout.addWidget(linkLabel('Documentation', 'https://www.molpro.net/manual/doku.php'))
         linkLayout.addWidget(linkLabel('Molpro Manual', 'https://www.molpro.net/manual/doku.php'))
 
-        RHpanel.addWidget(QLabel("Molpro version "+get_versions()['version']+'\n('+get_versions()['date']+')'))
+        # RHpanel.addWidget(QLabel("Molpro version "+get_versions()['version']+'\n('+get_versions()['date']+')'))
+        def version_():
+            import subprocess
+            import os
+            version=None
+            if os.path.exists(pathlib.Path(__file__).resolve().parent / '.git'):
+                try:
+                    version = subprocess.check_output(['git', 'describe', '--tags', '--dirty']).decode('ascii').strip()
+                except:
+                    pass
+                if version:
+                    return version
+            versionfile = pathlib.Path(__file__).resolve().parent / 'VERSION'
+            if os.path.exists(versionfile):
+                version = open(versionfile, 'r').read().strip()
+            if version:
+                return version
+            else:
+                return 'unknown'
+        RHpanel.addWidget(QLabel("Molpro version "+version_()))
 
         menubar = MenuBar()
         if platform.system() == 'Darwin':
