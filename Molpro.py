@@ -4,12 +4,13 @@ import sys
 from Chooser import Chooser
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
+import os
 
 if __name__ == '__main__':
 
     class App(QApplication):
         def event(self, e):
-            if e.type() == QEvent.FileOpen:
+            if e.type() == QEvent.FileOpen and os.path.splitext(e.file())[1] == '.molpro':
                 windowManager.register(ProjectWindow(e.file()))
             else:
                 return super().event(e)

@@ -1,0 +1,4 @@
+dist/
+*.spec
+*.spec-e
+build/
