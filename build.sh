@@ -57,5 +57,5 @@ if [ $(uname) = Darwin ]; then
 else
   rm -rf dist build
   mv $builddir/dist .
-  tar cjf Molpro-${descriptor}.tar.bz2 -C dist Molpro
+  tar cjf dist/Molpro-${descriptor}.tar.bz2 -C dist Molpro
 fi
