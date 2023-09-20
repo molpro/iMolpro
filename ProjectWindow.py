@@ -96,13 +96,15 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Build', 'Edit', self.editInputStructure, 'Ctrl+D', 'Edit molecular geometry')
         menubar.addAction('Cut', 'Edit', self.inputPane.cut, 'Ctrl+X', 'Cut')
         menubar.addAction('Copy', 'Edit', self.inputPane.copy, 'Ctrl+C', 'Copy')
-        menubar.addAction('Paste', 'Edit', self.inputPane.paste, 'Ctrl+X', 'Paste')
+        menubar.addAction('Paste', 'Edit', self.inputPane.paste, 'Ctrl+V', 'Paste')
         menubar.addAction('Undo', 'Edit', self.inputPane.undo, 'Ctrl+Z', 'Undo')
         menubar.addAction('Redo', 'Edit', self.inputPane.redo, 'Shift+Ctrl+Z', 'Redo')
         menubar.addAction('Select All', 'Edit', self.inputPane.selectAll, 'Ctrl+A', 'Redo')
         menubar.addSeparator('Edit')
         menubar.addAction('Zoom In', 'Edit', self.inputPane.zoomIn, 'Shift+Ctrl+=', 'Increase font size')
         menubar.addAction('Zoom Out', 'Edit', self.inputPane.zoomOut, 'Ctrl+-', 'Decrease font size')
+        menubar.addSeparator('Edit')
+        self.guidedAction = menubar.addAction('Guided mode', 'Edit', self.guidedToggle, 'Ctrl+G', checkable=True)
 
         menubar.addAction('Import input', 'Project', self.importInput, 'Ctrl+Shift+I',
                           tooltip='Import a file and assign it as the input for the project')
@@ -217,26 +219,34 @@ class ProjectWindow(QMainWindow):
                 if os.path.exists(self.project.filename(suffix)):
                     self.outputTabs.addTab(pane, suffix)
 
+    def guidedToggle(self):
+        self.refreshInputTabs(index=1 if self.guidedAction.isChecked() else 0)
+
     def refreshInputTabs(self, index=0):
-        print('refreshInputTabs', index)
+        # print('refreshInputTabs', index)
         input = self.inputPane.toPlainText()
         if not input: input = ''
         self.inputSpecification = molpro_input.parse(input)
         recreatedInput = molpro_input.create_input(self.inputSpecification)
         guided = recreatedInput == input
-        print('input:', input)
-        print('specification:',self.inputSpecification)
-        print('recreatedInput:', recreatedInput)
-        print('guided:', guided)
+        # print('input:', input)
+        # print('specification:', self.inputSpecification)
+        # print('recreatedInput:', recreatedInput)
+        # print('guided:', guided)
+        if not guided and index == 1:
+            box = QMessageBox()
+            box.setText('Guided mode cannot be used because the input is too complex')
+            box.exec()
+            self.guidedAction.setChecked(False)
         if len(self.inputTabs) < 1:
             self.inputTabs.addTab(self.inputPane, 'freehand')
         if not guided and len(self.inputTabs) != 1:
             self.inputTabs.removeTab(1)
         if guided and len(self.inputTabs) != 2:
-            self.guidedPane=QLabel()
+            self.guidedPane = QLabel()
             self.inputTabs.addTab(self.guidedPane, 'guided')
         self.inputTabs.setCurrentIndex(index if index >= 0 and index < len(self.inputTabs) else len(self.inputTabs) - 1)
-        if guided and self.inputTabs.currentIndex()==1:
+        if guided and self.inputTabs.currentIndex() == 1:
             self.guidedPane.setText(str(self.inputSpecification))
 
     def VODselectorAction(self):
