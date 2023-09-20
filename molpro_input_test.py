@@ -16,12 +16,26 @@ def test_create_input(qtbot):
         'Geometry={\nF;H,F,1.7};basis={default=cc-pVTZ,h=cc-pVDZ} !some comment;{ks,b3lyp};locali\nccsd\n',
         'Geometry={\nF;H,F,1.7\n};basis={default=cc-pVTZ,h=cc-pVDZ} !some comment;{ks,b3lyp};locali\nccsd\n',
         'Geometry={\nF\nH,F,1.7\n};basis={default=cc-pVTZ,h=cc-pVDZ} !some comment;{ks,b3lyp};locali\nccsd\n',
+        'geometry={\nHe\n}\nhf',
+        'geometry={\nHe\n}\nhf\nccsd',
+    ]:
+        print('test_text',test_text)
+        specification = parse(test_text)
+        print('specification',specification)
+        print(create_input(specification))
+        assert parse(create_input(specification)) == specification
+
+def test_recreate_input(qtbot):
+    for test_text in [
+        'geometry={\nHe\n}\nhf',
+        'geometry={\nHe\n}\nhf\nccsd',
     ]:
         # print('test_text',test_text)
         specification = parse(test_text)
         # print('specification',specification)
         # print(create_input(specification))
         assert parse(create_input(specification)) == specification
+        assert create_input(specification).strip('\n ') == test_text
 
 
 def test_variables(qtbot):

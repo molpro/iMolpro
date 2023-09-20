@@ -87,6 +87,9 @@ def parse(input: str):
                 variables[key]=value.replace('!',',') # unprotect
         else:
             pass
+    if 'method' not in specification and 'precursor_methods' in specification:
+        specification['method'] = specification['precursor_methods'][-1]
+        specification['precursor_methods'].pop()
     if variables:
         specification['variables']=variables
     return specification
@@ -103,18 +106,19 @@ def create_input(specification: dict):
     if 'variables' in specification:
         for k,v in specification['variables'].items():
             input += k+'='+v+'\n'
-    input += ('geometry=' + specification['geometry'] + '\n' if 'geometry_external' in specification else 'geometry={\n' +
+    if 'geometry' in specification:
+        input += ('geometry=' + specification['geometry'] + '\n' if 'geometry_external' in specification else 'geometry={\n' +
                                                                                                          specification[
                                                                                                              'geometry']).rstrip(
         ' \n') + '\n' + '}\n'
     if 'basis' in specification:
         input += 'basis={' + specification['basis'] + '}\n'
-        if 'precursor_methods' in specification:
-            for m in specification['precursor_methods']:
-                input += m + '\n'
-        if 'method' in specification:
-            input += specification['method'] + '\n'
-    return input
+    if 'precursor_methods' in specification:
+        for m in specification['precursor_methods']:
+            input += m + '\n'
+    if 'method' in specification:
+        input += specification['method'] + '\n'
+    return input.rstrip('\n')+'\n'
 
 
 def basis_quality(specification):

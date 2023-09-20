@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBo
     QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog, QDialog, QDialogButtonBox
 from pymolpro import Project
 
+import molpro_input
 from MenuBar import MenuBar
 from help import HelpManager
 from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet, MainEditFile
@@ -60,7 +61,7 @@ class ProjectWindow(QMainWindow):
         assert filename is not None
         self.project = Project(filename)
 
-        os.environ['PATH'] = os.popen(os.environ['SHELL']+" -l -c 'echo $PATH'").read() + ':' + os.environ[
+        os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
             'PATH']  # make PATH just as if running from shell
         self.JSmolMinJS = str(pathlib.Path(__file__).parent / "JSmol.min.js")
         if hasattr(sys, '_MEIPASS'):
@@ -68,7 +69,8 @@ class ProjectWindow(QMainWindow):
                 sys._MEIPASS, 'PyQt5', 'Qt', 'libexec', 'QtWebEngineProcess'
             ))
         os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--no-sandbox'
-        likely_qtwebengineprocess=os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),'PyQt5','Qt5','libexec','QtWebEngineProcess'))
+        likely_qtwebengineprocess = os.path.normpath(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'PyQt5', 'Qt5', 'libexec', 'QtWebEngineProcess'))
         if os.path.exists(likely_qtwebengineprocess):
             os.environ['QTWEBENGINEPROCESS_PATH'] = likely_qtwebengineprocess
 
@@ -148,7 +150,13 @@ class ProjectWindow(QMainWindow):
         self.statusBar.refresh()
 
         leftLayout = QVBoxLayout()
-        leftLayout.addWidget(self.inputPane)
+        self.inputTabs = QTabWidget()
+        self.inputTabs.setTabBarAutoHide(True)
+        self.inputTabs.setDocumentMode(True)
+        self.inputTabs.setTabPosition(QTabWidget.South)
+        self.inputTabs.currentChanged.connect(self.refreshInputTabs)
+        self.refreshInputTabs()
+        leftLayout.addWidget(self.inputTabs)
         self.inputPane.setMinimumHeight(300)
         self.inputPane.setMinimumWidth(400)
         self.statusBar.setMaximumWidth(400)
@@ -208,6 +216,28 @@ class ProjectWindow(QMainWindow):
             for suffix, pane in self.outputPanes.items():
                 if os.path.exists(self.project.filename(suffix)):
                     self.outputTabs.addTab(pane, suffix)
+
+    def refreshInputTabs(self, index=0):
+        print('refreshInputTabs', index)
+        input = self.inputPane.toPlainText()
+        if not input: input = ''
+        self.inputSpecification = molpro_input.parse(input)
+        recreatedInput = molpro_input.create_input(self.inputSpecification)
+        guided = recreatedInput == input
+        print('input:', input)
+        print('specification:',self.inputSpecification)
+        print('recreatedInput:', recreatedInput)
+        print('guided:', guided)
+        if len(self.inputTabs) < 1:
+            self.inputTabs.addTab(self.inputPane, 'freehand')
+        if not guided and len(self.inputTabs) != 1:
+            self.inputTabs.removeTab(1)
+        if guided and len(self.inputTabs) != 2:
+            self.guidedPane=QLabel()
+            self.inputTabs.addTab(self.guidedPane, 'guided')
+        self.inputTabs.setCurrentIndex(index if index >= 0 and index < len(self.inputTabs) else len(self.inputTabs) - 1)
+        if guided and self.inputTabs.currentIndex()==1:
+            self.guidedPane.setText(str(self.inputSpecification))
 
     def VODselectorAction(self):
         text = self.VODselector.currentText().strip()
