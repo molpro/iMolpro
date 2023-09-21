@@ -36,13 +36,14 @@ def test_recreate_input(qtbot):
         '\ngeometry={\nB\nH B 2.2\n}\nocc,5,1,1,context=mcscf\nrhf\ncasscf\nmrci',
         'geometry={He};rks,b3lyp',
         'geometry={He};{rks,b3lyp}',
+        'geometry=newnewnew.xyz\nbasis=cc-pVTZ-PP\nrhf',
     ]:
         # print('test_text',test_text)
         specification = parse(test_text)
         # print('specification',specification)
         # print(create_input(specification))
         assert parse(create_input(specification)) == specification
-        assert equivalent(specification, test_text,debug=True)
+        assert equivalent(specification, test_text,debug=False)
 
 
 def test_variables(qtbot):

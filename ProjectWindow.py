@@ -76,6 +76,8 @@ class ProjectWindow(QMainWindow):
             os.environ['QTWEBENGINEPROCESS_PATH'] = likely_qtwebengineprocess
 
         self.inputPane = EditFile(self.project.filename('inp', run=-1), latency)
+        if self.inputPane.toPlainText().strip('\n ')=='':
+            self.inputPane.setPlainText('geometry='+os.path.basename(self.project.name)+'.xyz'+'\nbasis=cc-pVTZ-PP'+'\nrhf')
         self.setWindowTitle(filename)
 
         self.outputPanes = {
@@ -94,7 +96,7 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Quit', 'File', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
                           tooltip='Quit')
 
-        menubar.addAction('Build', 'Edit', self.editInputStructure, 'Ctrl+D', 'Edit molecular geometry')
+        menubar.addAction('Structure', 'Edit', self.editInputStructure, 'Ctrl+D', 'Edit molecular geometry')
         menubar.addAction('Cut', 'Edit', self.inputPane.cut, 'Ctrl+X', 'Cut')
         menubar.addAction('Copy', 'Edit', self.inputPane.copy, 'Ctrl+C', 'Copy')
         menubar.addAction('Paste', 'Edit', self.inputPane.paste, 'Ctrl+V', 'Paste')
@@ -165,9 +167,9 @@ class ProjectWindow(QMainWindow):
         self.statusBar.setMaximumWidth(400)
         buttonLayout = QHBoxLayout()
         buttonLayout.addWidget(self.runButton)
-        buttonLayout.addWidget(self.killButton)
+        # buttonLayout.addWidget(self.killButton)
         self.VODselector = QComboBox()
-        buttonLayout.addWidget(QLabel('Visual object display:'))
+        buttonLayout.addWidget(QLabel('Structure display:'))
         buttonLayout.addWidget(self.VODselector)
         leftLayout.addLayout(buttonLayout)
         leftLayout.addWidget(self.statusBar)

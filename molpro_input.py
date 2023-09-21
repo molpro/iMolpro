@@ -148,7 +148,12 @@ def basis_quality(specification):
 
 def canonicalise(input):
     # return re.sub('([^\n])}',r'\1\n}',re.sub('{([^\n])',r'{\n\1',re.sub('\n+', '\n', input.replace(';','\n')))).rstrip('\n ').lstrip('\n ')+'\n'
-    return re.sub('\n}', '}', re.sub('{\n', r'{', re.sub('\n+', '\n', input.replace(';', '\n')))).rstrip('\n ').lstrip(
+    return re.sub(
+        '\n}', '}', re.sub(
+            '{\n', r'{', re.sub(
+                '\n+', '\n', re.sub(
+                    'basis= *([^{\n]+)\n',r'basis={default=\1}\n',input.replace(';', '\n'
+                                        ))))).rstrip('\n ').lstrip(
         '\n ') + '\n'
 
 
