@@ -117,7 +117,7 @@ def create_input(specification: dict):
             'geometry'] + '\n' if 'geometry_external' in specification else 'geometry={\n' +
                                                                             specification[
                                                                                 'geometry']).rstrip(
-            ' \n') + '\n' + '}\n'
+            ' \n') + '\n' + ('' if 'geometry_external' in specification else '}\n')
     if 'basis' in specification:
         input += 'basis={' + specification['basis'] + '}\n'
     if 'precursor_methods' in specification:

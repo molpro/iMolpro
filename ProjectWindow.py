@@ -2,6 +2,7 @@ import os
 import pathlib
 import shutil
 import sys
+import re
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
@@ -244,7 +245,7 @@ class ProjectWindow(QMainWindow):
             self.inputTabs.addTab(self.guidedPane, 'guided')
         self.inputTabs.setCurrentIndex(index if index >= 0 and index < len(self.inputTabs) else len(self.inputTabs) - 1)
         if guided and self.inputTabs.currentIndex() == 1:
-            self.guidedPane.setText(str(self.inputSpecification).replace('{','{\n  ').replace('}','\n}').replace(', ',',\n  '))
+            self.guidedPane.setText(re.sub('}$','\n}',re.sub('^{','{\n  ',str(self.inputSpecification))).replace(', ',',\n  '))
 
     def VODselectorAction(self):
         text = self.VODselector.currentText().strip()

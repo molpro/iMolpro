@@ -18,6 +18,7 @@ def test_create_input(qtbot):
         'Geometry={\nF\nH,F,1.7\n};basis={default=cc-pVTZ,h=cc-pVDZ} !some comment;{ks,b3lyp};locali\nccsd\n',
         'geometry={\nHe\n}\nhf',
         'geometry={\nHe\n}\nhf\nccsd',
+        'geometry=thing.xyz',
     ]:
         # print('test_text', test_text)
         specification = parse(test_text)
