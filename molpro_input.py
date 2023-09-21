@@ -20,6 +20,7 @@ def parse(input: str):
     spin_prefixes = ['', 'R', 'U']
     local_prefixes = ['', 'L']
     df_prefixes = ['', 'DF-', 'PNO-']
+    postscripts = ['PUT', 'TABLE']
 
     specification = {}
     variables = {}
@@ -74,7 +75,8 @@ def parse(input: str):
                 value = re.sub('.*= *', '', field)
                 variables[key] = value.replace('!', ',')  # unprotect
         elif any(
-                [re.match('{? *' + df_prefix + spin_prefix + precursor_method+'}?', command, flags=re.IGNORECASE) for df_prefix
+                [re.match('{? *' + df_prefix + spin_prefix + precursor_method + '}?', command, flags=re.IGNORECASE) for
+                 df_prefix
                  in
                  df_prefixes
                  for spin_prefix in spin_prefixes for precursor_method in precursor_methods]):
@@ -86,6 +88,9 @@ def parse(input: str):
                   in df_prefixes
                   for local_prefix in local_prefixes for spin_prefix in spin_prefixes for method in methods]):
             specification['method'] = line.lower()
+        elif any([re.match(postscript, command, flags=re.IGNORECASE) for postscript in postscripts]):
+            if 'postscripts' not in specification: specification['postscripts'] = []
+            specification['postscripts'].append(line.lower())
         else:
             pass
     if 'method' not in specification and 'precursor_methods' in specification:
@@ -120,6 +125,9 @@ def create_input(specification: dict):
             input += m + '\n'
     if 'method' in specification:
         input += specification['method'] + '\n'
+    if 'postscripts' in specification:
+        for m in specification['postscripts']:
+            input += m + '\n'
     return input.rstrip('\n') + '\n'
 
 
@@ -137,17 +145,19 @@ def basis_quality(specification):
             return qualities[0]
     return 0
 
+
 def canonicalise(input):
     # return re.sub('([^\n])}',r'\1\n}',re.sub('{([^\n])',r'{\n\1',re.sub('\n+', '\n', input.replace(';','\n')))).rstrip('\n ').lstrip('\n ')+'\n'
-    return re.sub('\n}','}',re.sub('{\n',r'{',re.sub('\n+', '\n', input.replace(';','\n')))).rstrip('\n ').lstrip('\n ')+'\n'
+    return re.sub('\n}', '}', re.sub('{\n', r'{', re.sub('\n+', '\n', input.replace(';', '\n')))).rstrip('\n ').lstrip(
+        '\n ') + '\n'
 
 
 def equivalent(input1, input2, debug=False):
-    if type(input1) == dict: return equivalent(create_input(input1), input2,debug)
-    if type(input2) == dict: return equivalent(input1, create_input(input2),debug)
+    if type(input1) == dict: return equivalent(create_input(input1), input2, debug)
+    if type(input2) == dict: return equivalent(input1, create_input(input2), debug)
     if debug:
-        print('equivalent: input1=',input1)
-        print('equivalent: input2=',input2)
-        print('equivalent: canonicalise(input1)=',canonicalise(input1))
-        print('equivalent: canonicalise(input2)=',canonicalise(input2))
+        print('equivalent: input1=', input1)
+        print('equivalent: input2=', input2)
+        print('equivalent: canonicalise(input1)=', canonicalise(input1))
+        print('equivalent: canonicalise(input2)=', canonicalise(input2))
     return canonicalise(input1) == canonicalise(input2)
