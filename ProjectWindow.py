@@ -159,8 +159,8 @@ class ProjectWindow(QMainWindow):
         self.inputTabs.currentChanged.connect(self.refreshInputTabs)
         self.refreshInputTabs()
         leftLayout.addWidget(self.inputTabs)
-        self.inputPane.setMinimumHeight(300)
-        self.inputPane.setMinimumWidth(400)
+        self.inputTabs.setMinimumHeight(300)
+        self.inputTabs.setMinimumWidth(400)
         self.statusBar.setMaximumWidth(400)
         buttonLayout = QHBoxLayout()
         buttonLayout.addWidget(self.runButton)
@@ -244,7 +244,7 @@ class ProjectWindow(QMainWindow):
             self.inputTabs.addTab(self.guidedPane, 'guided')
         self.inputTabs.setCurrentIndex(index if index >= 0 and index < len(self.inputTabs) else len(self.inputTabs) - 1)
         if guided and self.inputTabs.currentIndex() == 1:
-            self.guidedPane.setText(str(self.inputSpecification))
+            self.guidedPane.setText(str(self.inputSpecification).replace('{','{\n  ').replace('}','\n}').replace(', ',',\n  '))
 
     def VODselectorAction(self):
         text = self.VODselector.currentText().strip()
