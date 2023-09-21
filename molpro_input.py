@@ -31,7 +31,7 @@ def parse(input: str):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
             if 'geometry' in specification: return {}  # input too complex
-            specification['geometry'] = re.sub('^geometry *= *{ *\n*', '', line+'\n', flags=re.IGNORECASE)
+            specification['geometry'] = re.sub('^geometry *= *{ *\n*', '', line + '\n', flags=re.IGNORECASE)
             if '}' in specification['geometry']:
                 specification['geometry'] = re.sub('}.*$', '', specification['geometry'])
             else:
@@ -79,19 +79,19 @@ def parse(input: str):
             specification['method'] = line.lower()
         elif re.match('(set,)?[a-z][a-z0-9_]* *=.*$', line, flags=re.IGNORECASE):
             line = re.sub(' *!.*$', '', re.sub('set *,', '', line, flags=re.IGNORECASE)).strip()
-            while (newline := re.sub('(\[[[0-9!]*),',r'\1!',line)) != line: line = newline # protect eg occ=[3,1,1]
+            while (newline := re.sub('(\[[[0-9!]*),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
             fields = line.split(',')
             for field in fields:
-                key=re.sub(' *=.*$','',field)
-                value=re.sub('.*= *','',field)
-                variables[key]=value.replace('!',',') # unprotect
+                key = re.sub(' *=.*$', '', field)
+                value = re.sub('.*= *', '', field)
+                variables[key] = value.replace('!', ',')  # unprotect
         else:
             pass
     if 'method' not in specification and 'precursor_methods' in specification:
         specification['method'] = specification['precursor_methods'][-1]
         specification['precursor_methods'].pop()
     if variables:
-        specification['variables']=variables
+        specification['variables'] = variables
     return specification
 
 
@@ -102,15 +102,16 @@ def create_input(specification: dict):
     :return:
     :rtype: str
     """
-    input=''
+    input = ''
     if 'variables' in specification:
-        for k,v in specification['variables'].items():
-            input += k+'='+v+'\n'
+        for k, v in specification['variables'].items():
+            input += k + '=' + v + '\n'
     if 'geometry' in specification:
-        input += ('geometry=' + specification['geometry'] + '\n' if 'geometry_external' in specification else 'geometry={\n' +
-                                                                                                         specification[
-                                                                                                             'geometry']).rstrip(
-        ' \n') + '\n' + '}\n'
+        input += ('geometry=' + specification[
+            'geometry'] + '\n' if 'geometry_external' in specification else 'geometry={\n' +
+                                                                            specification[
+                                                                                'geometry']).rstrip(
+            ' \n') + '\n' + '}\n'
     if 'basis' in specification:
         input += 'basis={' + specification['basis'] + '}\n'
     if 'precursor_methods' in specification:
@@ -118,7 +119,7 @@ def create_input(specification: dict):
             input += m + '\n'
     if 'method' in specification:
         input += specification['method'] + '\n'
-    return input.rstrip('\n')+'\n'
+    return input.rstrip('\n') + '\n'
 
 
 def basis_quality(specification):
@@ -134,3 +135,9 @@ def basis_quality(specification):
         if all(quality == qualities[0] for quality in qualities):
             return qualities[0]
     return 0
+
+
+def equivalent(input1, input2):
+    if type(input1) == dict: return equivalent(create_input(input1), input2)
+    if type(input2) == dict: return equivalent(input1, create_input(input2))
+    return input1.rstrip('\n ') == input2.rstrip('\n ')

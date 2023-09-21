@@ -1,4 +1,4 @@
-from molpro_input import parse, create_input, basis_quality
+from molpro_input import parse, create_input, basis_quality, equivalent
 import time
 
 
@@ -19,23 +19,25 @@ def test_create_input(qtbot):
         'geometry={\nHe\n}\nhf',
         'geometry={\nHe\n}\nhf\nccsd',
     ]:
-        print('test_text',test_text)
+        print('test_text', test_text)
         specification = parse(test_text)
-        print('specification',specification)
+        print('specification', specification)
         print(create_input(specification))
         assert parse(create_input(specification)) == specification
+
 
 def test_recreate_input(qtbot):
     for test_text in [
         'geometry={\nHe\n}\nhf',
         'geometry={\nHe\n}\nhf\nccsd',
+        'geometry={\nHe\n}\nhf\nccsd\n\n',
     ]:
         # print('test_text',test_text)
         specification = parse(test_text)
         # print('specification',specification)
         # print(create_input(specification))
         assert parse(create_input(specification)) == specification
-        assert create_input(specification).strip('\n ') == test_text
+        assert equivalent(specification, test_text)
 
 
 def test_variables(qtbot):

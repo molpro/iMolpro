@@ -223,15 +223,12 @@ class ProjectWindow(QMainWindow):
         self.refreshInputTabs(index=1 if self.guidedAction.isChecked() else 0)
 
     def refreshInputTabs(self, index=0):
-        # print('refreshInputTabs', index)
         input = self.inputPane.toPlainText()
         if not input: input = ''
         self.inputSpecification = molpro_input.parse(input)
-        recreatedInput = molpro_input.create_input(self.inputSpecification)
-        guided = recreatedInput == input
+        guided = molpro_input.equivalent(input,self.inputSpecification)
         # print('input:', input)
         # print('specification:', self.inputSpecification)
-        # print('recreatedInput:', recreatedInput)
         # print('guided:', guided)
         if not guided and index == 1:
             box = QMessageBox()
