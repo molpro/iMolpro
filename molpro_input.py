@@ -20,6 +20,7 @@ def parse(input: str):
     spin_prefixes = ['', 'R', 'U']
     local_prefixes = ['', 'L']
     df_prefixes = ['', 'DF-', 'PNO-']
+    job_type_commands = ['OPTG', 'FREQ', 'FREQUENCIES']
     postscripts = ['PUT', 'TABLE']
 
     specification = {}
@@ -88,6 +89,14 @@ def parse(input: str):
                   in df_prefixes
                   for local_prefix in local_prefixes for spin_prefix in spin_prefixes for method in methods]):
             specification['method'] = line.lower()
+        elif any([re.match(job_type_command, command, flags=re.IGNORECASE) for job_type_command in job_type_commands]):
+            if command.lower() == 'optg':
+                specification['job_type'] = 'opt'
+            elif command.lower()[:4] == 'freq':
+                if specification['job_type'] == 'opt':
+                    specification['job_type'] = 'opt+freq'
+                else:
+                    specification['job_type'] = 'freq'
         elif any([re.match(postscript, command, flags=re.IGNORECASE) for postscript in postscripts]):
             if 'postscripts' not in specification: specification['postscripts'] = []
             specification['postscripts'].append(line.lower())
@@ -125,6 +134,11 @@ def create_input(specification: dict):
             input += m + '\n'
     if 'method' in specification:
         input += specification['method'] + '\n'
+    if 'job_type' in specification:
+        if 'opt' in specification['job_type']:
+            input += 'optg\n'
+        if 'freq' in specification['job_type']:
+            input += 'freq\n'
     if 'postscripts' in specification:
         for m in specification['postscripts']:
             input += m + '\n'
@@ -152,8 +166,8 @@ def canonicalise(input):
         '\n}', '}', re.sub(
             '{\n', r'{', re.sub(
                 '\n+', '\n', re.sub(
-                    'basis= *([^{\n]+)\n',r'basis={default=\1}\n',input.replace(';', '\n'
-                                        ))))).rstrip('\n ').lstrip(
+                    'basis= *([^{\n]+)\n', r'basis={default=\1}\n', input.replace(';', '\n'
+                                                                                  ))))).rstrip('\n ').lstrip(
         '\n ') + '\n'
 
 
