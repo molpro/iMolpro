@@ -123,7 +123,7 @@ class Chooser(QMainWindow):
                 self.setStyleSheet("* {border: none } :hover { background-color: #D0D0D0}  ")
 
             def action(self):
-                self.parent.windowManager.register(ProjectWindow(self.filename))
+                self.parent.windowManager.register(ProjectWindow(self.filename,self.parent.windowManager))
                 self.parent.hide()
 
         self.recentProjectBox.setStyleSheet(" background-color: #F7F7F7 ")
