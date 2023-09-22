@@ -588,6 +588,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                 open(filename,'w').write(dlg2.xyz())
                 self.adoptStructureFile(filename)
                 os.remove(filename)
+                self.editInputStructure()
 
     def importInput(self):
         filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', )
