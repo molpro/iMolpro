@@ -577,7 +577,9 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             dlg2.exec()
             if dlg2.result():
                 cid = dlg2.compounds[dlg2.chooser.currentIndex()].cid
-                filename='PubChem-'+str(cid)+'.xyz'
+                dir=pathlib.Path(self.project.filename())/'temp'
+                if not os.path.exists(dir): os.makedir(dir)
+                filename=dir/('PubChem-'+str(cid)+'.xyz')
                 open(filename,'w').write(dlg2.xyz())
                 self.adoptStructureFile(filename)
                 os.remove(filename)
