@@ -12,6 +12,7 @@ from pymolpro import Project
 
 import molpro_input
 from MenuBar import MenuBar
+from RecentMenu import RecentMenu
 from pubchem import PubChemSearchDialog, PubChemFetchDialog
 from help import HelpManager
 from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet, MainEditFile
@@ -57,8 +58,9 @@ class ProjectWindow(QMainWindow):
     newSignal = pyqtSignal(QWidget)
     chooserSignal = pyqtSignal(QWidget)
 
-    def __init__(self, filename=None, latency=1000):
+    def __init__(self, filename, windowManager, latency=1000):
         super().__init__()
+        self.windowManager = windowManager
 
         assert filename is not None
         self.project = Project(filename)
@@ -94,6 +96,9 @@ class ProjectWindow(QMainWindow):
                           tooltip='Create a new project')
         menubar.addAction('Close', 'File', self.close, 'Ctrl+W')
         menubar.addAction('Open', 'File', self.chooserOpen, 'Ctrl+O', 'Open another project')
+        menubar.addSeparator('File')
+        self.recentMenu = RecentMenu(self.windowManager)
+        menubar.addSubmenu(self.recentMenu, 'File')
         menubar.addSeparator('File')
         menubar.addAction('Quit', 'File', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
                           tooltip='Quit')

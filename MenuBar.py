@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMenuBar
+from PyQt5.QtWidgets import QMenuBar, QMenu
 
 
 class MenuBar(QMenuBar):
@@ -19,6 +19,16 @@ class MenuBar(QMenuBar):
         if tooltip: action.setToolTip(tooltip)
 
         return action
+
+    def addSubmenu(self, submenu:QMenu, menuName: str):
+        menu = None
+        for a in self.actions():
+            if a.menu().title() == menuName:
+                menu = a.menu()
+        if not menu:
+            menu = self.addMenu(menuName)
+            menu.setToolTipsVisible(True)
+        menu.addMenu(submenu)
 
     def addSeparator(self, menuName: str):
         for a in self.actions():

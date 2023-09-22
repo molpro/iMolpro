@@ -4,6 +4,7 @@ import platform
 from PyQt5.QtCore import QCoreApplication
 
 from MenuBar import MenuBar
+from RecentMenu import RecentMenu
 from help import HelpManager
 from utilities import force_suffix
 
@@ -11,7 +12,7 @@ import pymolpro
 from PyQt5 import QtCore
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-    QMessageBox, QDesktopWidget
+    QMessageBox, QDesktopWidget, QAction
 
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
@@ -94,6 +95,9 @@ class Chooser(QMainWindow):
         menubar.addAction('New', 'File', slot=self.newProjectDialog, shortcut='Ctrl+N',
                           tooltip='Create a new project')
         menubar.addSeparator('File')
+        self.recentMenu = RecentMenu(windowManager)
+        menubar.addSubmenu(self.recentMenu, 'File')
+        menubar.addSeparator('File')
         menubar.addAction('Quit', 'File', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
                           tooltip='Quit')
 
@@ -105,14 +109,16 @@ class Chooser(QMainWindow):
     def populateRecentProjectBox(self, maxItems=10):
 
         class recentProjectButton(QPushButton):
-            def __init__(self, filename, parent):
+            def __init__(self, filename, index=None, parent=None):
                 self.parent = parent
                 import os
                 self.filename = os.path.expanduser(filename)
                 homedir = os.path.expanduser('~')
                 reducedFilename = self.filename.replace(homedir, '~')
-                super().__init__(reducedFilename)
-                self.clicked.connect(self.action)
+                super().__init__(('' if index is None or index > 9 else str(index)+': ')+reducedFilename)
+                self.qaction = QAction(self)
+                self.qaction.triggered.connect(self.action)
+                self.clicked.connect(self.qaction.triggered)
                 self.setStyleSheet(":hover { background-color: #D0D0D0 }")
                 self.setStyleSheet("* {border: none } :hover { background-color: #D0D0D0}  ")
 
@@ -131,7 +137,7 @@ class Chooser(QMainWindow):
         for i in range(1, maxItems):
             f = pymolpro.recent_project('molpro', i)
             if f:
-                self.recentProjectBox.layout().addWidget(recentProjectButton(f, self), -1, QtCore.Qt.AlignLeft)
+                self.recentProjectBox.layout().addWidget(recentProjectButton(f, i, self), -1, QtCore.Qt.AlignLeft)
 
     def openProjectDialog(self):
         filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', ))
@@ -142,7 +148,7 @@ class Chooser(QMainWindow):
     def newProjectDialog(self):
         filename = force_suffix(QFileDialog.getSaveFileName(self, 'Save new project as ...')[0])
         if filename:
-            self.windowManager.register(ProjectWindow(filename))
+            self.windowManager.register(ProjectWindow(filename,self.windowManager))
             self.hide()
 
     def activate(self):

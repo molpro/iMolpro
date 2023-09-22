@@ -33,4 +33,4 @@ class WindowManager:
     def new(self, data):
         filename = force_suffix(QFileDialog.getSaveFileName(caption='Save new project as ...')[0])
         if filename:
-            self.register(type(data)(filename))
+            self.register(type(data)(filename, self))
