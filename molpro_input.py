@@ -2,7 +2,7 @@ import os
 import re
 
 
-def parse(input: str):
+def parse(input: str, debug=False):
     r"""
     Take a molpro input, and logically parse it, on the assumption that it's a single-task input.
 
@@ -30,6 +30,7 @@ def parse(input: str):
     for line in canonicalise(input).split('\n'):
         line = line.strip()
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
+        if debug: print('line',line,'command',command)
         if re.match('^geometry *= *{', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
@@ -68,6 +69,7 @@ def parse(input: str):
             basis = re.sub(' *!.*', '', basis)
             specification['basis'] = 'default=' + basis
         elif re.match('(set,)?[a-z][a-z0-9_]* *=.*$', line, flags=re.IGNORECASE):
+            if debug: print('variable')
             line = re.sub(' *!.*$', '', re.sub('set *,', '', line, flags=re.IGNORECASE)).strip()
             while (newline := re.sub('(\[[[0-9!]*),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
             fields = line.split(',')
@@ -118,9 +120,6 @@ def create_input(specification: dict):
     :rtype: str
     """
     input = ''
-    if 'variables' in specification:
-        for k, v in specification['variables'].items():
-            input += k + '=' + v + '\n'
     if 'geometry' in specification:
         input += ('geometry=' + specification[
             'geometry'] + '\n' if 'geometry_external' in specification else 'geometry={\n' +
@@ -129,6 +128,9 @@ def create_input(specification: dict):
             ' \n') + '\n' + ('' if 'geometry_external' in specification else '}\n')
     if 'basis' in specification:
         input += 'basis={' + specification['basis'] + '}\n'
+    if 'variables' in specification:
+        for k, v in specification['variables'].items():
+            input += k + '=' + v + '\n'
     if 'precursor_methods' in specification:
         for m in specification['precursor_methods']:
             input += m + '\n'

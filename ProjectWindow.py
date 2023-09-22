@@ -12,6 +12,7 @@ from pymolpro import Project
 
 import molpro_input
 from MenuBar import MenuBar
+from pubchem import PubChemSearchDialog, PubChemFetchDialog
 from help import HelpManager
 from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet, MainEditFile
 from backend import configureBackend
@@ -76,8 +77,9 @@ class ProjectWindow(QMainWindow):
             os.environ['QTWEBENGINEPROCESS_PATH'] = likely_qtwebengineprocess
 
         self.inputPane = EditFile(self.project.filename('inp', run=-1), latency)
-        if self.inputPane.toPlainText().strip('\n ')=='':
-            self.inputPane.setPlainText('geometry='+os.path.basename(self.project.name)+'.xyz'+'\nbasis=cc-pVTZ-PP'+'\nrhf')
+        if self.inputPane.toPlainText().strip('\n ') == '':
+            self.inputPane.setPlainText(
+                'geometry=' + os.path.basename(self.project.name) + '.xyz' + '\nbasis=cc-pVTZ-PP' + '\nrhf')
         self.setWindowTitle(filename)
 
         self.outputPanes = {
@@ -111,6 +113,10 @@ class ProjectWindow(QMainWindow):
 
         menubar.addAction('Import input', 'Project', self.importInput, 'Ctrl+Shift+I',
                           tooltip='Import a file and assign it as the input for the project')
+        menubar.addAction('Import structure', 'Project', self.importStructure, 'Ctrl+Alt+I',
+                          tooltip='Import an xyz file and use it as the source of molecular structure in the input for the project')
+        menubar.addAction('Search PubChem for structure', 'Project', self.importPubChem, 'Ctrl+Shift+Alt+I',
+                          tooltip='Search PubChem for a molecule and use it as the source of molecular structure in the input for the project')
         menubar.addAction('Import file', 'Project', self.importFile, 'Ctrl+I',
                           tooltip='Import one or more files, eg geometry definition, into the project')
         menubar.addAction('Export file', 'Project', self.exportFile, 'Ctrl+E',
@@ -229,7 +235,7 @@ class ProjectWindow(QMainWindow):
         input = self.inputPane.toPlainText()
         if not input: input = ''
         self.inputSpecification = molpro_input.parse(input)
-        guided = molpro_input.equivalent(input,self.inputSpecification)
+        guided = molpro_input.equivalent(input, self.inputSpecification)
         # print('input:', input)
         # print('specification:', self.inputSpecification)
         # print('guided:', guided)
@@ -247,7 +253,8 @@ class ProjectWindow(QMainWindow):
             self.inputTabs.addTab(self.guidedPane, 'guided')
         self.inputTabs.setCurrentIndex(index if index >= 0 and index < len(self.inputTabs) else len(self.inputTabs) - 1)
         if guided and self.inputTabs.currentIndex() == 1:
-            self.guidedPane.setText(re.sub('}$','\n}',re.sub('^{','{\n  ',str(self.inputSpecification))).replace(', ',',\n  '))
+            self.guidedPane.setText(
+                re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.inputSpecification))).replace(', ', ',\n  '))
 
     def VODselectorAction(self):
         text = self.VODselector.currentText().strip()
@@ -300,7 +307,7 @@ class ProjectWindow(QMainWindow):
         lines = self.inputPane.toPlainText().replace(';', '\n').split('\n')
         for line in lines:
             fields = line.replace(' ', ',').split(',')
-            regex = r'geometry=([-@#&a-z0-9_]+)\.(xyz)'
+            regex = r'geometry=([-@#&A-Za-z0-9_]+)\.(xyz)'
             if len(fields) == 1 and re.match(regex, fields[0], re.IGNORECASE):
                 result.append((re.sub(regex, r'\2', fields[0]), re.sub(regex, r'\1.\2', fields[0])))
         return result
@@ -546,6 +553,34 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         for filename in filenames:
             if os.path.isfile(filename):
                 self.project.import_file(filename)
+
+    def importStructure(self):
+        filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', )
+        if os.path.isfile(filename):
+            self.adoptStructureFile(filename)
+
+    def adoptStructureFile(self, filename):
+        if os.path.exists(filename):
+            self.project.import_file(filename)
+            text = self.inputPane.toPlainText()
+            if re.match('^ *geometry *= *[/A-Za-z0-9].*', text, flags=re.IGNORECASE):
+                self.inputPane.setPlainText(re.sub('^ *geometry *=.*[\n;]', 'geometry=' + os.path.basename(filename) + '\n', text))
+                self.rebuildVODselector()
+            else:
+                self.inputPane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
+
+    def importPubChem(self):
+        dlg = PubChemSearchDialog(self)
+        dlg.exec()
+        if dlg.result():
+            dlg2 = PubChemFetchDialog(dlg.value.text(), dlg.key.currentText())
+            dlg2.exec()
+            if dlg2.result():
+                cid = dlg2.compounds[dlg2.chooser.currentIndex()].cid
+                filename='PubChem-'+str(cid)+'.xyz'
+                open(filename,'w').write(dlg2.xyz())
+                self.adoptStructureFile(filename)
+                os.remove(filename)
 
     def importInput(self):
         filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', )
