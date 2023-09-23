@@ -20,11 +20,11 @@ from backend import configureBackend
 
 
 class StatusBar(QLabel):
-    def __init__(self, project: Project, runButton: QPushButton, killButton: QPushButton, latency=1000):
+    def __init__(self, project: Project, runActions: list, killActions: list, latency=1000):
         super().__init__()
         self.project = project
-        self.runButton = runButton
-        self.killButton = killButton
+        self.runActions = runActions
+        self.killActions = killActions
         self.refreshTimer = QTimer()
         self.refreshTimer.timeout.connect(self.refresh)
         self.refreshTimer.start(latency)
@@ -33,8 +33,10 @@ class StatusBar(QLabel):
         self.setText('Status: ' + ('run ' + pathlib.Path(
             self.project.filename()).stem + ' ' if self.project.filename() != self.project.filename(
             run=-1) else '') + self.project.status)
-        self.runButton.setDisabled(not self.project.run_needed())
-        self.killButton.setDisabled(self.project.status != 'running' and self.project.status != 'waiting')
+        for runAction in self.runActions:
+            runAction.setDisabled(not self.project.run_needed())
+        for killAction in self.killActions:
+            killAction.setDisabled(self.project.status != 'running' and self.project.status != 'waiting')
 
 
 class ViewProjectOutput(ViewFile):
@@ -126,12 +128,12 @@ class ProjectWindow(QMainWindow):
                           tooltip='Import one or more files, eg geometry definition, into the project')
         menubar.addAction('Export file', 'Project', self.exportFile, 'Ctrl+E',
                           tooltip='Export one or more files from the project')
-        runAction = menubar.addAction('Run', 'Project', self.run, 'Ctrl+R', 'Run Molpro on the project input')
-        killAction = menubar.addAction('Kill', 'Project', self.kill, tooltip='Kill the running job')
-        menubar.addAction('Backend', 'Project', lambda: configureBackend(self), 'Ctrl+B', 'Configure backend')
-        menubar.addAction('Edit backend configuration file', 'Project', self.editBackendConfiguration, 'Ctrl+Shift+B',
-                          'Edit backend configuration file')
         menubar.addAction('Clean', 'Project', self.clean, tooltip='Remove old runs from the project')
+        self.runAction = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
+        self.killAction = menubar.addAction('Kill', 'Job', self.kill, tooltip='Kill the running job')
+        menubar.addAction('Backend', 'Job', lambda: configureBackend(self), 'Ctrl+B', 'Configure backend')
+        menubar.addAction('Edit backend configuration file', 'Job', self.editBackendConfiguration, 'Ctrl+Shift+B',
+                          'Edit backend configuration file')
         menubar.show()
 
         menubar.addAction('Zoom In', 'View', lambda: [p.zoomIn() for p in self.outputPanes.values()], 'Alt+Shift+=',
@@ -156,13 +158,13 @@ class ProjectWindow(QMainWindow):
         helpManager.register('Backends', 'doc/backends.md')
 
         self.runButton = QPushButton('Run')
-        self.runButton.clicked.connect(runAction.trigger)
+        self.runButton.clicked.connect(self.runAction.trigger)
         self.runButton.setToolTip("Run the job")
-        self.killButton = QPushButton('Kill')
-        self.killButton.clicked.connect(killAction.trigger)
-        self.killButton.setToolTip("Kill the running job")
+        # self.killButton = QPushButton('Kill')
+        # self.killButton.clicked.connect(self.killAction.trigger)
+        # self.killButton.setToolTip("Kill the running job")
 
-        self.statusBar = StatusBar(self.project, self.runButton, self.killButton)
+        self.statusBar = StatusBar(self.project, [self.runAction, self.runButton], [self.killAction])
         self.statusBar.refresh()
 
         leftLayout = QVBoxLayout()
@@ -569,7 +571,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             self.project.import_file(filename)
             text = self.inputPane.toPlainText()
             if re.match('^ *geometry *= *[/A-Za-z0-9].*', text, flags=re.IGNORECASE):
-                self.inputPane.setPlainText(re.sub('^ *geometry *=.*[\n;]', 'geometry=' + os.path.basename(filename) + '\n', text))
+                self.inputPane.setPlainText(
+                    re.sub('^ *geometry *=.*[\n;]', 'geometry=' + os.path.basename(filename) + '\n', text))
                 self.rebuildVODselector()
             else:
                 self.inputPane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
@@ -582,10 +585,10 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             dlg2.exec()
             if dlg2.result():
                 cid = dlg2.compounds[dlg2.chooser.currentIndex()].cid
-                dir=pathlib.Path(self.project.filename())/'temp'
+                dir = pathlib.Path(self.project.filename()) / 'temp'
                 if not os.path.exists(dir): os.mkdir(dir)
-                filename=dir/('PubChem-'+str(cid)+'.xyz')
-                open(filename,'w').write(dlg2.xyz())
+                filename = dir / ('PubChem-' + str(cid) + '.xyz')
+                open(filename, 'w').write(dlg2.xyz())
                 self.adoptStructureFile(filename)
                 os.remove(filename)
                 self.editInputStructure()
