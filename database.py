@@ -1,23 +1,23 @@
+import os
+import pathlib
 import sys
 import pubchempy
+import tempfile
 from PyQt5.QtWidgets import QVBoxLayout, QDialog, QDialogButtonBox, QLabel, QComboBox, QLineEdit
 
 
-class PubChemSearchDialog(QDialog):
+class DatabaseSearchDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle('Search PubChem')
+        self.setWindowTitle('Search online structure databases')
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
+        self.layout.addWidget(QLabel('Give molecule name, formula, InChi, InChiKey, SMILES or PubChem cid'))
         self.value = QLineEdit()
-        self.value.setMaxLength(50)
+        self.value.setMinimumWidth(180)
         self.value.setPlaceholderText('Enter search text here')
         self.layout.addWidget(self.value)
-
-        self.key = QComboBox()
-        self.key.addItems(['name', 'formula', 'inchi', 'inchikey', 'sdf', 'smiles', 'cid'])
-        self.layout.addWidget(self.key)
 
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttonBox.accepted.connect(self.accept)
@@ -25,10 +25,10 @@ class PubChemSearchDialog(QDialog):
         self.layout.addWidget(self.buttonBox)
 
 
-class PubChemFetchDialog(QDialog):
-    def __init__(self, query, field='name', parent=None):
+class DatabaseFetchDialog(QDialog):
+    def __init__(self, query, parent=None):
         super().__init__(parent)
-        self.setWindowTitle('Select from PubChem search results')
+        self.setWindowTitle('Select from database search results')
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
@@ -40,7 +40,18 @@ class PubChemFetchDialog(QDialog):
             else:
                 return str(i) + ' matches'
 
-        self.compounds = pubchempy.get_compounds(query, field, record_type='3d')
+        for field in ['name', 'cid', 'inchi', 'inchikey', 'sdf', 'smiles', 'formula', ]:
+            if field == 'cid' and not all(chr.isdigit() for chr in query.strip()): continue
+            if field == 'inchi' and query.strip()[:3] != '1S/': continue
+            try:
+                self.compounds = pubchempy.get_compounds(query.strip(), field, record_type='3d')
+            except Exception as e:
+                self.layout.addWidget(QLabel('Network or other error during PubChem search'))
+                self.buttonBox = QDialogButtonBox(QDialogButtonBox.Cancel)
+                self.buttonBox.rejected.connect(self.reject)
+                self.layout.addWidget(self.buttonBox)
+                return
+            if self.compounds: break
         self.layout.addWidget(QLabel('PubChem found ' + matches(len(self.compounds)) + ' to ' + field + '=' + query))
         if self.compounds:
             self.chooser = QComboBox()
@@ -71,3 +82,25 @@ class PubChemFetchDialog(QDialog):
                    s(conformer['z'][key]) + '\n'
         return xyz
 
+    def cid(self, index=None):
+        index_ = index if index else self.chooser.currentIndex()
+        return self.compounds[index_].cid
+
+    def database(self, index=None):
+        return 'PubChem'
+
+
+def database_choose_structure():
+    r"""
+    Interactively search for a structure in available databases.
+    :return: If not found, or cancelled, None. Otherwise, create a file containing the xyz, and return its name
+    """
+    dlg = DatabaseSearchDialog()
+    dlg.exec()
+    if dlg.result():
+        dlg2 = DatabaseFetchDialog(dlg.value.text())
+        dlg2.exec()
+        if dlg2.result():
+            filename = pathlib.Path(tempfile.mkdtemp()) / (dlg2.database() + '-' + str(dlg2.cid()) + '.xyz')
+            open(filename, 'w').write(dlg2.xyz())
+            return filename

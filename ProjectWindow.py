@@ -13,7 +13,7 @@ from pymolpro import Project
 import molpro_input
 from MenuBar import MenuBar
 from RecentMenu import RecentMenu
-from pubchem import PubChemSearchDialog, PubChemFetchDialog
+from database import database_choose_structure
 from help import HelpManager
 from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet, MainEditFile
 from backend import configureBackend
@@ -122,8 +122,8 @@ class ProjectWindow(QMainWindow):
                           tooltip='Import a file and assign it as the input for the project')
         menubar.addAction('Import structure', 'Project', self.importStructure, 'Ctrl+Alt+I',
                           tooltip='Import an xyz file and use it as the source of molecular structure in the input for the project')
-        menubar.addAction('Search PubChem for structure', 'Project', self.importPubChem, 'Ctrl+Shift+Alt+I',
-                          tooltip='Search PubChem for a molecule and use it as the source of molecular structure in the input for the project')
+        menubar.addAction('Search external databases for structure', 'Project', self.databaseImportStructure, 'Ctrl+Shift+Alt+I',
+                          tooltip='Search PubChem and ChemSpider for a molecule and use it as the source of molecular structure in the input for the project')
         menubar.addAction('Import file', 'Project', self.importFile, 'Ctrl+I',
                           tooltip='Import one or more files, eg geometry definition, into the project')
         menubar.addAction('Export file', 'Project', self.exportFile, 'Ctrl+E',
@@ -577,21 +577,12 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             else:
                 self.inputPane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
 
-    def importPubChem(self):
-        dlg = PubChemSearchDialog(self)
-        dlg.exec()
-        if dlg.result():
-            dlg2 = PubChemFetchDialog(dlg.value.text(), dlg.key.currentText())
-            dlg2.exec()
-            if dlg2.result():
-                cid = dlg2.compounds[dlg2.chooser.currentIndex()].cid
-                dir = pathlib.Path(self.project.filename()) / 'temp'
-                if not os.path.exists(dir): os.mkdir(dir)
-                filename = dir / ('PubChem-' + str(cid) + '.xyz')
-                open(filename, 'w').write(dlg2.xyz())
-                self.adoptStructureFile(filename)
-                os.remove(filename)
-                self.editInputStructure()
+    def databaseImportStructure(self):
+        if (filename := database_choose_structure()):
+            self.adoptStructureFile(filename)
+            os.remove(filename)
+            os.rmdir(os.path.dirname(filename))
+            self.editInputStructure()
 
     def importInput(self):
         filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', )
