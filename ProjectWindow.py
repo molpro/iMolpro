@@ -83,7 +83,7 @@ class ProjectWindow(QMainWindow):
         self.inputPane = EditFile(self.project.filename('inp', run=-1), latency)
         if self.inputPane.toPlainText().strip('\n ') == '':
             self.inputPane.setPlainText(
-                'geometry=' + os.path.basename(self.project.name) + '.xyz' + '\nbasis=cc-pVTZ-PP' + '\nrhf')
+                'geometry=' + re.sub(' ','_',os.path.basename(self.project.name)) + '.xyz' + '\nbasis=cc-pVTZ-PP' + '\nrhf')
         self.setWindowTitle(filename)
 
         self.outputPanes = {
@@ -360,7 +360,7 @@ var Info = {
   color: "#FFFFFF",
   height: 400,
   width: 400,
-  script: "load """ + file + """; set antialiasDisplay ON; set showFrank OFF; model """ + str(
+  script: "load '""" + file + """'; set antialiasDisplay ON; set showFrank OFF; model """ + str(
             firstmodel) + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7",
   use: "HTML5",
   j2sPath: "j2s",
@@ -451,7 +451,7 @@ var Info = {
   height: 400,
   width: 400,
   script: "set antialiasDisplay ON;"""
-        html += ' load ' + file + ';'
+        html += ' load \'' + file + '\';'
         html += """ set showFrank OFF; set modelKitMode on",
   use: "HTML5",
   j2sPath: "j2s",

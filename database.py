@@ -26,7 +26,7 @@ class DatabaseSearchDialog(QDialog):
 
 
 class DatabaseFetchDialog(QDialog):
-    def __init__(self, query, parent=None):
+    def __init__(self, query, parent=None, usePubChem=True, useChemSpider=True):
         super().__init__(parent)
         self.setWindowTitle('Select from database search results')
         self.layout = QVBoxLayout()
@@ -40,32 +40,35 @@ class DatabaseFetchDialog(QDialog):
             else:
                 return str(i) + ' matches'
 
-        for field in ['name', 'cid', 'inchi', 'inchikey', 'sdf', 'smiles', 'formula', ]:
-            if field == 'cid' and not all(chr.isdigit() for chr in query.strip()): continue
-            if field == 'inchi' and query.strip()[:3] != '1S/': continue
-            try:
-                self.compounds = pubchempy.get_compounds(query.strip(), field, record_type='3d')
-            except Exception as e:
-                self.layout.addWidget(QLabel('Network or other error during PubChem search'))
-                self.buttonBox = QDialogButtonBox(QDialogButtonBox.Cancel)
+        if usePubChem:
+            self.database='PubChem'
+            for field in ['name', 'cid', 'inchi', 'inchikey', 'sdf', 'smiles', 'formula', ]:
+                if field == 'cid' and not all(chr.isdigit() for chr in query.strip()): continue
+                if field == 'inchi' and query.strip()[:3] != '1S/': continue
+                try:
+                    self.compounds = pubchempy.get_compounds(query.strip(), field, record_type='3d')
+                except Exception as e:
+                    self.layout.addWidget(QLabel('Network or other error during PubChem search'))
+                    self.buttonBox = QDialogButtonBox(QDialogButtonBox.Cancel)
+                    self.buttonBox.rejected.connect(self.reject)
+                    self.layout.addWidget(self.buttonBox)
+                    return
+                if self.compounds: break
+            self.layout.addWidget(QLabel('PubChem found ' + matches(len(self.compounds)) + ' to ' + field + '=' + query))
+            if self.compounds:
+                self.chooser = QComboBox()
+                self.chooser.addItems(
+                    [str(result.cid) + ' (' + ', '.join(result.synonyms)[:50] + '...)' for result in self.compounds])
+                self.layout.addWidget(self.chooser)
+                self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+                self.buttonBox.accepted.connect(self.accept)
                 self.buttonBox.rejected.connect(self.reject)
                 self.layout.addWidget(self.buttonBox)
                 return
-            if self.compounds: break
-        self.layout.addWidget(QLabel('PubChem found ' + matches(len(self.compounds)) + ' to ' + field + '=' + query))
-        if self.compounds:
-            self.chooser = QComboBox()
-            self.chooser.addItems(
-                [str(result.cid) + ' (' + ', '.join(result.synonyms)[:50] + '...)' for result in self.compounds])
-            self.layout.addWidget(self.chooser)
-            self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-            self.buttonBox.accepted.connect(self.accept)
-            self.buttonBox.rejected.connect(self.reject)
-            self.layout.addWidget(self.buttonBox)
-        else:
-            self.buttonBox = QDialogButtonBox(QDialogButtonBox.Cancel)
-            self.buttonBox.rejected.connect(self.reject)
-            self.layout.addWidget(self.buttonBox)
+
+        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Cancel)
+        self.buttonBox.rejected.connect(self.reject)
+        self.layout.addWidget(self.buttonBox)
 
     def xyz(self, index=None):
         index_ = index if index else self.chooser.currentIndex()
@@ -85,9 +88,6 @@ class DatabaseFetchDialog(QDialog):
     def cid(self, index=None):
         index_ = index if index else self.chooser.currentIndex()
         return self.compounds[index_].cid
-
-    def database(self, index=None):
-        return 'PubChem'
 
 
 def database_choose_structure():
