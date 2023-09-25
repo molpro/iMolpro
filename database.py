@@ -1,11 +1,12 @@
 import os
 import pathlib
-import sys
+from settings import settings
 import pubchempy
 from chemspipy import ChemSpider
 from openbabel import pybel
 import tempfile
-from PyQt5.QtWidgets import QVBoxLayout, QDialog, QDialogButtonBox, QLabel, QComboBox, QLineEdit, QCheckBox, QHBoxLayout
+from PyQt5.QtWidgets import QVBoxLayout, QDialog, QDialogButtonBox, QLabel, QComboBox, QLineEdit, QCheckBox, \
+    QHBoxLayout, QInputDialog
 
 
 class DatabaseSearchDialog(QDialog):
@@ -26,7 +27,7 @@ class DatabaseSearchDialog(QDialog):
         self.pubChemCheckBox.setChecked(True)
         self.chemSpiderCheckBox = QCheckBox(self)
         self.chemSpiderCheckBox.setText('ChemSpider')
-        self.chemSpiderCheckBox.setChecked('CHEMSPIDER_API_KEY' in os.environ)
+        self.chemSpiderCheckBox.setChecked('CHEMSPIDER_API_KEY' in settings)
         checkBoxLayout = QHBoxLayout()
         checkBoxLayout.addWidget(QLabel('Databases: '))
         checkBoxLayout.addWidget(self.pubChemCheckBox)
@@ -83,21 +84,28 @@ class DatabaseFetchDialog(QDialog):
                 self.layout.addWidget(self.buttonBox)
                 return
 
-        if useChemSpider and (cs := ChemSpider(os.environ['CHEMSPIDER_API_KEY'])):
-            self.database = 'ChemSpider'
-            self.compounds = cs.search(query)
-            self.layout.addWidget(
-                QLabel('ChemSpider found ' + matches(len(self.compounds)) + ' for ' + query))
-            if self.compounds:
-                self.chooser = QComboBox()
-                self.chooser.addItems(
-                    [str(compound.csid) + ' (' + compound.common_name + ')' for compound in self.compounds])
-                self.layout.addWidget(self.chooser)
-                self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-                self.buttonBox.accepted.connect(self.accept)
-                self.buttonBox.rejected.connect(self.reject)
-                self.layout.addWidget(self.buttonBox)
-                return
+        if useChemSpider:
+            if 'CHEMSPIDER_API_KEY' not in settings:
+                text, ok = QInputDialog().getText(self,'ChemSpider API key','To use ChemSpider, give the value of your API key - see https://developer.rsc.org/')
+                if ok and text:
+                    settings['CHEMSPIDER_API_KEY'] = text
+
+            if 'CHEMSPIDER_API_KEY' in settings:
+                cs = ChemSpider(settings['CHEMSPIDER_API_KEY'])
+                self.database = 'ChemSpider'
+                self.compounds = cs.search(query)
+                self.layout.addWidget(
+                    QLabel('ChemSpider found ' + matches(len(self.compounds)) + ' for ' + query))
+                if self.compounds:
+                    self.chooser = QComboBox()
+                    self.chooser.addItems(
+                        [str(compound.csid) + ' (' + compound.common_name + ')' for compound in self.compounds])
+                    self.layout.addWidget(self.chooser)
+                    self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+                    self.buttonBox.accepted.connect(self.accept)
+                    self.buttonBox.rejected.connect(self.reject)
+                    self.layout.addWidget(self.buttonBox)
+                    return
 
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.Cancel)
         self.buttonBox.rejected.connect(self.reject)

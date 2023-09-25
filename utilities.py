@@ -1,5 +1,6 @@
-import atexit
 import os
+import json
+from collections.abc import MutableMapping
 
 from PyQt5.Qt import Qt
 from PyQt5.QtCore import QTimer, QPoint, QCoreApplication
@@ -163,6 +164,7 @@ class QVimPlainTextEdit(QPlainTextEdit):
         self.establishStatus()
         super().resizeEvent(e)
 
+
 class EditFile(QVimPlainTextEdit):
     def __init__(self, filename: str, latency=1000):
         super().__init__(VimMode.insert)
@@ -207,10 +209,11 @@ class EditFile(QVimPlainTextEdit):
         super().setPlainText(text)
         self.sync()
 
+
 class MainEditFile(QMainWindow):
     def __init__(self, filename: str, latency=1000):
         super().__init__()
-        self.w = EditFile(filename,latency)
+        self.w = EditFile(filename, latency)
         self.setCentralWidget(self.w)
         self.setWindowTitle(str(filename))
         menubar = MenuBar(self)
@@ -436,3 +439,47 @@ class VibrationSetXML(VibrationSet):
                 'molpro-output:normalCoordinate[not(@real_zero_imag) or @real_zero_imag!="Z"]',
                 namespaces=namespaces_))
         ]
+
+
+class FileBackedDictionary(MutableMapping):
+    def __init__(self, filename: str):
+        self.filename = filename
+        self.filetime = 0.0
+        self.refresh()
+
+    def refresh(self):
+        if os.path.exists(self.filename) and self.filetime < os.path.getmtime(self.filename):
+            with open(self.filename, 'r') as fp:
+                self.data = json.load(fp)
+        else:
+            self.data = {}
+
+    def save(self):
+        if not os.path.isdir(os.path.dirname(self.filename)):
+            os.makedirs(os.path.dirname(self.filename))
+        with open(self.filename, 'w') as fp:
+            json.dump(self.data, fp)
+
+    def __getitem__(self, item):
+        self.refresh()
+        return self.data[item]
+
+    def __delitem__(self, item):
+        self.refresh()
+        del self.data[item]
+
+    def __setitem__(self, key, value):
+        self.refresh()
+        self.data[key] = value
+        self.save()
+
+    def __iter__(self):
+        self.refresh()
+        return iter(self.data)
+
+    def __len__(self):
+        self.refresh()
+        return len(self.data)
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.data})"
