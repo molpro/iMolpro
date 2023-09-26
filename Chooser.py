@@ -21,7 +21,7 @@ from WindowManager import WindowManager
 class Chooser(QMainWindow):
     def __init__(self, window_manager: WindowManager):
         super().__init__()
-        self.windowManager = window_manager
+        self.window_manager = window_manager
 
         self.layout = QHBoxLayout()
         container = QWidget()
@@ -143,13 +143,13 @@ class Chooser(QMainWindow):
     def openProjectDialog(self):
         filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', ))
         if filename:
-            self.windowManager.register(ProjectWindow(filename))
+            self.window_manager.register(ProjectWindow(filename))
             self.hide()
 
     def newProjectDialog(self):
         filename = force_suffix(QFileDialog.getSaveFileName(self, 'Save new project as ...')[0])
         if filename:
-            self.windowManager.register(ProjectWindow(filename,self.windowManager))
+            self.window_manager.register(ProjectWindow(filename, self.window_manager))
             self.hide()
 
     def activate(self):
