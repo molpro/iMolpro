@@ -102,8 +102,6 @@ def parse(input: str, debug=False):
         elif any([re.match(postscript, command, flags=re.IGNORECASE) for postscript in postscripts]):
             if 'postscripts' not in specification: specification['postscripts'] = []
             specification['postscripts'].append(line.lower())
-        else:
-            pass
     if 'method' not in specification and 'precursor_methods' in specification:
         specification['method'] = specification['precursor_methods'][-1]
         specification['precursor_methods'].pop()
@@ -119,32 +117,32 @@ def create_input(specification: dict):
     :return:
     :rtype: str
     """
-    input = ''
+    _input = ''
     if 'geometry' in specification:
-        input += ('geometry=' + specification[
+        _input += ('geometry=' + specification[
             'geometry'] + '\n' if 'geometry_external' in specification else 'geometry={\n' +
                                                                             specification[
                                                                                 'geometry']).rstrip(
             ' \n') + '\n' + ('' if 'geometry_external' in specification else '}\n')
     if 'basis' in specification:
-        input += 'basis={' + specification['basis'] + '}\n'
+        _input += 'basis={' + specification['basis'] + '}\n'
     if 'variables' in specification:
         for k, v in specification['variables'].items():
-            input += k + '=' + v + '\n'
+            _input += k + '=' + v + '\n'
     if 'precursor_methods' in specification:
         for m in specification['precursor_methods']:
-            input += m + '\n'
+            _input += m + '\n'
     if 'method' in specification:
-        input += specification['method'] + '\n'
+        _input += specification['method'] + '\n'
     if 'job_type' in specification:
         if 'opt' in specification['job_type']:
-            input += 'optg\n'
+            _input += 'optg\n'
         if 'freq' in specification['job_type']:
-            input += 'freq\n'
+            _input += 'freq\n'
     if 'postscripts' in specification:
         for m in specification['postscripts']:
-            input += m + '\n'
-    return input.rstrip('\n') + '\n'
+            _input += m + '\n'
+    return _input.rstrip('\n') + '\n'
 
 
 def basis_quality(specification):
@@ -163,7 +161,6 @@ def basis_quality(specification):
 
 
 def canonicalise(input):
-    # return re.sub('([^\n])}',r'\1\n}',re.sub('{([^\n])',r'{\n\1',re.sub('\n+', '\n', input.replace(';','\n')))).rstrip('\n ').lstrip('\n ')+'\n'
     return re.sub(
         '\n}', '}', re.sub(
             '{\n', r'{', re.sub(

@@ -15,61 +15,61 @@ from MenuBar import MenuBar
 from RecentMenu import RecentMenu
 from database import database_choose_structure
 from help import HelpManager
-from utilities import EditFile, ViewFile, factoryVibrationSet, factoryOrbitalSet, MainEditFile
-from backend import configureBackend
+from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set, MainEditFile
+from backend import configure_backend
 
 
 class StatusBar(QLabel):
-    def __init__(self, project: Project, runActions: list, killActions: list, latency=1000):
+    def __init__(self, project: Project, run_actions: list, kill_actions: list, latency=1000):
         super().__init__()
         self.project = project
-        self.runActions = runActions
-        self.killActions = killActions
-        self.refreshTimer = QTimer()
-        self.refreshTimer.timeout.connect(self.refresh)
-        self.refreshTimer.start(latency)
+        self.run_actions = run_actions
+        self.kill_actions = kill_actions
+        self.refresh_timer = QTimer()
+        self.refresh_timer.timeout.connect(self.refresh)
+        self.refresh_timer.start(latency)
 
     def refresh(self):
         self.setText('Status: ' + ('run ' + pathlib.Path(
             self.project.filename()).stem + ' ' if self.project.filename() != self.project.filename(
             run=-1) else '') + self.project.status)
-        for runAction in self.runActions:
-            runAction.setDisabled(not self.project.run_needed())
-        for killAction in self.killActions:
-            killAction.setDisabled(self.project.status != 'running' and self.project.status != 'waiting')
+        for run_action in self.run_actions:
+            run_action.setDisabled(not self.project.run_needed())
+        for kill_action in self.kill_actions:
+            kill_action.setDisabled(self.project.status != 'running' and self.project.status != 'waiting')
 
 
 class ViewProjectOutput(ViewFile):
-    def __init__(self, project, suffix='out', width=800, latency=100, fileNameLatency=2000):
+    def __init__(self, project, suffix='out', width=800, latency=100, filename_latency=2000):
         self.project = project
         self.suffix = suffix
         super().__init__(self.project.filename(suffix), latency=latency)
         super().setMinimumWidth(width)
-        self.refreshOutputFileTimer = QTimer()
-        self.refreshOutputFileTimer.timeout.connect(self.refreshOutputFile)
-        self.refreshOutputFileTimer.start(fileNameLatency)  # find a better way
+        self.refresh_output_file_timer = QTimer()
+        self.refresh_output_file_timer.timeout.connect(self.refresh_output_file)
+        self.refresh_output_file_timer.start(filename_latency)  # find a better way
 
-    def refreshOutputFile(self):
-        latestFilename = self.project.filename(self.suffix)
-        if latestFilename != self.filename:
-            self.reset(latestFilename)
+    def refresh_output_file(self):
+        latest_filename = self.project.filename(self.suffix)
+        if latest_filename != self.filename:
+            self.reset(latest_filename)
 
 
 class ProjectWindow(QMainWindow):
-    closeSignal = pyqtSignal(QWidget)
-    newSignal = pyqtSignal(QWidget)
-    chooserSignal = pyqtSignal(QWidget)
+    close_signal = pyqtSignal(QWidget)
+    new_signal = pyqtSignal(QWidget)
+    chooser_signal = pyqtSignal(QWidget)
 
-    def __init__(self, filename, windowManager, latency=1000):
+    def __init__(self, filename, window_manager, latency=1000):
         super().__init__()
-        self.windowManager = windowManager
+        self.window_manager = window_manager
 
         assert filename is not None
         self.project = Project(filename)
 
         os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
             'PATH']  # make PATH just as if running from shell
-        self.JSmolMinJS = str(pathlib.Path(__file__).parent / "JSmol.min.js")
+        self.jsmol_min_js = str(pathlib.Path(__file__).parent / "JSmol.min.js")
         if hasattr(sys, '_MEIPASS'):
             os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
                 sys._MEIPASS, 'PyQt5', 'Qt', 'libexec', 'QtWebEngineProcess'
@@ -80,16 +80,16 @@ class ProjectWindow(QMainWindow):
         if os.path.exists(likely_qtwebengineprocess):
             os.environ['QTWEBENGINEPROCESS_PATH'] = likely_qtwebengineprocess
 
-        self.inputPane = EditFile(self.project.filename('inp', run=-1), latency)
-        if self.inputPane.toPlainText().strip('\n ') == '':
-            self.inputPane.setPlainText(
-                'geometry=' + re.sub(' ','_',os.path.basename(self.project.name)) + '.xyz' + '\nbasis=cc-pVTZ-PP' + '\nrhf')
+        self.input_pane = EditFile(self.project.filename('inp', run=-1), latency)
+        if self.input_pane.toPlainText().strip('\n ') == '':
+            self.input_pane.setPlainText(
+                'geometry={0}.xyz\nbasis=cc-pVTZ-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
         self.setWindowTitle(filename)
 
-        self.outputPanes = {
+        self.output_panes = {
             suffix: ViewProjectOutput(self.project, suffix) for suffix in ['out', 'log']}
 
-        self.webEngineProfiles = []
+        self.webengine_profiles = []
 
         menubar = MenuBar(self)
         self.setMenuBar(menubar)
@@ -99,114 +99,107 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Close', 'File', self.close, 'Ctrl+W')
         menubar.addAction('Open', 'File', self.chooserOpen, 'Ctrl+O', 'Open another project')
         menubar.addSeparator('File')
-        self.recentMenu = RecentMenu(self.windowManager)
-        menubar.addSubmenu(self.recentMenu, 'File')
+        self.recent_menu = RecentMenu(self.window_manager)
+        menubar.addSubmenu(self.recent_menu, 'File')
         menubar.addSeparator('File')
         menubar.addAction('Quit', 'File', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
                           tooltip='Quit')
 
-        menubar.addAction('Structure', 'Edit', self.editInputStructure, 'Ctrl+D', 'Edit molecular geometry')
-        menubar.addAction('Cut', 'Edit', self.inputPane.cut, 'Ctrl+X', 'Cut')
-        menubar.addAction('Copy', 'Edit', self.inputPane.copy, 'Ctrl+C', 'Copy')
-        menubar.addAction('Paste', 'Edit', self.inputPane.paste, 'Ctrl+V', 'Paste')
-        menubar.addAction('Undo', 'Edit', self.inputPane.undo, 'Ctrl+Z', 'Undo')
-        menubar.addAction('Redo', 'Edit', self.inputPane.redo, 'Shift+Ctrl+Z', 'Redo')
-        menubar.addAction('Select All', 'Edit', self.inputPane.selectAll, 'Ctrl+A', 'Redo')
+        menubar.addAction('Structure', 'Edit', self.edit_input_structure, 'Ctrl+D', 'Edit molecular geometry')
+        menubar.addAction('Cut', 'Edit', self.input_pane.cut, 'Ctrl+X', 'Cut')
+        menubar.addAction('Copy', 'Edit', self.input_pane.copy, 'Ctrl+C', 'Copy')
+        menubar.addAction('Paste', 'Edit', self.input_pane.paste, 'Ctrl+V', 'Paste')
+        menubar.addAction('Undo', 'Edit', self.input_pane.undo, 'Ctrl+Z', 'Undo')
+        menubar.addAction('Redo', 'Edit', self.input_pane.redo, 'Shift+Ctrl+Z', 'Redo')
+        menubar.addAction('Select All', 'Edit', self.input_pane.selectAll, 'Ctrl+A', 'Redo')
         menubar.addSeparator('Edit')
-        menubar.addAction('Zoom In', 'Edit', self.inputPane.zoomIn, 'Shift+Ctrl+=', 'Increase font size')
-        menubar.addAction('Zoom Out', 'Edit', self.inputPane.zoomOut, 'Ctrl+-', 'Decrease font size')
+        menubar.addAction('Zoom In', 'Edit', self.input_pane.zoomIn, 'Shift+Ctrl+=', 'Increase font size')
+        menubar.addAction('Zoom Out', 'Edit', self.input_pane.zoomOut, 'Ctrl+-', 'Decrease font size')
         menubar.addSeparator('Edit')
-        self.guidedAction = menubar.addAction('Guided mode', 'Edit', self.guidedToggle, 'Ctrl+G', checkable=True)
+        self.guided_action = menubar.addAction('Guided mode', 'Edit', self.guided_toggle, 'Ctrl+G', checkable=True)
 
-        menubar.addAction('Import input', 'Project', self.importInput, 'Ctrl+Shift+I',
+        menubar.addAction('Import input', 'Project', self.import_input, 'Ctrl+Shift+I',
                           tooltip='Import a file and assign it as the input for the project')
-        menubar.addAction('Import structure', 'Project', self.importStructure, 'Ctrl+Alt+I',
+        menubar.addAction('Import structure', 'Project', self.import_structure, 'Ctrl+Alt+I',
                           tooltip='Import an xyz file and use it as the source of molecular structure in the input for the project')
-        menubar.addAction('Search external databases for structure', 'Project', self.databaseImportStructure, 'Ctrl+Shift+Alt+I',
+        menubar.addAction('Search external databases for structure', 'Project', self.databaseImportStructure,
+                          'Ctrl+Shift+Alt+I',
                           tooltip='Search PubChem and ChemSpider for a molecule and use it as the source of molecular structure in the input for the project')
-        menubar.addAction('Import file', 'Project', self.importFile, 'Ctrl+I',
+        menubar.addAction('Import file', 'Project', self.import_file, 'Ctrl+I',
                           tooltip='Import one or more files, eg geometry definition, into the project')
-        menubar.addAction('Export file', 'Project', self.exportFile, 'Ctrl+E',
+        menubar.addAction('Export file', 'Project', self.export_file, 'Ctrl+E',
                           tooltip='Export one or more files from the project')
         menubar.addAction('Clean', 'Project', self.clean, tooltip='Remove old runs from the project')
-        self.runAction = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
-        self.killAction = menubar.addAction('Kill', 'Job', self.kill, tooltip='Kill the running job')
-        menubar.addAction('Backend', 'Job', lambda: configureBackend(self), 'Ctrl+B', 'Configure backend')
-        menubar.addAction('Edit backend configuration file', 'Job', self.editBackendConfiguration, 'Ctrl+Shift+B',
+        self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
+        self.kill_action = menubar.addAction('Kill', 'Job', self.kill, tooltip='Kill the running job')
+        menubar.addAction('Backend', 'Job', lambda: configure_backend(self), 'Ctrl+B', 'Configure backend')
+        menubar.addAction('Edit backend configuration file', 'Job', self.edit_backend_configuration, 'Ctrl+Shift+B',
                           'Edit backend configuration file')
         menubar.show()
 
-        menubar.addAction('Zoom In', 'View', lambda: [p.zoomIn() for p in self.outputPanes.values()], 'Alt+Shift+=',
+        menubar.addAction('Zoom In', 'View', lambda: [p.zoomIn() for p in self.output_panes.values()], 'Alt+Shift+=',
                           'Increase font size')
-        menubar.addAction('Zoom Out', 'View', lambda: [p.zoomOut() for p in self.outputPanes.values()], 'Alt+-',
+        menubar.addAction('Zoom Out', 'View', lambda: [p.zoomOut() for p in self.output_panes.values()], 'Alt+-',
                           'Decrease font size')
         menubar.addSeparator('View')
-        menubar.addAction('Input structure', 'View', self.visinp,
+        menubar.addAction('Input structure', 'View', self.visualise_input,
                           tooltip='View the molecular structure in the job input')
-        menubar.addAction('Output structure', 'View', self.visout, 'Alt+D',
+        menubar.addAction('Output structure', 'View', self.visualise_output, 'Alt+D',
                           tooltip='View the molecular structure at the end of the job')
         menubar.addSeparator('View')
 
-        # for a in menubar.actions():
-        #     print(a, type(a), a.menu(), a.menu().title())
-        #     for b in a.menu().actions():
-        #         print(b, b.text(), b.shortcut(), b.toolTip())
+        help_manager = HelpManager(menubar)
+        help_manager.register('Overview', 'README')
+        help_manager.register('Another', 'something else')
+        help_manager.register('Backends', 'doc/backends.md')
 
-        helpManager = HelpManager(menubar)
-        helpManager.register('Overview', 'README')
-        helpManager.register('Another', 'something else')
-        helpManager.register('Backends', 'doc/backends.md')
+        self.run_button = QPushButton('Run')
+        self.run_button.clicked.connect(self.run_action.trigger)
+        self.run_button.setToolTip("Run the job")
 
-        self.runButton = QPushButton('Run')
-        self.runButton.clicked.connect(self.runAction.trigger)
-        self.runButton.setToolTip("Run the job")
-        # self.killButton = QPushButton('Kill')
-        # self.killButton.clicked.connect(self.killAction.trigger)
-        # self.killButton.setToolTip("Kill the running job")
-
-        self.statusBar = StatusBar(self.project, [self.runAction, self.runButton], [self.killAction])
+        self.statusBar = StatusBar(self.project, [self.run_action, self.run_button], [self.kill_action])
         self.statusBar.refresh()
 
-        leftLayout = QVBoxLayout()
-        self.inputTabs = QTabWidget()
-        self.inputTabs.setTabBarAutoHide(True)
-        self.inputTabs.setDocumentMode(True)
-        self.inputTabs.setTabPosition(QTabWidget.South)
-        self.inputTabs.currentChanged.connect(self.refreshInputTabs)
-        self.refreshInputTabs()
-        leftLayout.addWidget(self.inputTabs)
-        self.inputTabs.setMinimumHeight(300)
-        self.inputTabs.setMinimumWidth(400)
+        left_layout = QVBoxLayout()
+        self.input_tabs = QTabWidget()
+        self.input_tabs.setTabBarAutoHide(True)
+        self.input_tabs.setDocumentMode(True)
+        self.input_tabs.setTabPosition(QTabWidget.South)
+        self.input_tabs.currentChanged.connect(self.refresh_input_tabs)
+        self.refresh_input_tabs()
+        left_layout.addWidget(self.input_tabs)
+        self.input_tabs.setMinimumHeight(300)
+        self.input_tabs.setMinimumWidth(400)
         self.statusBar.setMaximumWidth(400)
-        buttonLayout = QHBoxLayout()
-        buttonLayout.addWidget(self.runButton)
-        # buttonLayout.addWidget(self.killButton)
-        self.VODselector = QComboBox()
-        buttonLayout.addWidget(QLabel('Structure display:'))
-        buttonLayout.addWidget(self.VODselector)
-        leftLayout.addLayout(buttonLayout)
-        leftLayout.addWidget(self.statusBar)
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.run_button)
+        # button_layout.addWidget(self.killButton)
+        self.vod_selector = QComboBox()
+        button_layout.addWidget(QLabel('Structure display:'))
+        button_layout.addWidget(self.vod_selector)
+        left_layout.addLayout(button_layout)
+        left_layout.addWidget(self.statusBar)
 
-        toplayout = QHBoxLayout()
-        toplayout.addLayout(leftLayout)
-        self.outputTabs = QTabWidget()
-        self.outputTabs.setTabBarAutoHide(True)
-        self.outputTabs.setDocumentMode(True)
-        self.outputTabs.setTabPosition(QTabWidget.South)
-        self.refreshOutputTabs()
-        self.timerOutputTabs = QTimer()
-        self.timerOutputTabs.timeout.connect(self.refreshOutputTabs)
-        self.timerOutputTabs.start(2000)
-        toplayout.addWidget(self.outputTabs)
+        top_layout = QHBoxLayout()
+        top_layout.addLayout(left_layout)
+        self.output_tabs = QTabWidget(self)
+        self.output_tabs.setTabBarAutoHide(True)
+        self.output_tabs.setDocumentMode(True)
+        self.output_tabs.setTabPosition(QTabWidget.South)
+        self.refresh_output_tabs()
+        self.timer_output_tabs = QTimer()
+        self.timer_output_tabs.timeout.connect(self.refresh_output_tabs)
+        self.timer_output_tabs.start(2000)
+        top_layout.addWidget(self.output_tabs)
 
         self.layout = QVBoxLayout()
-        self.layout.addLayout(toplayout)
-        self.VOD = None
+        self.layout.addLayout(top_layout)
+        self.vod = None
 
-        self.rebuildVODselector()
-        self.outputPanes['out'].textChanged.connect(self.rebuildVODselector)
-        self.VODselector.currentTextChanged.connect(self.VODselectorAction)
-        self.minimumWindowSize = self.window().size()
+        self.rebuild_vod_selector()
+        self.output_panes['out'].textChanged.connect(self.rebuild_vod_selector)
+        self.vod_selector.currentTextChanged.connect(self.vod_selector_action)
+        self.minimum_window_size = self.window().size()
 
         # self.layout.setSizeConstraint(QLayout.SetFixedSize)
 
@@ -214,12 +207,12 @@ class ProjectWindow(QMainWindow):
         container.setLayout(self.layout)
         self.setCentralWidget(container)
 
-    def editBackendConfiguration(self):
-        self.backendConfigurationEditor = MainEditFile(pathlib.Path.home() / '.sjef/molpro/backends.xml')
-        self.backendConfigurationEditor.show()
+    def edit_backend_configuration(self):
+        self.backend_configuration_editor = MainEditFile(pathlib.Path.home() / '.sjef/molpro/backends.xml')
+        self.backend_configuration_editor.show()
 
-    def editInputStructure(self):
-        f = self.geometryfiles()
+    def edit_input_structure(self):
+        f = self.geometry_files()
         if f:
             filename = self.project.filename('', f[-1][1], run=-1)
             if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
@@ -227,51 +220,50 @@ class ProjectWindow(QMainWindow):
                     f.write('1\n\nC 0.0 0.0 0.0\n')
             self.embedded_builder(filename)
 
-    def refreshOutputTabs(self):
-        if len(self.outputTabs) != len(
-                [suffix for suffix, pane in self.outputPanes.items() if os.path.exists(self.project.filename(suffix))]):
-            self.outputTabs.clear()
-            for suffix, pane in self.outputPanes.items():
+    def refresh_output_tabs(self):
+        if len(self.output_tabs) != len(
+                [suffix for suffix, pane in self.output_panes.items() if
+                 os.path.exists(self.project.filename(suffix))]):
+            self.output_tabs.clear()
+            for suffix, pane in self.output_panes.items():
                 if os.path.exists(self.project.filename(suffix)):
-                    self.outputTabs.addTab(pane, suffix)
+                    self.output_tabs.addTab(pane, suffix)
 
-    def guidedToggle(self):
-        self.refreshInputTabs(index=1 if self.guidedAction.isChecked() else 0)
+    def guided_toggle(self):
+        self.refresh_input_tabs(index=1 if self.guided_action.isChecked() else 0)
 
-    def refreshInputTabs(self, index=0):
-        input = self.inputPane.toPlainText()
-        if not input: input = ''
-        self.inputSpecification = molpro_input.parse(input)
-        guided = molpro_input.equivalent(input, self.inputSpecification)
-        # print('input:', input)
-        # print('specification:', self.inputSpecification)
-        # print('guided:', guided)
+    def refresh_input_tabs(self, index=0):
+        input_text = self.input_pane.toPlainText()
+        if not input_text: input_text = ''
+        input_specification = molpro_input.parse(input_text)
+        guided = molpro_input.equivalent(input_text, input_specification)
         if not guided and index == 1:
             box = QMessageBox()
             box.setText('Guided mode cannot be used because the input is too complex')
             box.exec()
-            self.guidedAction.setChecked(False)
-        if len(self.inputTabs) < 1:
-            self.inputTabs.addTab(self.inputPane, 'freehand')
-        if not guided and len(self.inputTabs) != 1:
-            self.inputTabs.removeTab(1)
-        if guided and len(self.inputTabs) != 2:
-            self.guidedPane = QLabel()
-            self.inputTabs.addTab(self.guidedPane, 'guided')
-        self.inputTabs.setCurrentIndex(index if index >= 0 and index < len(self.inputTabs) else len(self.inputTabs) - 1)
-        if guided and self.inputTabs.currentIndex() == 1:
-            self.guidedPane.setText(
-                re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.inputSpecification))).replace(', ', ',\n  '))
+            self.guided_action.setChecked(False)
+        if len(self.input_tabs) < 1:
+            self.input_tabs.addTab(self.input_pane, 'freehand')
+        if not guided and len(self.input_tabs) != 1:
+            self.input_tabs.removeTab(1)
+        if guided and len(self.input_tabs) != 2:
+            self.guided_pane = QLabel()
+            self.input_tabs.addTab(self.guided_pane, 'guided')
+        self.input_tabs.setCurrentIndex(
+            index if index >= 0 and index < len(self.input_tabs) else len(self.input_tabs) - 1)
+        if guided and self.input_tabs.currentIndex() == 1:
+            self.guided_pane.setText(
+                re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(input_specification))).replace(', ', ',\n  '))
 
-    def VODselectorAction(self):
-        text = self.VODselector.currentText().strip()
+    def vod_selector_action(self):
+        text = self.vod_selector.currentText().strip()
         if text == '':
             return
         elif text == 'None':
-            if self.VOD:
-                self.VOD.hide()
+            if self.vod:
+                self.vod.hide()
                 self.window().resize(
-                    self.minimumWindowSize)  # TODO find a way of shrinking back the main window # self.inputPane.adjustSize() # self.outputPane.adjustSize() # self.adjustSize()
+                    self.minimum_window_size)  # TODO find a way of shrinking back the main window # self.inputPane.adjustSize() # self.outputPane.adjustSize() # self.adjustSize()
         elif text[:5] == 'Edit ':
             filename = self.project.filename('', text[5:], run=-1)
             if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
@@ -279,44 +271,45 @@ class ProjectWindow(QMainWindow):
                     f.write('1\n\nC 0.0 0.0 0.0\n')
             self.embedded_builder(filename)
         elif text == 'Input':
-            self.visinp()
+            self.visualise_input()
         elif text == 'Output':
-            self.visout(False, 'xml')
+            self.visualise_output(False, 'xml')
         else:
-            self.visout(False, '', text)
+            self.visualise_output(False, '', text)
 
-    def rebuildVODselector(self):
-        self.VODselector.clear()
-        self.VODselector.addItem('None')
-        for t, f in self.geometryfiles():
-            self.VODselector.addItem('Edit ' + f)
-        self.VODselector.addItem('Input')
+    def rebuild_vod_selector(self):
+        self.vod_selector.clear()
+        self.vod_selector.addItem('None')
+        for t, f in self.geometry_files():
+            self.vod_selector.addItem('Edit ' + f)
+        self.vod_selector.addItem('Input')
         if self.project.status == 'completed' or (
                 os.path.isfile(self.project.filename('xml')) and open(self.project.filename('xml'),
                                                                       'r').read().rstrip()[
                                                                  -9:] == '</molpro>'):
-            self.VODselector.addItem('Output')
+            self.vod_selector.addItem('Output')
             for t, f in self.putfiles():
-                self.VODselector.addItem(f)
+                self.vod_selector.addItem(f)
 
     def putfiles(self):
         result = []
-        lines = self.inputPane.toPlainText().replace(';', '\n').split('\n')
+        lines = self.input_pane.toPlainText().replace(';', '\n').split('\n')
         for line in lines:
             fields = line.replace(' ', ',').split(',')
             if len(fields) > 2 and fields[0].lower() == 'put':
                 result.append((fields[1], fields[2]))
         return result
 
-    def geometryfiles(self):
+    def geometry_files(self):
         import re
         result = []
-        lines = self.inputPane.toPlainText().replace(';', '\n').split('\n')
+        lines = self.input_pane.toPlainText().replace(';', '\n').split('\n')
         for line in lines:
             fields = line.replace(' ', ',').split(',')
-            regex = r'geometry=([-@#&A-Za-z0-9_]+)\.(xyz)'
+            regex = r'geometry=([-@#&a-z0-9_]+)\.(xyz)'
             if len(fields) == 1 and re.match(regex, fields[0], re.IGNORECASE):
-                result.append((re.sub(regex, r'\2', fields[0]), re.sub(regex, r'\1.\2', fields[0])))
+                result.append(
+                    (re.sub(regex, r'\2', fields[0]), re.sub(regex, r'\1.\2', fields[0], flags=re.IGNORECASE)))
         return result
 
     def run(self):
@@ -328,21 +321,21 @@ class ProjectWindow(QMainWindow):
     def clean(self):
         self.project.clean()
 
-    def visout(self, param, typ='xml', name=None):
+    def visualise_output(self, param, typ='xml', name=None):
         if name:
-            self.embedded_VOD(self.project.filename(typ, name), command='mo HOMO')
+            self.embedded_vod(self.project.filename(typ, name), command='mo HOMO')
         else:
-            self.embedded_VOD(self.project.filename(typ), command='mo HOMO')
+            self.embedded_vod(self.project.filename(typ), command='mo HOMO')
 
-    def embedded_VOD(self, file, command='', **kwargs):
+    def embedded_vod(self, file, command='', **kwargs):
         firstmodel = 1
         try:
-            vibs = factoryVibrationSet(file, **kwargs)
+            vibs = factory_vibration_set(file, **kwargs)
             firstmodel = firstvib = vibs.coordinateSet
         except (IndexError, KeyError):
             vibs = None
         try:
-            orbs = factoryOrbitalSet(file, **kwargs)
+            orbs = factory_orbital_set(file, **kwargs)
             firstmodel = firstorb = orbs.coordinateSet
         except (IndexError, KeyError):
             orbs = None
@@ -350,7 +343,7 @@ class ProjectWindow(QMainWindow):
 <html>
 <head>
 <meta charset="utf-8">
-<script type="text/javascript" src=" """ + self.JSmolMinJS + """"> </script>
+<script type="text/javascript" src=" """ + self.jsmol_min_js + """"> </script>
 </head>
 <body>
 <table>
@@ -410,10 +403,10 @@ Jmol.jmolHtml('<td>Orbitals: ')
 Jmol.jmolBr()
 Jmol.jmolMenu(myJmol,[
 """
-            energyReverse = list(orbs.energies)
-            energyReverse.reverse()
-            i = len(energyReverse)
-            for energy in energyReverse:
+            energy_reverse = list(orbs.energies)
+            energy_reverse.reverse()
+            i = len(energy_reverse)
+            for energy in energy_reverse:
                 html += '["model ' + str(firstorb) + '; vibration off; mo ' + str(i) + '", "' + str(energy) + '"],'
                 i -= 1
             html += """
@@ -432,7 +425,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </tr>
 </body>
 </html>"""
-        self.addVOD(html, **kwargs)
+        self.add_vod(html, **kwargs)
 
     def embedded_builder(self, file, **kwargs):
 
@@ -440,7 +433,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 <html>
 <head>
 <meta charset="utf-8">
-<script type="text/javascript" src=" """ + self.JSmolMinJS + """"> </script>
+<script type="text/javascript" src=" """ + self.jsmol_min_js + """"> </script>
 </head>
 <body>
 <table>
@@ -477,15 +470,15 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </body>
 </html>"""
 
-        self.addVOD(html, **kwargs)
+        self.add_vod(html, **kwargs)
 
-    def addVOD(self, html, width=400, height=420, verbosity=0):
+    def add_vod(self, html, width=400, height=420, verbosity=0):
         if verbosity:
             print(html)
             open('test.html', 'w').write(html)
         webview = QWebEngineView()
         profile = QWebEngineProfile()
-        self.webEngineProfiles.append(
+        self.webengine_profiles.append(
             profile)  # FIXME This to avoid premature garbage collection. A resource leak. Need to find a way to delete the previous QWebEnginePage instead
         profile.downloadRequested.connect(self._download_requested)
         page = QWebEnginePage(profile, webview)
@@ -493,13 +486,13 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         webview.setPage(page)
 
         webview.setMinimumSize(width, height)
-        if not self.VOD:
+        if not self.vod:
             self.layout.addWidget(webview)
         else:
-            self.layout.replaceWidget(self.VOD, webview)
-            self.VOD.hide()
-        self.VOD = webview
-        self.VOD.show()
+            self.layout.replaceWidget(self.vod, webview)
+            self.vod.hide()
+        self.vod = webview
+        self.vod.show()
 
     def _download_requested(self, item):
         import re
@@ -508,19 +501,19 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             item.setDownloadDirectory(self.project.filename(run=-1))
             item.accept()
 
-    def visinp(self, param=False):
+    def visualise_input(self, param=False):
         import tempfile
-        geometryDirectory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
-        geometryDirectory.mkdir(exist_ok=True)
-        xyzFile = str(geometryDirectory / pathlib.Path(self.project.filename(run=-1)).stem) + '.xyz'
-        if not os.path.isfile(xyzFile) or os.path.getmtime(xyzFile) < os.path.getmtime(
+        geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
+        geometry_directory.mkdir(exist_ok=True)
+        xyz_file = str(geometry_directory / pathlib.Path(self.project.filename(run=-1)).stem) + '.xyz'
+        if not os.path.isfile(xyz_file) or os.path.getmtime(xyz_file) < os.path.getmtime(
                 self.project.filename('inp', run=-1)) or any(
-            [os.path.getmtime(xyzFile) < os.path.getmtime(self.project.filename('', gfile[1], run=-1)) for gfile in
-             self.geometryfiles()]):
+            [os.path.getmtime(xyz_file) < os.path.getmtime(self.project.filename('', gfile[1], run=-1)) for gfile in
+             self.geometry_files()]):
             with tempfile.TemporaryDirectory() as tmpdirname:
                 self.project.copy(pathlib.Path(self.project.filename(run=-1)).name, location=tmpdirname)
-                projectPath = pathlib.Path(tmpdirname) / pathlib.Path(self.project.filename(run=-1)).name
-                project = Project(str(projectPath))
+                project_path = pathlib.Path(tmpdirname) / pathlib.Path(self.project.filename(run=-1)).name
+                project = Project(str(project_path))
                 project.clean(0)
                 open(project.filename('inp', run=-1), 'a').write('\nhf\n---')
                 with open(pathlib.Path(project.filename(run=-1)) / 'molpro.rc', 'a') as f:
@@ -535,33 +528,33 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                     msg.exec_()
                     return
                 geometry = project.geometry()
-                with open(xyzFile, 'w') as f:
+                with open(xyz_file, 'w') as f:
                     f.write(str(len(geometry)) + '\n\n')
                     for atom in geometry:
                         f.write(atom['elementType'])
                         for c in atom['xyz']: f.write(' ' + str(c * .529177210903))
                         f.write('\n')
-        self.embedded_VOD(xyzFile, command='')
+        self.embedded_vod(xyz_file, command='')
 
     def closeEvent(self, a0):
-        self.closeSignal.emit(self)
+        self.close_signal.emit(self)
 
     def newAction(self):
-        self.newSignal.emit(self)
+        self.new_signal.emit(self)
 
     def chooserOpen(self):
-        self.chooserSignal.emit(self)
+        self.chooser_signal.emit(self)
 
     def clean(self):
         self.project.clean(1)
 
-    def importFile(self):
+    def import_file(self):
         filenames, junk = QFileDialog.getOpenFileNames(self, 'Import file(s) into project', )
         for filename in filenames:
             if os.path.isfile(filename):
                 self.project.import_file(filename)
 
-    def importStructure(self):
+    def import_structure(self):
         filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', )
         if os.path.isfile(filename):
             self.adoptStructureFile(filename)
@@ -569,27 +562,27 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
     def adoptStructureFile(self, filename):
         if os.path.exists(filename):
             self.project.import_file(filename)
-            text = self.inputPane.toPlainText()
-            if re.match('^ *geometry *= *[/A-Za-z0-9].*', text, flags=re.IGNORECASE):
-                self.inputPane.setPlainText(
+            text = self.input_pane.toPlainText()
+            if re.match('^ *geometry *= *[/a-z0-9].*', text, flags=re.IGNORECASE):
+                self.input_pane.setPlainText(
                     re.sub('^ *geometry *=.*[\n;]', 'geometry=' + os.path.basename(filename) + '\n', text))
-                self.rebuildVODselector()
+                self.rebuild_vod_selector()
             else:
-                self.inputPane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
+                self.input_pane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
 
     def databaseImportStructure(self):
         if (filename := database_choose_structure()):
             self.adoptStructureFile(filename)
             os.remove(filename)
             os.rmdir(os.path.dirname(filename))
-            self.editInputStructure()
+            self.edit_input_structure()
 
-    def importInput(self):
+    def import_input(self):
         filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', )
         if os.path.isfile(filename):
             self.project.import_input(filename)
 
-    def exportFile(self):
+    def export_file(self):
         filenames, junk = QFileDialog.getOpenFileNames(self, 'Export file(s) from the project', self.project.filename())
         for filename in filenames:
             if os.path.isfile(filename):

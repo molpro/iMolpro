@@ -26,15 +26,15 @@ class HelpManager:
 
     def show(self, name, content):
         import os
-        file = str(pathlib.Path(__file__).parent / content)
-        if not os.path.exists(file):
-            file = str(pathlib.Path(__file__).parent / (content + '.md'))
-        if not os.path.exists(file):
-            file = str(pathlib.Path(__file__).parent / (content + '.html'))
-        if not os.path.exists(file):
+        _file = str(pathlib.Path(__file__).parent / content)
+        if not os.path.exists(_file):
+            _file = str(pathlib.Path(__file__).parent / (content + '.md'))
+        if not os.path.exists(_file):
+            _file = str(pathlib.Path(__file__).parent / (content + '.html'))
+        if not os.path.exists(_file):
             self.menubar.win = HelpWindow(content)
         else:
             self.menubar.win = HelpWindow()
-            self.menubar.win.setSource(QUrl(file))
+            self.menubar.win.setSource(QUrl(_file))
         self.menubar.win.setWindowTitle(name)
         self.menubar.win.show()

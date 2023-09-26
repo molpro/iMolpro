@@ -12,9 +12,9 @@ class WindowManager:
         if self.fullAction and not self.openWindows:
             self.fullAction()
         self.openWindows.append(widget)
-        widget.closeSignal.connect(self.unregister)
-        widget.newSignal.connect(self.new)
-        widget.chooserSignal.connect(self.emptyAction)
+        widget.close_signal.connect(self.unregister)
+        widget.new_signal.connect(self.new)
+        widget.chooser_signal.connect(self.emptyAction)
         widget.show()
 
     def unregister(self, widget: QWidget):
@@ -22,12 +22,12 @@ class WindowManager:
         if self.emptyAction and not self.openWindows:
             self.emptyAction()
 
-    def setEmptyAction(self, fun):
+    def set_empty_action(self, fun):
         self.emptyAction = fun
         if not self.openWindows:
             self.emptyAction()
 
-    def setFullAction(self, fun):
+    def set_full_action(self, fun):
         self.fullAction = fun
 
     def new(self, data):

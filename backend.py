@@ -8,7 +8,7 @@ from utilities import EditFile, MainEditFile
 # from ProjectWindow import ProjectWindow
 
 
-def configureBackend(parent):
+def configure_backend(parent):
 
     class BackendDialog(QDialog):
         def __init__(self, parent=None):

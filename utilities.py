@@ -23,9 +23,9 @@ class VimMode(Enum):
 
 
 class QVimPlainTextEdit(QPlainTextEdit):
-    def __init__(self, initialMode=VimMode.normal):
+    def __init__(self, initial_mode=VimMode.normal):
         super().__init__()
-        self.vimMode = initialMode
+        self.vimMode = initial_mode
         self.lastKey = None
         self.searching = False
         self.shiftKey = False
@@ -110,8 +110,6 @@ class QVimPlainTextEdit(QPlainTextEdit):
                 self.establishStatus(e.text())
             elif e.key() == Qt.Key_Shift:
                 self.shiftKey = True
-            else:
-                pass
         self.lastKey = e.key()
 
     def establishStatus(self, message=''):
@@ -142,9 +140,9 @@ class QVimPlainTextEdit(QPlainTextEdit):
             # print('shift off')
             self.shiftKey = False
 
-    def search_and_move(self, searchString=None, reverse=False):
-        if searchString:
-            self.lastSearch = searchString
+    def search_and_move(self, search_string=None, reverse=False):
+        if search_string:
+            self.lastSearch = search_string
         # print('searching for', self.lastSearch, self.textCursor().position())
         if reverse:
             newpos = self.toPlainText().rfind(self.lastSearch, 0, self.textCursor().position())
@@ -245,17 +243,17 @@ class ViewFile(QPlainTextEdit):
 
     def refresh(self):
         scrollbar = self.verticalScrollBar()
-        scrollbarAtBottom = scrollbar.value() >= (scrollbar.maximum() - 1)
-        scrollbarPrevValue = scrollbar.value()
+        scrollbar_at_bottom = scrollbar.value() >= (scrollbar.maximum() - 1)
+        scrollbar_prev_value = scrollbar.value()
         if os.path.isfile(self.filename):
             if os.path.getmtime(self.filename) > self.modtime:
                 self.modtime = os.path.getmtime(self.filename)
                 with open(self.filename, 'r') as f:
                     self.setPlainText(f.read())
-            if scrollbarAtBottom:
+            if scrollbar_at_bottom:
                 self.verticalScrollBar().setValue(scrollbar.maximum())
             else:
-                self.verticalScrollBar().setValue(scrollbarPrevValue)
+                self.verticalScrollBar().setValue(scrollbar_prev_value)
 
     def reset(self, filename):
         self.filename = str(filename)
@@ -286,8 +284,6 @@ class OrbitalSet:
     Container for a set of molecular orbitals
     """
 
-    def __init__(self, content: str, instance=-1):
-        pass
 
     def __str__(self):
         return 'OrbitalSet ' + str(type(self)) + '\n' + str(self.orbitals) + str('\n\ncoordinateSet: ') + str(
@@ -298,24 +294,24 @@ class OrbitalSet:
         return [orbital['energy'] for orbital in self.orbitals]
 
 
-def factoryOrbitalSet(input: str, fileType=None, instance=-1):
+def factory_orbital_set(input: str, file_type=None, instance=-1):
     implementors = {
         'xml': OrbitalSetXML,
         'molden': OrbitalSetMolden,
     }
-    if not fileType:
+    if not file_type:
         import os
         base, suffix = os.path.splitext(input)
         return implementors[suffix[1:]](open(input, 'r').read(), instance)
     else:
-        return implementors[fileType](input, instance)
+        return implementors[file_type](input, instance)
 
 
 class OrbitalSetMolden(OrbitalSet):
     def __init__(self, content: str, instance=-1):
         import re
         self.coordinateSet = 2
-        super().__init__(content, instance)
+        super().__init__()
         self.orbitals = []
         vibact = False
         for line in content.split('\n'):
@@ -329,7 +325,7 @@ class OrbitalSetMolden(OrbitalSet):
 
 class OrbitalSetXML(OrbitalSet):
     def __init__(self, content: str, instance=-1):
-        super().__init__(content, instance)
+        super().__init__()
         import lxml
         root = lxml.etree.fromstring(content)
         namespaces_ = {'molpro-output': 'http://www.molpro.net/schema/molpro-output',
@@ -337,14 +333,14 @@ class OrbitalSetXML(OrbitalSet):
                        'cml': 'http://www.xml-cml.org/schema',
                        'stm': 'http://www.xml-cml.org/schema',
                        'xhtml': 'http://www.w3.org/1999/xhtml'}
-        orbitalsNode = root.xpath('//molpro-output:orbitals',
+        orbitals_node = root.xpath('//molpro-output:orbitals',
                                   namespaces=namespaces_)
-        if -len(orbitalsNode) > instance or len(orbitalsNode) <= instance:
+        if -len(orbitals_node) > instance or len(orbitals_node) <= instance:
             raise IndexError('instance in OrbitalSet')
         self.coordinateSet = 0 + len(
-            orbitalsNode[instance].xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
+            orbitals_node[instance].xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
                                          namespaces=namespaces_))
-        xpath = orbitalsNode[instance].xpath('molpro-output:orbital', namespaces=namespaces_)
+        xpath = orbitals_node[instance].xpath('molpro-output:orbital', namespaces=namespaces_)
         self.orbitals = [
             {
                 'vector': [float(v) for v in c.text.split()],
@@ -361,9 +357,6 @@ class VibrationSet:
     Container for a set of molecular normal coordinates
     """
 
-    def __init__(self, content: str, instance=-1):
-        pass
-
     def __str__(self):
         return 'VibrationSet ' + str(type(self)) + '\n' + str(self.modes) + str('\n\ncoordinateSet: ') + str(
             self.coordinateSet)
@@ -377,29 +370,28 @@ class VibrationSet:
         return [mode['wavenumber'] for mode in self.modes]
 
 
-def factoryVibrationSet(input: str, fileType=None, instance=-1):
+def factory_vibration_set(input: str, file_type=None, instance=-1):
     implementors = {
         'xml': VibrationSetXML,
         'molden': VibrationSetMolden,
     }
-    if not fileType:
+    if not file_type:
         import os
         base, suffix = os.path.splitext(input)
         return implementors[suffix[1:]](open(input, 'r').read(), instance)
     else:
-        return implementors[fileType](input, instance)
+        return implementors[file_type](input, instance)
 
 
 class VibrationSetMolden(VibrationSet):
     def __init__(self, content: str, instance=-1):
         self.coordinateSet = 2
-        super().__init__(content, instance)
+        super().__init__()
         self.modes = []
         vibact = False
         for line in content.split('\n'):
             if line.strip() == '[FREQ]':
                 vibact = True
-                vibrations = True
             elif vibact and line.strip() and line.strip()[0] == '[':
                 vibact = False
             elif vibact and float(line.strip()) != 0.0:
@@ -410,7 +402,7 @@ class VibrationSetMolden(VibrationSet):
 
 class VibrationSetXML(VibrationSet):
     def __init__(self, content: str, instance=-1):
-        super().__init__(content, instance)
+        super().__init__()
         import lxml
         root = lxml.etree.fromstring(content)
         namespaces_ = {'molpro-output': 'http://www.molpro.net/schema/molpro-output',
@@ -418,12 +410,12 @@ class VibrationSetXML(VibrationSet):
                        'cml': 'http://www.xml-cml.org/schema',
                        'stm': 'http://www.xml-cml.org/schema',
                        'xhtml': 'http://www.w3.org/1999/xhtml'}
-        vibrationsNode = root.xpath('//molpro-output:vibrations',
+        vibrations_node = root.xpath('//molpro-output:vibrations',
                                     namespaces=namespaces_)
-        if -len(vibrationsNode) > instance or len(vibrationsNode) <= instance:
+        if -len(vibrations_node) > instance or len(vibrations_node) <= instance:
             raise IndexError('instance in VibrationSet')
         self.coordinateSet = 1 + len(
-            vibrationsNode[instance].xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
+            vibrations_node[instance].xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
                                            namespaces=namespaces_))
         self.modes = [
             {
@@ -435,7 +427,7 @@ class VibrationSetXML(VibrationSet):
                 'symmetry': c.attrib['symmetry'],
                 'real_zero_imag': c.attrib['real_zero_imag'],
             }
-            for c in (vibrationsNode[instance].xpath(
+            for c in (vibrations_node[instance].xpath(
                 'molpro-output:normalCoordinate[not(@real_zero_imag) or @real_zero_imag!="Z"]',
                 namespaces=namespaces_))
         ]

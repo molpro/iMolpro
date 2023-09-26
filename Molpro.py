@@ -11,20 +11,20 @@ if __name__ == '__main__':
     class App(QApplication):
         def event(self, e):
             if e.type() == QEvent.FileOpen and os.path.splitext(e.file())[1] == '.molpro':
-                windowManager.register(ProjectWindow(e.file()))
+                window_manager.register(ProjectWindow(e.file()))
             else:
                 return super().event(e)
             return True
 
     app = App(sys.argv)
 
-    windowManager = WindowManager()
-    chooser = Chooser(windowManager)
+    window_manager = WindowManager()
+    chooser = Chooser(window_manager)
     chooser.quitButton.clicked.connect(app.quit)
-    windowManager.setEmptyAction(chooser.activate)
-    windowManager.setFullAction(chooser.hide)
+    window_manager.set_empty_action(chooser.activate)
+    window_manager.set_full_action(chooser.hide)
 
     for arg in sys.argv[1:]:
-        windowManager.register(ProjectWindow(arg))
+        window_manager.register(ProjectWindow(arg))
 
     app.exec()

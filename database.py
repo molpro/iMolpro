@@ -22,27 +22,27 @@ class DatabaseSearchDialog(QDialog):
         self.value.setPlaceholderText('Enter search text here')
         self.layout.addWidget(self.value)
 
-        self.pubChemCheckBox = QCheckBox(self)
-        self.pubChemCheckBox.setText('PubChem')
-        self.pubChemCheckBox.setChecked(True)
-        self.chemSpiderCheckBox = QCheckBox(self)
-        self.chemSpiderCheckBox.setText('ChemSpider')
-        self.chemSpiderCheckBox.setChecked('CHEMSPIDER_API_KEY' in settings)
-        checkBoxLayout = QHBoxLayout()
-        checkBoxLayout.addWidget(QLabel('Databases: '))
-        checkBoxLayout.addWidget(self.pubChemCheckBox)
-        checkBoxLayout.addWidget(self.chemSpiderCheckBox)
-        checkBoxLayout.addStretch()
-        self.layout.addLayout(checkBoxLayout)
+        self.pubchem_checkbox = QCheckBox(self)
+        self.pubchem_checkbox.setText('PubChem')
+        self.pubchem_checkbox.setChecked(True)
+        self.chemspider_checkbox = QCheckBox(self)
+        self.chemspider_checkbox.setText('ChemSpider')
+        self.chemspider_checkbox.setChecked('CHEMSPIDER_API_KEY' in settings)
+        checkbox_layout = QHBoxLayout()
+        checkbox_layout.addWidget(QLabel('Databases: '))
+        checkbox_layout.addWidget(self.pubchem_checkbox)
+        checkbox_layout.addWidget(self.chemspider_checkbox)
+        checkbox_layout.addStretch()
+        self.layout.addLayout(checkbox_layout)
 
-        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        self.buttonBox.accepted.connect(self.accept)
-        self.buttonBox.rejected.connect(self.reject)
-        self.layout.addWidget(self.buttonBox)
+        self.buttonbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttonbox.accepted.connect(self.accept)
+        self.buttonbox.rejected.connect(self.reject)
+        self.layout.addWidget(self.buttonbox)
 
 
 class DatabaseFetchDialog(QDialog):
-    def __init__(self, query, usePubChem=True, useChemSpider=True):
+    def __init__(self, query, use_pubchem=True, use_chemspider=True):
         super().__init__()
         self.setWindowTitle('Select from database search results')
         self.layout = QVBoxLayout()
@@ -56,18 +56,18 @@ class DatabaseFetchDialog(QDialog):
             else:
                 return str(i) + ' matches'
 
-        if usePubChem:
+        if use_pubchem:
             self.database = 'PubChem'
             for field in ['name', 'cid', 'inchi', 'inchikey', 'sdf', 'smiles', 'formula', ]:
                 if field == 'cid' and not all(chr.isdigit() for chr in query.strip()): continue
                 if field == 'inchi' and query.strip()[:3] != '1S/': continue
                 try:
                     self.compounds = pubchempy.get_compounds(query.strip(), field, record_type='3d')
-                except Exception as e:
+                except Exception:
                     self.layout.addWidget(QLabel('Network or other error during PubChem search'))
-                    self.buttonBox = QDialogButtonBox(QDialogButtonBox.Cancel)
-                    self.buttonBox.rejected.connect(self.reject)
-                    self.layout.addWidget(self.buttonBox)
+                    self.buttonbox = QDialogButtonBox(QDialogButtonBox.Cancel)
+                    self.buttonbox.rejected.connect(self.reject)
+                    self.layout.addWidget(self.buttonbox)
                     return
                 if self.compounds: break
             self.layout.addWidget(
@@ -78,13 +78,13 @@ class DatabaseFetchDialog(QDialog):
                     [str(compound.cid) + ' (' + ', '.join(compound.synonyms)[:50] + '...)' for compound in
                      self.compounds])
                 self.layout.addWidget(self.chooser)
-                self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-                self.buttonBox.accepted.connect(self.accept)
-                self.buttonBox.rejected.connect(self.reject)
-                self.layout.addWidget(self.buttonBox)
+                self.buttonbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+                self.buttonbox.accepted.connect(self.accept)
+                self.buttonbox.rejected.connect(self.reject)
+                self.layout.addWidget(self.buttonbox)
                 return
 
-        if useChemSpider:
+        if use_chemspider:
             if 'CHEMSPIDER_API_KEY' not in settings:
                 text, ok = QInputDialog().getText(self,'ChemSpider API key','To use ChemSpider, give the value of your API key - see https://developer.rsc.org/')
                 if ok and text:
@@ -101,15 +101,15 @@ class DatabaseFetchDialog(QDialog):
                     self.chooser.addItems(
                         [str(compound.csid) + ' (' + compound.common_name + ')' for compound in self.compounds])
                     self.layout.addWidget(self.chooser)
-                    self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-                    self.buttonBox.accepted.connect(self.accept)
-                    self.buttonBox.rejected.connect(self.reject)
-                    self.layout.addWidget(self.buttonBox)
+                    self.buttonbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+                    self.buttonbox.accepted.connect(self.accept)
+                    self.buttonbox.rejected.connect(self.reject)
+                    self.layout.addWidget(self.buttonbox)
                     return
 
-        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Cancel)
-        self.buttonBox.rejected.connect(self.reject)
-        self.layout.addWidget(self.buttonBox)
+        self.buttonbox = QDialogButtonBox(QDialogButtonBox.Cancel)
+        self.buttonbox.rejected.connect(self.reject)
+        self.layout.addWidget(self.buttonbox)
 
     def xyz(self, index=None):
         index_ = index if index else self.chooser.currentIndex()
@@ -148,7 +148,7 @@ def database_choose_structure():
     dlg = DatabaseSearchDialog()
     dlg.exec()
     if dlg.result():
-        dlg2 = DatabaseFetchDialog(dlg.value.text(),dlg.pubChemCheckBox.isChecked(),dlg.chemSpiderCheckBox.isChecked())
+        dlg2 = DatabaseFetchDialog(dlg.value.text(), dlg.pubchem_checkbox.isChecked(), dlg.chemspider_checkbox.isChecked())
         dlg2.exec()
         if dlg2.result():
             filename = pathlib.Path(tempfile.mkdtemp()) / (dlg2.database + '-' + str(dlg2.cid()) + '.xyz')
