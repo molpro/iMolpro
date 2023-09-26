@@ -59,6 +59,7 @@ class ProjectWindow(QMainWindow):
     close_signal = pyqtSignal(QWidget)
     new_signal = pyqtSignal(QWidget)
     chooser_signal = pyqtSignal(QWidget)
+    vod = None
 
     def __init__(self, filename, window_manager, latency=1000):
         super().__init__()
@@ -147,6 +148,8 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Output structure', 'View', self.visualise_output, 'Alt+D',
                           tooltip='View the molecular structure at the end of the job')
         menubar.addSeparator('View')
+        menubar.addAction('Next output tab','View', lambda: self.output_tabs.setCurrentIndex((self.output_tabs.currentIndex()+1)%len(self.output_tabs)),'Alt+]')
+        menubar.addAction('Previous output tab','View', lambda: self.output_tabs.setCurrentIndex((self.output_tabs.currentIndex()+1)%len(self.output_tabs)),'Alt+[')
 
         help_manager = HelpManager(menubar)
         help_manager.register('Overview', 'README')
@@ -223,11 +226,13 @@ class ProjectWindow(QMainWindow):
     def refresh_output_tabs(self):
         if len(self.output_tabs) != len(
                 [suffix for suffix, pane in self.output_panes.items() if
-                 os.path.exists(self.project.filename(suffix))]):
+                 os.path.exists(self.project.filename(suffix))])+(1 if self.vod else 0):
             self.output_tabs.clear()
             for suffix, pane in self.output_panes.items():
                 if os.path.exists(self.project.filename(suffix)):
                     self.output_tabs.addTab(pane, suffix)
+            if self.vod:
+                self.output_tabs.addTab(self.vod,'structure')
 
     def guided_toggle(self):
         self.refresh_input_tabs(index=1 if self.guided_action.isChecked() else 0)
@@ -261,9 +266,9 @@ class ProjectWindow(QMainWindow):
             return
         elif text == 'None':
             if self.vod:
-                self.vod.hide()
-                self.window().resize(
-                    self.minimum_window_size)  # TODO find a way of shrinking back the main window # self.inputPane.adjustSize() # self.outputPane.adjustSize() # self.adjustSize()
+                index = self.output_tabs.indexOf(self.vod)
+                if index >=0: self.output_tabs.removeTab(index)
+                self.vod = None
         elif text[:5] == 'Edit ':
             filename = self.project.filename('', text[5:], run=-1)
             if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
@@ -487,12 +492,15 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 
         webview.setMinimumSize(width, height)
         if not self.vod:
-            self.layout.addWidget(webview)
+            # self.layout.addWidget(webview)
+            self.output_tabs.addTab(webview,'structure')
         else:
-            self.layout.replaceWidget(self.vod, webview)
-            self.vod.hide()
+            # self.layout.replaceWidget(self.vod, webview)
+            self.output_tabs.removeTab(self.output_tabs.indexOf(self.vod))
+            self.output_tabs.addTab(webview,'structure')
         self.vod = webview
         self.vod.show()
+        self.output_tabs.setCurrentIndex(self.output_tabs.indexOf(self.vod))
 
     def _download_requested(self, item):
         import re
