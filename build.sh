@@ -46,8 +46,8 @@ PATH=/usr/bin:$PATH pyinstaller \
 
 descriptor=${version}.$(uname).$(uname -m)
 if [ $(uname) = Darwin ]; then
-  cp -p $builddir/dist/Molpro.app/Contents/MacOS/PyQt5/Qt/resources/* $builddir/dist/Molpro.app/Contents/Resources
-  cp -pr $builddir/dist/Molpro.app/Contents/MacOS/PyQt5/Qt/translations $builddir/dist/Molpro.app/Contents/
+  (cd $builddir/dist/Molpro.app/Contents/Resources; for i in PyQt5/Qt/resources/* ; do ln -s $i . ; done)
+  (cd $builddir/dist/Molpro.app/Contents; ln -s MacOS/Resources/PyQt5/Qt/translations .)
   rm -rf $builddir/dist/Molpro
   rm -f Molpro-${descriptor}.dmg
   if [ -r /Volumes/Molpro-${descriptor} ]; then umount /Volumes/Molpro-${descriptor} ; fi
