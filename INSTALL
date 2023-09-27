@@ -1,0 +1,8 @@
+To run directly from the Python source,
+
+conda install -c conda-forge -y --file=requirements.txt
+python Molpro.py
+
+To build a free-standing binary suitable for distribution and subsequent use with no Conda environment,
+sh ./build.sh
+with the resulting package going to the dist/ directory.
