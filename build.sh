@@ -3,7 +3,7 @@
 if [ $(uname) = Darwin ]; then
   which create-dmg > /dev/null || brew install create-dmg
 fi
-conda install -c conda-forge -y pyqt pyqtwebengine pyinstaller pymolpro pubchempy chemspipy || exit 1
+conda install -c conda-forge -y --file=requirements.txt  || exit 1
 
 
 if [ $(uname) = Darwin ]; then
