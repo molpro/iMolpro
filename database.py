@@ -1,9 +1,10 @@
 import os
 import pathlib
+import re
+
 from settings import settings
 import pubchempy
 from chemspipy import ChemSpider
-from openbabel import pybel
 import tempfile
 from PyQt5.QtWidgets import QVBoxLayout, QDialog, QDialogButtonBox, QLabel, QComboBox, QLineEdit, QCheckBox, \
     QHBoxLayout, QInputDialog
@@ -86,7 +87,8 @@ class DatabaseFetchDialog(QDialog):
 
         if use_chemspider:
             if 'CHEMSPIDER_API_KEY' not in settings:
-                text, ok = QInputDialog().getText(self,'ChemSpider API key','To use ChemSpider, give the value of your API key - see https://developer.rsc.org/')
+                text, ok = QInputDialog().getText(self, 'ChemSpider API key',
+                                                  'To use ChemSpider, give the value of your API key - see https://developer.rsc.org/')
                 if ok and text:
                     settings['CHEMSPIDER_API_KEY'] = text
 
@@ -129,8 +131,13 @@ class DatabaseFetchDialog(QDialog):
             return xyz
 
         if self.database == 'ChemSpider':
-            molecule = pybel.readstring('SDF', compound.mol_3d)
-            return molecule.write('XYZ')
+            lines = compound.mol_3d.split('\n')
+            n = int(lines[3].strip().split(' ')[0].strip())
+            xyz = str(n) + '\nChemSpider ' + str(compound.csid) + '\n'
+            for i in range(4, n + 4):
+                split = re.sub(' +', ' ', lines[i].strip()).split(' ')
+                xyz += split[3] + ' ' + ' '.join(split[:3]) + '\n'
+            return xyz
 
     def cid(self, index=None):
         index_ = index if index else self.chooser.currentIndex()
@@ -148,7 +155,8 @@ def database_choose_structure():
     dlg = DatabaseSearchDialog()
     dlg.exec()
     if dlg.result():
-        dlg2 = DatabaseFetchDialog(dlg.value.text(), dlg.pubchem_checkbox.isChecked(), dlg.chemspider_checkbox.isChecked())
+        dlg2 = DatabaseFetchDialog(dlg.value.text(), dlg.pubchem_checkbox.isChecked(),
+                                   dlg.chemspider_checkbox.isChecked())
         dlg2.exec()
         if dlg2.result():
             filename = pathlib.Path(tempfile.mkdtemp()) / (dlg2.database + '-' + str(dlg2.cid()) + '.xyz')
