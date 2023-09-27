@@ -13,6 +13,7 @@ builddir=${TMPDIR:-/tmp}/Molpro
 rm -rf $builddir
 
 versionfile=${TMPDIR:-/tmp}/VERSION
+git config --global safe.directory $PWD
 version=$(git describe --tags --dirty)
 echo $version > ${versionfile}
 
