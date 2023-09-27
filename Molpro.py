@@ -25,6 +25,6 @@ if __name__ == '__main__':
     window_manager.set_full_action(chooser.hide)
 
     for arg in sys.argv[1:]:
-        window_manager.register(ProjectWindow(arg))
+        window_manager.register(ProjectWindow(arg, window_manager))
 
     app.exec()
