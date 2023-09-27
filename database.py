@@ -59,12 +59,16 @@ class DatabaseFetchDialog(QDialog):
 
         if use_pubchem:
             self.database = 'PubChem'
-            for field in ['name', 'cid', 'inchi', 'inchikey', 'sdf', 'smiles', 'formula', ]:
+            for field in ['name', 'cid', 'inchi', 'inchikey',
+                          # 'sdf', 'smiles', 'formula', # these seem to throw exceptions sometimes. Why?
+                          ]:
                 if field == 'cid' and not all(chr.isdigit() for chr in query.strip()): continue
                 if field == 'inchi' and query.strip()[:3] != '1S/': continue
                 try:
+                    # print('field', field)
                     self.compounds = pubchempy.get_compounds(query.strip(), field, record_type='3d')
-                except Exception:
+                except Exception as e:
+                    # print('exception', e)
                     self.layout.addWidget(QLabel('Network or other error during PubChem search'))
                     self.buttonbox = QDialogButtonBox(QDialogButtonBox.Cancel)
                     self.buttonbox.rejected.connect(self.reject)
@@ -72,7 +76,8 @@ class DatabaseFetchDialog(QDialog):
                     return
                 if self.compounds: break
             self.layout.addWidget(
-                QLabel('PubChem found ' + matches(len(self.compounds)) + ' to ' + field + '=' + query))
+                QLabel('PubChem found ' + matches(len(self.compounds)) + ' for ' + (
+                    (field + '=') if self.compounds else '') + query))
             if self.compounds:
                 self.chooser = QComboBox()
                 self.chooser.addItems(
