@@ -68,8 +68,9 @@ class ProjectWindow(QMainWindow):
         assert filename is not None
         self.project = Project(filename)
 
-        os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
-            'PATH']  # make PATH just as if running from shell
+        if 'PATH' in os.environ and 'SHELL' in os.environ:
+            os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
+                'PATH']  # make PATH just as if running from shell
         self.jsmol_min_js = str(pathlib.Path(__file__).parent / "JSmol.min.js")
         if hasattr(sys, '_MEIPASS'):
             os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
@@ -148,8 +149,10 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Output structure', 'View', self.visualise_output, 'Alt+D',
                           tooltip='View the molecular structure at the end of the job')
         menubar.addSeparator('View')
-        menubar.addAction('Next output tab','View', lambda: self.output_tabs.setCurrentIndex((self.output_tabs.currentIndex()+1)%len(self.output_tabs)),'Alt+]')
-        menubar.addAction('Previous output tab','View', lambda: self.output_tabs.setCurrentIndex((self.output_tabs.currentIndex()+1)%len(self.output_tabs)),'Alt+[')
+        menubar.addAction('Next output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
+            (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+]')
+        menubar.addAction('Previous output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
+            (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+[')
 
         help_manager = HelpManager(menubar)
         help_manager.register('Overview', 'README')
@@ -226,13 +229,13 @@ class ProjectWindow(QMainWindow):
     def refresh_output_tabs(self):
         if len(self.output_tabs) != len(
                 [suffix for suffix, pane in self.output_panes.items() if
-                 os.path.exists(self.project.filename(suffix))])+(1 if self.vod else 0):
+                 os.path.exists(self.project.filename(suffix))]) + (1 if self.vod else 0):
             self.output_tabs.clear()
             for suffix, pane in self.output_panes.items():
                 if os.path.exists(self.project.filename(suffix)):
                     self.output_tabs.addTab(pane, suffix)
             if self.vod:
-                self.output_tabs.addTab(self.vod,'structure')
+                self.output_tabs.addTab(self.vod, 'structure')
 
     def guided_toggle(self):
         self.refresh_input_tabs(index=1 if self.guided_action.isChecked() else 0)
@@ -267,7 +270,7 @@ class ProjectWindow(QMainWindow):
         elif text == 'None':
             if self.vod:
                 index = self.output_tabs.indexOf(self.vod)
-                if index >=0: self.output_tabs.removeTab(index)
+                if index >= 0: self.output_tabs.removeTab(index)
                 self.vod = None
         elif text[:5] == 'Edit ':
             filename = self.project.filename('', text[5:], run=-1)
@@ -493,11 +496,11 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         webview.setMinimumSize(width, height)
         if not self.vod:
             # self.layout.addWidget(webview)
-            self.output_tabs.addTab(webview,'structure')
+            self.output_tabs.addTab(webview, 'structure')
         else:
             # self.layout.replaceWidget(self.vod, webview)
             self.output_tabs.removeTab(self.output_tabs.indexOf(self.vod))
-            self.output_tabs.addTab(webview,'structure')
+            self.output_tabs.addTab(webview, 'structure')
         self.vod = webview
         self.vod.show()
         self.output_tabs.setCurrentIndex(self.output_tabs.indexOf(self.vod))
