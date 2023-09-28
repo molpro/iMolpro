@@ -459,6 +459,7 @@ class FileBackedDictionary(MutableMapping):
     def __delitem__(self, item):
         self.refresh()
         del self.data[item]
+        self.save()
 
     def __setitem__(self, key, value):
         self.refresh()

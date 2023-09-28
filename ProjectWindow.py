@@ -215,6 +215,7 @@ class ProjectWindow(QMainWindow):
 
     def edit_backend_configuration(self):
         self.backend_configuration_editor = MainEditFile(pathlib.Path.home() / '.sjef/molpro/backends.xml')
+        self.backend_configuration_editor.setMinimumSize(600, 400)
         self.backend_configuration_editor.show()
 
     def edit_input_structure(self):

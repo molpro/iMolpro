@@ -4,11 +4,6 @@ import pymolpro
 from PyQt5.QtWidgets import QMenu, QAction
 
 
-def project_window_register(window_manager, filename):
-    from ProjectWindow import ProjectWindow
-    window_manager.register(ProjectWindow(filename, window_manager))
-
-
 class RecentMenuAction(QAction):
     def __init__(self, parent, window_manager, filename: str):
         super().__init__()
@@ -19,7 +14,8 @@ class RecentMenuAction(QAction):
         self.window_manager = window_manager
 
     def process(self):
-        project_window_register(self.window_manager, self.filename)
+        from ProjectWindow import ProjectWindow
+        self.window_manager.register(ProjectWindow(self.filename, self.window_manager))
         self.parent.refresh()
 
 
