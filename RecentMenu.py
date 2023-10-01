@@ -30,7 +30,7 @@ class RecentMenu(QMenu):
     def refresh(self, max_items=9):
         self.recentProjects.clear()
         self.clear()
-        for i in range(1, max_items):
+        for i in range(1, max_items+1):
             f = pymolpro.recent_project('molpro', i)
             if f:
                 action = RecentMenuAction(self, self.windowManager, f)
