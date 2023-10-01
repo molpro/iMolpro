@@ -628,9 +628,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 
     def terminal(self):
         if platform.system() == 'Darwin':
-            for app in ['iTerm', 'Terminal', ]:
-                if os.path.exists('/Applications/' + app + '.app'):
-                    print('running ', app, self.project.filename(run=-1))
+            for app in ['/Applications/iTerm.app', '/System/Applications/Utilities/Terminal.app', ]:
+                if os.path.exists(app):
                     subprocess.run(['/usr/bin/open', '-a', app, self.project.filename(run=-1)])
                     break
         elif platform.system() == 'Windows':
