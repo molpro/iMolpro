@@ -611,19 +611,15 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 
     def file_explorer(self):
         if platform.system() == 'Darwin':
-            print('running ', 'Finder', self.project.filename(run=-1))
             subprocess.run(['/usr/bin/open', '-a', 'Finder', self.project.filename(run=-1)])
         elif platform.system() == 'Windows':
             subprocess.run('Explorer', self.project.filename(run=-1))
             pass
         else:
-            for k, v in {
-                'gnome-terminal': '--working-directory=',
-                'lxterminal': '--working-directory=',
-            }:
-                bin_app = '/usr/bin/' + k
+            for app in ['nautilus']:
+                bin_app = '/usr/bin/' + app
                 if os.path.exists(bin_app):
-                    subprocess.run(bin_app, v + self.project.filename(run=-1))
+                    subprocess.run(bin_app, self.project.filename(run=-1))
                     break
 
     def terminal(self):
@@ -635,8 +631,11 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         elif platform.system() == 'Windows':
             subprocess.run('Command')  # TODO make this work
         else:
-            for app in ['nautilus']:
-                bin_app = '/usr/bin/' + app
+            for k, v in {
+                'gnome-terminal': '--working-directory=',
+                'lxterminal': '--working-directory=',
+            }:
+                bin_app = '/usr/bin/' + k
                 if os.path.exists(bin_app):
-                    subprocess.run(bin_app, self.project.filename(run=-1))
+                    subprocess.run(bin_app, v + self.project.filename(run=-1))
                     break
