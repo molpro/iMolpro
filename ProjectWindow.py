@@ -1,8 +1,10 @@
 import os
 import pathlib
 import shutil
+import subprocess
 import sys
 import re
+import platform
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
@@ -134,6 +136,11 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Clean', 'Project', self.clean, tooltip='Remove old runs from the project')
         self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
         self.kill_action = menubar.addAction('Kill', 'Job', self.kill, tooltip='Kill the running job')
+        menubar.addSeparator('Project')
+        menubar.addAction('File explorer', 'Project', self.file_explorer, 'Ctrl+U',
+                          tooltip='Open system file explorer on the project bundle')
+        menubar.addAction('Terminal', 'Project', self.terminal, 'Ctrl+T',
+                          tooltip='Open command-line terminal in the project bundle')
         menubar.addAction('Backend', 'Job', lambda: configure_backend(self), 'Ctrl+B', 'Configure backend')
         menubar.addAction('Edit backend configuration file', 'Job', self.edit_backend_configuration, 'Ctrl+Shift+B',
                           'Edit backend configuration file')
@@ -601,3 +608,36 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                 b = os.path.basename(filename)
                 dest = QFileDialog.getExistingDirectory(self, 'Destination for ' + b)
                 shutil.copy(filename, dest)
+
+    def file_explorer(self):
+        if platform.system() == 'Darwin':
+            print('running ', 'Finder', self.project.filename(run=-1))
+            subprocess.run(['/usr/bin/open', '-a', 'Finder', self.project.filename(run=-1)])
+        elif platform.system() == 'Windows':
+            subprocess.run('Explorer', self.project.filename(run=-1))
+            pass
+        else:
+            for k, v in {
+                'gnome-terminal': '--working-directory=',
+                'lxterminal': '--working-directory=',
+            }:
+                bin_app = '/usr/bin/' + k
+                if os.path.exists(bin_app):
+                    subprocess.run(bin_app, v + self.project.filename(run=-1))
+                    break
+
+    def terminal(self):
+        if platform.system() == 'Darwin':
+            for app in ['iTerm', 'Terminal', ]:
+                if os.path.exists('/Applications/' + app + '.app'):
+                    print('running ', app, self.project.filename(run=-1))
+                    subprocess.run(['/usr/bin/open', '-a', app, self.project.filename(run=-1)])
+                    break
+        elif platform.system() == 'Windows':
+            subprocess.run('Command')  # TODO make this work
+        else:
+            for app in ['nautilus']:
+                bin_app = '/usr/bin/' + app
+                if os.path.exists(bin_app):
+                    subprocess.run(bin_app, self.project.filename(run=-1))
+                    break
