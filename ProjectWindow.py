@@ -137,10 +137,9 @@ class ProjectWindow(QMainWindow):
         self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
         self.kill_action = menubar.addAction('Kill', 'Job', self.kill, tooltip='Kill the running job')
         menubar.addSeparator('Project')
-        menubar.addAction('File explorer', 'Project', self.file_explorer, 'Ctrl+U',
-                          tooltip='Open system file explorer on the project bundle')
-        menubar.addAction('Terminal', 'Project', self.terminal, 'Ctrl+T',
-                          tooltip='Open command-line terminal in the project bundle')
+        menubar.addAction('Browse project folder', 'Project', self.browse_project,
+                          tooltip='Look at the contents of the project folder.  With care, files can be edited or renamed, but note that this may break the integrity of the project.')
+
         menubar.addAction('Backend', 'Job', lambda: configure_backend(self), 'Ctrl+B', 'Configure backend')
         menubar.addAction('Edit backend configuration file', 'Job', self.edit_backend_configuration, 'Ctrl+Shift+B',
                           'Edit backend configuration file')
@@ -609,33 +608,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                 dest = QFileDialog.getExistingDirectory(self, 'Destination for ' + b)
                 shutil.copy(filename, dest)
 
-    def file_explorer(self):
-        if platform.system() == 'Darwin':
-            subprocess.run(['/usr/bin/open', '-a', 'Finder', self.project.filename(run=-1)])
-        elif platform.system() == 'Windows':
-            subprocess.run('Explorer', self.project.filename(run=-1))
-            pass
-        else:
-            for app in ['nautilus']:
-                bin_app = '/usr/bin/' + app
-                if os.path.exists(bin_app):
-                    subprocess.run(bin_app, self.project.filename(run=-1))
-                    break
-
-    def terminal(self):
-        if platform.system() == 'Darwin':
-            for app in ['/Applications/iTerm.app', '/System/Applications/Utilities/Terminal.app', ]:
-                if os.path.exists(app):
-                    subprocess.run(['/usr/bin/open', '-a', app, self.project.filename(run=-1)])
-                    break
-        elif platform.system() == 'Windows':
-            subprocess.run('Command')  # TODO make this work
-        else:
-            for k, v in {
-                'gnome-terminal': '--working-directory=',
-                'lxterminal': '--working-directory=',
-            }:
-                bin_app = '/usr/bin/' + k
-                if os.path.exists(bin_app):
-                    subprocess.run(bin_app, v + self.project.filename(run=-1))
-                    break
+    def browse_project(self):
+        dlg = QFileDialog(self,self.project.filename(),self.project.filename())
+        dlg.setLabelText(QFileDialog.Accept, "OK")
+        dlg.exec()
