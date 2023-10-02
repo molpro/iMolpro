@@ -104,6 +104,10 @@ class ProjectWindow(QMainWindow):
         self.recent_menu = RecentMenu(self.window_manager)
         menubar.addSubmenu(self.recent_menu, 'File')
         menubar.addSeparator('File')
+        menubar.addAction('Move to...', 'File', self.move_to, tooltip='Move the project')
+        menubar.addAction('Copy to...', 'File', self.copy_to, tooltip='Make a copy of the project')
+        # menubar.addAction('Erase', 'File', self.erase, tooltip='Completely erase the project') # TODO get erase() working
+        menubar.addSeparator('File')
         menubar.addAction('Quit', 'File', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
                           tooltip='Quit')
 
@@ -601,3 +605,29 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                 b = os.path.basename(filename)
                 dest = QFileDialog.getExistingDirectory(self, 'Destination for ' + b)
                 shutil.copy(filename, dest)
+
+    def move_to(self):
+        file_name, filter = QFileDialog.getSaveFileName(self, 'Copy project to...', '..', 'Molpro project (*.molpro)')
+        if file_name:
+            self.project.move(file_name)
+            self.window_manager.register(ProjectWindow(file_name, self.window_manager))
+            self.close()
+
+    def copy_to(self):
+        file_name, filter = QFileDialog.getSaveFileName(self, 'Copy project to...', '..', 'Molpro project (*.molpro)')
+        if file_name:
+            self.project.copy(file_name, keep_run_directories=0)
+            return file_name
+
+    def erase(self):
+        result = QMessageBox.question(self,'Erase project','Are you sure you want to erase project '+self.project.filename(run=-1))
+        if result == QMessageBox.Yes:
+            print('erasing ',self.project.filename(run=-1))
+            self.window_manager.erase(self)
+            return
+            del self.statusBar
+            shutil.rmtree(self.project.filename(run=-1))
+            del self
+            return
+            # self.project.erase()
+            self.close()

@@ -1,3 +1,5 @@
+import shutil
+
 from PyQt5.QtWidgets import QWidget, QFileDialog, QMessageBox
 from utilities import force_suffix
 
@@ -34,3 +36,12 @@ class WindowManager:
         filename = force_suffix(QFileDialog.getSaveFileName(caption='Save new project as ...')[0])
         if filename:
             self.register(type(data)(filename, self))
+
+    def erase(self, project_window):
+        filename = project_window.project.filename(run=-1)
+        self.unregister(project_window)
+        del project_window.project
+        del project_window
+        import gc
+        gc.collect()
+        shutil.rmtree(filename)

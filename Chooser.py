@@ -143,7 +143,7 @@ class Chooser(QMainWindow):
     def openProjectDialog(self):
         filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', ))
         if filename:
-            self.window_manager.register(ProjectWindow(filename))
+            self.window_manager.register(ProjectWindow(filename, self.window_manager))
             self.hide()
 
     def newProjectDialog(self):
