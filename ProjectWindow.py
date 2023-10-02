@@ -1,8 +1,10 @@
 import os
 import pathlib
 import shutil
+import subprocess
 import sys
 import re
+import platform
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
@@ -134,6 +136,10 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Clean', 'Project', self.clean, tooltip='Remove old runs from the project')
         self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
         self.kill_action = menubar.addAction('Kill', 'Job', self.kill, tooltip='Kill the running job')
+        menubar.addSeparator('Project')
+        menubar.addAction('Browse project folder', 'Project', self.browse_project,
+                          tooltip='Look at the contents of the project folder.  With care, files can be edited or renamed, but note that this may break the integrity of the project.')
+
         menubar.addAction('Backend', 'Job', lambda: configure_backend(self), 'Ctrl+B', 'Configure backend')
         menubar.addAction('Edit backend configuration file', 'Job', self.edit_backend_configuration, 'Ctrl+Shift+B',
                           'Edit backend configuration file')
@@ -601,3 +607,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                 b = os.path.basename(filename)
                 dest = QFileDialog.getExistingDirectory(self, 'Destination for ' + b)
                 shutil.copy(filename, dest)
+
+    def browse_project(self):
+        dlg = QFileDialog(self,self.project.filename(),self.project.filename())
+        dlg.setLabelText(QFileDialog.Accept, "OK")
+        dlg.exec()
