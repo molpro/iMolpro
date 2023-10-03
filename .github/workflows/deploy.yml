@@ -9,10 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: s-weigand/setup-conda@v1
+      - name: build
+        uses: s-weigand/setup-conda@v1
         with:
           conda-channels: conda-forge
-      - run: |
+        run: |
           set -vx
           uname -a
           git status
@@ -23,12 +24,17 @@ jobs:
           git describe --tags --always --dirty
           conda env list
           conda config --set solver libmamba
-          conda install -y pyinstaller
-          echo $PATH
-          which pyinstaller
-          which pyi-makespec
+#          conda install -y pyinstaller
+#          echo $PATH
+#          which pyinstaller
+#          which pyi-makespec
           bash build.sh
           ls -lR
+      - name: save
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-binary
+          path: dist/Molpro
   run-on-macos:
     name: Run on macos
     runs-on: macos-latest
