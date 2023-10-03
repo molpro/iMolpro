@@ -25,7 +25,6 @@ jobs:
           git fetch --tags
           conda config --set solver libmamba
           echo $PATH
-          conda init
           if [ -r ~/.bash_profile ]; then . ~/.bash_profile ; fi
           conda create -n QtMolpro-github
           conda activate QtMolpro-github
