@@ -14,13 +14,12 @@ jobs:
         os: [ubuntu-latest, [macOS, ARM64]]
     steps:
       - uses: actions/checkout@v3
-      # - uses: s-weigand/setup-conda@v1
+      - uses: s-weigand/setup-conda@v1
+        if: ${{ matrix.os} == ubuntu-latest
       - name: Build
         run: |
           uname -a
           git fetch --tags
-          conda activate base
-          echo $PATH
           conda config --set solver libmamba
           bash build.sh
       - name: Upload
