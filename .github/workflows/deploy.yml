@@ -12,6 +12,7 @@ jobs:
       - run: |
           uname -a
           conda env list
+          conda config --set solver libmamba
           ls
           bash build.sh
           ls -lR
@@ -23,5 +24,6 @@ jobs:
       - run: |
           uname -a
           conda env list
+          conda config --set solver libmamba
           bash build.sh
           ls -lR
