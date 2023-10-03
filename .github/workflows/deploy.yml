@@ -10,21 +10,16 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: s-weigand/setup-conda@v1
-      - run: |
-          set -vx
+      - name: build
+        run: |
           uname -a
-          git status
-          git remote -v
           git fetch --tags
-          git tag
-          git branch -a
-          git describe --tags --always --dirty
-          conda env list
           conda config --set solver libmamba
           bash build.sh
-          ls -lR
       - name: save
         uses: actions/upload-artifact@v3
         with:
           name: linux-binary
-          path: dist/Molpro
+          path: |
+            dist/*bz2
+            dist/*dmg
