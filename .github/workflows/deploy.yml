@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, self-hosted-macOS-ARM64]
+        os: [ubuntu-latest, [macOS, ARM64]]
     steps:
       - uses: actions/checkout@v3
       # - uses: s-weigand/setup-conda@v1
