@@ -9,10 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: s-weigand/setup-conda@v1
-#        with:
-#          conda-channels: conda-forge
       - run: |
           set -vx
           uname -a
@@ -35,15 +32,15 @@ jobs:
         with:
           name: linux-binary
           path: dist/Molpro
-  run-on-macos:
-    name: Run on macos
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: |
-          uname -a
-          git describe
-          conda env list
-          conda config --set solver libmamba
-          bash build.sh
-          ls -lR
+#  run-on-macos:
+#    name: Run on macos
+#    runs-on: macos-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#      - run: |
+#          uname -a
+#          git describe
+#          conda env list
+#          conda config --set solver libmamba
+#          bash build.sh
+#          ls -lR
