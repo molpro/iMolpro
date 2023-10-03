@@ -25,6 +25,7 @@ jobs:
           git fetch --tags
           conda config --set solver libmamba
           echo $PATH
+          env|grep CONDA
           #if [ -r ~/.bash_profile ]; then echo sourcing ~/.bash_profile; cat ~/.bash_profile; source ~/.bash_profile ; fi
           . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
           conda create -n QtMolpro-github
