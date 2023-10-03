@@ -13,6 +13,8 @@ jobs:
           set -vx
           uname -a
           git status
+          git remote -v
+          git fetch --tags
           git tag
           git describe --tags
           git describe
