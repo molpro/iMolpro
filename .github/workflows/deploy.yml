@@ -10,16 +10,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          set -vx
           uname -a
           git status
           git remote -v
-          git tag
           git fetch --tags
           git tag
           git branch -a
           git describe --tags --always --dirty
-          git describe
           conda env list
           conda config --set solver libmamba
           conda install -y -c conda-forge pyinstaller
