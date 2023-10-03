@@ -14,8 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
-      - uses: s-weigand/setup-conda@v1
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+      #- uses: s-weigand/setup-conda@v1
+        #if: ${{ matrix.os == 'ubuntu-latest' }}
+      - uses: conda-incubator/setup-miniconda@v2
       #- run: conda init bash
       - name: Build
         run: |
