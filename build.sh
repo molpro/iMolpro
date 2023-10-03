@@ -10,8 +10,8 @@ builddir=${TMPDIR:-/tmp}/QtMolpro
 rm -rf $builddir
 
 versionfile=${TMPDIR:-/tmp}/VERSION
-git config --global safe.directory $PWD
-version=$(git describe --tags --dirty)
+git config --global --add safe.directory $PWD
+version=$(git describe --tags --dirty --always)
 echo $version > ${versionfile}
 
 PATH=/usr/bin:$PATH pyi-makespec \

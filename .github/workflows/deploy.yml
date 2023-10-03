@@ -1,0 +1,33 @@
+name: Deploy
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, [macOS, ARM64], [macOS, X64]]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+      - uses: s-weigand/setup-conda@v1
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - name: Build
+        run: |
+          git fetch --tags
+          conda config --set solver libmamba
+          . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
+          conda create -n QtMolpro-github
+          conda activate QtMolpro-github
+          bash build.sh
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/*bz2
+            dist/*dmg
