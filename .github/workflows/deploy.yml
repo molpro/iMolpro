@@ -24,6 +24,9 @@ jobs:
           git fetch --tags
           conda config --set solver libmamba
           echo $PATH
+          conda create -n QtMolpro-github
+          conda activate QtMolpro-github
+          echo $PATH
           conda install -y -c conda-forge pyinstaller
           bash build.sh
       - name: Upload
