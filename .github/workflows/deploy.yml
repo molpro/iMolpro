@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: s-weigand/setup-conda@v1
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.os == 'zubuntu-latest' }}
       - name: Build
         run: |
           uname -a
