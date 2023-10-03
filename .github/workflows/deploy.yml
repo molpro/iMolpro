@@ -14,9 +14,10 @@ jobs:
           uname -a
           git status
           git remote -v
+          git tag
           git fetch --tags
           git tag
-          git describe --tags
+          git describe --tags --always
           git describe
           conda env list
           conda config --set solver libmamba
