@@ -14,7 +14,7 @@ jobs:
         os: [ubuntu-latest, self-hosted-macOS-ARM64]
     steps:
       - uses: actions/checkout@v3
-      - uses: s-weigand/setup-conda@v1
+      # - uses: s-weigand/setup-conda@v1
       - name: Build
         run: |
           uname -a
