@@ -23,6 +23,8 @@ jobs:
           uname -a
           git fetch --tags
           conda config --set solver libmamba
+          echo $PATH
+          conda install -y -c conda-forge pyinstaller
           bash build.sh
       - name: Upload
         uses: actions/upload-artifact@v3
