@@ -21,9 +21,11 @@ jobs:
       - name: Build
         run: |
           uname -a
+          ps
           git fetch --tags
           conda config --set solver libmamba
           echo $PATH
+          conda init
           conda create -n QtMolpro-github
           conda activate QtMolpro-github
           echo $PATH
