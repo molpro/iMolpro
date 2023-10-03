@@ -10,6 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
+          set -vx
           uname -a
           git status
           git remote -v
@@ -19,9 +20,10 @@ jobs:
           git describe --tags --always --dirty
           conda env list
           conda config --set solver libmamba
-          conda install -y -c conda-forge pyinstaller
-          which pyinstaller
+          conda create -n QtMolpro -y -c conda-forge pyinstaller
+          conda activate QtMolpro
           echo $PATH
+          which pyinstaller
           which pyi-makespec
           bash build.sh
           ls -lR
