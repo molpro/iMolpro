@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: s-weigand/setup-conda
       - run: |
           set -vx
           uname -a
@@ -20,8 +21,9 @@ jobs:
           git describe --tags --always --dirty
           conda env list
           conda config --set solver libmamba
-          conda create -n QtMolpro -y -c conda-forge pyinstaller
+          conda create -n QtMolpro -y
           conda activate QtMolpro
+          conda install -n QtMolpro -y -c conda-forge pyinstaller
           echo $PATH
           which pyinstaller
           which pyi-makespec
