@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, [macOS, ARM64], macos-13]
+        os: [ubuntu-latest, [macOS, ARM64], [macOS, X64]]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
