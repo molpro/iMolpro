@@ -1,8 +1,8 @@
 name: Deploy
 on:
   push:
-    #tags:
-      #- '*'
+    tags:
+      - '*'
 
 jobs:
   deploy:
@@ -16,32 +16,14 @@ jobs:
       - uses: actions/setup-python@v4
       - uses: s-weigand/setup-conda@v1
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        #- uses: conda-incubator/setup-miniconda@v2
-        #if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'macos-13' }}
-      #- run: conda init bash
       - name: Build
         run: |
-          #uname -a
-          #ps
           git fetch --tags
-          env|grep CONDA
           conda config --set solver libmamba
-          #echo $PATH
-          #if [ -r /usr/share/miniconda]; then ls /usr/share/miniconda ; fi
-          #if [ -r ~/.bash_profile ]; then echo sourcing ~/.bash_profile; cat ~/.bash_profile; source ~/.bash_profile ; fi
           . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
           conda create -n QtMolpro-github
           conda activate QtMolpro-github
-          #echo $PATH
-          #conda install -y -c conda-forge pyinstaller
           bash build.sh
-      #- name: Upload
-        #uses: actions/upload-artifact@v3
-        #with:
-          ## name: ${{ matrix.os }}
-          #path: |
-            #dist/*bz2
-            #dist/*dmg
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
