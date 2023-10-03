@@ -4,12 +4,12 @@ on:
     branches: [ test_deploy ]
 
 jobs:
-  #      - uses: s-weigand/setup-conda@v1
   run-on-ubuntu:
     name: Run on Ubuntu
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: s-weigand/setup-conda@v1
       - run: |
           set -vx
           uname -a
@@ -27,11 +27,11 @@ jobs:
 #          which pyi-makespec
           bash build.sh
           ls -lR
-      - name: save
-        uses: actions/upload-artifact@v3
-        with:
-          name: linux-binary
-          path: dist/Molpro
+#      - name: save
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: linux-binary
+#          path: dist/Molpro
 #  run-on-macos:
 #    name: Run on macos
 #    runs-on: macos-latest
