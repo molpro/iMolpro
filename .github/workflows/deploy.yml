@@ -17,22 +17,22 @@ jobs:
       - uses: actions/setup-python@v4
       - uses: s-weigand/setup-conda@v1
         if: ${{ matrix.os == 'ubuntu-latest' }}
-      - run: conda init bash
+      #- run: conda init bash
       - name: Build
         run: |
-          uname -a
-          ps
+          #uname -a
+          #ps
           git fetch --tags
           conda config --set solver libmamba
-          echo $PATH
-          env|grep CONDA
-          if [ -r /usr/share/miniconda]; then ls /usr/share/miniconda ; fi
+          #echo $PATH
+          #env|grep CONDA
+          #if [ -r /usr/share/miniconda]; then ls /usr/share/miniconda ; fi
           #if [ -r ~/.bash_profile ]; then echo sourcing ~/.bash_profile; cat ~/.bash_profile; source ~/.bash_profile ; fi
           . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
           conda create -n QtMolpro-github
           conda activate QtMolpro-github
-          echo $PATH
-          conda install -y -c conda-forge pyinstaller
+          #echo $PATH
+          #conda install -y -c conda-forge pyinstaller
           bash build.sh
       - name: Upload
         uses: actions/upload-artifact@v3
