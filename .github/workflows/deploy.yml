@@ -12,6 +12,9 @@ jobs:
       - run: |
           uname -a
           conda env list
+          ls
+          bash build.sh
+          ls -lR
   run-on-macos:
     name: Run on macos
     runs-on: macos-latest
@@ -20,3 +23,5 @@ jobs:
       - run: |
           uname -a
           conda env list
+          bash build.sh
+          ls -lR
