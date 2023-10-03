@@ -1,8 +1,8 @@
 name: Deploy
 on:
   push:
-    tags:
-      - '*'
+    #tags:
+      #- '*'
 
 jobs:
   deploy:
@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
       - uses: s-weigand/setup-conda@v1
-        if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'macos-13' }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
       #- run: conda init bash
       - name: Build
         run: |
@@ -24,7 +24,7 @@ jobs:
           git fetch --tags
           conda config --set solver libmamba
           #echo $PATH
-          #env|grep CONDA
+          env|grep CONDA
           #if [ -r /usr/share/miniconda]; then ls /usr/share/miniconda ; fi
           #if [ -r ~/.bash_profile ]; then echo sourcing ~/.bash_profile; cat ~/.bash_profile; source ~/.bash_profile ; fi
           . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
