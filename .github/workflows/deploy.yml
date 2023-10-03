@@ -17,6 +17,7 @@ jobs:
           git tag
           git fetch --tags
           git tag
+          git branch -a
           git describe --tags --always
           git describe
           conda env list
