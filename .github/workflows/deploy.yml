@@ -22,9 +22,9 @@ jobs:
           #uname -a
           #ps
           git fetch --tags
+          env|grep CONDA
           conda config --set solver libmamba
           #echo $PATH
-          env|grep CONDA
           #if [ -r /usr/share/miniconda]; then ls /usr/share/miniconda ; fi
           #if [ -r ~/.bash_profile ]; then echo sourcing ~/.bash_profile; cat ~/.bash_profile; source ~/.bash_profile ; fi
           . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
