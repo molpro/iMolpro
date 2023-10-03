@@ -19,6 +19,8 @@ jobs:
         run: |
           uname -a
           git fetch --tags
+          conda activate base
+          echo $PATH
           conda config --set solver libmamba
           bash build.sh
       - name: Upload
