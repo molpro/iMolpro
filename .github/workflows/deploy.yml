@@ -13,7 +13,7 @@ jobs:
       - uses: s-weigand/setup-conda@v1
         with:
           conda-channels: conda-forge
-        run: |
+      - run: |
           set -vx
           uname -a
           git status
