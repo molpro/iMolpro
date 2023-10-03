@@ -23,9 +23,7 @@ jobs:
           git describe --tags --always --dirty
           conda env list
           conda config --set solver libmamba
-          conda create -n QtMolpro -y
-          conda activate QtMolpro
-          conda install -n QtMolpro -y -c conda-forge pyinstaller
+          conda install -y pyinstaller
           echo $PATH
           which pyinstaller
           which pyi-makespec
