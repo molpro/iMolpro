@@ -2,10 +2,12 @@ name: Deploy
 on:
   push:
     branches: [ test_deploy ]
+    tags:
+      - '*'
 
 jobs:
   deploy:
-    name: Deploy for $ {{ matrix.os }}
+    name: Deploy
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -22,7 +24,7 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.os }}
+          # name: ${{ matrix.os }}
           path: |
             dist/*bz2
             dist/*dmg
