@@ -8,7 +8,7 @@ jobs:
     name: Run on Ubuntu
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
+      - name: checkout repository
         uses: actions/checkout@v4
       - name: build
         uses: s-weigand/setup-conda@v1
