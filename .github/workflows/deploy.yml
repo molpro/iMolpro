@@ -4,22 +4,25 @@ on:
     branches: [ test_deploy ]
 
 jobs:
-  run-on-ubuntu:
-    name: Run on Ubuntu
-    runs-on: ubuntu-latest
+  deploy:
+    name: Deploy for $ {{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macOS-latest]
     steps:
       - uses: actions/checkout@v3
       - uses: s-weigand/setup-conda@v1
-      - name: build
+      - name: Build
         run: |
           uname -a
           git fetch --tags
           conda config --set solver libmamba
           bash build.sh
-      - name: save
+      - name: Upload
         uses: actions/upload-artifact@v3
         with:
-          name: linux-binary
+          name: ${{ matrix.os }}
           path: |
             dist/*bz2
             dist/*dmg
