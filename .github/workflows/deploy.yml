@@ -20,8 +20,11 @@ jobs:
       - uses: s-weigand/setup-conda@v1
         if: ${{ matrix.os == 'ubuntu-latest' }}
       - run: brew install miniconda
+        if: ${{ matrix.os == 'macos-13' }}
       - name: Build
         run: |
+          echo CONDA_EXE=$CONDA_EXE
+          env|grep CONDA
           git fetch --tags
           conda config --set solver libmamba
           . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
