@@ -25,6 +25,7 @@ jobs:
         run: |
           which conda
           ls -l /usr/local/bin/conda
+          CONDA_EXE=$(which conda)
           echo CONDA_EXE=$CONDA_EXE
           env|grep CONDA
           git fetch --tags
