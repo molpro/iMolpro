@@ -16,8 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
       - uses: s-weigand/setup-conda@v1
         if: ${{ matrix.os == 'ubuntu-latest' }}
       - name: Build
