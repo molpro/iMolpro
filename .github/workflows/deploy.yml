@@ -3,8 +3,8 @@ permissions:
 name: Deploy
 on:
   push:
-    #tags:
-      #- '*'
+    tags:
+      - '*'
 
 jobs:
   deploy:
@@ -12,8 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        #os: [ubuntu-latest, macos-latest, [macOS, ARM64]]
-        os: [ macos-latest ]
+        os: [ubuntu-latest, macos-latest, [macOS, ARM64]]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -21,8 +20,6 @@ jobs:
           python-version: '3.11'
       - uses: s-weigand/setup-conda@v1
         if: ${{ matrix.os == 'ubuntu-latest' }}
-      #- run: brew install miniconda
-        #if: ${{ matrix.os == 'macos-latest' }}
       - name: Build
         run: |
           if [ -z "${CONDA_EXE}" ]; then export CONDA_EXE=$(readlink -f $(which conda)) ; fi
