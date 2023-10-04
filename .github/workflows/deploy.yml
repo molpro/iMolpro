@@ -24,8 +24,8 @@ jobs:
       - name: Build
         run: |
           which conda
-          ls -l /usr/local/bin/conda
-          CONDA_EXE=$(which conda)
+          readlink -f /usr/local/bin/conda
+          CONDA_EXE=$(readlink -f $(which conda))
           echo CONDA_EXE=$CONDA_EXE
           env|grep CONDA
           git fetch --tags
