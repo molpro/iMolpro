@@ -23,6 +23,8 @@ jobs:
         if: ${{ matrix.os == 'macos-13' }}
       - name: Build
         run: |
+          which conda
+          ls -l /usr/local/bin/conda
           echo CONDA_EXE=$CONDA_EXE
           env|grep CONDA
           git fetch --tags
