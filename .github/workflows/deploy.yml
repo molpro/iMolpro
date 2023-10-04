@@ -25,12 +25,9 @@ jobs:
         run: |
           which conda
           readlink -f /usr/local/bin/conda
-          CONDA_EXE=$(readlink -f $(which conda))
+          export CONDA_EXE=$(readlink -f $(which conda))
           echo CONDA_EXE=$CONDA_EXE
-          env|grep CONDA
-          echo hello 1
           git fetch --tags
-          echo hello 2
           conda config --set solver libmamba
           . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
           conda create -n QtMolpro-github
