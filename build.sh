@@ -53,8 +53,10 @@ if [ $(uname) = Darwin ]; then
   rm -rf dist
   mkdir -p dist
 #  create-dmg --app-drop-link 25 35 --volname Molpro-${descriptor}  --volicon 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png' dist/Molpro-${descriptor}.dmg "$builddir/dist"
-  hdiutil create $builddir/Molpro.dmg -ov -volname 'Molpro' -fs HFS+ -srcfolder "$builddir/dist"
-  hdiutil convert $builddir/Molpro.dmg -format UDZO -o dist/Molpro-${descriptor}.dmg
+  ls -l $builddir/dist
+  du -hd2 $builddir/dist
+  hdiutil create -verbose $builddir/Molpro.dmg -ov -volname Molpro-${descriptor} -fs HFS+ -srcfolder "$builddir/dist"
+  hdiutil convert -verbose $builddir/Molpro.dmg -format UDZO -o dist/Molpro-${descriptor}.dmg
   cp Molpro_Logo_Molpro_Quantum_Chemistry_Software.png $builddir
   (cd $builddir && sips -i Molpro_Logo_Molpro_Quantum_Chemistry_Software.png && DeRez -only icns Molpro_Logo_Molpro_Quantum_Chemistry_Software.png > tmp.rsrc)
   Rez -append $builddir/tmp.rsrc -o dist/Molpro-${descriptor}.dmg
