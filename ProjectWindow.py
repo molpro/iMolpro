@@ -68,6 +68,7 @@ class ProjectWindow(QMainWindow):
 
         assert filename is not None
         self.project = Project(filename)
+        settings['project_directory'] = self.project.filename(run=-1)
 
         if 'PATH' in os.environ and 'SHELL' in os.environ:
             os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
