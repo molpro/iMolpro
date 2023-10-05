@@ -1,10 +1,8 @@
 import os
 import pathlib
 import shutil
-import subprocess
 import sys
 import re
-import platform
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
@@ -19,6 +17,7 @@ from database import database_choose_structure
 from help import HelpManager
 from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set, MainEditFile
 from backend import configure_backend
+from settings import settings
 
 
 class StatusBar(QLabel):
@@ -567,14 +566,20 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         self.project.clean(1)
 
     def import_file(self):
-        filenames, junk = QFileDialog.getOpenFileNames(self, 'Import file(s) into project', )
+        _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
+            self.project.filename(run=-1))
+        filenames, junk = QFileDialog.getOpenFileNames(self, 'Import file(s) into project', _dir)
         for filename in filenames:
             if os.path.isfile(filename):
+                settings['import_directory'] = os.path.dirname(filename)
                 self.project.import_file(filename)
 
     def import_structure(self):
-        filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', )
+        _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
+            self.project.filename(run=-1))
+        filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', _dir)
         if os.path.isfile(filename):
+            settings['import_directory'] = os.path.dirname(filename)
             self.adoptStructureFile(filename)
 
     def adoptStructureFile(self, filename):
@@ -596,19 +601,26 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             self.edit_input_structure()
 
     def import_input(self):
-        filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', )
+        _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
+            self.project.filename(run=-1))
+        filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', _dir)
         if os.path.isfile(filename):
+            settings['import_directory'] = os.path.dirname(filename)
             self.project.import_input(filename)
 
     def export_file(self):
-        filenames, junk = QFileDialog.getOpenFileNames(self, 'Export file(s) from the project', self.project.filename())
+        filenames, junk = QFileDialog.getOpenFileNames(self, 'Export file(s) from the project', self.project.filename(run=-1))
         for filename in filenames:
             if os.path.isfile(filename):
                 b = os.path.basename(filename)
-                dest = QFileDialog.getExistingDirectory(self, 'Destination for ' + b)
-                shutil.copy(filename, dest)
+                _dir = settings['export_directory'] if 'export_directory' in settings else os.path.dirname(
+                    self.project.filename())
+                dest = QFileDialog.getExistingDirectory(self, 'Destination for ' + b, _dir)
+                if dest:
+                    settings['export_directory'] = dest
+                    shutil.copy(filename, dest)
 
     def browse_project(self):
-        dlg = QFileDialog(self,self.project.filename(),self.project.filename())
+        dlg = QFileDialog(self, self.project.filename(), self.project.filename(run=-1))
         dlg.setLabelText(QFileDialog.Accept, "OK")
         dlg.exec()
