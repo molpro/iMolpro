@@ -581,7 +581,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                 self.project.filename(run=-1)))
         filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', _dir)
         if os.path.isfile(filename):
-            settings['import_directory'] = os.path.dirname(filename)
+            settings['geometry_directory'] = os.path.dirname(filename)
             self.adoptStructureFile(filename)
 
     def adoptStructureFile(self, filename):
