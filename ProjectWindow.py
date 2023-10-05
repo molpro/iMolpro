@@ -576,8 +576,9 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                 self.project.import_file(filename)
 
     def import_structure(self):
-        _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
-            self.project.filename(run=-1))
+        _dir = settings['geometry_directory'] if 'geometry_directory' in settings else (
+            settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
+                self.project.filename(run=-1)))
         filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', _dir)
         if os.path.isfile(filename):
             settings['import_directory'] = os.path.dirname(filename)
@@ -610,7 +611,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             self.project.import_input(filename)
 
     def export_file(self):
-        filenames, junk = QFileDialog.getOpenFileNames(self, 'Export file(s) from the project', self.project.filename(run=-1))
+        filenames, junk = QFileDialog.getOpenFileNames(self, 'Export file(s) from the project',
+                                                       self.project.filename(run=-1))
         for filename in filenames:
             if os.path.isfile(filename):
                 b = os.path.basename(filename)
