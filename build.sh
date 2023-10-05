@@ -4,9 +4,9 @@ conda install -c conda-forge -y --file=requirements.txt  || exit 1
 
 
 if [ $(uname) = Darwin ]; then
-  pyinstaller_opt="--windowed --osx-bundle-identifier=net.molpro.Molpro --icon=molpro.icns"
+  pyinstaller_opt="--windowed --osx-bundle-identifier=net.molpro.iMolpro --icon=molpro.icns"
 fi
-builddir=${TMPDIR:-/tmp}/QtMolpro
+builddir=${TMPDIR:-/tmp}/iMolpro
 rm -rf $builddir
 
 versionfile=${TMPDIR:-/tmp}/VERSION
@@ -22,9 +22,9 @@ PATH=/usr/bin:$PATH pyi-makespec \
   --add-data doc:./doc \
   --add-data ${versionfile}:. \
   $pyinstaller_opt \
-  Molpro.py || exit 1
-sed -i -e '$d' Molpro.spec
-cat << 'EOF' >> Molpro.spec
+  iMolpro.py || exit 1
+sed -i -e '$d' iMolpro.spec
+cat << 'EOF' >> iMolpro.spec
     info_plist={
       'CFBundleDocumentTypes': [
         {
@@ -40,30 +40,30 @@ cat << 'EOF' >> Molpro.spec
 EOF
 PATH=/usr/bin:$PATH pyinstaller \
   --distpath $builddir/dist \
-  Molpro.spec || exit 1
+  iMolpro.spec || exit 1
 
 descriptor=${version}.$(uname).$(uname -m)
 if [ $(uname) = Darwin ]; then
-  (cd $builddir/dist/Molpro.app/Contents/Resources; for i in PyQt5/Qt/resources/* ; do ln -s $i . ; done)
-  (cd $builddir/dist/Molpro.app/Contents; ln -s MacOS/Resources/PyQt5/Qt/translations .)
-  rm -rf $builddir/dist/Molpro
+  (cd $builddir/dist/iMolpro.app/Contents/Resources; for i in PyQt5/Qt/resources/* ; do ln -s $i . ; done)
+  (cd $builddir/dist/iMolpro.app/Contents; ln -s MacOS/Resources/PyQt5/Qt/translations .)
+  rm -rf $builddir/dist/iMolpro
   (cd $builddir/dist; ln -s /Applications .)
-  rm -f Molpro-${descriptor}.dmg
-  if [ -r /Volumes/Molpro-${descriptor} ]; then umount /Volumes/Molpro-${descriptor} ; fi
+  rm -f iMolpro-${descriptor}.dmg
+  if [ -r /Volumes/iMolpro-${descriptor} ]; then umount /Volumes/iMolpro-${descriptor} ; fi
   rm -rf dist
   mkdir -p dist
-#  create-dmg --app-drop-link 25 35 --volname Molpro-${descriptor}  --volicon 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png' dist/Molpro-${descriptor}.dmg "$builddir/dist"
+#  create-dmg --app-drop-link 25 35 --volname iMolpro-${descriptor}  --volicon 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png' dist/iMolpro-${descriptor}.dmg "$builddir/dist"
   ls -l $builddir/dist
   du -hd2 $builddir/dist
-  hdiutil create -verbose ./Molpro.dmg -ov -fs HFS+ -srcfolder "$builddir/dist"
-  hdiutil convert -verbose ./Molpro.dmg -format UDZO -o dist/Molpro-${descriptor}.dmg
+  hdiutil create -verbose ./iMolpro.dmg -ov -fs HFS+ -srcfolder "$builddir/dist"
+  hdiutil convert -verbose ./iMolpro.dmg -format UDZO -o dist/iMolpro-${descriptor}.dmg
   cp Molpro_Logo_Molpro_Quantum_Chemistry_Software.png $builddir
   (cd $builddir && sips -i Molpro_Logo_Molpro_Quantum_Chemistry_Software.png && DeRez -only icns Molpro_Logo_Molpro_Quantum_Chemistry_Software.png > tmp.rsrc)
-  Rez -append $builddir/tmp.rsrc -o dist/Molpro-${descriptor}.dmg
-  SetFile -a C dist/Molpro-${descriptor}.dmg
-  rm ./Molpro.dmg
+  Rez -append $builddir/tmp.rsrc -o dist/iMolpro-${descriptor}.dmg
+  SetFile -a C dist/iMolpro-${descriptor}.dmg
+  rm ./iMolpro.dmg
 else
   rm -rf dist build
   mv $builddir/dist .
-  tar cjf dist/Molpro-${descriptor}.tar.bz2 -C dist Molpro
+  tar cjf dist/iMolpro-${descriptor}.tar.bz2 -C dist iMolpro
 fi

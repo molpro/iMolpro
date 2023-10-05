@@ -71,7 +71,7 @@ class Chooser(QMainWindow):
         link_layout.addWidget(LinkLabel('Documentation', 'https://www.molpro.net/manual/doku.php'))
         link_layout.addWidget(LinkLabel('Molpro Manual', 'https://www.molpro.net/manual/doku.php'))
 
-        # rh_panel.addWidget(QLabel("Molpro version "+get_versions()['version']+'\n('+get_versions()['date']+')'))
+        # rh_panel.addWidget(QLabel("iMolpro version "+get_versions()['version']+'\n('+get_versions()['date']+')'))
         def version_():
             import subprocess
             import os
@@ -90,7 +90,7 @@ class Chooser(QMainWindow):
                 return version
             else:
                 return 'unknown'
-        rh_panel.addWidget(QLabel("Molpro version "+version_()))
+        rh_panel.addWidget(QLabel("iMolpro version "+version_()))
 
         menubar = MenuBar()
         if platform.system() == 'Darwin':
