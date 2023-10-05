@@ -1,3 +1,4 @@
+import os
 import pathlib
 import platform
 
@@ -16,6 +17,7 @@ from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayo
 
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
+from settings import settings
 
 
 class Chooser(QMainWindow):
@@ -141,13 +143,15 @@ class Chooser(QMainWindow):
                 self.recent_project_box.layout().addWidget(RecentProjectButton(f, i, self), -1, QtCore.Qt.AlignLeft)
 
     def openProjectDialog(self):
-        filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', ))
+        _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir
+        filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', _dir))
         if filename:
             self.window_manager.register(ProjectWindow(filename))
             self.hide()
 
     def newProjectDialog(self):
-        filename = force_suffix(QFileDialog.getSaveFileName(self, 'Save new project as ...')[0])
+        _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir
+        filename = force_suffix(QFileDialog.getSaveFileName(self, 'Save new project as ...', _dir)[0])
         if filename:
             self.window_manager.register(ProjectWindow(filename, self.window_manager))
             self.hide()
