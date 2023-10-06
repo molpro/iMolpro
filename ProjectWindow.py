@@ -141,7 +141,7 @@ class ProjectWindow(QMainWindow):
         self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
         self.kill_action = menubar.addAction('Kill', 'Job', self.kill, tooltip='Kill the running job')
         menubar.addSeparator('Project')
-        menubar.addAction('Browse project folder', 'Project', self.browse_project,
+        menubar.addAction('Browse project folder', 'Project', self.browse_project, 'Ctrl+Alt+F',
                           tooltip='Look at the contents of the project folder.  With care, files can be edited or renamed, but note that this may break the integrity of the project.')
 
         menubar.addAction('Backend', 'Job', lambda: configure_backend(self), 'Ctrl+B', 'Configure backend')
@@ -633,14 +633,14 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         dlg.exec()
 
     def move_to(self):
-        file_name, filter = QFileDialog.getSaveFileName(self, 'Copy project to...', '..', 'Molpro project (*.molpro)')
+        file_name, filter = QFileDialog.getSaveFileName(self, 'Move project to...', os.path.dirname(self.project.filename(run=-1)), 'Molpro project (*.molpro)',)
         if file_name:
             self.project.move(file_name)
             self.window_manager.register(ProjectWindow(file_name, self.window_manager))
             self.close()
 
     def copy_to(self):
-        file_name, filter = QFileDialog.getSaveFileName(self, 'Copy project to...', '..', 'Molpro project (*.molpro)')
+        file_name, filter = QFileDialog.getSaveFileName(self, 'Copy project to...', os.path.dirname(self.project.filename(run=-1)), 'Molpro project (*.molpro)',)
         if file_name:
             self.project.copy(file_name, keep_run_directories=0)
             return file_name
@@ -648,6 +648,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
     def erase(self):
         result = QMessageBox.question(self,'Erase project','Are you sure you want to erase project '+self.project.filename(run=-1))
         if result == QMessageBox.Yes:
+            QMessageBox.information('Erasing of projects is not yet implemented')
+            return
             print('erasing ',self.project.filename(run=-1))
             self.window_manager.erase(self)
             return
