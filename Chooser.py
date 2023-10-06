@@ -146,7 +146,7 @@ class Chooser(QMainWindow):
         _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir
         filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', _dir))
         if filename:
-            self.window_manager.register(ProjectWindow(filename))
+            self.window_manager.register(ProjectWindow(filename, self.window_manager))
             self.hide()
 
     def newProjectDialog(self):
