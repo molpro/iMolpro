@@ -47,6 +47,7 @@ if [ $(uname) = Darwin ]; then
   (cd $builddir/dist/iMolpro.app/Contents/Resources; for i in PyQt5/Qt/resources/* ; do ln -s $i . ; done)
   (cd $builddir/dist/iMolpro.app/Contents; ln -s MacOS/Resources/PyQt5/Qt/translations .)
   rm -rf $builddir/dist/iMolpro
+  cp -p doc/INSTALL_macOS_binary.md $builddir/dist/INSTALL
   (cd $builddir/dist; ln -s /Applications .)
   rm -f iMolpro-${descriptor}.dmg
   if [ -r /Volumes/iMolpro-${descriptor} ]; then umount /Volumes/iMolpro-${descriptor} ; fi
