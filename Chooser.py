@@ -1,3 +1,4 @@
+import os
 import pathlib
 import platform
 
@@ -16,6 +17,7 @@ from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayo
 
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
+from settings import settings
 
 
 class Chooser(QMainWindow):
@@ -69,7 +71,7 @@ class Chooser(QMainWindow):
         link_layout.addWidget(LinkLabel('Documentation', 'https://www.molpro.net/manual/doku.php'))
         link_layout.addWidget(LinkLabel('Molpro Manual', 'https://www.molpro.net/manual/doku.php'))
 
-        # rh_panel.addWidget(QLabel("Molpro version "+get_versions()['version']+'\n('+get_versions()['date']+')'))
+        # rh_panel.addWidget(QLabel("iMolpro version "+get_versions()['version']+'\n('+get_versions()['date']+')'))
         def version_():
             import subprocess
             import os
@@ -88,7 +90,7 @@ class Chooser(QMainWindow):
                 return version
             else:
                 return 'unknown'
-        rh_panel.addWidget(QLabel("Molpro version "+version_()))
+        rh_panel.addWidget(QLabel("iMolpro version "+version_()))
 
         menubar = MenuBar()
         if platform.system() == 'Darwin':
@@ -141,13 +143,15 @@ class Chooser(QMainWindow):
                 self.recent_project_box.layout().addWidget(RecentProjectButton(f, i, self), -1, QtCore.Qt.AlignLeft)
 
     def openProjectDialog(self):
-        filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', ))
+        _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir
+        filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', _dir))
         if filename:
             self.window_manager.register(ProjectWindow(filename, self.window_manager))
             self.hide()
 
     def newProjectDialog(self):
-        filename = force_suffix(QFileDialog.getSaveFileName(self, 'Save new project as ...')[0])
+        _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir
+        filename = force_suffix(QFileDialog.getSaveFileName(self, 'Save new project as ...', _dir)[0])
         if filename:
             self.window_manager.register(ProjectWindow(filename, self.window_manager))
             self.hide()
