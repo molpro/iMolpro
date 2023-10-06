@@ -7,7 +7,7 @@ import re
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog, QDialog, QDialogButtonBox
+    QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog, QDialog, QDialogButtonBox, QLineEdit, QFormLayout
 from pymolpro import Project
 
 import molpro_input
@@ -261,9 +261,17 @@ class ProjectWindow(QMainWindow):
             self.input_tabs.addTab(self.input_pane, 'freehand')
         if not guided and len(self.input_tabs) != 1:
             self.input_tabs.removeTab(1)
-        if guided and len(self.input_tabs) != 2:
+        if guided and len(self.input_tabs) < 2:
             self.guided_pane = QLabel()
             self.input_tabs.addTab(self.guided_pane, 'guided')
+        if guided and len(self.input_tabs) < 3:
+            self.widget = QWidget()
+            basis_container = QWidget(self.widget)
+            basis_input = QLineEdit()
+            basis_box = QFormLayout()
+            basis_box.addRow("Basis set",basis_input)
+            basis_container.setLayout(basis_box)
+            self.input_tabs.addTab(self.widget, 'click etc')
         self.input_tabs.setCurrentIndex(
             index if index >= 0 and index < len(self.input_tabs) else len(self.input_tabs) - 1)
         if guided and self.input_tabs.currentIndex() == 1:
