@@ -23,6 +23,7 @@ def configure_backend(parent):
             self.button_box.accepted.connect(self.accept)
             self.button_box.rejected.connect(self.reject)
             self.layout = QVBoxLayout()
+            self.layout.addWidget(QLabel('Current backend '+self.backend+' submission command:\n'+parent.project.backend_get(self.backend,'run_command')))
             if parameters:
                 grid_layout = QGridLayout()
                 self.parameter_values = {}
