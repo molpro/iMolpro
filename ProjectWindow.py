@@ -616,7 +616,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 
     def export_file(self):
         filenames, junk = QFileDialog.getOpenFileNames(self, 'Export file(s) from the project',
-                                                       self.project.filename(run=-1))
+                                                       self.project.filename())
         for filename in filenames:
             if os.path.isfile(filename):
                 b = os.path.basename(filename)
