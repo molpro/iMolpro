@@ -491,7 +491,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 
         self.add_vod(html, **kwargs)
 
-    def add_vod(self, html, width=400, height=420, verbosity=0):
+    def add_vod(self, html, width=800, height=420, verbosity=0):
         if verbosity:
             print(html)
             open('test.html', 'w').write(html)
