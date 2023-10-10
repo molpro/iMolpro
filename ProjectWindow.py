@@ -7,7 +7,7 @@ import re
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog, QDialog, QDialogButtonBox
+    QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog, QDialog, QDialogButtonBox, QFormLayout, QLineEdit
 from pymolpro import Project
 
 import molpro_input
@@ -267,12 +267,20 @@ class ProjectWindow(QMainWindow):
         if not guided and len(self.input_tabs) != 1:
             self.input_tabs.removeTab(1)
         if guided and len(self.input_tabs) != 2:
-            self.guided_pane = QLabel()
+            self.guided_pane = QWidget()
             self.input_tabs.addTab(self.guided_pane, 'guided')
+            self.guided_layout = QVBoxLayout()
+            self.guided_pane.setLayout(self.guided_layout)
+            self.guided_display=QLabel()
+            self.guided_layout.addWidget(self.guided_display)
+            guided_form = QFormLayout()
+            self.guided_layout.addLayout(guided_form)
+            self.guided_basis_input = QLineEdit()
+            guided_form.addRow("Basis set",self.guided_basis_input)
         self.input_tabs.setCurrentIndex(
             index if index >= 0 and index < len(self.input_tabs) else len(self.input_tabs) - 1)
         if guided and self.input_tabs.currentIndex() == 1:
-            self.guided_pane.setText(
+            self.guided_display.setText(
                 re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(input_specification))).replace(', ', ',\n  '))
 
     def vod_selector_action(self):
