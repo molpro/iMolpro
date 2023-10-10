@@ -7,7 +7,7 @@ import re
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog, QDialog, QDialogButtonBox, QLineEdit, QFormLayout
+    QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog, QDialog, QDialogButtonBox, QFormLayout, QLineEdit
 from pymolpro import Project
 
 import molpro_input
@@ -139,6 +139,8 @@ class ProjectWindow(QMainWindow):
                           tooltip='Export one or more files from the project')
         menubar.addAction('Clean', 'Project', self.clean, tooltip='Remove old runs from the project')
         self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
+        self.run_force_action = menubar.addAction('Run (force)', 'Job', self.run_force, 'Ctrl+Shift+R',
+                                                  'Run Molpro on the project input, even if the input has not changed since the last run')
         self.kill_action = menubar.addAction('Kill', 'Job', self.kill, tooltip='Kill the running job')
         menubar.addSeparator('Project')
         menubar.addAction('Browse project folder', 'Project', self.browse_project, 'Ctrl+Alt+F',
@@ -266,20 +268,20 @@ class ProjectWindow(QMainWindow):
         if not guided and len(self.input_tabs) != 1:
             self.input_tabs.removeTab(1)
         if guided and len(self.input_tabs) < 2:
-            self.guided_pane = QLabel()
+            self.guided_pane = QWidget()
             self.input_tabs.addTab(self.guided_pane, 'guided')
-        if guided and len(self.input_tabs) < 3:
-            self.widget = QWidget()
-            basis_container = QWidget(self.widget)
-            basis_input = QLineEdit()
-            basis_box = QFormLayout()
-            basis_box.addRow("Basis set",basis_input)
-            basis_container.setLayout(basis_box)
-            self.input_tabs.addTab(self.widget, 'click etc')
+            self.guided_layout = QVBoxLayout()
+            self.guided_pane.setLayout(self.guided_layout)
+            self.guided_display = QLabel()
+            self.guided_layout.addWidget(self.guided_display)
+            guided_form = QFormLayout()
+            self.guided_layout.addLayout(guided_form)
+            self.guided_basis_input = QLineEdit()
+            guided_form.addRow('Basis set', self.guided_basis_input)
         self.input_tabs.setCurrentIndex(
             index if index >= 0 and index < len(self.input_tabs) else len(self.input_tabs) - 1)
         if guided and self.input_tabs.currentIndex() == 1:
-            self.guided_pane.setText(
+            self.guided_display.setText(
                 re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(input_specification))).replace(', ', ',\n  '))
 
     def vod_selector_action(self):
@@ -341,6 +343,9 @@ class ProjectWindow(QMainWindow):
 
     def run(self):
         self.project.run()
+
+    def run_force(self):
+        self.project.run(force=True)
 
     def kill(self):
         self.project.kill()
@@ -499,7 +504,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 
         self.add_vod(html, **kwargs)
 
-    def add_vod(self, html, width=400, height=420, verbosity=0):
+    def add_vod(self, html, width=800, height=420, verbosity=0):
         if verbosity:
             print(html)
             open('test.html', 'w').write(html)
@@ -581,7 +586,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
     def import_file(self):
         _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
             self.project.filename(run=-1))
-        filenames, junk = QFileDialog.getOpenFileNames(self, 'Import file(s) into project', _dir)
+        filenames, junk = QFileDialog.getOpenFileNames(self, 'Import file(s) into project', _dir,
+                                                       options=QFileDialog.DontResolveSymlinks)
         for filename in filenames:
             if os.path.isfile(filename):
                 settings['import_directory'] = os.path.dirname(filename)
@@ -591,7 +597,9 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         _dir = settings['geometry_directory'] if 'geometry_directory' in settings else (
             settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
                 self.project.filename(run=-1)))
-        filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', _dir)
+        filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', _dir,
+                                                     options=QFileDialog.DontResolveSymlinks)
+        print('import_structure filename=', filename)
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
             self.adoptStructureFile(filename)
@@ -617,14 +625,15 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
     def import_input(self):
         _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
             self.project.filename(run=-1))
-        filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', _dir)
+        filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', _dir,
+                                                     options=QFileDialog.DontResolveSymlinks)
         if os.path.isfile(filename):
             settings['import_directory'] = os.path.dirname(filename)
             self.project.import_input(filename)
 
     def export_file(self):
         filenames, junk = QFileDialog.getOpenFileNames(self, 'Export file(s) from the project',
-                                                       self.project.filename(run=-1))
+                                                       self.project.filename())
         for filename in filenames:
             if os.path.isfile(filename):
                 b = os.path.basename(filename)
@@ -641,24 +650,29 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         dlg.exec()
 
     def move_to(self):
-        file_name, filter = QFileDialog.getSaveFileName(self, 'Move project to...', os.path.dirname(self.project.filename(run=-1)), 'Molpro project (*.molpro)',)
+        file_name, filter = QFileDialog.getSaveFileName(self, 'Move project to...',
+                                                        os.path.dirname(self.project.filename(run=-1)),
+                                                        'Molpro project (*.molpro)', )
         if file_name:
             self.project.move(file_name)
             self.window_manager.register(ProjectWindow(file_name, self.window_manager))
             self.close()
 
     def copy_to(self):
-        file_name, filter = QFileDialog.getSaveFileName(self, 'Copy project to...', os.path.dirname(self.project.filename(run=-1)), 'Molpro project (*.molpro)',)
+        file_name, filter = QFileDialog.getSaveFileName(self, 'Copy project to...',
+                                                        os.path.dirname(self.project.filename(run=-1)),
+                                                        'Molpro project (*.molpro)', )
         if file_name:
             self.project.copy(file_name, keep_run_directories=0)
             return file_name
 
     def erase(self):
-        result = QMessageBox.question(self,'Erase project','Are you sure you want to erase project '+self.project.filename(run=-1))
+        result = QMessageBox.question(self, 'Erase project',
+                                      'Are you sure you want to erase project ' + self.project.filename(run=-1))
         if result == QMessageBox.Yes:
             QMessageBox.information('Erasing of projects is not yet implemented')
             return
-            print('erasing ',self.project.filename(run=-1))
+            print('erasing ', self.project.filename(run=-1))
             self.window_manager.erase(self)
             return
             del self.statusBar
