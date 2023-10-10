@@ -573,7 +573,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
     def import_file(self):
         _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
             self.project.filename(run=-1))
-        filenames, junk = QFileDialog.getOpenFileNames(self, 'Import file(s) into project', _dir)
+        filenames, junk = QFileDialog.getOpenFileNames(self, 'Import file(s) into project', _dir, options=QFileDialog.DontResolveSymlinks)
         for filename in filenames:
             if os.path.isfile(filename):
                 settings['import_directory'] = os.path.dirname(filename)
@@ -583,7 +583,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         _dir = settings['geometry_directory'] if 'geometry_directory' in settings else (
             settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
                 self.project.filename(run=-1)))
-        filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', _dir)
+        filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', _dir, options=QFileDialog.DontResolveSymlinks)
+        print('import_structure filename=',filename)
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
             self.adoptStructureFile(filename)
@@ -609,7 +610,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
     def import_input(self):
         _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
             self.project.filename(run=-1))
-        filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', _dir)
+        filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', _dir, options=QFileDialog.DontResolveSymlinks)
         if os.path.isfile(filename):
             settings['import_directory'] = os.path.dirname(filename)
             self.project.import_input(filename)
