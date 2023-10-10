@@ -139,6 +139,7 @@ class ProjectWindow(QMainWindow):
                           tooltip='Export one or more files from the project')
         menubar.addAction('Clean', 'Project', self.clean, tooltip='Remove old runs from the project')
         self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
+        self.run_force_action = menubar.addAction('Run (force)', 'Job', self.run_force, 'Ctrl+Shift+R', 'Run Molpro on the project input, even if the input has not changed since the last run')
         self.kill_action = menubar.addAction('Kill', 'Job', self.kill, tooltip='Kill the running job')
         menubar.addSeparator('Project')
         menubar.addAction('Browse project folder', 'Project', self.browse_project, 'Ctrl+Alt+F',
@@ -333,6 +334,9 @@ class ProjectWindow(QMainWindow):
 
     def run(self):
         self.project.run()
+
+    def run_force(self):
+        self.project.run(force=True)
 
     def kill(self):
         self.project.kill()
