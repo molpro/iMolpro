@@ -385,7 +385,7 @@ var Info = {
   color: "#FFFFFF",
   height: 400,
   width: 400,
-  script: "load '""" + file + """'; set antialiasDisplay ON; set showFrank OFF; model """ + str(
+  script: "load '""" + re.sub('\\\\','\\\\\\\\',file) + """'; set antialiasDisplay ON; set showFrank OFF; model """ + str(
             firstmodel) + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7",
   use: "HTML5",
   j2sPath: "j2s",
@@ -476,7 +476,7 @@ var Info = {
   height: 400,
   width: 400,
   script: "set antialiasDisplay ON;"""
-        html += ' load \'' + file + '\';'
+        html += ' load \'' + re.sub('\\\\','\\\\',file) + '\';'
         html += """ set showFrank OFF; set modelKitMode on",
   use: "HTML5",
   j2sPath: "j2s",
@@ -599,7 +599,6 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                 self.project.filename(run=-1)))
         filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', _dir,
                                                      options=QFileDialog.DontResolveSymlinks)
-        print('import_structure filename=', filename)
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
             self.adoptStructureFile(filename)
