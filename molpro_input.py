@@ -173,7 +173,7 @@ def canonicalise(input):
         if re.match('[a-z][a-z0-9_]* *= *[a-z0-9_. ]*,', line, flags=re.IGNORECASE):
             line = line.replace(',', '\n')
         new_result += line + '\n'
-    return new_result.strip('\n ')
+    return new_result.strip('\n ')+'\n'
 
 
 def equivalent(input1, input2, debug=False):
