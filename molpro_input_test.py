@@ -37,6 +37,7 @@ def test_recreate_input(qtbot):
         'geometry={He};rks,b3lyp',
         'geometry={He};{rks,b3lyp}',
         'geometry=newnewnew.xyz\nbasis=cc-pVTZ-PP\nrhf',
+        'geometry=wed.xyz\nbasis=cc-pVTZ-PP\nset,charge=1,spin=1,thing=whatsit\nxx=yy,p=q\nrhf',
     ]:
         # print('test_text',test_text)
         specification = parse(test_text)

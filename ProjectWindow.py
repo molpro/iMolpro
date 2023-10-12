@@ -85,6 +85,7 @@ class ProjectWindow(QMainWindow):
             os.environ['QTWEBENGINEPROCESS_PATH'] = likely_qtwebengineprocess
 
         self.input_pane = EditFile(self.project.filename('inp', run=-1), latency)
+        self.input_pane.textChanged.connect(self.refresh_input_tabs)
         if self.input_pane.toPlainText().strip('\n ') == '':
             self.input_pane.setPlainText(
                 'geometry={0}.xyz\nbasis=cc-pVTZ-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
@@ -256,8 +257,8 @@ class ProjectWindow(QMainWindow):
     def refresh_input_tabs(self, index=0):
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
-        input_specification = molpro_input.parse(input_text)
-        guided = molpro_input.equivalent(input_text, input_specification)
+        self.input_specification = molpro_input.parse(input_text)
+        guided = molpro_input.equivalent(input_text, self.input_specification)
         if not guided and index == 1:
             box = QMessageBox()
             box.setText('Guided mode cannot be used because the input is too complex')
@@ -277,12 +278,26 @@ class ProjectWindow(QMainWindow):
             guided_form = QFormLayout()
             self.guided_layout.addLayout(guided_form)
             self.guided_basis_input = QLineEdit()
+            self.guided_basis_input.setMinimumWidth(200)
             guided_form.addRow('Basis set', self.guided_basis_input)
+            self.guided_basis_input.textChanged.connect(self.guided_basis_input_changed)
         self.input_tabs.setCurrentIndex(
             index if index >= 0 and index < len(self.input_tabs) else len(self.input_tabs) - 1)
-        if guided and self.input_tabs.currentIndex() == 1:
+        if guided:
+            self.guided_basis_input.setText(self.input_specification['basis'])
             self.guided_display.setText(
-                re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(input_specification))).replace(', ', ',\n  '))
+                re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ', ',\n  '))
+
+    def guided_basis_input_changed(self, text):
+        self.input_specification['basis'] = text
+        self.refresh_input_from_specification()
+
+    def refresh_input_from_specification(self):
+        current_tab = self.input_tabs.currentIndex()
+        new_input = molpro_input.create_input(self.input_specification)
+        if self.input_pane.toPlainText() != new_input:
+            self.input_pane.setPlainText(new_input)
+        self.refresh_input_tabs(current_tab)
 
     def vod_selector_action(self):
         text = self.vod_selector.currentText().strip()
@@ -385,7 +400,8 @@ var Info = {
   color: "#FFFFFF",
   height: 400,
   width: 400,
-  script: "load '""" + file + """'; set antialiasDisplay ON; set showFrank OFF; model """ + str(
+  script: "load '""" + re.sub('\\\\', '\\\\\\\\',
+                              file) + """'; set antialiasDisplay ON; set showFrank OFF; model """ + str(
             firstmodel) + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7",
   use: "HTML5",
   j2sPath: "j2s",
@@ -476,7 +492,7 @@ var Info = {
   height: 400,
   width: 400,
   script: "set antialiasDisplay ON;"""
-        html += ' load \'' + file + '\';'
+        html += ' load \'' + re.sub('\\\\', '\\\\', file) + '\';'
         html += """ set showFrank OFF; set modelKitMode on",
   use: "HTML5",
   j2sPath: "j2s",
@@ -599,7 +615,6 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                 self.project.filename(run=-1)))
         filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', _dir,
                                                      options=QFileDialog.DontResolveSymlinks)
-        print('import_structure filename=', filename)
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
             self.adoptStructureFile(filename)

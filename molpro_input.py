@@ -30,7 +30,7 @@ def parse(input: str, debug=False):
     for line in canonicalise(input).split('\n'):
         line = line.strip()
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
-        if debug: print('line',line,'command',command)
+        if debug: print('line', line, 'command', command)
         if re.match('^geometry *= *{', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
@@ -69,13 +69,16 @@ def parse(input: str, debug=False):
             basis = re.sub(' *!.*', '', basis)
             specification['basis'] = 'default=' + basis
         elif re.match('(set,)?[a-z][a-z0-9_]* *=.*$', line, flags=re.IGNORECASE):
+            print('variable found, line=', line)
             if debug: print('variable')
             line = re.sub(' *!.*$', '', re.sub('set *,', '', line, flags=re.IGNORECASE)).strip()
             while (newline := re.sub('(\[[[0-9!]*),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
+            print('new line=', line)
             fields = line.split(',')
             for field in fields:
                 key = re.sub(' *=.*$', '', field)
                 value = re.sub('.*= *', '', field)
+                print('field, key=', key, 'value=', value)
                 variables[key] = value.replace('!', ',')  # unprotect
         elif any(
                 [re.match('{? *' + df_prefix + spin_prefix + precursor_method + '}?', command, flags=re.IGNORECASE) for
@@ -161,13 +164,16 @@ def basis_quality(specification):
 
 
 def canonicalise(input):
-    return re.sub(
-        '\n}', '}', re.sub(
-            '{\n', r'{', re.sub(
-                '\n+', '\n', re.sub(
-                    'basis= *([^{\n]+)\n', r'basis={default=\1}\n', input.replace(';', '\n'
-                                                                                  ))))).rstrip('\n ').lstrip(
+    result = re.sub('\n}', '}', re.sub('{\n', r'{', re.sub('\n+', '\n',
+                                                           re.sub('basis= *([^{\n]+)\n', r'basis={default=\1}\n',
+                                                                  input.replace(';', '\n'))))).rstrip('\n ').lstrip(
         '\n ') + '\n'
+    new_result = ''
+    for line in re.sub('set[, ]', '', result.strip(), flags=re.IGNORECASE).split('\n'):
+        if re.match('[a-z][a-z0-9_]* *= *[a-z0-9_. ]*,', line, flags=re.IGNORECASE):
+            line = line.replace(',', '\n')
+        new_result += line + '\n'
+    return new_result.strip('\n ')+'\n'
 
 
 def equivalent(input1, input2, debug=False):
