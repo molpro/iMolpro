@@ -268,24 +268,30 @@ class ProjectWindow(QMainWindow):
         if not guided and len(self.input_tabs) != 1:
             self.input_tabs.removeTab(1)
         if guided and len(self.input_tabs) != 2:
-            self.guided_pane = QWidget()
-            self.input_tabs.addTab(self.guided_pane, 'guided')
-            self.guided_layout = QVBoxLayout()
-            self.guided_pane.setLayout(self.guided_layout)
-            self.guided_display = QLabel()
-            self.guided_layout.addWidget(self.guided_display)
-            guided_form = QFormLayout()
-            self.guided_layout.addLayout(guided_form)
-            self.guided_basis_input = QLineEdit()
-            self.guided_basis_input.setMinimumWidth(200)
-            guided_form.addRow('Basis set', self.guided_basis_input)
-            self.guided_basis_input.textChanged.connect(self.guided_basis_input_changed)
+            self.setup_guided_pane()
         self.input_tabs.setCurrentIndex(
             index if index >= 0 and index < len(self.input_tabs) else len(self.input_tabs) - 1)
         if guided:
-            self.guided_basis_input.setText(self.input_specification['basis'])
-            self.guided_display.setText(
-                re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ', ',\n  '))
+            self.refresh_guided_pane()
+
+    def setup_guided_pane(self):
+        self.guided_pane = QWidget()
+        self.input_tabs.addTab(self.guided_pane, 'guided')
+        self.guided_layout = QVBoxLayout()
+        self.guided_pane.setLayout(self.guided_layout)
+        self.guided_display = QLabel() # TODO this will eventually be removed
+        self.guided_layout.addWidget(self.guided_display)
+        guided_form = QFormLayout()
+        self.guided_layout.addLayout(guided_form)
+        self.guided_basis_input = QLineEdit()
+        self.guided_basis_input.setMinimumWidth(200)
+        guided_form.addRow('Basis set', self.guided_basis_input)
+        self.guided_basis_input.textChanged.connect(self.guided_basis_input_changed)
+
+    def refresh_guided_pane(self):
+        self.guided_basis_input.setText(self.input_specification['basis'])
+        self.guided_display.setText(
+            re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ', ',\n  ')) # TODO this will eventually be removed
 
     def guided_basis_input_changed(self, text):
         self.input_specification['basis'] = text
@@ -296,7 +302,8 @@ class ProjectWindow(QMainWindow):
         new_input = molpro_input.create_input(self.input_specification)
         if self.input_pane.toPlainText() != new_input:
             self.input_pane.setPlainText(new_input)
-        self.refresh_input_tabs(current_tab)
+        if current_tab == 1:
+            self.refresh_input_tabs(current_tab)
 
     def vod_selector_action(self):
         text = self.vod_selector.currentText().strip()
