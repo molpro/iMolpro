@@ -95,13 +95,13 @@ class Chooser(QMainWindow):
         menubar = MenuBar()
         if platform.system() == 'Darwin':
             self.setMenuBar(menubar)
-        menubar.addAction('New', 'File', slot=self.newProjectDialog, shortcut='Ctrl+N',
+        menubar.addAction('New', 'Projects', slot=self.newProjectDialog, shortcut='Ctrl+N',
                           tooltip='Create a new project')
-        menubar.addSeparator('File')
+        menubar.addSeparator('Projects')
         self.recentMenu = RecentMenu(window_manager)
-        menubar.addSubmenu(self.recentMenu, 'File')
-        menubar.addSeparator('File')
-        menubar.addAction('Quit', 'File', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
+        menubar.addSubmenu(self.recentMenu, 'Projects')
+        menubar.addSeparator('Projects')
+        menubar.addAction('Quit', 'Projects', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
                           tooltip='Quit')
 
         help_manager = HelpManager(menubar)

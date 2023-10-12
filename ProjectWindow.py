@@ -96,81 +96,7 @@ class ProjectWindow(QMainWindow):
 
         self.webengine_profiles = []
 
-        menubar = MenuBar(self)
-        self.setMenuBar(menubar)
-
-        menubar.addAction('New', 'File', slot=self.newAction, shortcut='Ctrl+N',
-                          tooltip='Create a new project')
-        menubar.addAction('Close', 'File', self.close, 'Ctrl+W')
-        menubar.addAction('Open', 'File', self.chooserOpen, 'Ctrl+O', 'Open another project')
-        menubar.addSeparator('File')
-        self.recent_menu = RecentMenu(self.window_manager)
-        menubar.addSubmenu(self.recent_menu, 'File')
-        menubar.addSeparator('File')
-        menubar.addAction('Move to...', 'File', self.move_to, tooltip='Move the project')
-        menubar.addAction('Copy to...', 'File', self.copy_to, tooltip='Make a copy of the project')
-        # menubar.addAction('Erase', 'File', self.erase, tooltip='Completely erase the project') # TODO get erase() working
-        menubar.addSeparator('File')
-        menubar.addAction('Quit', 'File', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
-                          tooltip='Quit')
-
-        menubar.addAction('Structure', 'Edit', self.edit_input_structure, 'Ctrl+D', 'Edit molecular geometry')
-        menubar.addAction('Cut', 'Edit', self.input_pane.cut, 'Ctrl+X', 'Cut')
-        menubar.addAction('Copy', 'Edit', self.input_pane.copy, 'Ctrl+C', 'Copy')
-        menubar.addAction('Paste', 'Edit', self.input_pane.paste, 'Ctrl+V', 'Paste')
-        menubar.addAction('Undo', 'Edit', self.input_pane.undo, 'Ctrl+Z', 'Undo')
-        menubar.addAction('Redo', 'Edit', self.input_pane.redo, 'Shift+Ctrl+Z', 'Redo')
-        menubar.addAction('Select All', 'Edit', self.input_pane.selectAll, 'Ctrl+A', 'Redo')
-        menubar.addSeparator('Edit')
-        menubar.addAction('Zoom In', 'Edit', self.input_pane.zoomIn, 'Shift+Ctrl+=', 'Increase font size')
-        menubar.addAction('Zoom Out', 'Edit', self.input_pane.zoomOut, 'Ctrl+-', 'Decrease font size')
-        menubar.addSeparator('Edit')
-        self.guided_action = menubar.addAction('Guided mode', 'Edit', self.guided_toggle, 'Ctrl+G', checkable=True)
-
-        menubar.addAction('Import input', 'Project', self.import_input, 'Ctrl+Shift+I',
-                          tooltip='Import a file and assign it as the input for the project')
-        menubar.addAction('Import structure', 'Project', self.import_structure, 'Ctrl+Alt+I',
-                          tooltip='Import an xyz file and use it as the source of molecular structure in the input for the project')
-        menubar.addAction('Search external databases for structure', 'Project', self.databaseImportStructure,
-                          'Ctrl+Shift+Alt+I',
-                          tooltip='Search PubChem and ChemSpider for a molecule and use it as the source of molecular structure in the input for the project')
-        menubar.addAction('Import file', 'Project', self.import_file, 'Ctrl+I',
-                          tooltip='Import one or more files, eg geometry definition, into the project')
-        menubar.addAction('Export file', 'Project', self.export_file, 'Ctrl+E',
-                          tooltip='Export one or more files from the project')
-        menubar.addAction('Clean', 'Project', self.clean, tooltip='Remove old runs from the project')
-        self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
-        self.run_force_action = menubar.addAction('Run (force)', 'Job', self.run_force, 'Ctrl+Shift+R',
-                                                  'Run Molpro on the project input, even if the input has not changed since the last run')
-        self.kill_action = menubar.addAction('Kill', 'Job', self.kill, tooltip='Kill the running job')
-        menubar.addSeparator('Project')
-        menubar.addAction('Browse project folder', 'Project', self.browse_project, 'Ctrl+Alt+F',
-                          tooltip='Look at the contents of the project folder.  With care, files can be edited or renamed, but note that this may break the integrity of the project.')
-
-        menubar.addAction('Backend', 'Job', lambda: configure_backend(self), 'Ctrl+B', 'Configure backend')
-        menubar.addAction('Edit backend configuration file', 'Job', self.edit_backend_configuration, 'Ctrl+Shift+B',
-                          'Edit backend configuration file')
-        menubar.show()
-
-        menubar.addAction('Zoom In', 'View', lambda: [p.zoomIn() for p in self.output_panes.values()], 'Alt+Shift+=',
-                          'Increase font size')
-        menubar.addAction('Zoom Out', 'View', lambda: [p.zoomOut() for p in self.output_panes.values()], 'Alt+-',
-                          'Decrease font size')
-        menubar.addSeparator('View')
-        menubar.addAction('Input structure', 'View', self.visualise_input,
-                          tooltip='View the molecular structure in the job input')
-        menubar.addAction('Output structure', 'View', self.visualise_output, 'Alt+D',
-                          tooltip='View the molecular structure at the end of the job')
-        menubar.addSeparator('View')
-        menubar.addAction('Next output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
-            (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+]')
-        menubar.addAction('Previous output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
-            (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+[')
-
-        help_manager = HelpManager(menubar)
-        help_manager.register('Overview', 'README')
-        help_manager.register('Another', 'something else')
-        help_manager.register('Backends', 'doc/backends.md')
+        self.setup_menubar()
 
         self.run_button = QPushButton('Run')
         self.run_button.clicked.connect(self.run_action.trigger)
@@ -225,6 +151,79 @@ class ProjectWindow(QMainWindow):
         container = QWidget()
         container.setLayout(self.layout)
         self.setCentralWidget(container)
+
+    def setup_menubar(self):
+        menubar = MenuBar(self)
+        self.setMenuBar(menubar)
+        menubar.addAction('New', 'Projects', slot=self.newAction, shortcut='Ctrl+N',
+                          tooltip='Create a new project')
+        menubar.addAction('Close', 'Projects', self.close, 'Ctrl+W')
+        menubar.addAction('Open', 'Projects', self.chooserOpen, 'Ctrl+O', 'Open another project')
+        menubar.addSeparator('Projects')
+        self.recent_menu = RecentMenu(self.window_manager)
+        menubar.addSubmenu(self.recent_menu, 'Projects')
+        menubar.addSeparator('Projects')
+        menubar.addAction('Move to...', 'Projects', self.move_to, tooltip='Move the project')
+        menubar.addAction('Copy to...', 'Projects', self.copy_to, tooltip='Make a copy of the project')
+        # menubar.addAction('Erase', 'Projects', self.erase, tooltip='Completely erase the project') # TODO get erase() working
+        menubar.addSeparator('Projects')
+        menubar.addAction('Quit', 'Projects', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
+                          tooltip='Quit')
+        menubar.addAction('Import input', 'Files', self.import_input, 'Ctrl+Shift+I',
+                          tooltip='Import a file and assign it as the input for the project')
+        menubar.addAction('Import structure', 'Files', self.import_structure, 'Ctrl+Alt+I',
+                          tooltip='Import an xyz file and use it as the source of molecular structure in the input for the project')
+        menubar.addAction('Search external databases for structure', 'Files', self.databaseImportStructure,
+                          'Ctrl+Shift+Alt+I',
+                          tooltip='Search PubChem and ChemSpider for a molecule and use it as the source of molecular structure in the input for the project')
+        menubar.addAction('Import file', 'Files', self.import_file, 'Ctrl+I',
+                          tooltip='Import one or more files, eg geometry definition, into the project')
+        menubar.addAction('Export file', 'Files', self.export_file, 'Ctrl+E',
+                          tooltip='Export one or more files from the project')
+        menubar.addAction('Clean', 'Files', self.clean, tooltip='Remove old runs from the project')
+        menubar.addAction('Structure', 'Edit', self.edit_input_structure, 'Ctrl+D', 'Edit molecular geometry')
+        menubar.addAction('Cut', 'Edit', self.input_pane.cut, 'Ctrl+X', 'Cut')
+        menubar.addAction('Copy', 'Edit', self.input_pane.copy, 'Ctrl+C', 'Copy')
+        menubar.addAction('Paste', 'Edit', self.input_pane.paste, 'Ctrl+V', 'Paste')
+        menubar.addAction('Undo', 'Edit', self.input_pane.undo, 'Ctrl+Z', 'Undo')
+        menubar.addAction('Redo', 'Edit', self.input_pane.redo, 'Shift+Ctrl+Z', 'Redo')
+        menubar.addAction('Select All', 'Edit', self.input_pane.selectAll, 'Ctrl+A', 'Redo')
+        menubar.addSeparator('Edit')
+        menubar.addAction('Zoom In', 'Edit', self.input_pane.zoomIn, 'Shift+Ctrl+=', 'Increase font size')
+        menubar.addAction('Zoom Out', 'Edit', self.input_pane.zoomOut, 'Ctrl+-', 'Decrease font size')
+        menubar.addSeparator('Edit')
+        self.guided_action = menubar.addAction('Guided mode', 'Edit', self.guided_toggle, 'Ctrl+G', checkable=True)
+
+        menubar.addSeparator('Files')
+        menubar.addAction('Browse project folder', 'Files', self.browse_project, 'Ctrl+Alt+F',
+                          tooltip='Look at the contents of the project folder.  With care, files can be edited or renamed, but note that this may break the integrity of the project.')
+        menubar.addAction('Zoom In', 'View', lambda: [p.zoomIn() for p in self.output_panes.values()], 'Alt+Shift+=',
+                          'Increase font size')
+        menubar.addAction('Zoom Out', 'View', lambda: [p.zoomOut() for p in self.output_panes.values()], 'Alt+-',
+                          'Decrease font size')
+        menubar.addSeparator('View')
+        menubar.addAction('Input structure', 'View', self.visualise_input,
+                          tooltip='View the molecular structure in the job input')
+        menubar.addAction('Output structure', 'View', self.visualise_output, 'Alt+D',
+                          tooltip='View the molecular structure at the end of the job')
+        menubar.addSeparator('View')
+        menubar.addAction('Next output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
+            (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+]')
+        menubar.addAction('Previous output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
+            (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+[')
+
+        self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
+        self.run_force_action = menubar.addAction('Run (force)', 'Job', self.run_force, 'Ctrl+Shift+R',
+                                                  'Run Molpro on the project input, even if the input has not changed since the last run')
+        self.kill_action = menubar.addAction('Kill', 'Job', self.kill, tooltip='Kill the running job')
+        menubar.addAction('Backend', 'Job', lambda: configure_backend(self), 'Ctrl+B', 'Configure backend')
+        menubar.addAction('Edit backend configuration file', 'Job', self.edit_backend_configuration, 'Ctrl+Shift+B',
+                          'Edit backend configuration file')
+        help_manager = HelpManager(menubar)
+        help_manager.register('Overview', 'README')
+        help_manager.register('Another', 'something else')
+        help_manager.register('Backends', 'doc/backends.md')
+        menubar.show()
 
     def edit_backend_configuration(self):
         self.backend_configuration_editor = MainEditFile(pathlib.Path.home() / '.sjef/molpro/backends.xml')
