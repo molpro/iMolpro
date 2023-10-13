@@ -281,6 +281,11 @@ class ProjectWindow(QMainWindow):
         self.guided_pane.setLayout(self.guided_layout)
         self.guided_display = QLabel() # TODO this will eventually be removed
         self.guided_layout.addWidget(self.guided_display)
+        combo_method = QComboBox()
+        combo_method.addItem("RHF")
+        combo_method.addItem("MP2")
+        combo_method.addItem("CCSD")
+        self.guided_layout.addWidget(combo_method)
         guided_form = QFormLayout()
         self.guided_layout.addLayout(guided_form)
         self.guided_basis_input = QLineEdit()
