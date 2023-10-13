@@ -300,7 +300,7 @@ class ProjectWindow(QMainWindow):
     def refresh_input_from_specification(self):
         current_tab = self.input_tabs.currentIndex()
         new_input = molpro_input.create_input(self.input_specification)
-        if self.input_pane.toPlainText() != new_input:
+        if not molpro_input.equivalent(self.input_pane.toPlainText() , new_input):
             self.input_pane.setPlainText(new_input)
         if current_tab == 1:
             self.refresh_input_tabs(current_tab)
