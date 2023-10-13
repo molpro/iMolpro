@@ -85,7 +85,6 @@ class ProjectWindow(QMainWindow):
             os.environ['QTWEBENGINEPROCESS_PATH'] = likely_qtwebengineprocess
 
         self.input_pane = EditFile(self.project.filename('inp', run=-1), latency)
-        self.input_pane.textChanged.connect(self.refresh_input_tabs)
         if self.input_pane.toPlainText().strip('\n ') == '':
             self.input_pane.setPlainText(
                 'geometry={0}.xyz\nbasis=cc-pVTZ-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
@@ -107,6 +106,7 @@ class ProjectWindow(QMainWindow):
 
         left_layout = QVBoxLayout()
         self.input_tabs = QTabWidget()
+        self.input_pane.textChanged.connect(self.refresh_input_tabs)
         self.input_tabs.setTabBarAutoHide(True)
         self.input_tabs.setDocumentMode(True)
         self.input_tabs.setTabPosition(QTabWidget.South)
