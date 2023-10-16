@@ -61,6 +61,7 @@ class ProjectWindow(QMainWindow):
     new_signal = pyqtSignal(QWidget)
     chooser_signal = pyqtSignal(QWidget)
     vod = None
+    trace = False
 
     def __init__(self, filename, window_manager, latency=1000):
         super().__init__()
@@ -254,6 +255,7 @@ class ProjectWindow(QMainWindow):
         self.refresh_input_tabs(index=1 if self.guided_action.isChecked() else 0)
 
     def refresh_input_tabs(self, index=0):
+        if self.trace: print('refresh_input_tabs')
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
         self.input_specification = molpro_input.parse(input_text)
@@ -294,20 +296,25 @@ class ProjectWindow(QMainWindow):
         self.guided_basis_input.textChanged.connect(self.guided_basis_input_changed)
 
     def refresh_guided_pane(self):
+        if self.trace: print('refresh_guided_pane')
         self.guided_basis_input.setText(self.input_specification['basis'])
         self.guided_display.setText(
             re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ', ',\n  ')) # TODO this will eventually be removed
 
     def guided_basis_input_changed(self, text):
+        if self.trace: print('guided_basis_input_changed')
+        current_tab = self.input_tabs.currentIndex()
         self.input_specification['basis'] = text
-        self.refresh_input_from_specification()
+        if current_tab != 0:
+            self.refresh_input_from_specification()
 
     def refresh_input_from_specification(self):
+        if self.trace: print('refresh_input_from_specification')
         current_tab = self.input_tabs.currentIndex()
         new_input = molpro_input.create_input(self.input_specification)
-        if self.input_pane.toPlainText() != new_input:
+        if not molpro_input.equivalent(self.input_pane.toPlainText() , new_input):
             self.input_pane.setPlainText(new_input)
-        if current_tab == 1:
+        if current_tab != 0:
             self.refresh_input_tabs(current_tab)
 
     def vod_selector_action(self):

@@ -73,12 +73,12 @@ def parse(input: str, debug=False):
             if debug: print('variable')
             line = re.sub(' *!.*$', '', re.sub('set *,', '', line, flags=re.IGNORECASE)).strip()
             while (newline := re.sub('(\[[[0-9!]*),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
-            print('new line=', line)
+            # print('new line=', line)
             fields = line.split(',')
             for field in fields:
                 key = re.sub(' *=.*$', '', field)
                 value = re.sub('.*= *', '', field)
-                print('field, key=', key, 'value=', value)
+                # print('field, key=', key, 'value=', value)
                 variables[key] = value.replace('!', ',')  # unprotect
         elif any(
                 [re.match('{? *' + df_prefix + spin_prefix + precursor_method + '}?', command, flags=re.IGNORECASE) for
