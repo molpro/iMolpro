@@ -283,8 +283,9 @@ class ProjectWindow(QMainWindow):
         self.guided_layout.addWidget(self.guided_display)
         guided_form = QFormLayout()
         self.guided_combo_method = QComboBox()
-        self.guided_combo_method.addItems(['RHF','MP2','CCSD'])
+        self.guided_combo_method.addItems(['HF','MP2','CCSD'])
         guided_form.addRow('Method',self.guided_combo_method)
+        self.guided_combo_method.currentIndexChanged.connect(self.guided_combo_method_changed)
         self.guided_layout.addLayout(guided_form)
         self.guided_basis_input = QLineEdit()
         self.guided_basis_input.setMinimumWidth(200)
@@ -299,6 +300,12 @@ class ProjectWindow(QMainWindow):
     def guided_basis_input_changed(self, text):
         self.input_specification['basis'] = text
         self.refresh_input_from_specification()
+
+    def guided_combo_method_changed(self,i):
+        for count in range(self.guided_combo_method.count()):
+            print ('debug:',count,i,self.guided_combo_method.itemText(count))
+        self.input_specification['method'] = self.guided_combo_method.currentText()
+#        self.refresh_input_from_specification()
 
     def refresh_input_from_specification(self):
         current_tab = self.input_tabs.currentIndex()
