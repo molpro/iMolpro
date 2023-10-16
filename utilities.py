@@ -196,7 +196,10 @@ class EditFile(QVimPlainTextEdit):
         current = self.toPlainText()
         if not current or current[-1] != '\n':
             current += '\n'
+            cursor = self.textCursor()
             super().setPlainText(current)
+            self.setTextCursor(cursor)
+            self.moveCursor(QTextCursor.Left)
         if current != self.savedText:
             with open(self.filename, 'w') as f:
                 f.write(current)
