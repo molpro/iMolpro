@@ -269,7 +269,7 @@ class ProjectWindow(QMainWindow):
             self.input_tabs.addTab(self.input_pane, 'freehand')
         if not guided and len(self.input_tabs) != 1:
             self.input_tabs.removeTab(1)
-        if guided and len(self.input_tabs) != 2:
+        if guided and len(self.input_tabs) < 2:
             self.setup_guided_pane()
         self.input_tabs.setCurrentIndex(
             index if index >= 0 and index < len(self.input_tabs) else len(self.input_tabs) - 1)
