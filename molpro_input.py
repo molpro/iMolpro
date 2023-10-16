@@ -69,11 +69,10 @@ def parse(input: str, debug=False):
             basis = re.sub(' *!.*', '', basis)
             specification['basis'] = 'default=' + basis
         elif re.match('(set,)?[a-z][a-z0-9_]* *=.*$', line, flags=re.IGNORECASE):
-            print('variable found, line=', line)
+            # print('variable found, line=', line)
             if debug: print('variable')
             line = re.sub(' *!.*$', '', re.sub('set *,', '', line, flags=re.IGNORECASE)).strip()
-            while (newline := re.sub('(\\[[[0-9!]*),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
-            # print('new line=', line)
+            while (newline := re.sub(r'(\[[0-9!]+),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
             fields = line.split(',')
             for field in fields:
                 key = re.sub(' *=.*$', '', field)
@@ -170,8 +169,8 @@ def canonicalise(input):
         '\n ') + '\n'
     new_result = ''
     for line in re.sub('set[, ]', '', result.strip(), flags=re.IGNORECASE).split('\n'):
-        while (newline := re.sub('(\\[[[0-9!]*),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
-        if re.match('[a-z][a-z0-9_]* *= *[[\\]!a-z0-9_. ]*,', line, flags=re.IGNORECASE):
+        while (newline := re.sub(r'(\[[0-9!]+),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
+        if re.match(r'[a-z][a-z0-9_]* *= *\[?[!a-z0-9_. ]*\]? *,', line, flags=re.IGNORECASE):
             line = line.replace(',', '\n')
         new_result += line.replace('!', ',') + '\n'
     return new_result.strip('\n ')+'\n'
