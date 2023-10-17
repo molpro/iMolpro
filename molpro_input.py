@@ -21,7 +21,7 @@ def parse(input: str, debug=False):
     local_prefixes = ['', 'L']
     df_prefixes = ['', 'DF-', 'PNO-']
     job_type_commands = ['OPTG', 'FREQ', 'FREQUENCIES']
-    postscripts = ['PUT', 'TABLE']
+    postscripts = ['PUT', 'TABLE', 'NOORBITALS', 'NOBASIS']  # FIXME not very satisfactory
 
     specification = {}
     variables = {}
@@ -101,7 +101,7 @@ def parse(input: str, debug=False):
                     specification['job_type'] = 'opt+freq'
                 else:
                     specification['job_type'] = 'freq'
-        elif any([re.match(postscript, command, flags=re.IGNORECASE) for postscript in postscripts]):
+        elif any([re.match('{? *' + postscript, command, flags=re.IGNORECASE) for postscript in postscripts]):
             if 'postscripts' not in specification: specification['postscripts'] = []
             specification['postscripts'].append(line.lower())
     if 'method' not in specification and 'precursor_methods' in specification:
@@ -172,8 +172,8 @@ def canonicalise(input):
         while (newline := re.sub(r'(\[[0-9!]+),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
         if re.match(r'[a-z][a-z0-9_]* *= *\[?[!a-z0-9_. ]*\]? *,', line, flags=re.IGNORECASE):
             line = line.replace(',', '\n')
-        new_result += line.replace('!', ',') + '\n'
-    return new_result.strip('\n ')+'\n'
+        new_result += line.replace('!', ',').strip() + '\n'
+    return new_result.strip('\n ') + '\n'
 
 
 def equivalent(input1, input2, debug=False):
