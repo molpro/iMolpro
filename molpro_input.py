@@ -21,7 +21,7 @@ def parse(input: str, debug=False):
     local_prefixes = ['', 'L']
     df_prefixes = ['', 'DF-', 'PNO-']
     job_type_commands = ['OPTG', 'FREQ', 'FREQUENCIES']
-    postscripts = ['PUT', 'TABLE']
+    postscripts = ['PUT', 'TABLE', 'NOORBITALS', 'NOBASIS']  # FIXME not very satisfactory
 
     specification = {}
     variables = {}
@@ -69,11 +69,10 @@ def parse(input: str, debug=False):
             basis = re.sub(' *!.*', '', basis)
             specification['basis'] = 'default=' + basis
         elif re.match('(set,)?[a-z][a-z0-9_]* *=.*$', line, flags=re.IGNORECASE):
-            print('variable found, line=', line)
+            # print('variable found, line=', line)
             if debug: print('variable')
             line = re.sub(' *!.*$', '', re.sub('set *,', '', line, flags=re.IGNORECASE)).strip()
-            while (newline := re.sub('(\[[[0-9!]*),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
-            # print('new line=', line)
+            while (newline := re.sub(r'(\[[0-9!]+),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
             fields = line.split(',')
             for field in fields:
                 key = re.sub(' *=.*$', '', field)
@@ -102,7 +101,7 @@ def parse(input: str, debug=False):
                     specification['job_type'] = 'opt+freq'
                 else:
                     specification['job_type'] = 'freq'
-        elif any([re.match(postscript, command, flags=re.IGNORECASE) for postscript in postscripts]):
+        elif any([re.match('{? *' + postscript, command, flags=re.IGNORECASE) for postscript in postscripts]):
             if 'postscripts' not in specification: specification['postscripts'] = []
             specification['postscripts'].append(line.lower())
     if 'method' not in specification and 'precursor_methods' in specification:
@@ -170,10 +169,11 @@ def canonicalise(input):
         '\n ') + '\n'
     new_result = ''
     for line in re.sub('set[, ]', '', result.strip(), flags=re.IGNORECASE).split('\n'):
-        if re.match('[a-z][a-z0-9_]* *= *[a-z0-9_. ]*,', line, flags=re.IGNORECASE):
+        while (newline := re.sub(r'(\[[0-9!]+),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
+        if re.match(r'[a-z][a-z0-9_]* *= *\[?[!a-z0-9_. ]*\]? *,', line, flags=re.IGNORECASE):
             line = line.replace(',', '\n')
-        new_result += line + '\n'
-    return new_result.strip('\n ')+'\n'
+        new_result += line.replace('!', ',').strip() + '\n'
+    return new_result.strip('\n ') + '\n'
 
 
 def equivalent(input1, input2, debug=False):
@@ -184,4 +184,4 @@ def equivalent(input1, input2, debug=False):
         print('equivalent: input2=', input2)
         print('equivalent: canonicalise(input1)=', canonicalise(input1))
         print('equivalent: canonicalise(input2)=', canonicalise(input2))
-    return canonicalise(input1) == canonicalise(input2)
+    return canonicalise(input1).lower() == canonicalise(input2).lower()

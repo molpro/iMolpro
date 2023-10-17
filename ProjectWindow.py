@@ -69,6 +69,11 @@ class ProjectWindow(QMainWindow):
 
         assert filename is not None
         self.project = Project(filename)
+        # print(self.project.registry())
+        # print(self.project.registry('PLUGIN'))
+        # print(self.project.registry('RO')['TRUNC']['default_value'])
+        # print(self.project.registry('commandset').keys())
+        # print(self.project.registry('commandset')['CCSD'])
         settings['project_directory'] = os.path.dirname(self.project.filename(run=-1))
 
         if 'PATH' in os.environ and 'SHELL' in os.environ:
@@ -263,6 +268,11 @@ class ProjectWindow(QMainWindow):
         if not guided and index == 1:
             box = QMessageBox()
             box.setText('Guided mode cannot be used because the input is too complex')
+            box.setDetailedText(
+                'The input regenerated from the attempt to parse into guided mode is\n' + molpro_input.canonicalise(
+                    molpro_input.create_input(
+                        self.input_specification)) + '\n\nThe original input in canonical form is\n' + molpro_input.canonicalise(
+                    molpro_input.create_input(self.input_specification)))
             box.exec()
             self.guided_action.setChecked(False)
         if len(self.input_tabs) < 1:
@@ -281,7 +291,7 @@ class ProjectWindow(QMainWindow):
         self.input_tabs.addTab(self.guided_pane, 'guided')
         self.guided_layout = QVBoxLayout()
         self.guided_pane.setLayout(self.guided_layout)
-        self.guided_display = QLabel() # TODO this will eventually be removed
+        self.guided_display = QLabel()  # TODO this will eventually be removed
         self.guided_layout.addWidget(self.guided_display)
         combo_method = QComboBox()
         combo_method.addItem("RHF")
@@ -299,7 +309,8 @@ class ProjectWindow(QMainWindow):
         if self.trace: print('refresh_guided_pane')
         self.guided_basis_input.setText(self.input_specification['basis'])
         self.guided_display.setText(
-            re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ', ',\n  ')) # TODO this will eventually be removed
+            re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
+                                                                                              ',\n  '))  # TODO this will eventually be removed
 
     def guided_basis_input_changed(self, text):
         if self.trace: print('guided_basis_input_changed')
@@ -312,7 +323,7 @@ class ProjectWindow(QMainWindow):
         if self.trace: print('refresh_input_from_specification')
         current_tab = self.input_tabs.currentIndex()
         new_input = molpro_input.create_input(self.input_specification)
-        if not molpro_input.equivalent(self.input_pane.toPlainText() , new_input):
+        if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
             self.input_pane.setPlainText(new_input)
         if current_tab != 0:
             self.refresh_input_tabs(current_tab)
