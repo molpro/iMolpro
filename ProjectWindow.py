@@ -307,7 +307,8 @@ class ProjectWindow(QMainWindow):
 
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
-        self.guided_basis_input.setText(self.input_specification['basis'])
+        if 'basis' in self.input_specification:
+            self.guided_basis_input.setText(self.input_specification['basis'])
         self.guided_display.setText(
             re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                               ',\n  '))  # TODO this will eventually be removed
