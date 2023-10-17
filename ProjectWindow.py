@@ -295,7 +295,7 @@ class ProjectWindow(QMainWindow):
         self.guided_layout.addWidget(self.guided_display)
         guided_form = QFormLayout()
         self.guided_combo_method = QComboBox()
-        self.guided_combo_method.addItems(['HF','MP2','CCSD'])
+        self.guided_combo_method.addItems(['hf','mp2','ccsd'])
         guided_form.addRow('Method',self.guided_combo_method)
         self.guided_combo_method.currentIndexChanged.connect(self.guided_combo_method_changed)
         self.guided_layout.addLayout(guided_form)
@@ -307,6 +307,7 @@ class ProjectWindow(QMainWindow):
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
         self.guided_basis_input.setText(self.input_specification['basis'])
+        self.guided_combo_method.setCurrentText(self.input_specification['method'])
         self.guided_display.setText(
             re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                               ',\n  '))  # TODO this will eventually be removed
@@ -322,7 +323,9 @@ class ProjectWindow(QMainWindow):
         for count in range(self.guided_combo_method.count()):
             print ('debug:',count,i,self.guided_combo_method.itemText(count))
         self.input_specification['method'] = self.guided_combo_method.currentText()
-        self.refresh_input_from_specification()
+        current_tab = self.input_tabs.currentIndex()
+        if current_tab != 0:
+            self.refresh_input_from_specification()
 
     def refresh_input_from_specification(self):
         if self.trace: print('refresh_input_from_specification')
