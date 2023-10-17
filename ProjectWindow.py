@@ -322,7 +322,7 @@ class ProjectWindow(QMainWindow):
         for count in range(self.guided_combo_method.count()):
             print ('debug:',count,i,self.guided_combo_method.itemText(count))
         self.input_specification['method'] = self.guided_combo_method.currentText()
-#        self.refresh_input_from_specification()
+        self.refresh_input_from_specification()
 
     def refresh_input_from_specification(self):
         if self.trace: print('refresh_input_from_specification')
