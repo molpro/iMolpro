@@ -74,6 +74,7 @@ class ProjectWindow(QMainWindow):
         # print(self.project.registry('RO')['TRUNC']['default_value'])
         # print(self.project.registry('commandset').keys())
         # print(self.project.registry('commandset')['CCSD'])
+        # print(self.project.procedures_registry())
         settings['project_directory'] = os.path.dirname(self.project.filename(run=-1))
 
         if 'PATH' in os.environ and 'SHELL' in os.environ:
@@ -307,9 +308,10 @@ class ProjectWindow(QMainWindow):
 
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
-        self.guided_basis_input.setText(self.input_specification['basis'])
         if 'method' in self.input_specification:
             self.guided_combo_method.setCurrentText(self.input_specification['method'])
+        if 'basis' in self.input_specification:
+            self.guided_basis_input.setText(self.input_specification['basis'])
         self.guided_display.setText(
             re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                               ',\n  '))  # TODO this will eventually be removed
