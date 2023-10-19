@@ -74,6 +74,7 @@ class ProjectWindow(QMainWindow):
         # print(self.project.registry('RO')['TRUNC']['default_value'])
         # print(self.project.registry('commandset').keys())
         # print(self.project.registry('commandset')['CCSD'])
+        # print(self.project.procedures_registry())
         settings['project_directory'] = os.path.dirname(self.project.filename(run=-1))
 
         if 'PATH' in os.environ and 'SHELL' in os.environ:
