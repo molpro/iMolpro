@@ -280,7 +280,7 @@ class ProjectWindow(QMainWindow):
             self.input_tabs.addTab(self.input_pane, 'freehand')
         if not guided and len(self.input_tabs) != 1:
             self.input_tabs.removeTab(1)
-        if guided and len(self.input_tabs) != 2:
+        if guided and len(self.input_tabs) < 2:
             self.setup_guided_pane()
         self.input_tabs.setCurrentIndex(
             index if index >= 0 and index < len(self.input_tabs) else len(self.input_tabs) - 1)
@@ -295,6 +295,11 @@ class ProjectWindow(QMainWindow):
         self.guided_display = QLabel()  # TODO this will eventually be removed
         self.guided_layout.addWidget(self.guided_display)
         guided_form = QFormLayout()
+        self.guided_combo_method = QComboBox()
+        print(self.project.registry('commandset').keys())
+        self.guided_combo_method.addItems(self.project.registry('commandset').keys())
+        guided_form.addRow('Method',self.guided_combo_method)
+        self.guided_combo_method.currentIndexChanged.connect(self.guided_combo_method_changed)
         self.guided_layout.addLayout(guided_form)
         self.guided_basis_input = QLineEdit()
         self.guided_basis_input.setMinimumWidth(200)
@@ -303,6 +308,8 @@ class ProjectWindow(QMainWindow):
 
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
+        if 'method' in self.input_specification:
+            self.guided_combo_method.setCurrentText(self.input_specification['method'])
         if 'basis' in self.input_specification:
             self.guided_basis_input.setText(self.input_specification['basis'])
         self.guided_display.setText(
@@ -313,6 +320,14 @@ class ProjectWindow(QMainWindow):
         if self.trace: print('guided_basis_input_changed')
         current_tab = self.input_tabs.currentIndex()
         self.input_specification['basis'] = text
+        if current_tab != 0:
+            self.refresh_input_from_specification()
+
+    def guided_combo_method_changed(self,i):
+        for count in range(self.guided_combo_method.count()):
+            print ('debug:',count,i,self.guided_combo_method.itemText(count))
+        self.input_specification['method'] = self.guided_combo_method.currentText()
+        current_tab = self.input_tabs.currentIndex()
         if current_tab != 0:
             self.refresh_input_from_specification()
 
