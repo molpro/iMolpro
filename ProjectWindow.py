@@ -298,10 +298,12 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_method = QComboBox()
         # print(self.project.registry('commandset').keys())
 
-        whole_of_procedures_registry = self.project.procedures_registry()
-        for keyfound in whole_of_procedures_registry.keys():
-            if whole_of_procedures_registry[keyfound]['class'] == 'PROG':
-                self.guided_combo_method.addItem(whole_of_procedures_registry[keyfound]['name'])
+#        allowed_methods = []
+#        whole_of_procedures_registry = self.project.procedures_registry()
+#        for keyfound in whole_of_procedures_registry.keys():
+#            if whole_of_procedures_registry[keyfound]['class'] == 'PROG':
+#                allowed_methods.append(whole_of_procedures_registry[keyfound]['name'])
+        self.guided_combo_method.addItems(self.allowed_methods())
         guided_form.addRow('Method',self.guided_combo_method)
         self.guided_combo_method.currentIndexChanged.connect(self.guided_combo_method_changed)
         self.guided_layout.addLayout(guided_form)
@@ -334,6 +336,14 @@ class ProjectWindow(QMainWindow):
         current_tab = self.input_tabs.currentIndex()
         if current_tab != 0:
             self.refresh_input_from_specification()
+
+    def allowed_methods(self):
+        result = []
+        whole_of_procedures_registry = self.project.procedures_registry()
+        for keyfound in whole_of_procedures_registry.keys():
+            if whole_of_procedures_registry[keyfound]['class'] == 'PROG':
+                result.append(whole_of_procedures_registry[keyfound]['name'])
+        return result
 
     def refresh_input_from_specification(self):
         if self.trace: print('refresh_input_from_specification')
