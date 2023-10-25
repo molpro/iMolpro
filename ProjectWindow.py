@@ -302,8 +302,6 @@ class ProjectWindow(QMainWindow):
         for keyfound in whole_of_procedures_registry.keys():
             if whole_of_procedures_registry[keyfound]['class'] == 'PROG':
                 self.guided_combo_method.addItem(whole_of_procedures_registry[keyfound]['name'])
-        print(self.project.procedures_registry())
-#        self.guided_combo_method.addItems(self.project.procedures_registry().keys())
         guided_form.addRow('Method',self.guided_combo_method)
         self.guided_combo_method.currentIndexChanged.connect(self.guided_combo_method_changed)
         self.guided_layout.addLayout(guided_form)
