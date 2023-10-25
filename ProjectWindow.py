@@ -102,6 +102,7 @@ class ProjectWindow(QMainWindow):
 
         self.webengine_profiles = []
 
+        self.whole_of_procedures_registry = self.project.procedures_registry()
         self.setup_menubar()
 
         self.run_button = QPushButton('Run')
@@ -334,10 +335,9 @@ class ProjectWindow(QMainWindow):
 
     def allowed_methods(self):
         result = []
-        whole_of_procedures_registry = self.project.procedures_registry()
-        for keyfound in whole_of_procedures_registry.keys():
-            if whole_of_procedures_registry[keyfound]['class'] == 'PROG':
-                result.append(whole_of_procedures_registry[keyfound]['name'])
+        for keyfound in self.whole_of_procedures_registry.keys():
+            if self.whole_of_procedures_registry[keyfound]['class'] == 'PROG':
+                result.append(self.whole_of_procedures_registry[keyfound]['name'])
         return result
 
     def refresh_input_from_specification(self):
