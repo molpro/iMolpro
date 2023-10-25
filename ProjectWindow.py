@@ -264,7 +264,7 @@ class ProjectWindow(QMainWindow):
         if self.trace: print('refresh_input_tabs')
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
-        self.input_specification = molpro_input.parse(input_text)
+        self.input_specification = molpro_input.parse(input_text,self.allowed_methods())
         guided = molpro_input.equivalent(input_text, self.input_specification)
         if not guided and index == 1:
             box = QMessageBox()
