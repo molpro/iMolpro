@@ -297,8 +297,11 @@ class ProjectWindow(QMainWindow):
         guided_form = QFormLayout()
         self.guided_combo_method = QComboBox()
         # print(self.project.registry('commandset').keys())
-        print(self.project.procedures_registry())
-        self.guided_combo_method.addItems(self.project.procedures_registry().keys())
+
+        whole_of_procedures_registry = self.project.procedures_registry()
+        for keyfound in whole_of_procedures_registry.keys():
+            if whole_of_procedures_registry[keyfound]['class'] == 'PROG':
+                self.guided_combo_method.addItem(whole_of_procedures_registry[keyfound]['name'])
         guided_form.addRow('Method',self.guided_combo_method)
         self.guided_combo_method.currentIndexChanged.connect(self.guided_combo_method_changed)
         self.guided_layout.addLayout(guided_form)
