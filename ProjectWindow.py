@@ -4,8 +4,7 @@ import shutil
 import sys
 import re
 
-from PyQt5.Qt import Qt
-from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication
+from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog, QDialog, QDialogButtonBox, QFormLayout, QLineEdit
