@@ -335,6 +335,8 @@ class ProjectWindow(QMainWindow):
 
     def allowed_methods(self):
         result = []
+        if self.whole_of_procedures_registry is None:
+            self.whole_of_procedures_registry = self.project.procedures_registry()
         for keyfound in self.whole_of_procedures_registry.keys():
             if self.whole_of_procedures_registry[keyfound]['class'] == 'PROG':
                 result.append(self.whole_of_procedures_registry[keyfound]['name'])
