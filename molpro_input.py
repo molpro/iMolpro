@@ -79,7 +79,7 @@ def parse(input: str, allowed_methods: list, debug=False):
                 # print('field, key=', key, 'value=', value)
                 variables[key] = value.replace('!', ',')  # unprotect
         elif any(
-                [re.match('{? *' + df_prefix + spin_prefix + precursor_method + '}?', command, flags=re.IGNORECASE) for
+                [re.match('{? *' + df_prefix + spin_prefix + precursor_method + '[;}]', command+';', flags=re.IGNORECASE) for
                  df_prefix
                  in
                  df_prefixes
