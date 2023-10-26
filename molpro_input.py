@@ -2,7 +2,7 @@ import os
 import re
 
 
-def parse(input: str, debug=False):
+def parse(input: str, allowed_methods: list, debug=False):
     r"""
     Take a molpro input, and logically parse it, on the assumption that it's a single-task input.
 
@@ -16,7 +16,6 @@ def parse(input: str, debug=False):
 
     precursor_methods = ['HF', 'KS', 'LOCALI', 'CASSCF', 'OCC', 'CORE', 'CLOSED', 'FROZEN', 'WF', 'LOCAL', 'DFIT',
                          'DIRECT', 'EXPLICIT', 'THRESH', 'GTHRESH', 'PRINT', 'GRID']
-    methods = ['HF', 'KS', 'MP2', 'CCSD', 'CCSD(T)', 'MRCI', 'RS2', 'RS2C']
     spin_prefixes = ['', 'R', 'U']
     local_prefixes = ['', 'L']
     df_prefixes = ['', 'DF-', 'PNO-']
@@ -80,7 +79,7 @@ def parse(input: str, debug=False):
                 # print('field, key=', key, 'value=', value)
                 variables[key] = value.replace('!', ',')  # unprotect
         elif any(
-                [re.match('{? *' + df_prefix + spin_prefix + precursor_method + '}?', command, flags=re.IGNORECASE) for
+                [re.match('{? *' + df_prefix + spin_prefix + precursor_method + '[;}]', command+';', flags=re.IGNORECASE) for
                  df_prefix
                  in
                  df_prefixes
@@ -91,7 +90,7 @@ def parse(input: str, debug=False):
         elif any([re.match('{?' + df_prefix + local_prefix + spin_prefix + method, command, flags=re.IGNORECASE) for
                   df_prefix
                   in df_prefixes
-                  for local_prefix in local_prefixes for spin_prefix in spin_prefixes for method in methods]):
+                  for local_prefix in local_prefixes for spin_prefix in spin_prefixes for method in allowed_methods]):
             specification['method'] = line.lower()
         elif any([re.match(job_type_command, command, flags=re.IGNORECASE) for job_type_command in job_type_commands]):
             if command.lower() == 'optg':

@@ -102,6 +102,7 @@ class ProjectWindow(QMainWindow):
 
         self.webengine_profiles = []
 
+        self.whole_of_procedures_registry = self.project.procedures_registry()
         self.setup_menubar()
 
         self.run_button = QPushButton('Run')
@@ -264,7 +265,7 @@ class ProjectWindow(QMainWindow):
         if self.trace: print('refresh_input_tabs')
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
-        self.input_specification = molpro_input.parse(input_text)
+        self.input_specification = molpro_input.parse(input_text,self.allowed_methods())
         guided = molpro_input.equivalent(input_text, self.input_specification)
         if not guided and index == 1:
             box = QMessageBox()
@@ -298,10 +299,7 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_method = QComboBox()
         # print(self.project.registry('commandset').keys())
 
-        whole_of_procedures_registry = self.project.procedures_registry()
-        for keyfound in whole_of_procedures_registry.keys():
-            if whole_of_procedures_registry[keyfound]['class'] == 'PROG':
-                self.guided_combo_method.addItem(whole_of_procedures_registry[keyfound]['name'])
+        self.guided_combo_method.addItems(self.allowed_methods())
         guided_form.addRow('Method',self.guided_combo_method)
         self.guided_combo_method.currentIndexChanged.connect(self.guided_combo_method_changed)
         self.guided_layout.addLayout(guided_form)
@@ -334,6 +332,15 @@ class ProjectWindow(QMainWindow):
         current_tab = self.input_tabs.currentIndex()
         if current_tab != 0:
             self.refresh_input_from_specification()
+
+    def allowed_methods(self):
+        result = []
+        if self.whole_of_procedures_registry is None:
+            self.whole_of_procedures_registry = self.project.procedures_registry()
+        for keyfound in self.whole_of_procedures_registry.keys():
+            if self.whole_of_procedures_registry[keyfound]['class'] == 'PROG':
+                result.append(self.whole_of_procedures_registry[keyfound]['name'])
+        return result
 
     def refresh_input_from_specification(self):
         if self.trace: print('refresh_input_from_specification')
