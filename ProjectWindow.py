@@ -85,6 +85,7 @@ class ProjectWindow(QMainWindow):
             os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
                 sys._MEIPASS, 'PyQt5', 'Qt', 'libexec', 'QtWebEngineProcess'
             ))
+        print('hi')
         os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--no-sandbox'
         likely_qtwebengineprocess = os.path.normpath(
             os.path.join(os.path.dirname(os.path.abspath(__file__)), 'PyQt5', 'Qt5', 'libexec', 'QtWebEngineProcess'))

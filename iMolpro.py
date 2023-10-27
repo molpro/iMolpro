@@ -16,6 +16,9 @@ if __name__ == '__main__':
                 return super().event(e)
             return True
 
+
+    if hasattr(sys, '_MEIPASS'):
+        sys.stdout = open('/tmp/iMolpro.stdout', 'w')
     app = App(sys.argv)
 
     window_manager = WindowManager()
