@@ -311,8 +311,13 @@ class ProjectWindow(QMainWindow):
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
         if 'method' in self.input_specification:
-            method_index = self.guided_combo_method.findText(self.input_specification['method'], Qt.MatchFixedString)
-            print('KD Debug, index=',method_index)
+            base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
+            prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
+                'method'] else None
+            method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
+            if self.trace: print('KD Debug, index=', method_index, 'method=',
+                                 self.input_specification['method'], 'base_method=', base_method, 'prefix=',
+                                 prefix)
             self.guided_combo_method.setCurrentIndex(method_index)
         if 'basis' in self.input_specification:
             self.guided_basis_input.setText(self.input_specification['basis'])
