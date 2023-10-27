@@ -1,3 +1,4 @@
+import logging
 import os
 import pathlib
 import re
@@ -68,7 +69,9 @@ class DatabaseFetchDialog(QDialog):
                 if field == 'inchi' and query.strip()[:3] != '1S/': continue
                 try:
                     if debug: print('pubchem query, field:', field, 'query:', query.strip())
+                    if debug: logging.basicConfig(filename='/tmp/iMolpro.log', filemode='w', level=logging.DEBUG)
                     self.compounds = pubchempy.get_compounds(query.strip(), field, record_type='3d')
+                    if debug: print(pubchempy.log)
                 except Exception as e:
                     if debug: print('exception', e)
                     self.layout.addWidget(QLabel('Network or other error during PubChem search'))
