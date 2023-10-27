@@ -4,7 +4,7 @@ import shutil
 import sys
 import re
 
-from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication
+from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog, QDialog, QDialogButtonBox, QFormLayout, QLineEdit
@@ -311,7 +311,9 @@ class ProjectWindow(QMainWindow):
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
         if 'method' in self.input_specification:
-            self.guided_combo_method.setCurrentText(self.input_specification['method'])
+            method_index = self.guided_combo_method.findText(self.input_specification['method'], Qt.MatchFixedString)
+            print('KD Debug, index=',method_index)
+            self.guided_combo_method.setCurrentIndex(method_index)
         if 'basis' in self.input_specification:
             self.guided_basis_input.setText(self.input_specification['basis'])
         self.guided_display.setText(
