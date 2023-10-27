@@ -327,9 +327,7 @@ class ProjectWindow(QMainWindow):
         if current_tab != 0:
             self.refresh_input_from_specification()
 
-    def guided_combo_method_changed(self,i):
-        for count in range(self.guided_combo_method.count()):
-            print ('debug:',count,i,self.guided_combo_method.itemText(count))
+    def guided_combo_method_changed(self):
         self.input_specification['method'] = self.guided_combo_method.currentText()
         current_tab = self.input_tabs.currentIndex()
         if current_tab != 0:
