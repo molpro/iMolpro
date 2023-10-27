@@ -29,6 +29,7 @@ cat << 'EOF' >> iMolpro.spec
       'CFBundleDocumentTypes': [
         {
           'CFBundleTypeExtensions': ['molpro'],
+          'LSTypeIsPackage': True,
           'LSItemContentTypes': ['net.molpro.molpro'],
           'CFBundleTypeIconFile': 'molpro.icns',
           'CFBundleTypeRole': 'Editor',
