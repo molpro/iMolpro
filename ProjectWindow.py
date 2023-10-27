@@ -659,7 +659,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
     def import_file(self):
         _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
             self.project.filename(run=-1))
-        filenames, junk = QFileDialog.getOpenFileNames(self, 'Import file(s) into project', _dir,
+        filenames, junk = QFileDialog.getOpenFileNames(self, 'Import file(s) into project', str(pathlib.Path(_dir)/'*'),
                                                        options=QFileDialog.DontResolveSymlinks)
         for filename in filenames:
             if os.path.isfile(filename):
@@ -670,7 +670,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         _dir = settings['geometry_directory'] if 'geometry_directory' in settings else (
             settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
                 self.project.filename(run=-1)))
-        filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', _dir,
+        filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', str(pathlib.Path(_dir)/'*'),
                                                      options=QFileDialog.DontResolveSymlinks)
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
@@ -697,7 +697,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
     def import_input(self):
         _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
             self.project.filename(run=-1))
-        filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', _dir,
+        filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', str(pathlib.Path(_dir)/'*'),
                                                      options=QFileDialog.DontResolveSymlinks)
         if os.path.isfile(filename):
             settings['import_directory'] = os.path.dirname(filename)
@@ -705,7 +705,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 
     def export_file(self):
         filenames, junk = QFileDialog.getOpenFileNames(self, 'Export file(s) from the project',
-                                                       self.project.filename())
+                                                       str(pathlib.Path(self.project.filename())/'*'))
         for filename in filenames:
             if os.path.isfile(filename):
                 b = os.path.basename(filename)
@@ -717,7 +717,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                     shutil.copy(filename, dest)
 
     def browse_project(self):
-        dlg = QFileDialog(self, self.project.filename(), self.project.filename(run=-1))
+        dlg = QFileDialog(self, self.project.filename(), str(pathlib.Path(self.project.filename(run=-1))/'*'))
         dlg.setLabelText(QFileDialog.Accept, "OK")
         dlg.exec()
 
