@@ -45,6 +45,17 @@ class DatabaseSearchDialog(QDialog):
 
 class DatabaseFetchDialog(QDialog):
     def __init__(self, query, use_pubchem=True, use_chemspider=True):
+        self.pythonhttpsverify = 'PYTHONHTTPSVERIFY'
+        https_verify_exists = self.pythonhttpsverify in os.environ
+        if https_verify_exists: https_verify_save = os.environ[self.pythonhttpsverify]
+        os.environ[self.pythonhttpsverify] = '0'
+
+        def https_verify_pop():
+            if https_verify_exists:
+                os.environ[self.pythonhttpsverify] = https_verify_save
+            else:
+                os.environ.pop(self.pythonhttpsverify)
+
         debug = True
         super().__init__()
         self.setWindowTitle('Select from database search results')
@@ -78,9 +89,10 @@ class DatabaseFetchDialog(QDialog):
                     self.buttonbox = QDialogButtonBox(QDialogButtonBox.Cancel)
                     self.buttonbox.rejected.connect(self.reject)
                     self.layout.addWidget(self.buttonbox)
+                    https_verify_pop()
                     return
                 if self.compounds: break
-            if debug: print('end of pubchem searching, compounds:',len(self.compounds),self.compounds)
+            if debug: print('end of pubchem searching, compounds:', len(self.compounds), self.compounds)
             self.layout.addWidget(
                 QLabel('PubChem found ' + matches(len(self.compounds)) + ' for ' + (
                     (field + '=') if self.compounds else '') + query))
@@ -94,6 +106,7 @@ class DatabaseFetchDialog(QDialog):
                 self.buttonbox.accepted.connect(self.accept)
                 self.buttonbox.rejected.connect(self.reject)
                 self.layout.addWidget(self.buttonbox)
+                https_verify_pop()
                 return
 
         if use_chemspider:
@@ -118,11 +131,13 @@ class DatabaseFetchDialog(QDialog):
                     self.buttonbox.accepted.connect(self.accept)
                     self.buttonbox.rejected.connect(self.reject)
                     self.layout.addWidget(self.buttonbox)
+                    https_verify_pop()
                     return
 
         self.buttonbox = QDialogButtonBox(QDialogButtonBox.Cancel)
         self.buttonbox.rejected.connect(self.reject)
         self.layout.addWidget(self.buttonbox)
+        https_verify_pop()
 
     def xyz(self, index=None):
         index_ = index if index else self.chooser.currentIndex()
