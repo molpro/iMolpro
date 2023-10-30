@@ -1,3 +1,4 @@
+import logging
 import os
 import pathlib
 import re
@@ -44,10 +45,23 @@ class DatabaseSearchDialog(QDialog):
 
 class DatabaseFetchDialog(QDialog):
     def __init__(self, query, use_pubchem=True, use_chemspider=True):
+        self.pythonhttpsverify = 'PYTHONHTTPSVERIFY'
+        https_verify_exists = self.pythonhttpsverify in os.environ
+        if https_verify_exists: https_verify_save = os.environ[self.pythonhttpsverify]
+        os.environ[self.pythonhttpsverify] = '0'
+
+        def https_verify_pop():
+            if https_verify_exists:
+                os.environ[self.pythonhttpsverify] = https_verify_save
+            else:
+                os.environ.pop(self.pythonhttpsverify)
+
+        debug = True
         super().__init__()
         self.setWindowTitle('Select from database search results')
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
+        if debug: print('initiating database search')
 
         def matches(i):
             if i == 0:
@@ -65,16 +79,20 @@ class DatabaseFetchDialog(QDialog):
                 if field == 'cid' and not all(chr.isdigit() for chr in query.strip()): continue
                 if field == 'inchi' and query.strip()[:3] != '1S/': continue
                 try:
-                    # print('field', field)
+                    if debug: print('pubchem query, field:', field, 'query:', query.strip())
+                    if debug: logging.basicConfig(filename='/tmp/iMolpro.log', filemode='w', level=logging.DEBUG)
                     self.compounds = pubchempy.get_compounds(query.strip(), field, record_type='3d')
+                    if debug: print(pubchempy.log)
                 except Exception as e:
-                    # print('exception', e)
+                    if debug: print('exception', e)
                     self.layout.addWidget(QLabel('Network or other error during PubChem search'))
                     self.buttonbox = QDialogButtonBox(QDialogButtonBox.Cancel)
                     self.buttonbox.rejected.connect(self.reject)
                     self.layout.addWidget(self.buttonbox)
+                    https_verify_pop()
                     return
                 if self.compounds: break
+            if debug: print('end of pubchem searching, compounds:', len(self.compounds), self.compounds)
             self.layout.addWidget(
                 QLabel('PubChem found ' + matches(len(self.compounds)) + ' for ' + (
                     (field + '=') if self.compounds else '') + query))
@@ -88,6 +106,7 @@ class DatabaseFetchDialog(QDialog):
                 self.buttonbox.accepted.connect(self.accept)
                 self.buttonbox.rejected.connect(self.reject)
                 self.layout.addWidget(self.buttonbox)
+                https_verify_pop()
                 return
 
         if use_chemspider:
@@ -112,11 +131,13 @@ class DatabaseFetchDialog(QDialog):
                     self.buttonbox.accepted.connect(self.accept)
                     self.buttonbox.rejected.connect(self.reject)
                     self.layout.addWidget(self.buttonbox)
+                    https_verify_pop()
                     return
 
         self.buttonbox = QDialogButtonBox(QDialogButtonBox.Cancel)
         self.buttonbox.rejected.connect(self.reject)
         self.layout.addWidget(self.buttonbox)
+        https_verify_pop()
 
     def xyz(self, index=None):
         index_ = index if index else self.chooser.currentIndex()

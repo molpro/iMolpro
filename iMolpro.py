@@ -11,11 +11,14 @@ if __name__ == '__main__':
     class App(QApplication):
         def event(self, e):
             if e.type() == QEvent.FileOpen and os.path.splitext(e.file())[1] == '.molpro':
-                window_manager.register(ProjectWindow(e.file()))
+                window_manager.register(ProjectWindow(e.file(), window_manager))
             else:
                 return super().event(e)
             return True
 
+
+    if hasattr(sys, '_MEIPASS'):
+        sys.stdout = open('/tmp/iMolpro.stdout', 'w')
     app = App(sys.argv)
 
     window_manager = WindowManager()
