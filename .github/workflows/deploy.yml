@@ -3,8 +3,8 @@ permissions:
 name: Deploy
 on:
   push:
-    tags:
-      - '*'
+#    tags:
+#      - '*'
 
 jobs:
   deploy:
@@ -27,6 +27,7 @@ jobs:
           conda create -n iMolpro-github
           conda activate iMolpro-github
           bash build.sh
+          conda list
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
