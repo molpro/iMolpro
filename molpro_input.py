@@ -96,8 +96,9 @@ def parse(input: str, allowed_methods: list, debug=False):
             if command.lower() == 'optg':
                 specification['job_type'] = 'opt'
             elif command.lower()[:4] == 'freq':
-                if specification['job_type'] == 'opt':
-                    specification['job_type'] = 'opt+freq'
+                if 'job_type' in specification:
+                    if specification['job_type'] == 'opt':
+                        specification['job_type'] = 'opt+freq'
                 else:
                     specification['job_type'] = 'freq'
         elif any([re.match('{? *' + postscript, command, flags=re.IGNORECASE) for postscript in postscripts]):
