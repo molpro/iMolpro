@@ -296,6 +296,19 @@ class ProjectWindow(QMainWindow):
         self.guided_display = QLabel()  # TODO this will eventually be removed
         self.guided_layout.addWidget(self.guided_display)
         guided_form = QFormLayout()
+
+        textLabel_calculation = QLabel()
+        textLabel_calculation.setText("Calculation:")
+        self.guided_layout.addWidget(textLabel_calculation)
+
+        self.guided_combo_calctype = QComboBox()
+        self.guided_combo_calctype.setMaximumWidth(180)
+        self.guided_combo_calctype.addItems(['Single Point Energy',
+                                             'Geometry Optimization',
+                                             'Opt+Frequency' , 'Hessian'])
+        guided_form.addRow('Type',self.guided_combo_calctype)
+        self.guided_combo_calctype.currentIndexChanged.connect(self.guided_combo_calctype_changed)
+
         self.guided_combo_method = QComboBox()
         # print(self.project.registry('commandset').keys())
 
@@ -331,6 +344,10 @@ class ProjectWindow(QMainWindow):
         self.input_specification['basis'] = text
         if current_tab != 0:
             self.refresh_input_from_specification()
+
+    def guided_combo_calctype_changed(self,i):
+        self.input_specification['job_type'] = self.guided_combo_calctype.currentText()
+        print(i,self.input_specification['job_type'])
 
     def guided_combo_method_changed(self):
         self.input_specification['method'] = self.guided_combo_method.currentText()
