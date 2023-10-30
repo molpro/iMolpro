@@ -304,8 +304,8 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_calctype = QComboBox()
         self.guided_combo_calctype.setMaximumWidth(180)
         self.guided_combo_calctype.addItems(['Single Point Energy',
-                                             'Geometry Optimization',
-                                             'Opt+Frequency' , 'Hessian'])
+                                             'opt',
+                                             'opt+freq' , 'Hessian'])
         guided_form.addRow('Type',self.guided_combo_calctype)
         self.guided_combo_calctype.currentIndexChanged.connect(self.guided_combo_calctype_changed)
 
@@ -348,6 +348,8 @@ class ProjectWindow(QMainWindow):
     def guided_combo_calctype_changed(self,i):
         self.input_specification['job_type'] = self.guided_combo_calctype.currentText()
         print(i,self.input_specification['job_type'])
+        if (i != 0):
+            self.refresh_input_from_specification()
 
     def guided_combo_method_changed(self):
         self.input_specification['method'] = self.guided_combo_method.currentText()
