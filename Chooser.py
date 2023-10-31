@@ -93,10 +93,12 @@ class Chooser(QMainWindow):
         rh_panel.addWidget(QLabel("iMolpro version "+version_()))
 
         menubar = MenuBar()
-        if platform.system() == 'Darwin':
+        if True or platform.system() == 'Darwin':
             self.setMenuBar(menubar)
         menubar.addAction('New', 'Projects', slot=self.newProjectDialog, shortcut='Ctrl+N',
                           tooltip='Create a new project')
+        menubar.addAction('Open', 'Projects', slot=self.openProjectDialog, shortcut='Ctrl+O',
+                          tooltip='Open an existing project')
         menubar.addSeparator('Projects')
         self.recentMenu = RecentMenu(window_manager)
         menubar.addSubmenu(self.recentMenu, 'Projects')
@@ -144,7 +146,11 @@ class Chooser(QMainWindow):
 
     def openProjectDialog(self):
         _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir
-        filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', _dir))
+        if platform.system() == 'Darwin':
+            filename, filter = QFileDialog.getOpenFileName(self, 'Open existing project...', _dir,
+                                                           filter='Molpro projects (*.molpro)')
+        else:
+            filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', _dir))
         if filename:
             self.window_manager.register(ProjectWindow(filename, self.window_manager))
             self.hide()
