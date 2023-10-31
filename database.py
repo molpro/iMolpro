@@ -72,6 +72,13 @@ class DatabaseFetchDialog(QDialog):
                 return str(i) + ' matches'
 
         if use_pubchem:
+
+            import urllib.request as urllib2
+            request = urllib2.Request('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/JSON?record_type=3d&name=water',
+                                      headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib2.urlopen(request) as f:
+                print(f.read(300))
+                
             self.database = 'PubChem'
             for field in ['name', 'cid', 'inchi', 'inchikey',
                           # 'sdf', 'smiles', 'formula', # these seem to throw exceptions sometimes. Why?
