@@ -102,7 +102,14 @@ class ProjectWindow(QMainWindow):
 
         self.webengine_profiles = []
 
-        self.whole_of_procedures_registry = self.project.procedures_registry()
+        try:
+            self.whole_of_procedures_registry = self.project.procedures_registry()
+        except Exception as e:
+            msg = QMessageBox()
+            msg.setText('Error in finding local molpro')
+            msg.setDetailedText('Guided mode will not work correctly\r\n'+str(type(e)))
+            msg.exec()
+            self.whole_of_procedures_registry = {}
         self.setup_menubar()
 
         self.run_button = QPushButton('Run')
