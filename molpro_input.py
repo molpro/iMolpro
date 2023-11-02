@@ -192,4 +192,5 @@ def equivalent(input1, input2, debug=False):
         print('equivalent: input2=', input2)
         print('equivalent: canonicalise(input1)=', canonicalise(input1))
         print('equivalent: canonicalise(input2)=', canonicalise(input2))
+        print('will return this',canonicalise(input1).lower() == canonicalise(input2).lower())
     return canonicalise(input1).lower() == canonicalise(input2).lower()
