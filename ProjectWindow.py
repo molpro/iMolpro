@@ -352,7 +352,6 @@ class ProjectWindow(QMainWindow):
 
     def guided_basis_input_changed(self, text):
         if self.trace: print('guided_basis_input_changed')
-        print('guided_basis_input_changed 3333333333')
         current_tab = self.input_tabs.currentIndex()
         self.input_specification['basis'] = text
         if current_tab != 0:
