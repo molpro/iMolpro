@@ -27,13 +27,9 @@ def parse(input: str, allowed_methods: list, debug=False):
     geometry_active = False
     basis_active = False
 
-    print('KD Debug: input is= ###',input,'###\r\n')
-
     for line in canonicalise(input).split('\n'):
-        print('KD Debug: specification',specification)
         line = line.strip()
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
-        print('KD Debug: beginning of loop command',command)
         if debug: print('line', line, 'command', command)
         if re.match('^geometry *= *{', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
@@ -98,7 +94,6 @@ def parse(input: str, allowed_methods: list, debug=False):
                   for local_prefix in local_prefixes for spin_prefix in spin_prefixes for method in allowed_methods]):
             specification['method'] = line.lower()
         elif any([re.match(job_type_command, command, flags=re.IGNORECASE) for job_type_command in job_type_commands]):
-            print('KD Debug: 1 command.lower=',command.lower())
             if command.lower() == 'optg':
                 specification['job_type'] = 'opt'
             elif command.lower()[:4] == 'freq':
@@ -111,20 +106,15 @@ def parse(input: str, allowed_methods: list, debug=False):
                 specification['job_type'] = 'Hessian'
             if 'job_type' not in specification:
                 specification['job_type'] = 'Single Point Energy'
-            if 'job_type' in specification:
-                print('KD Debug: specification of job_type is',specification['job_type'])
         elif any([re.match('{? *' + postscript, command, flags=re.IGNORECASE) for postscript in postscripts]):
             if 'postscripts' not in specification: specification['postscripts'] = []
             specification['postscripts'].append(line.lower())
 
-        print('KD Debug: 2 command was=',command.lower())
-        print('KD Debug: end')
     if 'method' not in specification and 'precursor_methods' in specification:
         specification['method'] = specification['precursor_methods'][-1]
         specification['precursor_methods'].pop()
     if variables:
         specification['variables'] = variables
-    print('KD Debug: return with specification !!!!!!!!!!!')
     return specification
 
 

@@ -266,12 +266,10 @@ class ProjectWindow(QMainWindow):
                 self.output_tabs.addTab(self.vod, 'structure')
 
     def guided_toggle(self):
-        print('KD Debug: toggle 000000000000000000000000')
         self.refresh_input_tabs(index=1 if self.guided_action.isChecked() else 0)
 
     def refresh_input_tabs(self, index=0):
         if self.trace: print('refresh_input_tabs')
-        print('KD Debug: refresh_input_tabs 11111111111\r\n')
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
         self.input_specification = molpro_input.parse(input_text,self.allowed_methods())
@@ -361,7 +359,6 @@ class ProjectWindow(QMainWindow):
             self.refresh_input_from_specification()
 
     def guided_combo_calctype_changed(self,i):
-        print('KD Debug: job_type 4444444444444 i=',i)
         if (i == 0):
             self.input_specification['job_type'] = ''
         elif (i == 1):
@@ -396,7 +393,6 @@ class ProjectWindow(QMainWindow):
 
     def refresh_input_from_specification(self):
         if self.trace: print('refresh_input_from_specification')
-        print ('KD Debug: refresh_input_from_specification AAAAAAA')
         current_tab = self.input_tabs.currentIndex()
         new_input = molpro_input.create_input(self.input_specification)
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
