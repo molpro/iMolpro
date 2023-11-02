@@ -97,6 +97,7 @@ def parse(input: str, allowed_methods: list, debug=False):
             if command.lower() == 'optg':
                 specification['job_type'] = 'opt'
             elif command.lower()[:4] == 'freq':
+                print('KD Debug: found this command' ,command)
                 if 'job_type' in specification:
                     if specification['job_type'] == 'opt':
                         specification['job_type'] = 'opt+freq'
