@@ -266,10 +266,12 @@ class ProjectWindow(QMainWindow):
                 self.output_tabs.addTab(self.vod, 'structure')
 
     def guided_toggle(self):
+        print('KD Debug: toggle 000000000000000000000000')
         self.refresh_input_tabs(index=1 if self.guided_action.isChecked() else 0)
 
     def refresh_input_tabs(self, index=0):
         if self.trace: print('refresh_input_tabs')
+        print('KD Debug: refresh_input_tabs 11111111111\r\n')
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
         self.input_specification = molpro_input.parse(input_text,self.allowed_methods())
@@ -312,7 +314,9 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_calctype.setMaximumWidth(180)
         self.guided_combo_calctype.addItems(['Single Point Energy',
                                              'opt',
-                                             'opt+freq' , 'Hessian'])
+                                             'opt+freq',
+                                             'freq',
+                                             'Hessian'])
         guided_form.addRow('Type',self.guided_combo_calctype)
         self.guided_combo_calctype.currentIndexChanged.connect(self.guided_combo_calctype_changed)
 
@@ -341,21 +345,38 @@ class ProjectWindow(QMainWindow):
             self.guided_combo_method.setCurrentIndex(method_index)
         if 'basis' in self.input_specification:
             self.guided_basis_input.setText(self.input_specification['basis'])
+        if 'job_type' in self.input_specification:
+            job_type_index = self.guided_combo_calctype.findText(self.input_specification['job_type'], Qt.MatchFixedString)
+            self.guided_combo_calctype.setCurrentIndex(job_type_index)
         self.guided_display.setText(
             re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                               ',\n  '))  # TODO this will eventually be removed
 
     def guided_basis_input_changed(self, text):
         if self.trace: print('guided_basis_input_changed')
+        print('guided_basis_input_changed 3333333333')
         current_tab = self.input_tabs.currentIndex()
         self.input_specification['basis'] = text
         if current_tab != 0:
             self.refresh_input_from_specification()
 
     def guided_combo_calctype_changed(self,i):
-        self.input_specification['job_type'] = self.guided_combo_calctype.currentText()
-        print(i,self.input_specification['job_type'])
-        if (i != 0):
+        print('KD Debug: job_type 4444444444444 i=',i)
+        if (i == 0):
+            self.input_specification['job_type'] = ''
+        elif (i == 1):
+            self.input_specification['job_type'] = 'opt'
+        elif (i == 2):
+            self.input_specification['job_type'] = 'opt+freq'
+        elif (i == 3):
+            self.input_specification['job_type'] = 'freq'
+        elif (i == 4):
+            self.input_specification['job_type'] = 'hessian'
+
+        if 'job_type' in self.input_specification:
+            print('KD Debug: guided_combo_calctype_changed',i,self.input_specification['job_type'])
+        current_tab = self.input_tabs.currentIndex()
+        if current_tab != 0:
             self.refresh_input_from_specification()
 
     def guided_combo_method_changed(self):
@@ -375,6 +396,7 @@ class ProjectWindow(QMainWindow):
 
     def refresh_input_from_specification(self):
         if self.trace: print('refresh_input_from_specification')
+        print ('KD Debug: refresh_input_from_specification AAAAAAA')
         current_tab = self.input_tabs.currentIndex()
         new_input = molpro_input.create_input(self.input_specification)
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
