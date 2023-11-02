@@ -368,7 +368,7 @@ class ProjectWindow(QMainWindow):
         elif (i == 3):
             self.input_specification['job_type'] = 'freq'
         elif (i == 4):
-            self.input_specification['job_type'] = 'hessian'
+            self.input_specification['job_type'] = 'Hessian'
 
         if 'job_type' in self.input_specification:
             print('KD Debug: guided_combo_calctype_changed',i,self.input_specification['job_type'])
