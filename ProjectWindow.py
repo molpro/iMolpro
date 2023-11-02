@@ -370,7 +370,7 @@ class ProjectWindow(QMainWindow):
             self.input_specification['job_type'] = 'Hessian'
 
         if 'job_type' in self.input_specification:
-            print('KD Debug: guided_combo_job_type_changed',i,self.input_specification['job_type'])
+            if self.trace: print('KD Debug: guided_combo_job_type_changed',i,self.input_specification['job_type'])
         current_tab = self.input_tabs.currentIndex()
         if current_tab != 0:
             self.refresh_input_from_specification()
