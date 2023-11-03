@@ -107,7 +107,7 @@ class ProjectWindow(QMainWindow):
         except Exception as e:
             msg = QMessageBox()
             msg.setText('Error in finding local molpro')
-            msg.setDetailedText('Guided mode will not work correctly\r\n'+str(type(e)))
+            msg.setDetailedText('Guided mode will not work correctly\r\n' + str(type(e)))
             msg.exec()
             self.whole_of_procedures_registry = {}
         self.setup_menubar()
@@ -272,7 +272,7 @@ class ProjectWindow(QMainWindow):
         if self.trace: print('refresh_input_tabs')
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
-        self.input_specification = molpro_input.parse(input_text,self.allowed_methods())
+        self.input_specification = molpro_input.parse(input_text, self.allowed_methods())
         guided = molpro_input.equivalent(input_text, self.input_specification)
         if not guided and index == 1:
             box = QMessageBox()
@@ -310,19 +310,15 @@ class ProjectWindow(QMainWindow):
 
         self.guided_combo_job_type = QComboBox()
         self.guided_combo_job_type.setMaximumWidth(180)
-        self.guided_combo_job_type.addItems(['Single Point Energy',
-                                             'opt',
-                                             'opt+freq',
-                                             'freq',
-                                             'Hessian'])
-        guided_form.addRow('Type',self.guided_combo_job_type)
+        self.guided_combo_job_type.addItems(molpro_input.job_type_commands.keys())
+        guided_form.addRow('Type', self.guided_combo_job_type)
         self.guided_combo_job_type.currentIndexChanged.connect(self.guided_combo_job_type_changed)
 
         self.guided_combo_method = QComboBox()
         # print(self.project.registry('commandset').keys())
 
         self.guided_combo_method.addItems(self.allowed_methods())
-        guided_form.addRow('Method',self.guided_combo_method)
+        guided_form.addRow('Method', self.guided_combo_method)
         self.guided_combo_method.currentIndexChanged.connect(self.guided_combo_method_changed)
         self.guided_layout.addLayout(guided_form)
         self.guided_basis_input = QLineEdit()
@@ -344,41 +340,26 @@ class ProjectWindow(QMainWindow):
         if 'basis' in self.input_specification:
             self.guided_basis_input.setText(self.input_specification['basis'])
         if 'job_type' in self.input_specification:
-            job_type_index = self.guided_combo_job_type.findText(self.input_specification['job_type'], Qt.MatchFixedString)
-            self.guided_combo_job_type.setCurrentIndex(job_type_index)
+            self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
+
         self.guided_display.setText(
             re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                               ',\n  '))  # TODO this will eventually be removed
 
     def guided_basis_input_changed(self, text):
         if self.trace: print('guided_basis_input_changed')
-        current_tab = self.input_tabs.currentIndex()
         self.input_specification['basis'] = text
-        if current_tab != 0:
+        if self.input_tabs.currentIndex() != 0:
             self.refresh_input_from_specification()
 
-    def guided_combo_job_type_changed(self,i):
-        if (i == 0):
-            self.input_specification['job_type'] = ''
-        elif (i == 1):
-            self.input_specification['job_type'] = 'opt'
-        elif (i == 2):
-            self.input_specification['job_type'] = 'opt+freq'
-        elif (i == 3):
-            self.input_specification['job_type'] = 'freq'
-        elif (i == 4):
-            self.input_specification['job_type'] = 'Hessian'
-
-        if self.trace and 'job_type' in self.input_specification:
-            print('KD Debug: guided_combo_job_type_changed:index, text',i,self.input_specification['job_type'])
-        current_tab = self.input_tabs.currentIndex()
-        if current_tab != 0:
+    def guided_combo_job_type_changed(self, i):
+        self.input_specification['job_type'] = self.guided_combo_job_type.currentText()
+        if self.input_tabs.currentIndex() != 0:
             self.refresh_input_from_specification()
 
     def guided_combo_method_changed(self):
         self.input_specification['method'] = self.guided_combo_method.currentText()
-        current_tab = self.input_tabs.currentIndex()
-        if current_tab != 0:
+        if self.input_tabs.currentIndex() != 0:
             self.refresh_input_from_specification()
 
     def allowed_methods(self):
@@ -702,7 +683,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
     def import_file(self):
         _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
             self.project.filename(run=-1))
-        filenames, junk = QFileDialog.getOpenFileNames(self, 'Import file(s) into project', str(pathlib.Path(_dir)/'*'),
+        filenames, junk = QFileDialog.getOpenFileNames(self, 'Import file(s) into project',
+                                                       str(pathlib.Path(_dir) / '*'),
                                                        options=QFileDialog.DontResolveSymlinks)
         for filename in filenames:
             if os.path.isfile(filename):
@@ -713,7 +695,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         _dir = settings['geometry_directory'] if 'geometry_directory' in settings else (
             settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
                 self.project.filename(run=-1)))
-        filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project', str(pathlib.Path(_dir)/'*'),
+        filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project',
+                                                     str(pathlib.Path(_dir) / '*'),
                                                      options=QFileDialog.DontResolveSymlinks)
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
@@ -740,7 +723,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
     def import_input(self):
         _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
             self.project.filename(run=-1))
-        filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', str(pathlib.Path(_dir)/'*'),
+        filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', str(pathlib.Path(_dir) / '*'),
                                                      options=QFileDialog.DontResolveSymlinks)
         if os.path.isfile(filename):
             settings['import_directory'] = os.path.dirname(filename)
@@ -748,7 +731,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 
     def export_file(self):
         filenames, junk = QFileDialog.getOpenFileNames(self, 'Export file(s) from the project',
-                                                       str(pathlib.Path(self.project.filename())/'*'))
+                                                       str(pathlib.Path(self.project.filename()) / '*'))
         for filename in filenames:
             if os.path.isfile(filename):
                 b = os.path.basename(filename)
@@ -760,7 +743,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                     shutil.copy(filename, dest)
 
     def browse_project(self):
-        dlg = QFileDialog(self, self.project.filename(), str(pathlib.Path(self.project.filename(run=-1))/'*'))
+        dlg = QFileDialog(self, self.project.filename(), str(pathlib.Path(self.project.filename(run=-1)) / '*'))
         dlg.setLabelText(QFileDialog.Accept, "OK")
         dlg.exec()
 

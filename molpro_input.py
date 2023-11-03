@@ -1,6 +1,18 @@
 import os
 import re
 
+job_type_commands = {
+    'Single Point Energy': '',
+    'Geometry Optimisation': 'optg',
+    'Opt+Frequency': 'optg; frequencies',
+    'Hessian': 'frequencies',
+}
+job_type_aliases = {
+    '{optg}': 'optg',
+    '{freq}': 'frequencies',
+    'freq': 'frequencies',
+}
+
 
 def parse(input: str, allowed_methods: list, debug=False):
     r"""
@@ -19,7 +31,6 @@ def parse(input: str, allowed_methods: list, debug=False):
     spin_prefixes = ['', 'R', 'U']
     local_prefixes = ['', 'L']
     df_prefixes = ['', 'DF-', 'PNO-']
-    job_type_commands = ['','OPTG', 'FREQ', 'FREQUENCIES', 'HESS', 'HESSIAN']
     postscripts = ['PUT', 'TABLE', 'NOORBITALS', 'NOBASIS']  # FIXME not very satisfactory
 
     specification = {}
@@ -27,6 +38,7 @@ def parse(input: str, allowed_methods: list, debug=False):
     geometry_active = False
     basis_active = False
 
+    specification['job_type'] = 'Single Point Energy'
     for line in canonicalise(input).split('\n'):
         line = line.strip()
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
@@ -80,7 +92,8 @@ def parse(input: str, allowed_methods: list, debug=False):
                 # print('field, key=', key, 'value=', value)
                 variables[key] = value.replace('!', ',')  # unprotect
         elif any(
-                [re.match('{? *' + df_prefix + spin_prefix + precursor_method + '[;}]', command+';', flags=re.IGNORECASE) for
+                [re.match('{? *' + df_prefix + spin_prefix + precursor_method + '[;}]', command + ';',
+                          flags=re.IGNORECASE) for
                  df_prefix
                  in
                  df_prefixes
@@ -93,20 +106,20 @@ def parse(input: str, allowed_methods: list, debug=False):
                   in df_prefixes
                   for local_prefix in local_prefixes for spin_prefix in spin_prefixes for method in allowed_methods]):
             specification['method'] = line.lower()
-        elif any([re.match(job_type_command, command, flags=re.IGNORECASE) for job_type_command in job_type_commands]):
-            if command.lower() == 'optg':
-                specification['job_type'] = 'opt'
-            elif command.lower()[:4] == 'freq':
-                print('KD Debug: found this command' ,command)
-                if 'job_type' in specification:
-                    if specification['job_type'] == 'opt':
-                        specification['job_type'] = 'opt+freq'
-                else:
-                    specification['job_type'] = 'freq'
-            elif command.lower()[:4] == 'hess':
-                specification['job_type'] = 'Hessian'
-            if 'job_type' not in specification:
-                specification['job_type'] = 'Single Point Energy'
+        elif command != '' and (any(
+                [command.lower() == re.sub('.*; ', '', job_type_commands[job_type].lower()) for job_type in
+                 job_type_commands.keys() if job_type != '']) or command.lower() in job_type_aliases.keys()):
+            old_job_type_command = job_type_commands[specification['job_type']]  # to support optg; freq
+            job_type_command = command.lower()
+            if job_type_command in job_type_aliases.keys():
+                job_type_command = job_type_aliases[job_type_command]
+            for job_type in job_type_commands.keys():
+                if job_type_command == re.sub('.*; ', '', job_type_commands[job_type].lower()):
+                    specification['job_type'] = job_type
+            if old_job_type_command == 'optg' and job_type_command == 'frequencies':
+                job_type_command = 'optg; frequencies'
+            specification['job_type'] = \
+            [job_type for job_type in job_type_commands.keys() if job_type_commands[job_type] == job_type_command][0]
         elif any([re.match('{? *' + postscript, command, flags=re.IGNORECASE) for postscript in postscripts]):
             if 'postscripts' not in specification: specification['postscripts'] = []
             specification['postscripts'].append(line.lower())
@@ -144,12 +157,7 @@ def create_input(specification: dict):
     if 'method' in specification:
         _input += specification['method'] + '\n'
     if 'job_type' in specification:
-        if 'opt' in specification['job_type']:
-            _input += 'optg\n'
-        if 'freq' in specification['job_type']:
-            _input += 'freq\n'
-        if 'Hessian' in specification['job_type']:
-            _input += 'hess\n'
+        _input += job_type_commands[specification['job_type']] + '\n'
     if 'postscripts' in specification:
         for m in specification['postscripts']:
             _input += m + '\n'
@@ -178,6 +186,7 @@ def canonicalise(input):
         '\n ') + '\n'
     new_result = ''
     for line in re.sub('set[, ]', '', result.strip(), flags=re.IGNORECASE).split('\n'):
+        if line.lower() in job_type_aliases.keys(): line = job_type_aliases[line.lower()]
         while (newline := re.sub(r'(\[[0-9!]+),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
         if re.match(r'[a-z][a-z0-9_]* *= *\[?[!a-z0-9_. ]*\]? *,', line, flags=re.IGNORECASE):
             line = line.replace(',', '\n')
@@ -193,5 +202,5 @@ def equivalent(input1, input2, debug=False):
         print('equivalent: input2=', input2)
         print('equivalent: canonicalise(input1)=', canonicalise(input1))
         print('equivalent: canonicalise(input2)=', canonicalise(input2))
-        print('will return this',canonicalise(input1).lower() == canonicalise(input2).lower())
+        print('will return this', canonicalise(input1).lower() == canonicalise(input2).lower())
     return canonicalise(input1).lower() == canonicalise(input2).lower()
