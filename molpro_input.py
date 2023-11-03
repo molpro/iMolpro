@@ -19,13 +19,14 @@ def parse(input: str, allowed_methods: list, debug=False):
     spin_prefixes = ['', 'R', 'U']
     local_prefixes = ['', 'L']
     df_prefixes = ['', 'DF-', 'PNO-']
-    job_type_commands = ['OPTG', 'FREQ', 'FREQUENCIES']
+    job_type_commands = ['','OPTG', 'FREQ', 'FREQUENCIES', 'HESS', 'HESSIAN']
     postscripts = ['PUT', 'TABLE', 'NOORBITALS', 'NOBASIS']  # FIXME not very satisfactory
 
     specification = {}
     variables = {}
     geometry_active = False
     basis_active = False
+
     for line in canonicalise(input).split('\n'):
         line = line.strip()
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
@@ -96,13 +97,20 @@ def parse(input: str, allowed_methods: list, debug=False):
             if command.lower() == 'optg':
                 specification['job_type'] = 'opt'
             elif command.lower()[:4] == 'freq':
-                if specification['job_type'] == 'opt':
-                    specification['job_type'] = 'opt+freq'
+                print('KD Debug: found this command' ,command)
+                if 'job_type' in specification:
+                    if specification['job_type'] == 'opt':
+                        specification['job_type'] = 'opt+freq'
                 else:
                     specification['job_type'] = 'freq'
+            elif command.lower()[:4] == 'hess':
+                specification['job_type'] = 'Hessian'
+            if 'job_type' not in specification:
+                specification['job_type'] = 'Single Point Energy'
         elif any([re.match('{? *' + postscript, command, flags=re.IGNORECASE) for postscript in postscripts]):
             if 'postscripts' not in specification: specification['postscripts'] = []
             specification['postscripts'].append(line.lower())
+
     if 'method' not in specification and 'precursor_methods' in specification:
         specification['method'] = specification['precursor_methods'][-1]
         specification['precursor_methods'].pop()
@@ -140,6 +148,8 @@ def create_input(specification: dict):
             _input += 'optg\n'
         if 'freq' in specification['job_type']:
             _input += 'freq\n'
+        if 'Hessian' in specification['job_type']:
+            _input += 'hess\n'
     if 'postscripts' in specification:
         for m in specification['postscripts']:
             _input += m + '\n'
@@ -183,4 +193,5 @@ def equivalent(input1, input2, debug=False):
         print('equivalent: input2=', input2)
         print('equivalent: canonicalise(input1)=', canonicalise(input1))
         print('equivalent: canonicalise(input2)=', canonicalise(input2))
+        print('will return this',canonicalise(input1).lower() == canonicalise(input2).lower())
     return canonicalise(input1).lower() == canonicalise(input2).lower()

@@ -303,6 +303,21 @@ class ProjectWindow(QMainWindow):
         self.guided_display = QLabel()  # TODO this will eventually be removed
         self.guided_layout.addWidget(self.guided_display)
         guided_form = QFormLayout()
+
+        textLabel_calculation = QLabel()
+        textLabel_calculation.setText("Calculation:")
+        self.guided_layout.addWidget(textLabel_calculation)
+
+        self.guided_combo_job_type = QComboBox()
+        self.guided_combo_job_type.setMaximumWidth(180)
+        self.guided_combo_job_type.addItems(['Single Point Energy',
+                                             'opt',
+                                             'opt+freq',
+                                             'freq',
+                                             'Hessian'])
+        guided_form.addRow('Type',self.guided_combo_job_type)
+        self.guided_combo_job_type.currentIndexChanged.connect(self.guided_combo_job_type_changed)
+
         self.guided_combo_method = QComboBox()
         # print(self.project.registry('commandset').keys())
 
@@ -328,6 +343,9 @@ class ProjectWindow(QMainWindow):
             self.guided_combo_method.setCurrentIndex(method_index)
         if 'basis' in self.input_specification:
             self.guided_basis_input.setText(self.input_specification['basis'])
+        if 'job_type' in self.input_specification:
+            job_type_index = self.guided_combo_job_type.findText(self.input_specification['job_type'], Qt.MatchFixedString)
+            self.guided_combo_job_type.setCurrentIndex(job_type_index)
         self.guided_display.setText(
             re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                               ',\n  '))  # TODO this will eventually be removed
@@ -336,6 +354,24 @@ class ProjectWindow(QMainWindow):
         if self.trace: print('guided_basis_input_changed')
         current_tab = self.input_tabs.currentIndex()
         self.input_specification['basis'] = text
+        if current_tab != 0:
+            self.refresh_input_from_specification()
+
+    def guided_combo_job_type_changed(self,i):
+        if (i == 0):
+            self.input_specification['job_type'] = ''
+        elif (i == 1):
+            self.input_specification['job_type'] = 'opt'
+        elif (i == 2):
+            self.input_specification['job_type'] = 'opt+freq'
+        elif (i == 3):
+            self.input_specification['job_type'] = 'freq'
+        elif (i == 4):
+            self.input_specification['job_type'] = 'Hessian'
+
+        if self.trace and 'job_type' in self.input_specification:
+            print('KD Debug: guided_combo_job_type_changed:index, text',i,self.input_specification['job_type'])
+        current_tab = self.input_tabs.currentIndex()
         if current_tab != 0:
             self.refresh_input_from_specification()
 
