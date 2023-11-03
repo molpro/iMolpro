@@ -208,6 +208,7 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Zoom Out', 'Edit', self.input_pane.zoomOut, 'Ctrl+-', 'Decrease font size')
         menubar.addSeparator('Edit')
         self.guided_action = menubar.addAction('Guided mode', 'Edit', self.guided_toggle, 'Ctrl+G', checkable=True)
+        menubar.addAction('Show parsed input specification', 'Edit', self.show_input_specification, 'Shift+Ctrl+G')
 
         menubar.addSeparator('Files')
         menubar.addAction('Browse project folder', 'Files', self.browse_project, 'Ctrl+Alt+F',
@@ -300,8 +301,6 @@ class ProjectWindow(QMainWindow):
         self.input_tabs.addTab(self.guided_pane, 'guided')
         self.guided_layout = QVBoxLayout()
         self.guided_pane.setLayout(self.guided_layout)
-        self.guided_display = QLabel()  # TODO this will eventually be removed
-        self.guided_layout.addWidget(self.guided_display)
         guided_form = QFormLayout()
 
         textLabel_calculation = QLabel()
@@ -346,9 +345,6 @@ class ProjectWindow(QMainWindow):
         if 'job_type' in self.input_specification:
             job_type_index = self.guided_combo_job_type.findText(self.input_specification['job_type'], Qt.MatchFixedString)
             self.guided_combo_job_type.setCurrentIndex(job_type_index)
-        self.guided_display.setText(
-            re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
-                                                                                              ',\n  '))  # TODO this will eventually be removed
 
     def guided_basis_input_changed(self, text):
         if self.trace: print('guided_basis_input_changed')
@@ -796,3 +792,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             return
             # self.project.erase()
             self.close()
+
+    def show_input_specification(self):
+        QMessageBox.information(self, 'Input specification', 'Input specification:\r\n' +
+                                re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
+                                                                                                                  ',\n  '))
