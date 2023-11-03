@@ -129,8 +129,10 @@ class Chooser(QMainWindow):
                 self.filename = os.path.expanduser(filename)
                 home_dir = os.path.expanduser('~')
                 reduced_filename = self.filename.replace(home_dir, '~')
-                super().__init__(('' if index is None or index > 9 else str(index)+': ')+reduced_filename)
+                super().__init__(('' if index is None or index > 9 else '&'+str(index)+': ')+reduced_filename)
                 self.qaction = QAction(self)
+                if index <=9:
+                    self.setShortcut('Ctrl+'+str(index))
                 self.qaction.triggered.connect(self.action)
                 self.clicked.connect(self.qaction.triggered)
                 self.setStyleSheet(":hover { background-color: #D0D0D0 }")
@@ -153,9 +155,6 @@ class Chooser(QMainWindow):
             if f:
                 button = RecentProjectButton(f, i, self)
                 self.recent_project_box.layout().addWidget(button, -1, QtCore.Qt.AlignLeft)
-                button.qaction.setShortcut(QKeySequence("Ctrl+"+str(i)))
-                print(button.qaction.shortcut().toString())
-                print(button.qaction.isEnabled())
 
     def openProjectDialog(self):
         _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir
