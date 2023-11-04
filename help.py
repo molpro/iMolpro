@@ -11,6 +11,7 @@ class HelpWindow(QMainWindow):
         self.browser = QTextBrowser()
         if text:
             self.browser.setText(text)
+        self.browser.setOpenExternalLinks(True)
         self.setCentralWidget(self.browser)
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.setMinimumWidth(600)
