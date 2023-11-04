@@ -1,5 +1,6 @@
 import pathlib
-from PyQt5.QtWidgets import QTextBrowser, QMainWindow
+
+from PyQt5.QtWidgets import QTextBrowser, QMainWindow, QShortcut
 from PyQt5.QtCore import Qt, QUrl
 from MenuBar import MenuBar
 
@@ -13,6 +14,10 @@ class HelpWindow(QMainWindow):
         self.browser.setOpenExternalLinks(True)
         self.setCentralWidget(self.browser)
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        self.setMinimumWidth(600)
+        self.setMinimumHeight(400)
+        self.shortcutClose = QShortcut('Ctrl+W', self)
+        self.shortcutClose.activated.connect(self.close)
 
     def setSource(self, file):
         self.browser.setSource(file)
