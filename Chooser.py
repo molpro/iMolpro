@@ -34,7 +34,7 @@ class Chooser(QMainWindow):
         self.layout.addLayout(lh_panel)
         new_button = QPushButton('&New project')
         new_button.clicked.connect(self.newProjectDialog)
-        hover_css = ':hover { background-color: #D0D0D0 }'
+        hover_css = ':hover { border: none; background-color: #D0D0D0 }'
         new_button.setStyleSheet(hover_css)
         lh_panel.addWidget(new_button)
         self.recent_project_box = QWidget()
@@ -68,7 +68,12 @@ class Chooser(QMainWindow):
                 self.setOpenExternalLinks(True)
                 self.setText('<A href="' + url + '">' + text + '</A>')
 
-        link_layout.addWidget(LinkLabel('Documentation', 'https://www.molpro.net/manual/doku.php'))
+        helpButton = QPushButton('Help', self)
+        helpButton.clicked.connect(lambda: help_manager.show('Help', 'README'))
+        self.shortcutHelp = QShortcut(QKeySequence.HelpContents, self)
+        self.shortcutHelp.activated.connect(self.close)
+        helpButton.setStyleSheet(":hover {border: none ; background-color: #D0D0D0}  ")
+        link_layout.addWidget(helpButton)
         link_layout.addWidget(LinkLabel('Molpro Manual', 'https://www.molpro.net/manual/doku.php'))
 
         # rh_panel.addWidget(QLabel("iMolpro version "+get_versions()['version']+'\n('+get_versions()['date']+')'))
@@ -135,7 +140,6 @@ class Chooser(QMainWindow):
                     self.setShortcut('Ctrl+'+str(index))
                 self.qaction.triggered.connect(self.action)
                 self.clicked.connect(self.qaction.triggered)
-                self.setStyleSheet(":hover { background-color: #D0D0D0 }")
                 self.setStyleSheet("* {border: none } :hover { background-color: #D0D0D0}  ")
 
             def action(self):
