@@ -310,6 +310,7 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_orientation = QComboBox()
         self.guided_combo_orientation.addItems(self.orientations())
         guided_form.addRow('Orientation', self.guided_combo_orientation)
+        self.guided_combo_orientation.currentIndexChanged.connect(self.guided_combo_orientation_changed)
 
         textLabel_calculation = QLabel()
         textLabel_calculation.setText("Calculation:")
@@ -348,6 +349,11 @@ class ProjectWindow(QMainWindow):
             self.guided_basis_input.setText(self.input_specification['basis'])
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
+
+    def guided_combo_orientation_changed(self, i):
+        self.input_specification['orientation'] = self.guided_combo_orientation.currentText()
+        if self.input_tabs.currentIndex() != 0:
+            self.refresh_input_from_specification()
 
     def guided_basis_input_changed(self, text):
         if self.trace: print('guided_basis_input_changed')
