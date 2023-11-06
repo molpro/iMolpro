@@ -2,7 +2,7 @@ import os
 import pathlib
 import platform
 
-from PyQt5.QtCore import QCoreApplication
+from PyQt5.QtCore import QCoreApplication, Qt
 
 from MenuBar import MenuBar
 from RecentMenu import RecentMenu
@@ -11,9 +11,9 @@ from utilities import force_suffix
 
 import pymolpro
 from PyQt5 import QtCore
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QKeySequence
 from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-    QMessageBox, QDesktopWidget, QAction
+    QMessageBox, QDesktopWidget, QAction, QShortcut
 
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
@@ -32,20 +32,20 @@ class Chooser(QMainWindow):
 
         lh_panel = QVBoxLayout()
         self.layout.addLayout(lh_panel)
-        new_button = QPushButton(' &New project')
+        new_button = QPushButton('&New project')
         new_button.clicked.connect(self.newProjectDialog)
-        hover_css = ':hover { background-color: #D0D0D0 }'
+        hover_css = ':hover { border: none; background-color: #D0D0D0 }'
         new_button.setStyleSheet(hover_css)
         lh_panel.addWidget(new_button)
         self.recent_project_box = QWidget()
         self.populate_recent_project_box()
 
         lh_panel.addWidget(self.recent_project_box)
-        existing_button = QPushButton('Open an existing project...')
+        existing_button = QPushButton('&Open an existing project...')
         existing_button.setStyleSheet(hover_css)
         existing_button.clicked.connect(self.openProjectDialog)
         lh_panel.addWidget(existing_button)
-        self.quitButton = QPushButton('Quit')
+        self.quitButton = QPushButton('&Quit')
         self.quitButton.setStyleSheet(hover_css)
         lh_panel.addWidget(self.quitButton)
 
@@ -68,7 +68,12 @@ class Chooser(QMainWindow):
                 self.setOpenExternalLinks(True)
                 self.setText('<A href="' + url + '">' + text + '</A>')
 
-        link_layout.addWidget(LinkLabel('Documentation', 'https://www.molpro.net/manual/doku.php'))
+        helpButton = QPushButton('Help', self)
+        helpButton.clicked.connect(lambda: help_manager.show('Help', 'README'))
+        self.shortcutHelp = QShortcut(QKeySequence.HelpContents, self)
+        self.shortcutHelp.activated.connect(self.close)
+        helpButton.setStyleSheet(":hover {border: none ; background-color: #D0D0D0}  ")
+        link_layout.addWidget(helpButton)
         link_layout.addWidget(LinkLabel('Molpro Manual', 'https://www.molpro.net/manual/doku.php'))
 
         # rh_panel.addWidget(QLabel("iMolpro version "+get_versions()['version']+'\n('+get_versions()['date']+')'))
@@ -92,9 +97,8 @@ class Chooser(QMainWindow):
                 return 'unknown'
         rh_panel.addWidget(QLabel("iMolpro version "+version_()))
 
+        self.setWindowFlag(Qt.FramelessWindowHint)
         menubar = MenuBar()
-        if True or platform.system() == 'Darwin':
-            self.setMenuBar(menubar)
         menubar.addAction('New', 'Projects', slot=self.newProjectDialog, shortcut='Ctrl+N',
                           tooltip='Create a new project')
         menubar.addAction('Open', 'Projects', slot=self.openProjectDialog, shortcut='Ctrl+O',
@@ -108,8 +112,17 @@ class Chooser(QMainWindow):
 
         help_manager = HelpManager(menubar)
         help_manager.register('Overview', 'README')
-        help_manager.register('Another', 'something else')
         help_manager.register('Backends', 'doc/backends.md')
+
+        if platform.system() == 'Darwin':
+            self.setMenuBar(menubar)
+        else:
+            self.shortcutQuit = QShortcut(QKeySequence("Ctrl+Q"), self)
+            self.shortcutQuit.activated.connect(QCoreApplication.quit)
+            self.shortcutNew = QShortcut(QKeySequence("Ctrl+N"), self)
+            self.shortcutNew.activated.connect(self.newProjectDialog)
+            self.shortcutOpen = QShortcut(QKeySequence("Ctrl+O"), self)
+            self.shortcutOpen.activated.connect(self.openProjectDialog)
 
     def populate_recent_project_box(self, max_items=10):
 
@@ -120,11 +133,12 @@ class Chooser(QMainWindow):
                 self.filename = os.path.expanduser(filename)
                 home_dir = os.path.expanduser('~')
                 reduced_filename = self.filename.replace(home_dir, '~')
-                super().__init__(('' if index is None or index > 9 else str(index)+': ')+reduced_filename)
+                super().__init__(('' if index is None or index > 9 else '&'+str(index)+': ')+reduced_filename)
                 self.qaction = QAction(self)
+                if index <=9:
+                    self.setShortcut('Ctrl+'+str(index))
                 self.qaction.triggered.connect(self.action)
                 self.clicked.connect(self.qaction.triggered)
-                self.setStyleSheet(":hover { background-color: #D0D0D0 }")
                 self.setStyleSheet("* {border: none } :hover { background-color: #D0D0D0}  ")
 
             def action(self):
@@ -142,7 +156,8 @@ class Chooser(QMainWindow):
         for i in range(1, max_items):
             f = pymolpro.recent_project('molpro', i)
             if f:
-                self.recent_project_box.layout().addWidget(RecentProjectButton(f, i, self), -1, QtCore.Qt.AlignLeft)
+                button = RecentProjectButton(f, i, self)
+                self.recent_project_box.layout().addWidget(button, -1, QtCore.Qt.AlignLeft)
 
     def openProjectDialog(self):
         _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir

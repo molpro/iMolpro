@@ -1,4 +1,5 @@
 import os
+import platform
 
 import pymolpro
 from PyQt5.QtWidgets import QMenu, QAction
