@@ -1,3 +1,4 @@
+import difflib
 import os
 import pathlib
 import shutil
@@ -278,11 +279,14 @@ class ProjectWindow(QMainWindow):
         if not guided and index == 1:
             box = QMessageBox()
             box.setText('Guided mode cannot be used because the input is too complex')
-            box.setDetailedText(
-                'The input regenerated from the attempt to parse into guided mode is\n' + molpro_input.canonicalise(
-                    molpro_input.create_input(
-                        self.input_specification)) + '\n\nThe original input in canonical form is\n' + molpro_input.canonicalise(
-                    molpro_input.create_input(self.input_specification)))
+            spec_input = molpro_input.canonicalise(molpro_input.create_input(self.input_specification))
+            file_input = molpro_input.canonicalise(input_text)
+            box.setInformativeText(
+                'The input regenerated from the attempt to parse into guided mode is\n' +
+                spec_input + '\n\nThe input file in canonical form is\n' + file_input + '\n\nDifferences:\n' +
+                '\n'.join(list(
+                    difflib.context_diff(spec_input.split('\n'), file_input.split('\n'), fromfile='parsed specification',
+                                         tofile='input file'))))
             box.exec()
             self.guided_action.setChecked(False)
         if len(self.input_tabs) < 1:
