@@ -2,6 +2,7 @@ import difflib
 import os
 import pathlib
 import shutil
+import subprocess
 import sys
 import re
 
@@ -136,8 +137,15 @@ class ProjectWindow(QMainWindow):
         button_layout.addWidget(self.run_button)
         # button_layout.addWidget(self.killButton)
         self.vod_selector = QComboBox()
-        button_layout.addWidget(QLabel('Structure display:'))
-        button_layout.addWidget(self.vod_selector)
+        vod_select_layout = QFormLayout()
+        button_layout.addLayout(vod_select_layout)
+        vod_select_layout.addRow('Structure display:', self.vod_selector)
+        self.external_selector = QComboBox()
+        self.discover_external_viewer_commands()
+        self.external_selector.addItem('embedded')
+        self.external_selector.addItems(self.external_viewer_commands.keys())
+        self.external_selector.currentTextChanged.connect(self.vod_external_launch)
+        vod_select_layout.addRow('View in', self.external_selector)
         left_layout.addLayout(button_layout)
         left_layout.addWidget(self.statusBar)
 
@@ -167,6 +175,31 @@ class ProjectWindow(QMainWindow):
         container = QWidget()
         container.setLayout(self.layout)
         self.setCentralWidget(container)
+
+    def discover_external_viewer_commands(self):
+        external_command_stems = [
+            'avogadro',
+            'Avogadro2',
+            'jmol',
+        ]
+        external_command_paths = []
+        if 'PATH' in os.environ:
+            external_command_paths += os.environ['PATH'].split(':')
+        # TODO paths for Windows
+        external_command_paths += [
+            '/Applications/Avogadro.app/Contents/MacOS',
+            '/Applications/Avogadro2.app/Contents/MacOS',
+            '/usr/local/bin',
+            '/usr/bin',
+            '/bin',
+        ]
+        self.external_viewer_commands = {}
+        for command in external_command_stems:
+            for path in external_command_paths:
+                if os.path.exists(pathlib.Path(path) / command):
+                    self.external_viewer_commands[command] = str(pathlib.Path(path) / command)
+                    break
+        print(self.external_viewer_commands)
 
     def setup_menubar(self):
         menubar = MenuBar(self)
@@ -285,7 +318,8 @@ class ProjectWindow(QMainWindow):
                 'The input regenerated from the attempt to parse into guided mode is\n' +
                 spec_input + '\n\nThe input file in canonical form is\n' + file_input + '\n\nDifferences:\n' +
                 '\n'.join(list(
-                    difflib.context_diff(spec_input.split('\n'), file_input.split('\n'), fromfile='parsed specification',
+                    difflib.context_diff(spec_input.split('\n'), file_input.split('\n'),
+                                         fromfile='parsed specification',
                                          tofile='input file'))))
             box.exec()
             self.guided_action.setChecked(False)
@@ -379,7 +413,11 @@ class ProjectWindow(QMainWindow):
         if current_tab != 0:
             self.refresh_input_tabs(current_tab)
 
-    def vod_selector_action(self):
+    def vod_external_launch(self, command=''):
+        if command and command != 'embedded':
+            self.vod_selector_action(external_path=self.external_viewer_commands[command])
+
+    def vod_selector_action(self, text1=None, external_path=None):
         text = self.vod_selector.currentText().strip()
         if text == '':
             return
@@ -393,13 +431,16 @@ class ProjectWindow(QMainWindow):
             if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
                 with open(filename, 'w') as f:
                     f.write('1\n\nC 0.0 0.0 0.0\n')
-            self.embedded_builder(filename)
+            if external_path:
+                subprocess.Popen([external_path,filename])
+            else:
+                self.embedded_builder(filename)
         elif text == 'Input':
-            self.visualise_input()
+            self.visualise_input(external_path=external_path)
         elif text == 'Output':
-            self.visualise_output(False, 'xml')
+            self.visualise_output(external_path, 'xml')
         else:
-            self.visualise_output(False, '', text)
+            self.visualise_output(external_path, '', text)
 
     def rebuild_vod_selector(self):
         self.vod_selector.clear()
@@ -448,11 +489,12 @@ class ProjectWindow(QMainWindow):
     def clean(self):
         self.project.clean()
 
-    def visualise_output(self, param, typ='xml', name=None):
-        if name:
-            self.embedded_vod(self.project.filename(typ, name), command='mo HOMO')
+    def visualise_output(self, external_path=None, typ='xml', name=None):
+        filename = self.project.filename(typ,name) if name else self.project.filename(typ)
+        if external_path:
+            subprocess.Popen([external_path, filename])
         else:
-            self.embedded_vod(self.project.filename(typ), command='mo HOMO')
+            self.embedded_vod(filename, command='mo HOMO')
 
     def embedded_vod(self, file, command='', **kwargs):
         firstmodel = 1
@@ -632,7 +674,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             item.setDownloadDirectory(self.project.filename(run=-1))
             item.accept()
 
-    def visualise_input(self, param=False):
+    def visualise_input(self, param=False, external_path=None):
         import tempfile
         geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
         geometry_directory.mkdir(exist_ok=True)
@@ -665,7 +707,10 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                         f.write(atom['elementType'])
                         for c in atom['xyz']: f.write(' ' + str(c * .529177210903))
                         f.write('\n')
-        self.embedded_vod(xyz_file, command='')
+        if external_path:
+            subprocess.Popen([external_path, xyz_file])
+        else:
+            self.embedded_vod(xyz_file, command='')
 
     def closeEvent(self, a0):
         self.close_signal.emit(self)
