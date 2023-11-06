@@ -308,7 +308,7 @@ class ProjectWindow(QMainWindow):
         guided_form = QFormLayout()
 
         self.guided_combo_orientation = QComboBox()
-        self.guided_combo_orientation.addItems(self.orientations())
+        self.guided_combo_orientation.addItems(molpro_input.orientation_commands.keys())
         guided_form.addRow('Orientation', self.guided_combo_orientation)
         self.guided_combo_orientation.currentIndexChanged.connect(self.guided_combo_orientation_changed)
 
