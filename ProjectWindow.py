@@ -341,12 +341,6 @@ class ProjectWindow(QMainWindow):
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
 
-        self.guided_display.setText(
-            re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
-                                                                                              ',\n  '))  # TODO this will eventually be removed
-            job_type_index = self.guided_combo_job_type.findText(self.input_specification['job_type'], Qt.MatchFixedString)
-            self.guided_combo_job_type.setCurrentIndex(job_type_index)
-
     def guided_basis_input_changed(self, text):
         if self.trace: print('guided_basis_input_changed')
         self.input_specification['basis'] = text
