@@ -63,6 +63,8 @@ def parse(input: str, allowed_methods: list, debug=False):
             specification['geometry'] = re.sub('geometry *= *', '', line, flags=re.IGNORECASE)
             specification['geometry'] = re.sub(' *!.*', '', specification['geometry'])
             specification['geometry_external'] = True
+        elif command == 'basis':
+            specification['basis'] = 'default='+re.sub('^basis *, *', '', line, flags=re.IGNORECASE).rstrip('\n ')
         elif re.match('^basis *= *{', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
@@ -181,7 +183,7 @@ def basis_quality(specification):
 
 def canonicalise(input):
     result = re.sub('\n}', '}', re.sub('{\n', r'{', re.sub('\n+', '\n',
-                                                           re.sub('basis= *([^{\n]+)\n', r'basis={default=\1}\n',
+                                                           re.sub('basis[=,] *([^{\n]+)\n', r'basis={default=\1}\n',
                                                                   input.replace(';', '\n'))))).rstrip('\n ').lstrip(
         '\n ') + '\n'
     new_result = ''
