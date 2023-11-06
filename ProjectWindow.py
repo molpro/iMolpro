@@ -307,6 +307,10 @@ class ProjectWindow(QMainWindow):
         self.guided_pane.setLayout(self.guided_layout)
         guided_form = QFormLayout()
 
+        self.guided_combo_orientation = QComboBox()
+        self.guided_combo_orientation.addItems(self.orientations())
+        guided_form.addRow('Orientation', self.guided_combo_orientation)
+
         textLabel_calculation = QLabel()
         textLabel_calculation.setText("Calculation:")
         self.guided_layout.addWidget(textLabel_calculation)
@@ -360,6 +364,10 @@ class ProjectWindow(QMainWindow):
         self.input_specification['method'] = self.guided_combo_method.currentText()
         if self.input_tabs.currentIndex() != 0:
             self.refresh_input_from_specification()
+
+    def orientations(self):
+        result =['mass','charge','no orientation']
+        return result
 
     def allowed_methods(self):
         result = []
