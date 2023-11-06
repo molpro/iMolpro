@@ -192,7 +192,9 @@ def canonicalise(input):
         while (newline := re.sub(r'(\[[0-9!]+),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
         if re.match(r'[a-z][a-z0-9_]* *= *\[?[!a-z0-9_. ]*\]? *,', line, flags=re.IGNORECASE):
             line = line.replace(',', '\n')
-        new_result += line.replace('!', ',').strip() + '\n'
+        line = line.replace('!', ',').strip() + '\n'
+        if line.strip('\n') != '':
+            new_result += line + '\n'
     return new_result.strip('\n ') + '\n'
 
 
