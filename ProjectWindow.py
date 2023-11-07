@@ -6,10 +6,11 @@ import subprocess
 import sys
 import re
 
-from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
+from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt, QEvent
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QMenuBar, QTabWidget, QAction, QFileDialog, QDialog, QDialogButtonBox, QFormLayout, QLineEdit
+    QMessageBox, QTabWidget, QFileDialog, QDialogButtonBox, QFormLayout, QLineEdit, \
+    QSplitter
 from pymolpro import Project
 
 import molpro_input
@@ -131,7 +132,7 @@ class ProjectWindow(QMainWindow):
         self.refresh_input_tabs()
         left_layout.addWidget(self.input_tabs)
         self.input_tabs.setMinimumHeight(300)
-        self.input_tabs.setMinimumWidth(400)
+        self.input_tabs.setMinimumWidth(300)
         self.statusBar.setMaximumWidth(400)
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.run_button)
@@ -150,7 +151,13 @@ class ProjectWindow(QMainWindow):
         left_layout.addWidget(self.statusBar)
 
         top_layout = QHBoxLayout()
-        top_layout.addLayout(left_layout)
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setStretchFactor(0,0)
+        top_layout.addWidget(splitter)
+
+        left_widget = QWidget(self)
+        left_widget.setLayout(left_layout)
+        splitter.addWidget(left_widget)
         self.output_tabs = QTabWidget(self)
         self.output_tabs.setTabBarAutoHide(True)
         self.output_tabs.setDocumentMode(True)
@@ -159,7 +166,7 @@ class ProjectWindow(QMainWindow):
         self.timer_output_tabs = QTimer()
         self.timer_output_tabs.timeout.connect(self.refresh_output_tabs)
         self.timer_output_tabs.start(2000)
-        top_layout.addWidget(self.output_tabs)
+        splitter.addWidget(self.output_tabs)
 
         self.layout = QVBoxLayout()
         self.layout.addLayout(top_layout)
@@ -175,6 +182,18 @@ class ProjectWindow(QMainWindow):
         container = QWidget()
         container.setLayout(self.layout)
         self.setCentralWidget(container)
+        # self.installEventFilter(self)
+
+    # def eventFilter(self, obj, event):
+    #     if (event.type() == QEvent.Resize):
+    #         print('resize event received', self.geometry(), self.geometry().width(), self.geometry().height())
+    #         if self.output_tabs:
+    #             print('output_tabs size', self.output_tabs.geometry())
+    #         if self.input_tabs:
+    #             print('input_tabs size', self.input_tabs.geometry())
+    #         if self.vod:
+    #             print('vod size', self.vod.geometry())
+    #     return super().eventFilter(obj, event)
 
     def discover_external_viewer_commands(self):
         external_command_stems = [
@@ -199,7 +218,6 @@ class ProjectWindow(QMainWindow):
                 if os.path.exists(pathlib.Path(path) / command):
                     self.external_viewer_commands[command] = str(pathlib.Path(path) / command)
                     break
-        print(self.external_viewer_commands)
 
     def setup_menubar(self):
         menubar = MenuBar(self)
@@ -370,7 +388,9 @@ class ProjectWindow(QMainWindow):
 
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
-        self.guided_combo_orientation.setCurrentText(self.input_specification['orientation'] if 'orientation' in self.input_specification else list(molpro_input.orientation_options.keys())[0])
+        self.guided_combo_orientation.setCurrentText(
+            self.input_specification['orientation'] if 'orientation' in self.input_specification else
+            list(molpro_input.orientation_options.keys())[0])
         if 'method' in self.input_specification:
             base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
             prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
@@ -443,7 +463,7 @@ class ProjectWindow(QMainWindow):
                 with open(filename, 'w') as f:
                     f.write('1\n\nC 0.0 0.0 0.0\n')
             if external_path:
-                subprocess.Popen([external_path,filename])
+                subprocess.Popen([external_path, filename])
             else:
                 self.embedded_builder(filename)
         elif text == 'Input':
@@ -501,13 +521,15 @@ class ProjectWindow(QMainWindow):
         self.project.clean()
 
     def visualise_output(self, external_path=None, typ='xml', name=None):
-        filename = self.project.filename(typ,name) if name else self.project.filename(typ)
+        filename = self.project.filename(typ, name) if name else self.project.filename(typ)
         if external_path:
             subprocess.Popen([external_path, filename])
         else:
             self.embedded_vod(filename, command='mo HOMO')
 
     def embedded_vod(self, file, command='', **kwargs):
+        width = self.output_tabs.geometry().width() - 310
+        height = self.output_tabs.geometry().height() - 40
         firstmodel = 1
         try:
             vibs = factory_vibration_set(file, **kwargs)
@@ -531,8 +553,8 @@ class ProjectWindow(QMainWindow):
 <script>
 var Info = {
   color: "#FFFFFF",
-  height: 400,
-  width: 400,
+  height: """ + str(height) + """,
+  width: """ + str(width) + """,
   script: "load '""" + re.sub('\\\\', '\\\\\\\\',
                               file) + """'; set antialiasDisplay ON; set showFrank OFF; model """ + str(
             firstmodel) + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7; mo titleFormat ' '",
@@ -622,6 +644,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         self.add_vod(html, **kwargs)
 
     def embedded_builder(self, file, **kwargs):
+        width = self.output_tabs.geometry().width() - 310
+        height = self.output_tabs.geometry().height() - 40
 
         html = """<!DOCTYPE html>
 <html>
@@ -635,8 +659,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 <script>
 var Info = {
   color: "#FFFFFF",
-  height: 400,
-  width: 400,
+  height: """ + str(height) + """,
+  width: """ + str(width) + """,
   script: "set antialiasDisplay ON;"""
         html += ' load \'' + re.sub('\\\\', '\\\\', file) + '\';'
         html += """ set showFrank OFF; set modelKitMode on",
