@@ -387,7 +387,7 @@ class ProjectWindow(QMainWindow):
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
 
-    def guided_combo_orientation_changed(self, i):
+    def guided_combo_orientation_changed(self):
         self.input_specification['orientation'] = self.guided_combo_orientation.currentText()
         if self.input_tabs.currentIndex() != 0:
             self.refresh_input_from_specification()
