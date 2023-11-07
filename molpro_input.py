@@ -49,14 +49,10 @@ def parse(input: str, allowed_methods: list, debug=False):
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
         if debug: print('line', line, 'command', command)
         if re.match('^orient *, *', line, re.IGNORECASE):
-            print('KD Debug: line lower is=',line.lower())
             line = re.sub('^orient *, *','',line, flags=re.IGNORECASE)
-            print('KD Debug: line lower is=',line.lower())
-            print('KD Debug: orientation_options.keys()',orientation_options.keys())
             for orientation_option in orientation_options.keys():
                 print ('KD Debug: 1 orientation_option=',orientation_option,'orientation_options[orientation_option]',orientation_options[orientation_option])
                 if (line.lower() == orientation_options[orientation_option].lower()):
-#                    specification['orientation'] = re.sub('^orient *, *','',line, flags=re.IGNORECASE)
                     specification['orientation'] = orientation_option
                     print('KD Debug: 2a match spec. orientation=',specification['orientation'],'#ENDE1#',orientation_options['Mass'])
                 else:
