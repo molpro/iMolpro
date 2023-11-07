@@ -54,10 +54,11 @@ def parse(input: str, allowed_methods: list, debug=False):
             print('KD Debug: line lower is=',line.lower())
             print('KD Debug: orientation_options.keys()',orientation_options.keys())
             for orientation_option in orientation_options.keys():
-                print ('KD Debug: 1 orientation_option=',orientation_option)
-                if (line.lower() == orientation_option.lower()):
-                    specification['orientation'] = re.sub('^orient *, *','',line + '\n', flags=re.IGNORECASE)
-                    print('KD Debug: 2a spec. orientation=',specification['orientation'],'#ENDE#',orientation_options['Mass'])
+                print ('KD Debug: 1 orientation_option=',orientation_option,'orientation_options[orientation_option]',orientation_options[orientation_option])
+                if (line.lower() == orientation_options[orientation_option].lower()):
+#                    specification['orientation'] = re.sub('^orient *, *','',line, flags=re.IGNORECASE)
+                    specification['orientation'] = orientation_option
+                    print('KD Debug: 2a match spec. orientation=',specification['orientation'],'#ENDE1#',orientation_options['Mass'])
                 else:
                     print('KD Debug: 2b no match',line.lower(),orientation_option.lower())
         elif re.match('^geometry *= *{', line, re.IGNORECASE):
