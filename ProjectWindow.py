@@ -524,7 +524,7 @@ var Info = {
   width: 400,
   script: "load '""" + re.sub('\\\\', '\\\\\\\\',
                               file) + """'; set antialiasDisplay ON; set showFrank OFF; model """ + str(
-            firstmodel) + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7",
+            firstmodel) + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7; mo titleFormat ' '",
   use: "HTML5",
   j2sPath: "j2s",
   serverURL: "php/jsmol.php",
@@ -581,6 +581,19 @@ Jmol.jmolMenu(myJmol,[
                 i -= 1
             html += """
 ],10);
+Jmol.jmolBr()
+
+
+ var r = [
+    ["mo resolution 4","Very coarse",true],
+    ["mo resolution 7","Coarse",true],
+    ["mo resolution 10","Medium"],
+    ["mo resolution 13","Fine"],
+    ["mo resolution 16","Very fine"]
+ ];
+ Jmol.jmolHtml("Resolution:<br>")
+ Jmol.jmolRadioGroup(myJmol, r, "<br>", "Resolution");
+
 Jmol.jmolBr()
 </script>
 </td>
