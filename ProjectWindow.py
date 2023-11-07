@@ -341,6 +341,11 @@ class ProjectWindow(QMainWindow):
         self.guided_pane.setLayout(self.guided_layout)
         guided_form = QFormLayout()
 
+        self.guided_combo_orientation = QComboBox()
+        self.guided_combo_orientation.addItems(molpro_input.orientation_options.keys())
+        guided_form.addRow('Orientation', self.guided_combo_orientation)
+        self.guided_combo_orientation.currentIndexChanged.connect(self.guided_combo_orientation_changed)
+
         textLabel_calculation = QLabel()
         textLabel_calculation.setText("Calculation:")
         self.guided_layout.addWidget(textLabel_calculation)
@@ -365,6 +370,7 @@ class ProjectWindow(QMainWindow):
 
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
+        self.guided_combo_orientation.setCurrentText(self.input_specification['orientation'] if 'orientation' in self.input_specification else list(molpro_input.orientation_options.keys())[0])
         if 'method' in self.input_specification:
             base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
             prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
@@ -378,6 +384,11 @@ class ProjectWindow(QMainWindow):
             self.guided_basis_input.setText(self.input_specification['basis'])
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
+
+    def guided_combo_orientation_changed(self):
+        self.input_specification['orientation'] = self.guided_combo_orientation.currentText()
+        if self.input_tabs.currentIndex() != 0:
+            self.refresh_input_from_specification()
 
     def guided_basis_input_changed(self, text):
         if self.trace: print('guided_basis_input_changed')

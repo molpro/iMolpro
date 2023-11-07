@@ -12,6 +12,11 @@ job_type_aliases = {
     '{freq}': 'frequencies',
     'freq': 'frequencies',
 }
+orientation_options  = {
+    'Mass': 'mass',
+    'Charge': 'charge',
+    'No orientation': 'noorient'
+}
 
 
 def parse(input: str, allowed_methods: list, debug=False):
@@ -43,7 +48,13 @@ def parse(input: str, allowed_methods: list, debug=False):
         line = line.strip()
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
         if debug: print('line', line, 'command', command)
-        if re.match('^geometry *= *{', line, re.IGNORECASE):
+        if re.match('^orient *, *', line, re.IGNORECASE):
+            line = re.sub('^orient *, *','',line, flags=re.IGNORECASE)
+            for orientation_option in orientation_options.keys():
+                if (line.lower() == orientation_options[orientation_option].lower()):
+                    specification['orientation'] = orientation_option
+                    break
+        elif re.match('^geometry *= *{', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
             if 'geometry' in specification: return {}  # input too complex
@@ -142,6 +153,8 @@ def create_input(specification: dict):
     :rtype: str
     """
     _input = ''
+    if 'orientation' in specification:
+        _input += 'orient,' + orientation_options[specification['orientation']]+'\n'
     if 'geometry' in specification:
         _input += ('geometry=' + specification[
             'geometry'] + '\n' if 'geometry_external' in specification else 'geometry={\n' +
