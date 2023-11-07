@@ -12,7 +12,7 @@ job_type_aliases = {
     '{freq}': 'frequencies',
     'freq': 'frequencies',
 }
-orientation_commands  = {
+orientation_options  = {
     'Mass': 'mass',
     'Charge': 'charge',
     'No orientation': 'noorient'
@@ -49,9 +49,17 @@ def parse(input: str, allowed_methods: list, debug=False):
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
         if debug: print('line', line, 'command', command)
         if re.match('^orient *, *', line, re.IGNORECASE):
-            print('KD Debug: line=',line)
-            specification['orientation'] = re.sub('^orient *, *','',line + '\n', flags=re.IGNORECASE)
-            print('KD Debug: spec. orientation=',specification['orientation'])
+            print('KD Debug: line lower is=',line.lower())
+            line = re.sub('^orient *, *','',line, flags=re.IGNORECASE)
+            print('KD Debug: line lower is=',line.lower())
+            print('KD Debug: orientation_options.keys()',orientation_options.keys())
+            for orientation_option in orientation_options.keys():
+                print ('KD Debug: 1 orientation_option=',orientation_option)
+                if (line.lower() == orientation_option.lower()):
+                    specification['orientation'] = re.sub('^orient *, *','',line + '\n', flags=re.IGNORECASE)
+                    print('KD Debug: 2a spec. orientation=',specification['orientation'],'#ENDE#',orientation_options['Mass'])
+                else:
+                    print('KD Debug: 2b no match',line.lower(),orientation_option.lower())
         elif re.match('^geometry *= *{', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex

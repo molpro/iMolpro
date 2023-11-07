@@ -308,7 +308,7 @@ class ProjectWindow(QMainWindow):
         guided_form = QFormLayout()
 
         self.guided_combo_orientation = QComboBox()
-        self.guided_combo_orientation.addItems(molpro_input.orientation_commands.keys())
+        self.guided_combo_orientation.addItems(molpro_input.orientation_options.keys())
         guided_form.addRow('Orientation', self.guided_combo_orientation)
         self.guided_combo_orientation.currentIndexChanged.connect(self.guided_combo_orientation_changed)
 
@@ -336,6 +336,9 @@ class ProjectWindow(QMainWindow):
 
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
+        if 'orientation' in self.input_specification:
+            print('KD Debug:',self.input_specification['orientation'])
+            self.guided_combo_orientation.setCurrentText(self.input_specification['orientation'])
         if 'method' in self.input_specification:
             base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
             prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
