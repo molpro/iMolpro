@@ -51,13 +51,9 @@ def parse(input: str, allowed_methods: list, debug=False):
         if re.match('^orient *, *', line, re.IGNORECASE):
             line = re.sub('^orient *, *','',line, flags=re.IGNORECASE)
             for orientation_option in orientation_options.keys():
-                print ('KD Debug: 1 line.lower()',line.lower(),'###orientation_option=###',orientation_option,'orientation_options[orientation_option]',orientation_options[orientation_option].lower())
                 if (line.lower() == orientation_options[orientation_option].lower()):
                     specification['orientation'] = orientation_option
-                    print('KD Debug: 2a match specification orientation=',specification['orientation'],'#ENDE1#')
                     break
-                else:
-                    print('KD Debug: 2b no match',line.lower(),orientation_option.lower())
         elif re.match('^geometry *= *{', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
