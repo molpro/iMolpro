@@ -161,7 +161,7 @@ def create_input(specification: dict):
     """
     _input = ''
     if 'orientation' in specification:
-        _input += 'orient,' + specification['orientation']+'\n'
+        _input += 'orient,' + orientation_options[specification['orientation']]+'\n'
     if 'geometry' in specification:
         _input += ('geometry=' + specification[
             'geometry'] + '\n' if 'geometry_external' in specification else 'geometry={\n' +
