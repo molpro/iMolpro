@@ -371,7 +371,6 @@ class ProjectWindow(QMainWindow):
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
         if 'orientation' in self.input_specification:
-            print('KD Debug:',self.input_specification['orientation'],'#ENDE2#')
             self.guided_combo_orientation.setCurrentText(self.input_specification['orientation'])
         if 'method' in self.input_specification:
             base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
