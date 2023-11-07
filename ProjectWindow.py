@@ -408,10 +408,6 @@ class ProjectWindow(QMainWindow):
         if self.input_tabs.currentIndex() != 0:
             self.refresh_input_from_specification()
 
-    def orientations(self):
-        result =['mass','charge','no orientation']
-        return result
-
     def allowed_methods(self):
         result = []
         if self.whole_of_procedures_registry is None:
