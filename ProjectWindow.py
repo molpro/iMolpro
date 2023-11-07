@@ -370,8 +370,7 @@ class ProjectWindow(QMainWindow):
 
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
-        if 'orientation' in self.input_specification:
-            self.guided_combo_orientation.setCurrentText(self.input_specification['orientation'])
+        self.guided_combo_orientation.setCurrentText(self.input_specification['orientation'] if 'orientation' in self.input_specification else list(molpro_input.orientation_options.keys())[0])
         if 'method' in self.input_specification:
             base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
             prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
