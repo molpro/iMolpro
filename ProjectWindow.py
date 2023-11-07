@@ -497,9 +497,6 @@ class ProjectWindow(QMainWindow):
             self.embedded_vod(filename, command='mo HOMO')
 
     def embedded_vod(self, file, command='', **kwargs):
-        savedir=os.getcwd()
-        os.chdir(os.path.dirname(file))
-        print (os.getcwd())
         firstmodel = 1
         try:
             vibs = factory_vibration_set(file, **kwargs)
@@ -585,6 +582,19 @@ Jmol.jmolMenu(myJmol,[
             html += """
 ],10);
 Jmol.jmolBr()
+
+
+ var r = [
+    ["mo resolution 4","Very coarse",true],
+    ["mo resolution 7","Coarse",true],
+    ["mo resolution 10","Medium"],
+    ["mo resolution 13","Fine"],
+    ["mo resolution 16","Very fine"]
+ ];
+ Jmol.jmolHtml("Resolution:<br>")
+ Jmol.jmolRadioGroup(myJmol, r, "<br>", "Resolution");
+
+Jmol.jmolBr()
 </script>
 </td>
              """
@@ -599,7 +609,6 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 </body>
 </html>"""
         self.add_vod(html, **kwargs)
-        os.chdir(savedir)
 
     def embedded_builder(self, file, **kwargs):
 
@@ -656,8 +665,6 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             profile)  # FIXME This to avoid premature garbage collection. A resource leak. Need to find a way to delete the previous QWebEnginePage instead
         profile.downloadRequested.connect(self._download_requested)
         page = QWebEnginePage(profile, webview)
-        print(str(pathlib.Path(__file__).resolve()))
-        print(os.getcwd())
         page.setHtml(html, QUrl.fromLocalFile(str(pathlib.Path(__file__).resolve())))
         webview.setPage(page)
 
