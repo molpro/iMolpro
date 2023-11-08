@@ -420,6 +420,9 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_orientation.setCurrentText(
             self.input_specification['orientation'] if 'orientation' in self.input_specification else
             list(molpro_input.orientation_options.keys())[0])
+        self.guided_combo_wave_fct_symm.setCurrentText(
+            self.input_specification['wave_fct_symm'] if 'wave_fct_symm' in self.input_specification else
+            list(molpro_input.wave_fct_symm_commands.keys())[0])
         if 'method' in self.input_specification:
             base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
             prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[

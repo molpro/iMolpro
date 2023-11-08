@@ -3,7 +3,7 @@ import re
 
 wave_fct_symm_commands = {
     'Automatic' : '',
-    'No Symmetry' : 'nosym;\n',
+    'No Symmetry' : 'nosym',
     '1 : A1 ... TODO needs molpro --geometry etc' : ''
 }
 
@@ -25,7 +25,7 @@ orientation_options  = {
 }
 
 
-def parse(input: str, allowed_methods: list, debug=False):
+def parse(input: str, allowed_methods: list, debug=True):
     r"""
     Take a molpro input, and logically parse it, on the assumption that it's a single-task input.
 
@@ -59,6 +59,12 @@ def parse(input: str, allowed_methods: list, debug=False):
             for orientation_option in orientation_options.keys():
                 if (line.lower() == orientation_options[orientation_option].lower()):
                     specification['orientation'] = orientation_option
+                    break
+        elif command.lower() == 'nosym':
+            print('command is',command)
+            for symmetry_command in wave_fct_symm_commands.keys():
+                if (command.lower() == wave_fct_symm_commands[symmetry_command]):
+                    specification['wave_fct_symm'] = symmetry_command
                     break
         elif re.match('^geometry *= *{', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
@@ -163,7 +169,7 @@ def create_input(specification: dict):
         _input += 'orient,' + orientation_options[specification['orientation']]+'\n'
 
     if 'wave_fct_symm' in specification:
-        _input += wave_fct_symm_commands[specification['wave_fct_symm']]
+        _input += wave_fct_symm_commands[specification['wave_fct_symm']]+'\n'
 
     if 'geometry' in specification:
         _input += ('geometry=' + specification[
