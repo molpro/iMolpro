@@ -25,7 +25,7 @@ orientation_options  = {
 }
 
 
-def parse(input: str, allowed_methods: list, debug=True):
+def parse(input: str, allowed_methods: list, debug=False):
     r"""
     Take a molpro input, and logically parse it, on the assumption that it's a single-task input.
 
@@ -61,7 +61,6 @@ def parse(input: str, allowed_methods: list, debug=True):
                     specification['orientation'] = orientation_option
                     break
         elif command.lower() == 'nosym':
-            print('command is',command)
             for symmetry_command in wave_fct_symm_commands.keys():
                 if (command.lower() == wave_fct_symm_commands[symmetry_command]):
                     specification['wave_fct_symm'] = symmetry_command
