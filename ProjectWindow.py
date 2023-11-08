@@ -383,6 +383,16 @@ class ProjectWindow(QMainWindow):
         guided_form.addRow('Orientation', self.guided_combo_orientation)
         self.guided_combo_orientation.currentIndexChanged.connect(self.guided_combo_orientation_changed)
 
+        textLabel_wave_fct_char = QLabel()
+        textLabel_wave_fct_char.setText("Wave Function Characteristics:")
+        self.guided_layout.addWidget(textLabel_wave_fct_char)
+
+        self.guided_combo_wave_fct_symm = QComboBox()
+        self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
+        guided_form.addRow('Wave function symmetry', self.guided_combo_wave_fct_symm)
+#        self.guided_combo_wave_fct_symm.currentIndexChanged.connect(self.guided_combo_wave_fct_symm_changed)
+
+
         textLabel_calculation = QLabel()
         textLabel_calculation.setText("Calculation:")
         self.guided_layout.addWidget(textLabel_calculation)

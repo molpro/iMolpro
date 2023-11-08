@@ -1,6 +1,11 @@
 import os
 import re
 
+wave_fct_symm_commands = {
+    'Automatic' : '',
+    'No Symmetry' : 'nosym'
+}
+
 job_type_commands = {
     'Single Point Energy': '',
     'Geometry Optimisation': 'optg',
