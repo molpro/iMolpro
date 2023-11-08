@@ -10,7 +10,7 @@ from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt, QEvent
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QDialogButtonBox, QFormLayout, QLineEdit, \
-    QSplitter
+    QSplitter, QMenu
 from pymolpro import Project
 
 import molpro_input
@@ -104,6 +104,8 @@ class ProjectWindow(QMainWindow):
         if os.path.exists(likely_qtwebengineprocess):
             os.environ['QTWEBENGINEPROCESS_PATH'] = likely_qtwebengineprocess
 
+        self.discover_external_viewer_commands()
+
         self.input_pane = EditFile(self.project.filename('inp', run=-1), latency)
         if self.input_pane.toPlainText().strip('\n ') == '':
             self.input_pane.setPlainText(
@@ -151,12 +153,11 @@ class ProjectWindow(QMainWindow):
         vod_select_layout = QFormLayout()
         button_layout.addLayout(vod_select_layout)
         vod_select_layout.addRow('Structure display:', self.vod_selector)
-        self.external_selector = QComboBox()
-        self.discover_external_viewer_commands()
-        self.external_selector.addItem('embedded')
-        self.external_selector.addItems(self.external_viewer_commands.keys())
-        self.external_selector.currentTextChanged.connect(self.vod_external_launch)
-        vod_select_layout.addRow('View in', self.external_selector)
+        # self.external_selector = QComboBox()
+        # self.external_selector.addItem('embedded')
+        # self.external_selector.addItems(self.external_viewer_commands.keys())
+        # self.external_selector.currentTextChanged.connect(self.vod_external_launch)
+        # vod_select_layout.addRow('View in', self.external_selector)
         left_layout.addLayout(button_layout)
         left_layout.addWidget(self.statusBar)
 
@@ -284,6 +285,14 @@ class ProjectWindow(QMainWindow):
                           tooltip='View the molecular structure in the job input')
         menubar.addAction('Output structure', 'View', self.visualise_output, 'Alt+D',
                           tooltip='View the molecular structure at the end of the job')
+        if self.external_viewer_commands:
+            self.external_menu = QMenu('View molecule in external program...')
+            for command in self.external_viewer_commands.keys():
+                action = self.external_menu.addAction(command)
+                action.triggered.connect(lambda dum, command=command: self.vod_external_launch(command))
+
+
+            menubar.addSubmenu(self.external_menu,'View')
         menubar.addSeparator('View')
         menubar.addAction('Next output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
             (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+]')
@@ -456,9 +465,11 @@ class ProjectWindow(QMainWindow):
 
     def vod_external_launch(self, command=''):
         if command and command != 'embedded':
-            self.vod_selector_action(external_path=self.external_viewer_commands[command])
+            self.vod_selector_action(external_path=self.external_viewer_commands[command], force=True)
 
-    def vod_selector_action(self, text1=None, external_path=None):
+    def vod_selector_action(self, text1=None, external_path=None, force=False):
+        if force and self.vod_selector.currentText().strip()=='None':
+            self.vod_selector.setCurrentText('Output')
         text = self.vod_selector.currentText().strip()
         if text == '':
             return
