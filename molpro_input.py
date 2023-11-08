@@ -3,7 +3,7 @@ import re
 
 wave_fct_symm_commands = {
     'Automatic' : '',
-    'No Symmetry' : 'nosym'
+    'No Symmetry' : 'nosym;\n'
 }
 
 job_type_commands = {
@@ -160,6 +160,10 @@ def create_input(specification: dict):
     _input = ''
     if 'orientation' in specification:
         _input += 'orient,' + orientation_options[specification['orientation']]+'\n'
+
+    if 'wave_fct_symm' in specification:
+        _input += wave_fct_symm_commands[specification['wave_fct_symm']]
+
     if 'geometry' in specification:
         _input += ('geometry=' + specification[
             'geometry'] + '\n' if 'geometry_external' in specification else 'geometry={\n' +
