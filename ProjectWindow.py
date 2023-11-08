@@ -59,6 +59,16 @@ class ViewProjectOutput(ViewFile):
             self.reset(latest_filename)
 
 
+class webEngineView(QWebEngineView):
+    def __init__(self):
+        super().__init__()
+    #     self.installEventFilter(self)
+    #
+    # def eventFilter(self, obj, event):
+    #     if (event.type() == QEvent.Resize):
+    #         print('webEngineView resize event received', self.geometry(), self.geometry().width(), self.geometry().height())
+    #     return super().eventFilter(obj, event)
+
 class ProjectWindow(QMainWindow):
     close_signal = pyqtSignal(QWidget)
     new_signal = pyqtSignal(QWidget)
@@ -152,7 +162,6 @@ class ProjectWindow(QMainWindow):
 
         top_layout = QHBoxLayout()
         splitter = QSplitter(Qt.Horizontal)
-        splitter.setStretchFactor(0,0)
         top_layout.addWidget(splitter)
 
         left_widget = QWidget(self)
@@ -167,6 +176,7 @@ class ProjectWindow(QMainWindow):
         self.timer_output_tabs.timeout.connect(self.refresh_output_tabs)
         self.timer_output_tabs.start(2000)
         splitter.addWidget(self.output_tabs)
+        splitter.setStretchFactor(1,2147483647)
 
         self.layout = QVBoxLayout()
         self.layout.addLayout(top_layout)
@@ -694,7 +704,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         if verbosity:
             print(html)
             open('test.html', 'w').write(html)
-        webview = QWebEngineView()
+        webview = webEngineView()
         profile = QWebEngineProfile()
         self.webengine_profiles.append(
             profile)  # FIXME This to avoid premature garbage collection. A resource leak. Need to find a way to delete the previous QWebEnginePage instead
