@@ -3,7 +3,8 @@ import re
 
 wave_fct_symm_commands = {
     'Automatic' : '',
-    'No Symmetry' : 'nosym;\n'
+    'No Symmetry' : 'nosym;\n',
+    '1 : A1 ... TODO needs molpro --geometry etc' : ''
 }
 
 job_type_commands = {
