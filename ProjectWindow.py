@@ -392,7 +392,7 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_orientation = QComboBox()
         self.guided_combo_orientation.addItems(molpro_input.orientation_options.keys())
         guided_form.addRow('Orientation', self.guided_combo_orientation)
-        self.guided_combo_orientation.currentIndexChanged.connect(self.guided_combo_orientation_changed)
+        self.guided_combo_orientation.currentTextChanged.connect(lambda text: self.input_specification_change('orientation', text))
 
         textLabel_calculation = QLabel()
         textLabel_calculation.setText("Calculation:")
@@ -402,19 +402,19 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_job_type.setMaximumWidth(180)
         self.guided_combo_job_type.addItems(molpro_input.job_type_commands.keys())
         guided_form.addRow('Type', self.guided_combo_job_type)
-        self.guided_combo_job_type.currentIndexChanged.connect(self.guided_combo_job_type_changed)
+        self.guided_combo_job_type.currentTextChanged.connect(lambda text: self.input_specification_change('job_type', text))
 
         self.guided_combo_method = QComboBox()
         # print(self.project.registry('commandset').keys())
 
         self.guided_combo_method.addItems(self.allowed_methods())
         guided_form.addRow('Method', self.guided_combo_method)
-        self.guided_combo_method.currentIndexChanged.connect(self.guided_combo_method_changed)
+        self.guided_combo_method.currentTextChanged.connect(lambda text: self.input_specification_change('method', text))
         self.guided_layout.addLayout(guided_form)
         self.guided_basis_input = QLineEdit()
         self.guided_basis_input.setMinimumWidth(200)
         guided_form.addRow('Basis set', self.guided_basis_input)
-        self.guided_basis_input.textChanged.connect(self.guided_basis_input_changed)
+        self.guided_basis_input.textChanged.connect(lambda text: self.input_specification_change('basis', text))
 
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
@@ -435,26 +435,9 @@ class ProjectWindow(QMainWindow):
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
 
-    def guided_combo_orientation_changed(self):
-        self.input_specification['orientation'] = self.guided_combo_orientation.currentText()
-        if self.input_tabs.currentIndex() != 0:
-            self.refresh_input_from_specification()
-
-    def guided_basis_input_changed(self, text):
-        if self.trace: print('guided_basis_input_changed')
-        self.input_specification['basis'] = text
-        if self.input_tabs.currentIndex() != 0:
-            self.refresh_input_from_specification()
-
-    def guided_combo_job_type_changed(self, i):
-        self.input_specification['job_type'] = self.guided_combo_job_type.currentText()
-        if self.input_tabs.currentIndex() != 0:
-            self.refresh_input_from_specification()
-
-    def guided_combo_method_changed(self):
-        self.input_specification['method'] = self.guided_combo_method.currentText()
-        if self.input_tabs.currentIndex() != 0:
-            self.refresh_input_from_specification()
+    def input_specification_change(self, key, value):
+        self.input_specification[key] = value
+        self.refresh_input_from_specification()
 
     def allowed_methods(self):
         result = []
