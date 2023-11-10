@@ -98,6 +98,7 @@ class Chooser(QMainWindow):
         rh_panel.addWidget(QLabel("iMolpro version "+version_()))
 
         self.setWindowFlag(Qt.FramelessWindowHint)
+        self.showNormal()
         menubar = MenuBar()
         menubar.addAction('New', 'Projects', slot=self.newProjectDialog, shortcut='Ctrl+N',
                           tooltip='Create a new project')
