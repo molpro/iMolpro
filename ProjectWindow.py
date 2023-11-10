@@ -401,7 +401,7 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_wave_fct_symm = QComboBox()
         self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
         guided_form.addRow('Wave function symmetry', self.guided_combo_wave_fct_symm)
-        self.guided_combo_wave_fct_symm.currentIndexChanged.connect(self.guided_combo_wave_fct_symm_changed)
+        self.guided_combo_wave_fct_symm.currentTextChanged.connect(lambda text: self.input_specification_change('wave_fct_symm', text))
 
 
         textLabel_calculation = QLabel()
@@ -452,10 +452,6 @@ class ProjectWindow(QMainWindow):
         self.input_specification[key] = value
         if self.input_tabs.currentIndex() != 0:
             self.refresh_input_from_specification()
-
-    def guided_combo_wave_fct_symm_changed(self):
-        self.input_specification['wave_fct_symm'] = self.guided_combo_wave_fct_symm.currentText()
-        self.refresh_input_from_specification()
 
     def allowed_methods(self):
         result = []
