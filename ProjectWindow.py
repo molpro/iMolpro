@@ -69,12 +69,14 @@ class webEngineView(QWebEngineView):
     #         print('webEngineView resize event received', self.geometry(), self.geometry().width(), self.geometry().height())
     #     return super().eventFilter(obj, event)
 
+
 class ProjectWindow(QMainWindow):
     close_signal = pyqtSignal(QWidget)
     new_signal = pyqtSignal(QWidget)
     chooser_signal = pyqtSignal(QWidget)
     vod = None
-    trace = False
+    trace = settings['ProjectWindow_debug'] if 'ProjectWindow_debug' in settings else 0
+    KD_debug = settings['KD_debug'] if 'KD_debug' in settings else 0
 
     def __init__(self, filename, window_manager, latency=1000):
         super().__init__()
@@ -136,12 +138,11 @@ class ProjectWindow(QMainWindow):
 
         left_layout = QVBoxLayout()
         self.input_tabs = QTabWidget()
-        self.input_pane.textChanged.connect(self.refresh_input_tabs)
+        self.input_pane.textChanged.connect(self.input_text_changed_consequence)
         self.input_tabs.setTabBarAutoHide(True)
         self.input_tabs.setDocumentMode(True)
         self.input_tabs.setTabPosition(QTabWidget.South)
-        self.input_tabs.currentChanged.connect(self.refresh_input_tabs)
-        self.refresh_input_tabs()
+        self.input_tabs.currentChanged.connect(self.input_tab_changed_consequence)
         left_layout.addWidget(self.input_tabs)
         self.input_tabs.setMinimumHeight(300)
         self.input_tabs.setMinimumWidth(300)
@@ -160,6 +161,10 @@ class ProjectWindow(QMainWindow):
         # vod_select_layout.addRow('View in', self.external_selector)
         left_layout.addLayout(button_layout)
         left_layout.addWidget(self.statusBar)
+        self.input_tabs.addTab(self.input_pane, 'freehand')
+        self.input_text_changed_consequence(0)
+        self.input_tabs.setCurrentIndex(1)
+        self.guided_action.setChecked(self.input_tabs.currentIndex() == 1)
 
         top_layout = QHBoxLayout()
         splitter = QSplitter(Qt.Horizontal)
@@ -177,7 +182,7 @@ class ProjectWindow(QMainWindow):
         self.timer_output_tabs.timeout.connect(self.refresh_output_tabs)
         self.timer_output_tabs.start(2000)
         splitter.addWidget(self.output_tabs)
-        splitter.setStretchFactor(1,2147483647)
+        splitter.setStretchFactor(1, 2147483647)
 
         self.layout = QVBoxLayout()
         self.layout.addLayout(top_layout)
@@ -291,8 +296,7 @@ class ProjectWindow(QMainWindow):
                 action = self.external_menu.addAction(command)
                 action.triggered.connect(lambda dum, command=command: self.vod_external_launch(command))
 
-
-            menubar.addSubmenu(self.external_menu,'View')
+            menubar.addSubmenu(self.external_menu, 'View')
         menubar.addSeparator('View')
         menubar.addAction('Next output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
             (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+]')
@@ -338,19 +342,14 @@ class ProjectWindow(QMainWindow):
                 self.output_tabs.addTab(self.vod, 'structure')
 
     def guided_toggle(self):
-        self.refresh_input_tabs(index=1 if self.guided_action.isChecked() else 0)
-
-    def refresh_input_tabs(self, index=0):
-        if self.trace: print('refresh_input_tabs')
-        input_text = self.input_pane.toPlainText()
-        if not input_text: input_text = ''
-        self.input_specification = molpro_input.parse(input_text, self.allowed_methods())
-        guided = molpro_input.equivalent(input_text, self.input_specification)
+        if self.trace: print('guided_toggle')
+        index = 1 if self.guided_action.isChecked() else 0
+        guided = self.guided_possible()
         if not guided and index == 1:
             box = QMessageBox()
             box.setText('Guided mode cannot be used because the input is too complex')
             spec_input = molpro_input.canonicalise(molpro_input.create_input(self.input_specification))
-            file_input = molpro_input.canonicalise(input_text)
+            file_input = molpro_input.canonicalise(self.input_pane.toPlainText())
             box.setInformativeText(
                 'The input regenerated from the attempt to parse into guided mode is\n' +
                 spec_input + '\n\nThe input file in canonical form is\n' + file_input + '\n\nDifferences:\n' +
@@ -360,15 +359,27 @@ class ProjectWindow(QMainWindow):
                                          tofile='input file'))))
             box.exec()
             self.guided_action.setChecked(False)
-        if len(self.input_tabs) < 1:
-            self.input_tabs.addTab(self.input_pane, 'freehand')
+        else:
+            self.input_tabs.setCurrentIndex(index)
+
+    def input_text_changed_consequence(self, index=0):
+        if self.trace: print('input_text_changed_consequence, index=', index)
+        guided = self.guided_possible()
         if not guided and len(self.input_tabs) != 1:
             self.input_tabs.removeTab(1)
         if guided and len(self.input_tabs) < 2:
             self.setup_guided_pane()
-        self.input_tabs.setCurrentIndex(
-            index if index >= 0 and index < len(self.input_tabs) else len(self.input_tabs) - 1)
-        if guided:
+
+    def guided_possible(self):
+        input_text = self.input_pane.toPlainText()
+        if not input_text: input_text = ''
+        self.input_specification = molpro_input.parse(input_text, self.allowed_methods())
+        guided = molpro_input.equivalent(input_text, self.input_specification)
+        return guided
+
+    def input_tab_changed_consequence(self, index=0):
+        if self.trace: print('input_tab_changed_consequence, index=', index, self.input_tabs.currentIndex())
+        if self.input_tabs.currentIndex() == 1:
             self.refresh_guided_pane()
 
     def setup_guided_pane(self):
@@ -381,7 +392,7 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_orientation = QComboBox()
         self.guided_combo_orientation.addItems(molpro_input.orientation_options.keys())
         guided_form.addRow('Orientation', self.guided_combo_orientation)
-        self.guided_combo_orientation.currentIndexChanged.connect(self.guided_combo_orientation_changed)
+        self.guided_combo_orientation.currentTextChanged.connect(lambda text: self.input_specification_change('orientation', text))
 
         textLabel_wave_fct_char = QLabel()
         textLabel_wave_fct_char.setText("Wave Function Characteristics:")
@@ -401,19 +412,19 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_job_type.setMaximumWidth(180)
         self.guided_combo_job_type.addItems(molpro_input.job_type_commands.keys())
         guided_form.addRow('Type', self.guided_combo_job_type)
-        self.guided_combo_job_type.currentIndexChanged.connect(self.guided_combo_job_type_changed)
+        self.guided_combo_job_type.currentTextChanged.connect(lambda text: self.input_specification_change('job_type', text))
 
         self.guided_combo_method = QComboBox()
         # print(self.project.registry('commandset').keys())
 
         self.guided_combo_method.addItems(self.allowed_methods())
         guided_form.addRow('Method', self.guided_combo_method)
-        self.guided_combo_method.currentIndexChanged.connect(self.guided_combo_method_changed)
+        self.guided_combo_method.currentTextChanged.connect(lambda text: self.input_specification_change('method', text))
         self.guided_layout.addLayout(guided_form)
         self.guided_basis_input = QLineEdit()
         self.guided_basis_input.setMinimumWidth(200)
         guided_form.addRow('Basis set', self.guided_basis_input)
-        self.guided_basis_input.textChanged.connect(self.guided_basis_input_changed)
+        self.guided_basis_input.textChanged.connect(lambda text: self.input_specification_change('basis', text))
 
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
@@ -428,7 +439,7 @@ class ProjectWindow(QMainWindow):
             prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
                 'method'] else None
             method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
-            if self.trace: print('KD Debug, index=', method_index, 'method=',
+            if self.KD_debug: print('KD Debug, index=', method_index, 'method=',
                                  self.input_specification['method'], 'base_method=', base_method, 'prefix=',
                                  prefix)
             self.guided_combo_method.setCurrentIndex(method_index)
@@ -437,31 +448,14 @@ class ProjectWindow(QMainWindow):
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
 
-    def guided_combo_orientation_changed(self):
-        self.input_specification['orientation'] = self.guided_combo_orientation.currentText()
+    def input_specification_change(self, key, value):
+        self.input_specification[key] = value
         if self.input_tabs.currentIndex() != 0:
             self.refresh_input_from_specification()
 
     def guided_combo_wave_fct_symm_changed(self):
         self.input_specification['wave_fct_symm'] = self.guided_combo_wave_fct_symm.currentText()
-        if self.input_tabs.currentIndex() != 0:
-            self.refresh_input_from_specification()
-
-    def guided_basis_input_changed(self, text):
-        if self.trace: print('guided_basis_input_changed')
-        self.input_specification['basis'] = text
-        if self.input_tabs.currentIndex() != 0:
-            self.refresh_input_from_specification()
-
-    def guided_combo_job_type_changed(self, i):
-        self.input_specification['job_type'] = self.guided_combo_job_type.currentText()
-        if self.input_tabs.currentIndex() != 0:
-            self.refresh_input_from_specification()
-
-    def guided_combo_method_changed(self):
-        self.input_specification['method'] = self.guided_combo_method.currentText()
-        if self.input_tabs.currentIndex() != 0:
-            self.refresh_input_from_specification()
+        self.refresh_input_from_specification()
 
     def allowed_methods(self):
         result = []
@@ -478,15 +472,13 @@ class ProjectWindow(QMainWindow):
         new_input = molpro_input.create_input(self.input_specification)
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
             self.input_pane.setPlainText(new_input)
-        if current_tab != 0:
-            self.refresh_input_tabs(current_tab)
 
     def vod_external_launch(self, command=''):
         if command and command != 'embedded':
             self.vod_selector_action(external_path=self.external_viewer_commands[command], force=True)
 
     def vod_selector_action(self, text1=None, external_path=None, force=False):
-        if force and self.vod_selector.currentText().strip()=='None':
+        if force and self.vod_selector.currentText().strip() == 'None':
             self.vod_selector.setCurrentText('Output')
         text = self.vod_selector.currentText().strip()
         if text == '':
