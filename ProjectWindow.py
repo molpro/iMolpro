@@ -1,3 +1,4 @@
+import concurrent.futures
 import difflib
 import os
 import pathlib
@@ -81,6 +82,7 @@ class ProjectWindow(QMainWindow):
     def __init__(self, filename, window_manager, latency=1000):
         super().__init__()
         self.window_manager = window_manager
+        self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
 
         assert filename is not None
         self.project = Project(filename)
@@ -138,7 +140,7 @@ class ProjectWindow(QMainWindow):
 
         left_layout = QVBoxLayout()
         self.input_tabs = QTabWidget()
-        self.input_pane.textChanged.connect(self.input_text_changed_consequence)
+        self.input_pane.textChanged.connect(lambda: self.thread_executor.submit(self.input_text_changed_consequence))
         self.input_tabs.setTabBarAutoHide(True)
         self.input_tabs.setDocumentMode(True)
         self.input_tabs.setTabPosition(QTabWidget.South)
