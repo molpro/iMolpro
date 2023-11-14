@@ -450,8 +450,7 @@ class ProjectWindow(QMainWindow):
 
     def input_specification_change(self, key, value):
         self.input_specification[key] = value
-        if self.input_tabs.currentIndex() != 0:
-            self.refresh_input_from_specification()
+        self.refresh_input_from_specification()
 
     def allowed_methods(self):
         result = []
