@@ -5,6 +5,9 @@ wave_fct_symm_commands = {
     'Automatic' : '',
     'No Symmetry' : 'nosym'
 }
+wave_fct_symm_aliases = {
+     'symmetry,nosym' : 'nosym'
+}
 
 job_type_commands = {
     'Single Point Energy': '',
@@ -59,9 +62,10 @@ def parse(input: str, allowed_methods: list, debug=False):
                 if (line.lower() == orientation_options[orientation_option].lower()):
                     specification['orientation'] = orientation_option
                     break
-        elif command.lower() == 'nosym':
+        elif ((command.lower() == 'nosym') or (re.match('^symmetry *, *', line, re.IGNORECASE))):
+            line = re.sub('^symmetry *, *','',line, flags=re.IGNORECASE)
             for symmetry_command in wave_fct_symm_commands.keys():
-                if (command.lower() == wave_fct_symm_commands[symmetry_command]):
+                if (line.lower() == wave_fct_symm_commands[symmetry_command]):
                     specification['wave_fct_symm'] = symmetry_command
                     break
         elif re.match('^geometry *= *{', line, re.IGNORECASE):
@@ -219,6 +223,8 @@ def canonicalise(input):
     new_result = ''
     for line in re.sub('set[, ]', '', result.strip(), flags=re.IGNORECASE).split('\n'):
         if line.lower().strip() in job_type_aliases.keys(): line = job_type_aliases[line.lower().strip()]
+        if line.lower().strip() in wave_fct_symm_aliases.keys():
+            line = wave_fct_symm_aliases[line.lower().strip()]
         while (newline := re.sub(r'(\[[0-9!]+),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
         if re.match(r'[a-z][a-z0-9_]* *= *\[?[!a-z0-9_. ]*\]? *,', line, flags=re.IGNORECASE):
             line = line.replace(',', '\n')
