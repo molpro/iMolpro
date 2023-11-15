@@ -6,7 +6,7 @@ wave_fct_symm_commands = {
     'No Symmetry' : 'symmetry,nosym'
 }
 wave_fct_symm_aliases = {
-     'symmetry,nosym' : 'nosym'
+     'nosym' : 'symmetry,nosym',
 }
 
 job_type_commands = {
