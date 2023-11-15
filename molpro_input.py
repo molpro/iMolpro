@@ -3,7 +3,7 @@ import re
 
 wave_fct_symm_commands = {
     'Automatic' : '',
-    'No Symmetry' : 'nosym'
+    'No Symmetry' : 'symmetry,nosym'
 }
 wave_fct_symm_aliases = {
      'symmetry,nosym' : 'nosym'
@@ -55,7 +55,6 @@ def parse(input: str, allowed_methods: list, debug=False):
     for line in canonicalise(input).split('\n'):
         line = line.strip()
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
-        if debug: print('line', line, 'command', command)
         if re.match('^orient *, *', line, re.IGNORECASE):
             line = re.sub('^orient *, *','',line, flags=re.IGNORECASE)
             for orientation_option in orientation_options.keys():
@@ -64,6 +63,7 @@ def parse(input: str, allowed_methods: list, debug=False):
                     break
         elif ((command.lower() == 'nosym') or (re.match('^symmetry *, *', line, re.IGNORECASE))):
             line = re.sub('^symmetry *, *','',line, flags=re.IGNORECASE)
+            line = "symmetry,"+line
             for symmetry_command in wave_fct_symm_commands.keys():
                 if (line.lower() == wave_fct_symm_commands[symmetry_command]):
                     specification['wave_fct_symm'] = symmetry_command
