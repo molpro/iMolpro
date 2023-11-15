@@ -1,6 +1,14 @@
 import os
 import re
 
+wave_fct_symm_commands = {
+    'Automatic' : '',
+    'No Symmetry' : 'symmetry,nosym'
+}
+wave_fct_symm_aliases = {
+     'symmetry,nosym' : 'nosym'
+}
+
 job_type_commands = {
     'Single Point Energy': '',
     'Geometry Optimisation': 'optg',
@@ -47,12 +55,18 @@ def parse(input: str, allowed_methods: list, debug=False):
     for line in canonicalise(input).split('\n'):
         line = line.strip()
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
-        if debug: print('line', line, 'command', command)
         if re.match('^orient *, *', line, re.IGNORECASE):
             line = re.sub('^orient *, *','',line, flags=re.IGNORECASE)
             for orientation_option in orientation_options.keys():
                 if (line.lower() == orientation_options[orientation_option].lower()):
                     specification['orientation'] = orientation_option
+                    break
+        elif ((command.lower() == 'nosym') or (re.match('^symmetry *, *', line, re.IGNORECASE))):
+            line = re.sub('^symmetry *, *','',line, flags=re.IGNORECASE)
+            line = "symmetry,"+line
+            for symmetry_command in wave_fct_symm_commands.keys():
+                if (line.lower() == wave_fct_symm_commands[symmetry_command]):
+                    specification['wave_fct_symm'] = symmetry_command
                     break
         elif re.match('^geometry *= *{', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
@@ -155,6 +169,10 @@ def create_input(specification: dict):
     _input = ''
     if 'orientation' in specification:
         _input += 'orient,' + orientation_options[specification['orientation']]+'\n'
+
+    if 'wave_fct_symm' in specification:
+        _input += wave_fct_symm_commands[specification['wave_fct_symm']]+'\n'
+
     if 'geometry' in specification:
         _input += ('geometry=' + specification[
             'geometry'] + '\n' if 'geometry_external' in specification else 'geometry={\n' +
@@ -195,16 +213,21 @@ def basis_quality(specification):
 
 
 def canonicalise(input):
-    result = re.sub('\n}', '}', re.sub('{\n', r'{', re.sub('\n+', '\n',
-                                                           re.sub(', *', ',', re.sub('basis[=,] *([^{\n]+)\n',
-                                                                                     r'basis={default=\1}\n',
-                                                                                     input.replace(';',
-                                                                                                   '\n')))))).rstrip(
-        '\n ').lstrip(
-        '\n ') + '\n'
+    result = re.sub('\n}', '}',
+                    re.sub('{\n', r'{',
+                           re.sub('\n+', '\n',
+                                  re.sub(' *, *', ',',
+                                         re.sub('basis[=,] *([^{\n]+)\n',
+                                                r'basis={default=\1}\n',
+                                                input.replace(';',
+                                                              '\n')))))).rstrip(
+                                                                  '\n ').lstrip(
+                                                                      '\n ') + '\n'
     new_result = ''
     for line in re.sub('set[, ]', '', result.strip(), flags=re.IGNORECASE).split('\n'):
         if line.lower().strip() in job_type_aliases.keys(): line = job_type_aliases[line.lower().strip()]
+        if line.lower().strip() in wave_fct_symm_aliases.keys():
+            line = wave_fct_symm_aliases[line.lower().strip()]
         while (newline := re.sub(r'(\[[0-9!]+),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
         if re.match(r'[a-z][a-z0-9_]* *= *\[?[!a-z0-9_. ]*\]? *,', line, flags=re.IGNORECASE):
             line = line.replace(',', '\n')

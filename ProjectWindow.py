@@ -394,6 +394,16 @@ class ProjectWindow(QMainWindow):
         guided_form.addRow('Orientation', self.guided_combo_orientation)
         self.guided_combo_orientation.currentTextChanged.connect(lambda text: self.input_specification_change('orientation', text))
 
+        textLabel_wave_fct_char = QLabel()
+        textLabel_wave_fct_char.setText("Wave Function Characteristics:")
+        self.guided_layout.addWidget(textLabel_wave_fct_char)
+
+        self.guided_combo_wave_fct_symm = QComboBox()
+        self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
+        guided_form.addRow('Wave function symmetry', self.guided_combo_wave_fct_symm)
+        self.guided_combo_wave_fct_symm.currentTextChanged.connect(lambda text: self.input_specification_change('wave_fct_symm', text))
+
+
         textLabel_calculation = QLabel()
         textLabel_calculation.setText("Calculation:")
         self.guided_layout.addWidget(textLabel_calculation)
@@ -421,6 +431,9 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_orientation.setCurrentText(
             self.input_specification['orientation'] if 'orientation' in self.input_specification else
             list(molpro_input.orientation_options.keys())[0])
+        self.guided_combo_wave_fct_symm.setCurrentText(
+            self.input_specification['wave_fct_symm'] if 'wave_fct_symm' in self.input_specification else
+            list(molpro_input.wave_fct_symm_commands.keys())[0])
         if 'method' in self.input_specification:
             base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
             prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
