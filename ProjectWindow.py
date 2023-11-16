@@ -442,6 +442,8 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_wave_fct_symm.setCurrentText(
             self.input_specification['wave_fct_symm'] if 'wave_fct_symm' in self.input_specification else
             list(molpro_input.wave_fct_symm_commands.keys())[0])
+        if 'charge' in self.input_specification:
+            self.charge_line.setText(self.input_specification['charge'])
         if 'method' in self.input_specification:
             base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
             prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
