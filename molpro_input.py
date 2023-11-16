@@ -169,6 +169,8 @@ def create_input(specification: dict):
     _input = ''
     if 'orientation' in specification:
         _input += 'orient,' + orientation_options[specification['orientation']]+'\n'
+    if 'charge' in specification:
+        print('KD Debug:', specification['charge'])
 
     if 'wave_fct_symm' in specification:
         _input += wave_fct_symm_commands[specification['wave_fct_symm']]+'\n'
