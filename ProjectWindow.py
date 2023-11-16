@@ -12,6 +12,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineP
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
     QSplitter, QMenu
+from PyQt5.QtGui import QIntValidator
 from pymolpro import Project
 
 import molpro_input
@@ -399,6 +400,10 @@ class ProjectWindow(QMainWindow):
         textLabel_wave_fct_char = QLabel()
         textLabel_wave_fct_char.setText("Wave Function Characteristics:")
         self.guided_layout.addWidget(textLabel_wave_fct_char)
+
+        self.charge_line = QLineEdit()
+        self.charge_line.setValidator(QIntValidator())
+        guided_form.addRow("Charge", self.charge_line)
 
         self.guided_combo_wave_fct_symm = QComboBox()
         self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
