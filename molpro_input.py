@@ -170,7 +170,7 @@ def create_input(specification: dict):
     if 'orientation' in specification:
         _input += 'orient,' + orientation_options[specification['orientation']]+'\n'
     if 'charge' in specification:
-        print('KD Debug:', specification['charge'])
+        _input += 'charge='+specification['charge']+'\n'
 
     if 'wave_fct_symm' in specification:
         _input += wave_fct_symm_commands[specification['wave_fct_symm']]+'\n'
