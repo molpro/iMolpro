@@ -68,6 +68,8 @@ def parse(input: str, allowed_methods: list, debug=False):
                 if (line.lower() == wave_fct_symm_commands[symmetry_command]):
                     specification['wave_fct_symm'] = symmetry_command
                     break
+        elif re.match('^charge *= *', line, re.IGNORECASE):
+            specification['charge'] = re.sub('^charge *= *', '', line + '\n', flags=re.IGNORECASE)
         elif re.match('^geometry *= *{', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
@@ -169,8 +171,6 @@ def create_input(specification: dict):
     _input = ''
     if 'orientation' in specification:
         _input += 'orient,' + orientation_options[specification['orientation']]+'\n'
-    if 'charge' in specification:
-        _input += 'charge='+specification['charge']+'\n'
 
     if 'wave_fct_symm' in specification:
         _input += wave_fct_symm_commands[specification['wave_fct_symm']]+'\n'
@@ -181,6 +181,9 @@ def create_input(specification: dict):
                                                                             specification[
                                                                                 'geometry']).rstrip(
             ' \n') + '\n' + ('' if 'geometry_external' in specification else '}\n')
+    if 'charge' in specification:
+        _input += 'charge='+specification['charge']+'\n'
+
     if 'basis' in specification:
         _input += 'basis={' + specification['basis'] + '}\n'
     if 'variables' in specification:
