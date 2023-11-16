@@ -69,7 +69,7 @@ def parse(input: str, allowed_methods: list, debug=False):
                     specification['wave_fct_symm'] = symmetry_command
                     break
         elif re.match('^charge *= *', line, re.IGNORECASE):
-            specification['charge'] = re.sub('^charge *= *', '', line + '\n', flags=re.IGNORECASE)
+            specification['charge'] = re.sub('^charge *= *', '', line, flags=re.IGNORECASE)
         elif re.match('^geometry *= *{', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
