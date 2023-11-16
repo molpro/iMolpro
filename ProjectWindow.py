@@ -404,6 +404,7 @@ class ProjectWindow(QMainWindow):
         self.charge_line = QLineEdit()
         self.charge_line.setValidator(QIntValidator())
         guided_form.addRow("Charge", self.charge_line)
+        self.charge_line.textChanged.connect(lambda text: self.input_specification_change('charge', text))
 
         self.guided_combo_wave_fct_symm = QComboBox()
         self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
