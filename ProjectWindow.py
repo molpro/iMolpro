@@ -1,3 +1,4 @@
+import concurrent.futures
 import difflib
 import os
 import pathlib
@@ -6,10 +7,10 @@ import subprocess
 import sys
 import re
 
-from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt, QEvent
+from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QTabWidget, QFileDialog, QDialogButtonBox, QFormLayout, QLineEdit, \
+    QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
     QSplitter, QMenu
 from PyQt5.QtGui import QIntValidator
 from pymolpro import Project
@@ -82,6 +83,7 @@ class ProjectWindow(QMainWindow):
     def __init__(self, filename, window_manager, latency=1000):
         super().__init__()
         self.window_manager = window_manager
+        self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
 
         assert filename is not None
         self.project = Project(filename)
@@ -139,7 +141,7 @@ class ProjectWindow(QMainWindow):
 
         left_layout = QVBoxLayout()
         self.input_tabs = QTabWidget()
-        self.input_pane.textChanged.connect(self.input_text_changed_consequence)
+        self.input_pane.textChanged.connect(lambda: self.thread_executor.submit(self.input_text_changed_consequence))
         self.input_tabs.setTabBarAutoHide(True)
         self.input_tabs.setDocumentMode(True)
         self.input_tabs.setTabPosition(QTabWidget.South)
@@ -163,6 +165,7 @@ class ProjectWindow(QMainWindow):
         left_layout.addLayout(button_layout)
         left_layout.addWidget(self.statusBar)
         self.input_tabs.addTab(self.input_pane, 'freehand')
+        self.setup_guided_pane()
         self.input_text_changed_consequence(0)
         self.input_tabs.setCurrentIndex(1)
         self.guided_action.setChecked(self.input_tabs.currentIndex() == 1)
@@ -369,7 +372,7 @@ class ProjectWindow(QMainWindow):
         if not guided and len(self.input_tabs) != 1:
             self.input_tabs.removeTab(1)
         if guided and len(self.input_tabs) < 2:
-            self.setup_guided_pane()
+            self.input_tabs.addTab(self.guided_pane, 'guided')
 
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
@@ -384,8 +387,7 @@ class ProjectWindow(QMainWindow):
             self.refresh_guided_pane()
 
     def setup_guided_pane(self):
-        self.guided_pane = QWidget()
-        self.input_tabs.addTab(self.guided_pane, 'guided')
+        self.guided_pane = QWidget(self)
         self.guided_layout = QVBoxLayout()
         self.guided_pane.setLayout(self.guided_layout)
         guided_form = QFormLayout()
