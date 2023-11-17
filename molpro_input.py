@@ -179,11 +179,13 @@ def create_input(specification: dict):
                                                                             specification[
                                                                                 'geometry']).rstrip(
             ' \n') + '\n' + ('' if 'geometry_external' in specification else '}\n')
+
     if 'basis' in specification:
         _input += 'basis={' + specification['basis'] + '}\n'
     if 'variables' in specification:
         for k, v in specification['variables'].items():
-            _input += k + '=' + v + '\n'
+            if v != '':
+                _input += k + '=' + v + '\n'
     if 'precursor_methods' in specification:
         for m in specification['precursor_methods']:
             _input += m + '\n'
@@ -214,13 +216,14 @@ def basis_quality(specification):
 
 def canonicalise(input):
     result = re.sub('\n}', '}',
+                    re.sub(' *= *', '=',
                     re.sub('{\n', r'{',
                            re.sub('\n+', '\n',
                                   re.sub(' *, *', ',',
                                          re.sub('basis[=,] *([^{\n]+)\n',
                                                 r'basis={default=\1}\n',
                                                 input.replace(';',
-                                                              '\n')))))).rstrip(
+                                                              '\n'))))))).rstrip(
                                                                   '\n ').lstrip(
                                                                       '\n ') + '\n'
     new_result = ''

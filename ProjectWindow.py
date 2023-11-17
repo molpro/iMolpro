@@ -12,6 +12,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineP
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
     QSplitter, QMenu
+from PyQt5.QtGui import QIntValidator
 from pymolpro import Project
 
 import molpro_input
@@ -400,6 +401,11 @@ class ProjectWindow(QMainWindow):
         textLabel_wave_fct_char.setText("Wave Function Characteristics:")
         self.guided_layout.addWidget(textLabel_wave_fct_char)
 
+        self.charge_line = QLineEdit()
+        self.charge_line.setValidator(QIntValidator())
+        guided_form.addRow("Charge", self.charge_line)
+        self.charge_line.textChanged.connect(lambda text: self.input_specification_variable_change('charge', text))
+
         self.guided_combo_wave_fct_symm = QComboBox()
         self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
         guided_form.addRow('Wave function symmetry', self.guided_combo_wave_fct_symm)
@@ -436,6 +442,9 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_wave_fct_symm.setCurrentText(
             self.input_specification['wave_fct_symm'] if 'wave_fct_symm' in self.input_specification else
             list(molpro_input.wave_fct_symm_commands.keys())[0])
+        if 'variables' in self.input_specification:
+            if 'charge' in self.input_specification['variables']:
+                self.charge_line.setText(self.input_specification['variables']['charge'])
         if 'method' in self.input_specification:
             base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
             prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
@@ -452,6 +461,12 @@ class ProjectWindow(QMainWindow):
 
     def input_specification_change(self, key, value):
         self.input_specification[key] = value
+        self.refresh_input_from_specification()
+
+    def input_specification_variable_change(self, key, value):
+        if 'variables' not in self.input_specification:
+            self.input_specification['variables']={}
+        self.input_specification['variables']['charge'] = value
         self.refresh_input_from_specification()
 
     def allowed_methods(self):
