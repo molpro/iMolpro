@@ -406,6 +406,11 @@ class ProjectWindow(QMainWindow):
         guided_form.addRow("Charge", self.charge_line)
         self.charge_line.textChanged.connect(lambda text: self.input_specification_variable_change('charge', text))
 
+        self.spin_line = QLineEdit()
+        self.spin_line.setValidator(QIntValidator())
+        guided_form.addRow("Spin", self.spin_line)
+        self.spin_line.textChanged.connect(lambda text: self.input_specification_variable_change('spin', text))
+
         self.guided_combo_wave_fct_symm = QComboBox()
         self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
         guided_form.addRow('Wave function symmetry', self.guided_combo_wave_fct_symm)
@@ -445,6 +450,9 @@ class ProjectWindow(QMainWindow):
         if 'variables' in self.input_specification:
             if 'charge' in self.input_specification['variables']:
                 self.charge_line.setText(self.input_specification['variables']['charge'])
+            if 'spin' in self.input_specification['variables']:
+                self.spin_line.setText(self.input_specification['variables']['spin'])
+
         if 'method' in self.input_specification:
             base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
             prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
@@ -466,7 +474,7 @@ class ProjectWindow(QMainWindow):
     def input_specification_variable_change(self, key, value):
         if 'variables' not in self.input_specification:
             self.input_specification['variables']={}
-        self.input_specification['variables']['charge'] = value
+        self.input_specification['variables'][key] = value
         self.refresh_input_from_specification()
 
     def allowed_methods(self):
