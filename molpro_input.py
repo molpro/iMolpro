@@ -238,7 +238,7 @@ def canonicalise(input):
         line = re.sub('{ *','{',line)
         line = line.replace('!', ',').strip() + '\n'
         if line.strip('\n') != '':
-            new_result += line + '\n'
+            new_result += line.strip('\n ') + '\n'
     return new_result.strip('\n ') + '\n'
 
 
