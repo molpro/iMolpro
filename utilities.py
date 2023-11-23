@@ -234,12 +234,12 @@ class MainEditFile(QMainWindow):
 
 
 class ViewFile(QPlainTextEdit):
-    def __init__(self, filename: str, latency=1000):
+    def __init__(self, filename: str, latency=1000, point_size=10):
         super().__init__()
         self.setReadOnly(True)
         self.latency = latency
         f = QFont(QFontDatabase.systemFont(QFontDatabase.FixedFont))
-        f.setPointSize(10)
+        f.setPointSize(point_size)
         self.setFont(f)
         self.modtime = 0.0
         self.reset(filename)

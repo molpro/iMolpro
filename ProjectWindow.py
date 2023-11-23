@@ -46,17 +46,18 @@ class StatusBar(QLabel):
 
 
 class ViewProjectOutput(ViewFile):
-    def __init__(self, project, suffix='out', width=800, latency=100, filename_latency=2000):
+    def __init__(self, project, suffix='out', width=800, latency=100, filename_latency=2000, point_size=10):
         self.project = project
         self.suffix = suffix
-        super().__init__(self.project.filename(suffix), latency=latency)
+        self.instance = -1 if suffix == 'inp' else 0
+        super().__init__(self.project.filename(suffix, run=self.instance), latency=latency, point_size=point_size)
         super().setMinimumWidth(width)
         self.refresh_output_file_timer = QTimer()
         self.refresh_output_file_timer.timeout.connect(self.refresh_output_file)
         self.refresh_output_file_timer.start(filename_latency)  # find a better way
 
     def refresh_output_file(self):
-        latest_filename = self.project.filename(self.suffix)
+        latest_filename = self.project.filename(self.suffix, run=self.instance)
         if latest_filename != self.filename:
             self.reset(latest_filename)
 
@@ -118,7 +119,7 @@ class ProjectWindow(QMainWindow):
         self.setWindowTitle(filename)
 
         self.output_panes = {
-            suffix: ViewProjectOutput(self.project, suffix) for suffix in ['out', 'log']}
+            suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 10) for suffix in ['out', 'log', 'inp']}
 
         self.webengine_profiles = []
 
@@ -348,6 +349,18 @@ class ProjectWindow(QMainWindow):
     def guided_toggle(self):
         if self.trace: print('guided_toggle')
         index = 1 if self.guided_action.isChecked() else 0
+        if 'inp' in self.output_panes:
+            if index == 0:
+                self.output_panes['inp'].hide()
+                for suffix in ['structure','out']:
+                    for i in range(len(self.output_tabs)):
+                        if self.output_tabs.tabText(i) == suffix:
+                            self.output_tabs.setCurrentIndex(i)
+            else:
+                self.output_panes['inp'].show()
+                for i in range(len(self.output_tabs)):
+                    if self.output_tabs.tabText(i) == 'inp':
+                        self.output_tabs.setCurrentIndex(i)
         guided = self.guided_possible()
         if not guided and index == 1:
             box = QMessageBox()
@@ -559,11 +572,14 @@ class ProjectWindow(QMainWindow):
                     (re.sub(regex, r'\2', fields[0]), re.sub(regex, r'\1.\2', fields[0], flags=re.IGNORECASE)))
         return result
 
-    def run(self):
-        self.project.run()
+    def run(self, force=False):
+        self.project.run(force=force)
+        for i in range(len(self.output_tabs)):
+            if self.output_tabs.tabText(i) == 'out':
+                self.output_tabs.setCurrentIndex(i)
 
     def run_force(self):
-        self.project.run(force=True)
+        self.run(force=True)
 
     def kill(self):
         self.project.kill()
