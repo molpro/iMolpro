@@ -18,3 +18,9 @@ def test_content(qtbot, tmpdir):
         defbas.search('bad', 'vdz')
     assert len(defbas.search('Ne', 'bad')) == 0
     assert defbas.search('Ne', 'aug-cc-pVTZ')[0]['maxang'] == 3
+
+    assert len(defbas.search('Zn', 'cc-pVDZ-PP')[0]['extra']) == 1
+    assert defbas.search('Zn', 'cc-pVDZ-PP')[0]['extra'] == ['ECP : ECP10MDF']
+
+    assert defbas.search('Zn', 'vtz-pp-f12', context='cabs')[0]['contexts'] == ['cabs']
+    assert defbas.search('Zn', 'vtz-pp-f12', context='cabs')[0]['extra'] == ['spdfg vtz-pp-f12']

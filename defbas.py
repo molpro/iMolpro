@@ -24,6 +24,7 @@ class Defbas:
         result = []
         contexts = context.split(' ') if context else None
         fully_wild = not (element or key or type or context)
+        n_extra = 0
         for line in self.contents:
             line = line.strip(' \n')
             if line and line[0] == '!':
@@ -35,9 +36,12 @@ class Defbas:
                     result[-1]['maxz'] = 0
                     result[-1]['minang'] = 0
                     result[-1]['maxang'] = 0
-                    result[-1]['nextra'] = 0
                 continue
             split_line = line.split(':')
+            if n_extra > 0:
+                result[-1]['extra'].append(line.strip())
+                n_extra -= 1
+                continue
             if len(split_line) <= 1: continue
             colon1 = re.sub('  *', ' ', split_line[1].strip()).split(' ')
             assert len(colon1) >= 1
@@ -48,7 +52,11 @@ class Defbas:
                 r['maxz'] = int(colon1[2])
                 r['minang'] = int(colon1[3])
                 r['maxang'] = int(colon1[4])
-                r['nextra'] = int(colon1[5])
+                n_extra_ = int(colon1[5])
+            else:
+                n_extra_ = 0
+            if n_extra_ > 0:
+                r['extra'] = []
             if len(colon1) >= 7: r['type'] = colon1[6]
             r['keys'] = split_line[0].strip().split(' ')
             if len(split_line) > 2:
@@ -58,13 +66,14 @@ class Defbas:
             if len(split_line) > 3:
                 r['comment'] = split_line[4].strip(' ')
             if element and (len(colon1) < 6 or periodic_table.index(element) + 1 < r['minz'] or periodic_table.index(
-                element) + 1 > r['maxz']): continue
+                    element) + 1 > r['maxz']): continue
             if key and (len(colon1) < 6 or not any([key.lower() == k.lower() for k in r['keys']])): continue
             if context and (
                     'contexts' not in r or not any([context.lower() == k.lower() for k in r['contexts']])): continue
             if not context and 'contexts' in r and not any(['orbital' == k.lower() for k in r['contexts']]): continue
             if type and 'type' in r and type != r['type']: continue
             result.append(r)
+            n_extra = n_extra_
         return result
 
 
