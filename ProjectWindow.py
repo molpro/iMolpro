@@ -32,7 +32,7 @@ class StatusBar(QLabel):
         self.project = project
         self.run_actions = run_actions
         self.kill_actions = kill_actions
-        self.refresh_timer = QTimer()
+        self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self.refresh)
         self.refresh_timer.start(latency)
 
@@ -54,7 +54,7 @@ class ViewProjectOutput(ViewFile):
         # print('ViewProjectOutput',instance,suffix,self.project.filename(suffix,run=self.instance))
         super().__init__(self.project.filename(suffix, run=self.instance), latency=latency, point_size=point_size)
         super().setMinimumWidth(width)
-        self.refresh_output_file_timer = QTimer()
+        self.refresh_output_file_timer = QTimer(self)
         self.refresh_output_file_timer.timeout.connect(self.refresh_output_file)
         self.refresh_output_file_timer.start(filename_latency)  # find a better way
 
@@ -64,9 +64,9 @@ class ViewProjectOutput(ViewFile):
             self.reset(latest_filename)
 
 
-class webEngineView(QWebEngineView):
-    def __init__(self):
-        super().__init__()
+class WebEngineView(QWebEngineView):
+    def __init__(self, parent=None):
+        super().__init__(parent)
     #     self.installEventFilter(self)
     #
     # def eventFilter(self, obj, event):
@@ -76,15 +76,15 @@ class webEngineView(QWebEngineView):
 
 
 class ProjectWindow(QMainWindow):
-    close_signal = pyqtSignal(QWidget)
-    new_signal = pyqtSignal(QWidget)
-    chooser_signal = pyqtSignal(QWidget)
+    close_signal = pyqtSignal(QWidget, name='closeSignal')
+    new_signal = pyqtSignal(QWidget, name='newSignal')
+    chooser_signal = pyqtSignal(QWidget, name='chooserSignal')
     vod = None
     trace = settings['ProjectWindow_debug'] if 'ProjectWindow_debug' in settings else 0
     KD_debug = settings['KD_debug'] if 'KD_debug' in settings else 0
 
     def __init__(self, filename, window_manager, latency=1000):
-        super().__init__()
+        super().__init__(None)
         self.window_manager = window_manager
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
 
@@ -121,7 +121,8 @@ class ProjectWindow(QMainWindow):
         self.setWindowTitle(filename)
 
         self.output_panes = {
-            suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 10) for suffix in ['out', 'log', 'inp']}
+            suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 10) for suffix in
+            ['out', 'log', 'inp']}
 
         self.webengine_profiles = []
 
@@ -143,7 +144,7 @@ class ProjectWindow(QMainWindow):
         self.statusBar.refresh()
 
         left_layout = QVBoxLayout()
-        self.input_tabs = QTabWidget()
+        self.input_tabs = QTabWidget(self)
         self.input_pane.textChanged.connect(lambda: self.thread_executor.submit(self.input_text_changed_consequence))
         self.input_tabs.setTabBarAutoHide(True)
         self.input_tabs.setDocumentMode(True)
@@ -156,18 +157,13 @@ class ProjectWindow(QMainWindow):
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.run_button)
         # button_layout.addWidget(self.killButton)
-        self.vod_selector = QComboBox()
-        vod_select_layout = QFormLayout()
+        self.vod_selector = QComboBox(self)
+        vod_select_layout = QFormLayout(self)
         button_layout.addLayout(vod_select_layout)
         vod_select_layout.addRow('Structure display:', self.vod_selector)
-        # self.external_selector = QComboBox()
-        # self.external_selector.addItem('embedded')
-        # self.external_selector.addItems(self.external_viewer_commands.keys())
-        # self.external_selector.currentTextChanged.connect(self.vod_external_launch)
-        # vod_select_layout.addRow('View in', self.external_selector)
         left_layout.addLayout(button_layout)
         button_layout_2 = QHBoxLayout()
-        self.backend_selector = QComboBox()
+        self.backend_selector = QComboBox(self)
         self.backend_selector.addItems(self.project.backend_names())
         backend = self.project.property_get('backend')
         self.backend_selector.setCurrentText(backend['backend'] if backend else 'local')
@@ -197,7 +193,7 @@ class ProjectWindow(QMainWindow):
         self.output_tabs.setDocumentMode(True)
         self.output_tabs.setTabPosition(QTabWidget.South)
         self.refresh_output_tabs()
-        self.timer_output_tabs = QTimer()
+        self.timer_output_tabs = QTimer(self)
         self.timer_output_tabs.timeout.connect(self.refresh_output_tabs)
         self.timer_output_tabs.start(2000)
         splitter.addWidget(self.output_tabs)
@@ -214,7 +210,7 @@ class ProjectWindow(QMainWindow):
 
         # self.layout.setSizeConstraint(QLayout.SetFixedSize)
 
-        container = QWidget()
+        container = QWidget(self)
         container.setLayout(self.layout)
         self.setCentralWidget(container)
         # self.installEventFilter(self)
@@ -257,10 +253,10 @@ class ProjectWindow(QMainWindow):
     def setup_menubar(self):
         menubar = MenuBar(self)
         self.setMenuBar(menubar)
-        menubar.addAction('New', 'Projects', slot=self.newAction, shortcut='Ctrl+N',
+        menubar.addAction('New', 'Projects', slot=self.new_action, shortcut='Ctrl+N',
                           tooltip='Create a new project')
         menubar.addAction('Close', 'Projects', self.close, 'Ctrl+W')
-        menubar.addAction('Open', 'Projects', self.chooserOpen, 'Ctrl+O', 'Open another project')
+        menubar.addAction('Open', 'Projects', self.chooser_open, 'Ctrl+O', 'Open another project')
         menubar.addSeparator('Projects')
         self.recent_menu = RecentMenu(self.window_manager)
         menubar.addSubmenu(self.recent_menu, 'Projects')
@@ -275,7 +271,7 @@ class ProjectWindow(QMainWindow):
                           tooltip='Import a file and assign it as the input for the project')
         menubar.addAction('Import structure', 'Files', self.import_structure, 'Ctrl+Alt+I',
                           tooltip='Import an xyz file and use it as the source of molecular structure in the input for the project')
-        menubar.addAction('Search external databases for structure', 'Files', self.databaseImportStructure,
+        menubar.addAction('Search external databases for structure', 'Files', self.database_import_structure,
                           'Ctrl+Shift+Alt+I',
                           tooltip='Search PubChem and ChemSpider for a molecule and use it as the source of molecular structure in the input for the project')
         menubar.addAction('Import file', 'Files', self.import_file, 'Ctrl+I',
@@ -338,7 +334,7 @@ class ProjectWindow(QMainWindow):
         menubar.show()
 
     def edit_backend_configuration(self):
-        self.backend_configuration_editor = MainEditFile(pathlib.Path.home() / '.sjef/molpro/backends.xml')
+        self.backend_configuration_editor = MainEditFile(str(pathlib.Path.home() / '.sjef/molpro/backends.xml'))
         self.backend_configuration_editor.setMinimumSize(600, 400)
         self.backend_configuration_editor.show()
 
@@ -377,7 +373,7 @@ class ProjectWindow(QMainWindow):
         if 'inp' in self.output_panes:
             if index == 0:
                 self.output_panes['inp'].hide()
-                for suffix in ['structure','out']:
+                for suffix in ['structure', 'out']:
                     for i in range(len(self.output_tabs)):
                         if self.output_tabs.tabText(i) == suffix:
                             self.output_tabs.setCurrentIndex(i)
@@ -428,12 +424,13 @@ class ProjectWindow(QMainWindow):
         self.guided_pane = QWidget(self)
         self.guided_layout = QVBoxLayout()
         self.guided_pane.setLayout(self.guided_layout)
-        guided_form = QFormLayout()
+        guided_form = QFormLayout(self)
 
-        self.guided_combo_orientation = QComboBox()
+        self.guided_combo_orientation = QComboBox(self)
         self.guided_combo_orientation.addItems(molpro_input.orientation_options.keys())
         guided_form.addRow('Orientation', self.guided_combo_orientation)
-        self.guided_combo_orientation.currentTextChanged.connect(lambda text: self.input_specification_change('orientation', text))
+        self.guided_combo_orientation.currentTextChanged.connect(
+            lambda text: self.input_specification_change('orientation', text))
 
         textLabel_wave_fct_char = QLabel()
         textLabel_wave_fct_char.setText("Wave Function Characteristics:")
@@ -449,28 +446,30 @@ class ProjectWindow(QMainWindow):
         guided_form.addRow("Spin", self.spin_line)
         self.spin_line.textChanged.connect(lambda text: self.input_specification_variable_change('spin', text))
 
-        self.guided_combo_wave_fct_symm = QComboBox()
+        self.guided_combo_wave_fct_symm = QComboBox(self)
         self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
         guided_form.addRow('Wave function symmetry', self.guided_combo_wave_fct_symm)
-        self.guided_combo_wave_fct_symm.currentTextChanged.connect(lambda text: self.input_specification_change('wave_fct_symm', text))
-
+        self.guided_combo_wave_fct_symm.currentTextChanged.connect(
+            lambda text: self.input_specification_change('wave_fct_symm', text))
 
         textLabel_calculation = QLabel()
         textLabel_calculation.setText("Calculation:")
         self.guided_layout.addWidget(textLabel_calculation)
 
-        self.guided_combo_job_type = QComboBox()
+        self.guided_combo_job_type = QComboBox(self)
         self.guided_combo_job_type.setMaximumWidth(180)
         self.guided_combo_job_type.addItems(molpro_input.job_type_commands.keys())
         guided_form.addRow('Type', self.guided_combo_job_type)
-        self.guided_combo_job_type.currentTextChanged.connect(lambda text: self.input_specification_change('job_type', text))
+        self.guided_combo_job_type.currentTextChanged.connect(
+            lambda text: self.input_specification_change('job_type', text))
 
-        self.guided_combo_method = QComboBox()
+        self.guided_combo_method = QComboBox(self)
         # print(self.project.registry('commandset').keys())
 
         self.guided_combo_method.addItems(self.allowed_methods())
         guided_form.addRow('Method', self.guided_combo_method)
-        self.guided_combo_method.currentTextChanged.connect(lambda text: self.input_specification_change('method', text))
+        self.guided_combo_method.currentTextChanged.connect(
+            lambda text: self.input_specification_change('method', text))
         self.guided_layout.addLayout(guided_form)
         self.guided_basis_input = QLineEdit()
         self.guided_basis_input.setMinimumWidth(200)
@@ -497,8 +496,8 @@ class ProjectWindow(QMainWindow):
                 'method'] else None
             method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
             if self.KD_debug: print('KD Debug, index=', method_index, 'method=',
-                                 self.input_specification['method'], 'base_method=', base_method, 'prefix=',
-                                 prefix)
+                                    self.input_specification['method'], 'base_method=', base_method, 'prefix=',
+                                    prefix)
             self.guided_combo_method.setCurrentIndex(method_index)
         if 'basis' in self.input_specification:
             self.guided_basis_input.setText(self.input_specification['basis'])
@@ -511,7 +510,7 @@ class ProjectWindow(QMainWindow):
 
     def input_specification_variable_change(self, key, value):
         if 'variables' not in self.input_specification:
-            self.input_specification['variables']={}
+            self.input_specification['variables'] = {}
         self.input_specification['variables'][key] = value
         self.refresh_input_from_specification()
 
@@ -526,7 +525,6 @@ class ProjectWindow(QMainWindow):
 
     def refresh_input_from_specification(self):
         if self.trace: print('refresh_input_from_specification')
-        current_tab = self.input_tabs.currentIndex()
         new_input = molpro_input.create_input(self.input_specification)
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
             self.input_pane.setPlainText(new_input)
@@ -535,7 +533,7 @@ class ProjectWindow(QMainWindow):
         if command and command != 'embedded':
             self.vod_selector_action(external_path=self.external_viewer_commands[command], force=True)
 
-    def vod_selector_action(self, text1=None, external_path=None, force=False):
+    def vod_selector_action(self, external_path=None, force=False):
         if force and self.vod_selector.currentText().strip() == 'None':
             self.vod_selector.setCurrentText('Output')
         text = self.vod_selector.currentText().strip()
@@ -623,6 +621,8 @@ class ProjectWindow(QMainWindow):
         width = self.output_tabs.geometry().width() - 310
         height = self.output_tabs.geometry().height() - 40
         firstmodel = 1
+        firstvib = 1
+        firstorb = 1
         try:
             vibs = factory_vibration_set(file, **kwargs)
             firstmodel = firstvib = vibs.coordinateSet
@@ -786,7 +786,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         if verbosity:
             print(html)
             open('test.html', 'w').write(html)
-        webview = webEngineView()
+        webview = WebEngineView()
         profile = QWebEngineProfile()
         self.webengine_profiles.append(
             profile)  # FIXME This to avoid premature garbage collection. A resource leak. Need to find a way to delete the previous QWebEnginePage instead
@@ -814,7 +814,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             item.setDownloadDirectory(self.project.filename(run=-1))
             item.accept()
 
-    def visualise_input(self, param=False, external_path=None):
+    def visualise_input(self, external_path=None):
         import tempfile
         geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
         geometry_directory.mkdir(exist_ok=True)
@@ -852,17 +852,14 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         else:
             self.embedded_vod(xyz_file, command='')
 
-    def closeEvent(self, a0):
+    def closeEvent(self, a0, QCloseEvent=None):
         self.close_signal.emit(self)
 
-    def newAction(self):
+    def new_action(self):
         self.new_signal.emit(self)
 
-    def chooserOpen(self):
+    def chooser_open(self):
         self.chooser_signal.emit(self)
-
-    def clean(self):
-        self.project.clean(1)
 
     def import_file(self):
         _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
@@ -884,9 +881,9 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                                                      options=QFileDialog.DontResolveSymlinks)
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
-            self.adoptStructureFile(filename)
+            self.adopt_structure_file(filename)
 
-    def adoptStructureFile(self, filename):
+    def adopt_structure_file(self, filename):
         if os.path.exists(filename):
             self.project.import_file(filename)
             text = self.input_pane.toPlainText()
@@ -897,9 +894,9 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             else:
                 self.input_pane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
 
-    def databaseImportStructure(self):
-        if (filename := database_choose_structure()):
-            self.adoptStructureFile(filename)
+    def database_import_structure(self):
+        if filename := database_choose_structure():
+            self.adopt_structure_file(filename)
             os.remove(filename)
             os.rmdir(os.path.dirname(filename))
             self.edit_input_structure()
@@ -932,7 +929,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         dlg.exec()
 
     def move_to(self):
-        file_name, filter = QFileDialog.getSaveFileName(self, 'Move project to...',
+        file_name, filter_ = QFileDialog.getSaveFileName(self, 'Move project to...',
                                                         os.path.dirname(self.project.filename(run=-1)),
                                                         'Molpro project (*.molpro)', )
         if file_name:
@@ -941,7 +938,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             self.close()
 
     def copy_to(self):
-        file_name, filter = QFileDialog.getSaveFileName(self, 'Copy project to...',
+        file_name, filter_ = QFileDialog.getSaveFileName(self, 'Copy project to...',
                                                         os.path.dirname(self.project.filename(run=-1)),
                                                         'Molpro project (*.molpro)', )
         if file_name:
@@ -952,17 +949,17 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         result = QMessageBox.question(self, 'Erase project',
                                       'Are you sure you want to erase project ' + self.project.filename(run=-1))
         if result == QMessageBox.Yes:
-            QMessageBox.information('Erasing of projects is not yet implemented')
+            QMessageBox.information(self, 'Erase project', 'Erasing of projects is not yet implemented')
             return
-            print('erasing ', self.project.filename(run=-1))
-            self.window_manager.erase(self)
-            return
-            del self.statusBar
-            shutil.rmtree(self.project.filename(run=-1))
-            del self
-            return
+            # print('erasing ', self.project.filename(run=-1))
+            # self.window_manager.erase(self)
+            # return
+            # del self.statusBar
+            # shutil.rmtree(self.project.filename(run=-1))
+            # del self
+            # return
             # self.project.erase()
-            self.close()
+            # self.close()
 
     def show_input_specification(self):
         QMessageBox.information(self, 'Input specification', 'Input specification:\r\n' +
