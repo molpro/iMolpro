@@ -17,6 +17,7 @@ from pymolpro import Project
 
 import molpro_input
 from MenuBar import MenuBar
+from OldOutputMenu import OldOutputMenu
 from RecentMenu import RecentMenu
 from database import database_choose_structure
 from help import HelpManager
@@ -46,10 +47,11 @@ class StatusBar(QLabel):
 
 
 class ViewProjectOutput(ViewFile):
-    def __init__(self, project, suffix='out', width=800, latency=100, filename_latency=2000, point_size=10):
+    def __init__(self, project, suffix='out', width=800, latency=100, filename_latency=2000, point_size=10, instance=0):
         self.project = project
         self.suffix = suffix
-        self.instance = -1 if suffix == 'inp' else 0
+        self.instance = -1 if suffix == 'inp' else instance
+        # print('ViewProjectOutput',instance,suffix,self.project.filename(suffix,run=self.instance))
         super().__init__(self.project.filename(suffix, run=self.instance), latency=latency, point_size=point_size)
         super().setMinimumWidth(width)
         self.refresh_output_file_timer = QTimer()
@@ -319,6 +321,8 @@ class ProjectWindow(QMainWindow):
             (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+]')
         menubar.addAction('Previous output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
             (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+[')
+        self.old_output_menu = OldOutputMenu(self)
+        menubar.addSubmenu(self.old_output_menu, 'View')
 
         self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
         self.run_force_action = menubar.addAction('Run (force)', 'Job', self.run_force, 'Ctrl+Shift+R',
@@ -348,15 +352,24 @@ class ProjectWindow(QMainWindow):
             self.embedded_builder(filename)
 
     def refresh_output_tabs(self):
+        self.old_output_menu.refresh()
         if len(self.output_tabs) != len(
-                [suffix for suffix, pane in self.output_panes.items() if
-                 os.path.exists(self.project.filename(suffix))]) + (1 if self.vod else 0):
+                [tab_name for tab_name, pane in self.output_panes.items() if
+                 os.path.exists(self.project.filename(re.sub('.*\.', '', tab_name)))]) + (1 if self.vod else 0):
             self.output_tabs.clear()
             for suffix, pane in self.output_panes.items():
                 if os.path.exists(self.project.filename(suffix)):
                     self.output_tabs.addTab(pane, suffix)
             if self.vod:
                 self.output_tabs.addTab(self.vod, 'structure')
+
+    def add_output_tab(self, run: int):
+        tab_name = os.path.basename(self.project.filename('out', run=run))
+        self.output_panes[tab_name]=ViewProjectOutput(self.project, 'out', instance=run)
+        self.output_tabs.addTab(self.output_panes[tab_name], tab_name)
+        for i in range(len(self.output_tabs)):
+            if self.output_tabs.tabText(i) == tab_name:
+                self.output_tabs.setCurrentIndex(i)
 
     def guided_toggle(self):
         if self.trace: print('guided_toggle')
