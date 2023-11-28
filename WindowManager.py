@@ -11,6 +11,8 @@ class WindowManager:
         self.fullAction = None
 
     def register(self, widget: QWidget):
+        if widget is None or (hasattr(widget,'invalid') and widget.invalid):
+            return
         if self.fullAction and not self.openWindows:
             self.fullAction()
         self.openWindows.append(widget)
