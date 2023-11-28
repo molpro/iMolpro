@@ -89,7 +89,16 @@ class ProjectWindow(QMainWindow):
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
 
         assert filename is not None
-        self.project = Project(filename)
+        try:
+            self.project = Project(filename)
+        except Exception as e:
+            msg = QMessageBox()
+            msg.setText('Project ' + filename + ' cannot be opened')
+            msg.setDetailedText(str(e))
+            msg.exec()
+            self.invalid = True
+            return
+
         # print(self.project.registry())
         # print(self.project.registry('PLUGIN'))
         # print(self.project.registry('RO')['TRUNC']['default_value'])
@@ -158,7 +167,7 @@ class ProjectWindow(QMainWindow):
         button_layout.addWidget(self.run_button)
         # button_layout.addWidget(self.killButton)
         self.vod_selector = QComboBox(self)
-        vod_select_layout = QFormLayout(self)
+        vod_select_layout = QFormLayout()
         button_layout.addLayout(vod_select_layout)
         vod_select_layout.addRow('Structure display:', self.vod_selector)
         left_layout.addLayout(button_layout)
@@ -351,7 +360,7 @@ class ProjectWindow(QMainWindow):
         self.old_output_menu.refresh()
         if len(self.output_tabs) != len(
                 [tab_name for tab_name, pane in self.output_panes.items() if
-                 os.path.exists(self.project.filename(re.sub('.*\.', '', tab_name)))]) + (1 if self.vod else 0):
+                 os.path.exists(self.project.filename(re.sub(r'.*\.', '', tab_name)))]) + (1 if self.vod else 0):
             self.output_tabs.clear()
             for suffix, pane in self.output_panes.items():
                 if os.path.exists(self.project.filename(suffix)):
@@ -424,7 +433,7 @@ class ProjectWindow(QMainWindow):
         self.guided_pane = QWidget(self)
         self.guided_layout = QVBoxLayout()
         self.guided_pane.setLayout(self.guided_layout)
-        guided_form = QFormLayout(self)
+        guided_form = QFormLayout()
 
         self.guided_combo_orientation = QComboBox(self)
         self.guided_combo_orientation.addItems(molpro_input.orientation_options.keys())
