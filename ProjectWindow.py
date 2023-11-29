@@ -479,6 +479,10 @@ class ProjectWindow(QMainWindow):
         guided_form.addRow('Method', self.guided_combo_method)
         self.guided_combo_method.currentTextChanged.connect(
             lambda text: self.input_specification_change('method', text))
+
+        self.guided_combo_basis_quality = QComboBox(self)
+        guided_form.addRow('Basis set quality', self.guided_combo_basis_quality)
+
         self.guided_layout.addLayout(guided_form)
         self.guided_basis_input = QLineEdit()
         self.guided_basis_input.setMinimumWidth(200)
@@ -530,6 +534,10 @@ class ProjectWindow(QMainWindow):
         for keyfound in self.whole_of_procedures_registry.keys():
             if self.whole_of_procedures_registry[keyfound]['class'] == 'PROG':
                 result.append(self.whole_of_procedures_registry[keyfound]['name'])
+        return result
+
+    def basis_set_qualities(self):
+        result = []
         return result
 
     def refresh_input_from_specification(self):
