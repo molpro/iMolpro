@@ -494,6 +494,10 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_job_type.currentTextChanged.connect(
             lambda text: self.input_specification_change('job_type', text))
 
+        self.guided_combo_hamiltonian = QComboBox(self)
+        guided_form.addRow('Hamiltonian', self.guided_combo_hamiltonian)
+        self.guided_combo_hamiltonian.addItems(molpro_input.hamiltonian)
+
         self.guided_combo_method = QComboBox(self)
         # print(self.project.registry('commandset').keys())
 
