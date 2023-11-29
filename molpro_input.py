@@ -128,7 +128,7 @@ def parse(input: str, allowed_methods=[], debug=False):
             if 'method' in specification: return {}  # input too complex
             if 'precursor_methods' not in specification: specification['precursor_methods'] = []
             specification['precursor_methods'].append(line.lower())
-        elif any([re.fullmatch('{?' + df_prefix + local_prefix + spin_prefix + method, command, flags=re.IGNORECASE) for
+        elif any([re.fullmatch('{?' + df_prefix + local_prefix + spin_prefix + re.escape(method), command, flags=re.IGNORECASE) for
                   df_prefix
                   in df_prefixes
                   for local_prefix in local_prefixes for spin_prefix in spin_prefixes for method in allowed_methods]):
