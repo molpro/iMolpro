@@ -9,6 +9,15 @@ wave_fct_symm_aliases = {
      'nosym' : 'symmetry,nosym',
 }
 
+hamiltonian = [
+    'All Electron (if available)',
+    'Pseudopot. if available',
+    'DK',
+    'DK3'
+]
+
+
+
 job_type_commands = {
     'Single Point Energy': '',
     'Geometry Optimisation': 'optg',
