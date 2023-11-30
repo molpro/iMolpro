@@ -9,7 +9,7 @@ from defbas import Defbas
 
 def test_content(qtbot, tmpdir):
     p = pymolpro.Project(str(tmpdir / 'test.molpro'))
-    defbas = Defbas(p.local_molpro_root())
+    defbas = Defbas(p.local_molpro_root)
     if defbas is not None:
         assert defbas.contents
 
