@@ -138,10 +138,12 @@ class ProjectWindow(QMainWindow):
         try:
             self.whole_of_procedures_registry = self.project.procedures_registry()
             self.whole_of_basis_registry = self.project.basis_registry()
+            if not self.whole_of_basis_registry or not self.whole_of_basis_registry:
+                raise ValueError
         except Exception as e:
             msg = QMessageBox()
             msg.setText('Error in finding local molpro')
-            msg.setDetailedText('Guided mode will not work correctly\r\n' + str(type(e)))
+            msg.setDetailedText('Guided mode will not work correctly\r\n' + str(e))
             msg.exec()
             self.whole_of_procedures_registry = {}
             self.whole_of_basis_registry = {}
