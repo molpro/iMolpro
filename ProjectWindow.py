@@ -137,12 +137,22 @@ class ProjectWindow(QMainWindow):
 
         try:
             self.whole_of_procedures_registry = self.project.procedures_registry()
+            self.whole_of_basis_registry = self.project.basis_registry()
         except Exception as e:
             msg = QMessageBox()
             msg.setText('Error in finding local molpro')
             msg.setDetailedText('Guided mode will not work correctly\r\n' + str(type(e)))
             msg.exec()
             self.whole_of_procedures_registry = {}
+            self.whole_of_basis_registry = {}
+
+#        print(self.project.basis_registry(),'\n\n\n')
+#        print(self.project.basis_registry().keys(),'\n\n\n')
+#        print(self.project.basis_registry()['def2-TZVP'],'\n\n\n')
+#        print(self.project.basis_registry()['def2-TZVP']['quality'],'\n\n\n')
+
+        self.basis_qualities = self.read_basis_qualities()
+
         self.setup_menubar()
 
         self.run_button = QPushButton('Run')
@@ -479,6 +489,11 @@ class ProjectWindow(QMainWindow):
         guided_form.addRow('Method', self.guided_combo_method)
         self.guided_combo_method.currentTextChanged.connect(
             lambda text: self.input_specification_change('method', text))
+
+        self.guided_combo_basis_quality = QComboBox(self)
+        guided_form.addRow('Basis set quality', self.guided_combo_basis_quality)
+        self.guided_combo_basis_quality.addItems(self.basis_qualities)
+
         self.guided_layout.addLayout(guided_form)
         self.guided_basis_input = QLineEdit()
         self.guided_basis_input.setMinimumWidth(200)
@@ -523,6 +538,16 @@ class ProjectWindow(QMainWindow):
         self.input_specification['variables'][key] = value
         self.refresh_input_from_specification()
 
+    def read_basis_qualities(self):
+        result = []
+        if self.whole_of_basis_registry is None:
+            self.whole_of_basis_registry = self.project.basis_registry()
+        for keyfound in self.whole_of_basis_registry.keys():
+            if keyfound != None:
+                if self.whole_of_basis_registry[keyfound]['quality'] not in result:
+                    result.append(self.whole_of_basis_registry[keyfound]['quality'])
+        return result
+
     def allowed_methods(self):
         result = []
         if self.whole_of_procedures_registry is None:
@@ -530,6 +555,10 @@ class ProjectWindow(QMainWindow):
         for keyfound in self.whole_of_procedures_registry.keys():
             if self.whole_of_procedures_registry[keyfound]['class'] == 'PROG':
                 result.append(self.whole_of_procedures_registry[keyfound]['name'])
+        return result
+
+    def basis_set_qualities(self):
+        result = []
         return result
 
     def refresh_input_from_specification(self):

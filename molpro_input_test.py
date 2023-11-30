@@ -1,13 +1,15 @@
 from molpro_input import parse, create_input, basis_quality, equivalent, canonicalise
 import time
 
+allowed_methods_ = ['HF', 'CCSD', 'RKS', 'CASSCF', 'MRCI']
+
 
 def test_file(qtbot, tmpdir):
     test_file = tmpdir / 'test-molpro_input.inp'
     test_text = 'Geometry={F;H,F,1.7};geometry=hf.xyz;basis=cc-pVTZ !some comment;rhf\nccsd\n'
     with open(test_file, 'w') as f:
         f.write(test_text)
-    assert parse(test_text) == parse(test_file)
+    assert parse(test_text, allowed_methods=allowed_methods_) == parse(test_file, allowed_methods=allowed_methods_)
 
 
 def test_create_input(qtbot):
@@ -21,10 +23,10 @@ def test_create_input(qtbot):
         'geometry=thing.xyz',
     ]:
         # print('test_text', test_text)
-        specification = parse(test_text)
+        specification = parse(test_text, allowed_methods=allowed_methods_)
         # print('specification', specification)
         # print(create_input(specification))
-        assert parse(create_input(specification)) == specification
+        assert parse(create_input(specification), allowed_methods=allowed_methods_) == specification
 
 
 def test_recreate_input(qtbot):
@@ -40,21 +42,21 @@ def test_recreate_input(qtbot):
         'geometry=wed.xyz\nbasis=cc-pVTZ-PP\nset,charge=1,spin=1,thing=whatsit\nxx=yy,p=q\nrhf',
     ]:
         # print('test_text',test_text)
-        specification = parse(test_text)
+        specification = parse(test_text, allowed_methods=allowed_methods_)
         # print('specification',specification)
         # print(create_input(specification))
-        assert parse(create_input(specification)) == specification
+        assert parse(create_input(specification),allowed_methods=allowed_methods_) == specification
         assert equivalent(specification, test_text,debug=False)
 
 
 def test_variables(qtbot):
     test_text = 'spin=2,charge=1! comment\nset,occ=[3,1,1] ! comments\n;Geometry={F;H,F,1.7};basis={default=cc-pVTZ,h=cc-pVDZ}\n{ks,b3lyp}!some comment;locali\nccsd\n'
-    specification = parse(test_text)
+    specification = parse(test_text, allowed_methods=allowed_methods_)
     # print('original input', test_text)
     # print('parsed specification', specification)
     # print('recreated input', create_input(specification))
-    # print('parsed recreated input', parse(create_input(specification)))
-    assert parse(create_input(specification)) == specification
+    # print('parsed recreated input', parse(create_input(specification), allowed_methods=allowed_methods_))
+    assert parse(create_input(specification), allowed_methods=allowed_methods_) == specification
     assert specification['variables']['spin'] == '2'
     assert specification['variables']['occ'] == '[3,1,1]'
 
@@ -65,7 +67,7 @@ def test_too_complex(qtbot):
         'geometry=b.xyz;hf;ccsd;hf',
         'geometry=c.xyz;hf;basis=cc-pvtz;ccsd',
     ]:
-        assert parse(test_text) == {}
+        assert parse(test_text, allowed_methods=allowed_methods_) == {}
 
 
 def test_canonicalise(qtbot):
@@ -78,7 +80,7 @@ def test_canonicalise(qtbot):
     for test_text in [
         'geometry={He}',
     ]:
-        assert equivalent(test_text, create_input(parse(test_text)))
+        assert equivalent(test_text, create_input(parse(test_text, allowed_methods=allowed_methods_)))
 
 
 def test_basis_qualities(qtbot):
@@ -88,4 +90,4 @@ def test_basis_qualities(qtbot):
         'basis={default=cc-pVDZ,H=cc-pVDZ}': 2,
         'basis={default=cc-pVTZ,H=cc-pVDZ}': 0,
     }.items():
-        assert basis_quality(parse(test)) == quality
+        assert basis_quality(parse(test, allowed_methods=allowed_methods_)) == quality
