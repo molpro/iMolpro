@@ -229,8 +229,8 @@ class ProjectWindow(QMainWindow):
         if self.input_pane.toPlainText().strip('\n ') == '':
             self.input_pane.setPlainText(
                 'geometry={0}.xyz\nbasis=cc-pVTZ-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
-            if self.database_import_structure():
-                pass
+            if database_import := self.database_import_structure():
+                self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
             elif QMessageBox.question(self, '',
                                       'Would you like to import the molecular geometry from a file?',
                                       defaultButton=QMessageBox.Yes) == QMessageBox.Yes:
