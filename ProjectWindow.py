@@ -127,6 +127,8 @@ class ProjectWindow(QMainWindow):
         if self.input_pane.toPlainText().strip('\n ') == '':
             self.input_pane.setPlainText(
                 'geometry={0}.xyz\nbasis=cc-pVTZ-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
+            if not self.database_import_structure() and QMessageBox.question(self,'','Would you like to import the molecular geometry from a file?', defaultButton=QMessageBox.Yes) == QMessageBox.Yes:
+                self.import_structure()
         self.setWindowTitle(filename)
 
         self.output_panes = {
@@ -940,6 +942,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             os.remove(filename)
             os.rmdir(os.path.dirname(filename))
             self.edit_input_structure()
+            return filename
 
     def import_input(self):
         _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
