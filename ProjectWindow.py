@@ -124,11 +124,6 @@ class ProjectWindow(QMainWindow):
         self.discover_external_viewer_commands()
 
         self.input_pane = EditFile(self.project.filename('inp', run=-1), latency)
-        if self.input_pane.toPlainText().strip('\n ') == '':
-            self.input_pane.setPlainText(
-                'geometry={0}.xyz\nbasis=cc-pVTZ-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
-            if not self.database_import_structure() and QMessageBox.question(self,'','Would you like to import the molecular geometry from a file?', defaultButton=QMessageBox.Yes) == QMessageBox.Yes:
-                self.import_structure()
         self.setWindowTitle(filename)
 
         self.output_panes = {
@@ -230,6 +225,17 @@ class ProjectWindow(QMainWindow):
         self.output_panes['out'].textChanged.connect(self.rebuild_vod_selector)
         self.vod_selector.currentTextChanged.connect(self.vod_selector_action)
         self.minimum_window_size = self.window().size()
+
+        if self.input_pane.toPlainText().strip('\n ') == '':
+            self.input_pane.setPlainText(
+                'geometry={0}.xyz\nbasis=cc-pVTZ-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
+            if self.database_import_structure():
+                pass
+            elif QMessageBox.question(self, '',
+                                      'Would you like to import the molecular geometry from a file?',
+                                      defaultButton=QMessageBox.Yes) == QMessageBox.Yes:
+                if (import_structure := self.import_structure()):
+                    self.vod_selector.setCurrentText('Edit ' + os.path.basename(import_structure))
 
         # self.layout.setSizeConstraint(QLayout.SetFixedSize)
 
@@ -575,10 +581,11 @@ class ProjectWindow(QMainWindow):
         if command and command != 'embedded':
             self.vod_selector_action(external_path=self.external_viewer_commands[command], force=True)
 
-    def vod_selector_action(self, external_path=None, force=False):
+    def vod_selector_action(self, text1, external_path=None, force=False):
         if force and self.vod_selector.currentText().strip() == 'None':
             self.vod_selector.setCurrentText('Output')
         text = self.vod_selector.currentText().strip()
+        if text == '': text = text1
         if text == '':
             return
         elif text == 'None':
@@ -778,8 +785,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         self.add_vod(html, **kwargs)
 
     def embedded_builder(self, file, **kwargs):
-        width = self.output_tabs.geometry().width() - 310
-        height = self.output_tabs.geometry().height() - 40
+        width = max(400, self.output_tabs.geometry().width() - 310)
+        height = max(400, self.output_tabs.geometry().height() - 40)
 
         html = """<!DOCTYPE html>
 <html>
@@ -924,6 +931,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
             self.adopt_structure_file(filename)
+            return filename
 
     def adopt_structure_file(self, filename):
         if os.path.exists(filename):
