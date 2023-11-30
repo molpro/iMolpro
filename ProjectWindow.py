@@ -559,10 +559,6 @@ class ProjectWindow(QMainWindow):
                 result.append(self.whole_of_procedures_registry[keyfound]['name'])
         return result
 
-    def basis_set_qualities(self):
-        result = []
-        return result
-
     def refresh_input_from_specification(self):
         if self.trace: print('refresh_input_from_specification')
         new_input = molpro_input.create_input(self.input_specification)
