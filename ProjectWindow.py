@@ -541,7 +541,7 @@ class ProjectWindow(QMainWindow):
         self.refresh_input_from_specification()
 
     def read_basis_qualities(self):
-        result = []
+        result = ['All Qualities']
         if self.whole_of_basis_registry is None:
             self.whole_of_basis_registry = self.project.basis_registry()
         for keyfound in self.whole_of_basis_registry.keys():
