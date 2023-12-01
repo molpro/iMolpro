@@ -229,15 +229,14 @@ class ProjectWindow(QMainWindow):
         if self.input_pane.toPlainText().strip('\n ') == '':
             self.input_pane.setPlainText(
                 'geometry={0}.xyz\nbasis=cc-pVTZ-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
-            if database_import := self.database_import_structure():
-                self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
-            elif QMessageBox.question(self, '',
-                                      'Would you like to import the molecular geometry from a file?',
-                                      defaultButton=QMessageBox.Yes) == QMessageBox.Yes:
-                if (import_structure := self.import_structure()):
+            import_structure = ''
+            if QMessageBox.question(self, '',
+                                    'Would you like to import the molecular geometry from a file?',
+                                    defaultButton=QMessageBox.Yes) == QMessageBox.Yes:
+                if import_structure := self.import_structure():
                     self.vod_selector.setCurrentText('Edit ' + os.path.basename(import_structure))
-
-        # self.layout.setSizeConstraint(QLayout.SetFixedSize)
+            if not import_structure and (database_import := self.database_import_structure()):
+                self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
 
         container = QWidget(self)
         container.setLayout(self.layout)
