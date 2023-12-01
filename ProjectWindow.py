@@ -503,6 +503,12 @@ class ProjectWindow(QMainWindow):
         guided_form.addRow('Basis set quality', self.guided_combo_basis_quality)
         self.guided_combo_basis_quality.addItems(self.basis_qualities)
 
+        self.guided_combo_basis_default = QComboBox(self)
+        guided_form.addRow('Default Basis Set', self.guided_combo_basis_default)
+        self.guided_combo_basis_default.addItems(self.load_default_basis_set_pulldown())
+        self.guided_combo_basis_quality.currentTextChanged.connect(self.reload_default_basis_set_pulldown)
+
+
         self.guided_layout.addLayout(guided_form)
         self.guided_basis_input = QLineEdit()
         self.guided_basis_input.setMinimumWidth(200)
@@ -556,6 +562,21 @@ class ProjectWindow(QMainWindow):
                 if self.whole_of_basis_registry[keyfound]['quality'] not in result:
                     result.append(self.whole_of_basis_registry[keyfound]['quality'])
         return result
+
+    def load_default_basis_set_pulldown(self):
+        result = ['Select basis set...']
+        for keyfound in self.whole_of_basis_registry.keys():
+#            print(keyfound,'#',self.whole_of_basis_registry[keyfound]['quality'],'#',self.guided_combo_basis_quality.currentText(),'#')
+            if keyfound != None:
+                if ( (self.whole_of_basis_registry[keyfound]['quality'] == self.guided_combo_basis_quality.currentText()) or \
+                     (self.guided_combo_basis_quality.currentIndex() == 0)) :
+                    result.append(self.whole_of_basis_registry[keyfound]['name'])
+        return result
+
+    def reload_default_basis_set_pulldown(self):
+        self.guided_combo_basis_default.clear()
+        self.guided_combo_basis_default.addItems(self.load_default_basis_set_pulldown())
+        return
 
     def allowed_methods(self):
         result = []
