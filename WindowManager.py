@@ -1,7 +1,9 @@
+import os
 import shutil
 
 from PyQt5.QtWidgets import QWidget, QFileDialog, QMessageBox
 from utilities import force_suffix
+from settings import settings
 
 
 class WindowManager:
@@ -35,9 +37,20 @@ class WindowManager:
         self.fullAction = fun
 
     def new(self, data):
-        filename = force_suffix(QFileDialog.getSaveFileName(caption='Save new project as ...')[0])
-        if filename:
-            self.register(type(data)(filename, self))
+        from ProjectWindow import ProjectWindow
+        _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir
+        while True:
+            filename = force_suffix(QFileDialog.getSaveFileName(data, 'Save new project as ...', _dir,
+                                                                options=QFileDialog.DontConfirmOverwrite)[0])
+            if filename:
+                if os.path.exists(filename):
+                    QMessageBox.critical(data, 'Project already exists',
+                                         filename + ' already exists; please choose another file name')
+                else:
+                    self.register(ProjectWindow(filename, self))
+                    return
+            else:
+                return
 
     def erase(self, project_window):
         filename = project_window.project.filename(run=-1)

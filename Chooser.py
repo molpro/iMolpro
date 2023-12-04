@@ -172,19 +172,9 @@ class Chooser(QMainWindow):
             self.hide()
 
     def newProjectDialog(self):
-        _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir
-        while True:
-            filename = force_suffix(QFileDialog.getSaveFileName(self, 'Save new project as ...', _dir,
-                                                                options=QFileDialog.DontConfirmOverwrite)[0])
-            if filename:
-                if os.path.exists(filename):
-                    QMessageBox.critical(self, 'Project already exists',filename+' already exists; please choose another file name')
-                else:
-                    self.window_manager.register(ProjectWindow(filename, self.window_manager))
-                    self.hide()
-                    return
-            else:
-                return
+        self.window_manager.new(self)
+        if len(self.window_manager.openWindows) > 0:
+            self.hide()
 
     def activate(self):
         resolution = QDesktopWidget().screenGeometry()
