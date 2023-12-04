@@ -533,7 +533,7 @@ class ProjectWindow(QMainWindow):
         self.guided_orbitals_input.setChecked(parameter)
 
     def orbital_put_command(self):
-        return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename())[0]) + '.molden'
+        return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
 
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
