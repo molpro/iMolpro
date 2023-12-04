@@ -9,12 +9,12 @@ wave_fct_symm_aliases = {
      'nosym' : 'symmetry,nosym',
 }
 
-hamiltonian = [
-    'All Electron (if available)',
-    'Pseudopot. if available',
-    'DK',
-    'DK3'
-]
+hamiltonian = {
+    'All Electron (if available)': 'AE',
+    'Pseudopot. if available': 'PP',
+    'DK': 'DK',
+    'DK3': 'DK3'
+}
 
 
 

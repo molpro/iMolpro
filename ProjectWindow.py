@@ -150,6 +150,7 @@ class ProjectWindow(QMainWindow):
 #        print(self.project.basis_registry()['def2-TZVP'],'\n\n\n')
 #        print(self.project.basis_registry()['def2-TZVP']['quality'],'\n\n\n')
 
+        self.hamiltonians = self.read_hamiltonians()
         self.basis_qualities = self.read_basis_qualities()
 
         self.setup_menubar()
@@ -497,6 +498,7 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_hamiltonian = QComboBox(self)
         guided_form.addRow('Hamiltonian', self.guided_combo_hamiltonian)
         self.guided_combo_hamiltonian.addItems(molpro_input.hamiltonian)
+        self.guided_combo_hamiltonian.currentTextChanged.connect(self.reload_default_basis_set_pulldown)
 
         self.guided_combo_method = QComboBox(self)
         # print(self.project.registry('commandset').keys())
@@ -578,6 +580,15 @@ class ProjectWindow(QMainWindow):
         self.input_specification['variables'][key] = value
         self.refresh_input_from_specification()
 
+    def read_hamiltonians(self):
+        result = []
+        for keyfound in self.whole_of_basis_registry.keys():
+            if keyfound != None:
+                type_without_bracket = re.sub(r'\(.*','',self.whole_of_basis_registry[keyfound]['type'])
+                if type_without_bracket not in result:
+                    result.append(type_without_bracket)
+        return result
+
     def read_basis_qualities(self):
         result = ['All Qualities']
         if self.whole_of_basis_registry is None:
@@ -593,9 +604,13 @@ class ProjectWindow(QMainWindow):
         for keyfound in self.whole_of_basis_registry.keys():
 #            print(keyfound,'#',self.whole_of_basis_registry[keyfound]['quality'],'#',self.guided_combo_basis_quality.currentText(),'#')
             if keyfound != None:
-                if ( (self.whole_of_basis_registry[keyfound]['quality'] == self.guided_combo_basis_quality.currentText()) or \
-                     (self.guided_combo_basis_quality.currentIndex() == 0)) :
-                    result.append(self.whole_of_basis_registry[keyfound]['name'])
+                type_without_bracket = re.sub(r'\(.*','',self.whole_of_basis_registry[keyfound]['type'])
+                if (self.guided_combo_hamiltonian.currentText() in molpro_input.hamiltonian.keys()):
+                    hamiltonian_short = molpro_input.hamiltonian[self.guided_combo_hamiltonian.currentText()]
+                    if (hamiltonian_short == type_without_bracket):
+                        if ( (self.whole_of_basis_registry[keyfound]['quality'] == self.guided_combo_basis_quality.currentText()) or \
+                             (self.guided_combo_basis_quality.currentIndex() == 0)) :
+                            result.append(self.whole_of_basis_registry[keyfound]['name'])
         return result
 
     def reload_default_basis_set_pulldown(self):
