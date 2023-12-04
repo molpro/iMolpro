@@ -172,10 +172,8 @@ class Chooser(QMainWindow):
             self.hide()
 
     def newProjectDialog(self):
-        _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir
-        filename = force_suffix(QFileDialog.getSaveFileName(self, 'Save new project as ...', _dir)[0])
-        if filename:
-            self.window_manager.register(ProjectWindow(filename, self.window_manager))
+        self.window_manager.new(self)
+        if len(self.window_manager.openWindows) > 0:
             self.hide()
 
     def activate(self):
