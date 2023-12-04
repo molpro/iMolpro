@@ -239,7 +239,7 @@ class ProjectWindow(QMainWindow):
                 self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
 
         self.guided_orbitals_input.setChecked(hasattr(self,
-                                                      'input_specification') and 'postscripts' in self.input_specification and self.orbital_put_command() in
+                                                      'input_specification') and 'postscripts' in self.input_specification and self.orbital_put_command in
                                               self.input_specification['postscripts'])
 
         container = QWidget(self)
@@ -445,6 +445,7 @@ class ProjectWindow(QMainWindow):
         if not input_text: input_text = ''
         self.input_specification = molpro_input.parse(input_text, self.allowed_methods())
         guided = molpro_input.equivalent(input_text, self.input_specification)
+        self.orbitals_input_action('postscripts' in self.input_specification and self.orbital_put_command in self.input_specification['postscripts'])
         return guided
 
     def input_tab_changed_consequence(self, index=0):
@@ -525,13 +526,14 @@ class ProjectWindow(QMainWindow):
 
     def orbitals_input_action(self, parameter):
         if not 'postscripts' in self.input_specification: self.input_specification['postscripts'] = []
-        put_command = self.orbital_put_command()
-        self.input_specification['postscripts'] = [ps for ps in self.input_specification['postscripts'] if ps != put_command]
+        self.input_specification['postscripts'] = [ps for ps in self.input_specification['postscripts'] if
+                                                   ps != self.orbital_put_command]
         if parameter:
-            self.input_specification['postscripts'].append(put_command)
+            self.input_specification['postscripts'].append(self.orbital_put_command)
         self.refresh_input_from_specification()
         self.guided_orbitals_input.setChecked(parameter)
 
+    @property
     def orbital_put_command(self):
         return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
 
