@@ -11,7 +11,7 @@ from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
-    QSplitter, QMenu
+    QSplitter, QMenu, QCheckBox
 from PyQt5.QtGui import QIntValidator
 from pymolpro import Project
 
@@ -239,6 +239,10 @@ class ProjectWindow(QMainWindow):
             if not import_structure and (database_import := self.database_import_structure()):
                 self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
 
+        self.guided_orbitals_input.setChecked(hasattr(self,
+                                                      'input_specification') and 'postscripts' in self.input_specification and self.orbital_put_command in
+                                              self.input_specification['postscripts'])
+
         container = QWidget(self)
         container.setLayout(self.layout)
         self.setCentralWidget(container)
@@ -442,6 +446,7 @@ class ProjectWindow(QMainWindow):
         if not input_text: input_text = ''
         self.input_specification = molpro_input.parse(input_text, self.allowed_methods())
         guided = molpro_input.equivalent(input_text, self.input_specification)
+        self.orbitals_input_action('postscripts' in self.input_specification and self.orbital_put_command in self.input_specification['postscripts'])
         return guided
 
     def input_tab_changed_consequence(self, index=0):
@@ -520,6 +525,23 @@ class ProjectWindow(QMainWindow):
         self.guided_basis_input.setMinimumWidth(200)
         guided_form.addRow('Basis set', self.guided_basis_input)
         self.guided_basis_input.textChanged.connect(lambda text: self.input_specification_change('basis', text))
+
+        self.guided_orbitals_input = QCheckBox()
+        self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
+        guided_form.addRow('Generate orbitals for plotting', self.guided_orbitals_input)
+
+    def orbitals_input_action(self, parameter):
+        if not 'postscripts' in self.input_specification: self.input_specification['postscripts'] = []
+        self.input_specification['postscripts'] = [ps for ps in self.input_specification['postscripts'] if
+                                                   ps != self.orbital_put_command]
+        if parameter:
+            self.input_specification['postscripts'].append(self.orbital_put_command)
+        self.refresh_input_from_specification()
+        self.guided_orbitals_input.setChecked(parameter)
+
+    @property
+    def orbital_put_command(self):
+        return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
 
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
@@ -680,6 +702,12 @@ class ProjectWindow(QMainWindow):
         return result
 
     def run(self, force=False):
+        if 'geometry' not in self.input_specification or (
+                self.input_specification['geometry'][-4:] == '.xyz' and not os.path.exists(
+                self.project.filename('', self.input_specification['geometry'], run=-1))):
+            QMessageBox.critical(self, 'Geometry missing', 'Cannot submit job because no geometry is defined')
+            return False
+        print(self.input_specification['geometry'])
         self.project.run(force=force)
         for i in range(len(self.output_tabs)):
             if self.output_tabs.tabText(i) == 'out':
