@@ -124,9 +124,6 @@ class ProjectWindow(QMainWindow):
         self.discover_external_viewer_commands()
 
         self.input_pane = EditFile(self.project.filename('inp', run=-1), latency)
-        if self.input_pane.toPlainText().strip('\n ') == '':
-            self.input_pane.setPlainText(
-                'geometry={0}.xyz\nbasis=cc-pVTZ-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
         self.setWindowTitle(filename)
 
         self.output_panes = {
@@ -137,12 +134,24 @@ class ProjectWindow(QMainWindow):
 
         try:
             self.whole_of_procedures_registry = self.project.procedures_registry()
+            self.whole_of_basis_registry = self.project.basis_registry()
+            if not self.whole_of_basis_registry or not self.whole_of_basis_registry:
+                raise ValueError
         except Exception as e:
             msg = QMessageBox()
             msg.setText('Error in finding local molpro')
-            msg.setDetailedText('Guided mode will not work correctly\r\n' + str(type(e)))
+            msg.setDetailedText('Guided mode will not work correctly\r\n' + str(e))
             msg.exec()
             self.whole_of_procedures_registry = {}
+            self.whole_of_basis_registry = {}
+
+#        print(self.project.basis_registry(),'\n\n\n')
+#        print(self.project.basis_registry().keys(),'\n\n\n')
+#        print(self.project.basis_registry()['def2-TZVP'],'\n\n\n')
+#        print(self.project.basis_registry()['def2-TZVP']['quality'],'\n\n\n')
+
+        self.basis_qualities = self.read_basis_qualities()
+
         self.setup_menubar()
 
         self.run_button = QPushButton('Run')
@@ -217,7 +226,17 @@ class ProjectWindow(QMainWindow):
         self.vod_selector.currentTextChanged.connect(self.vod_selector_action)
         self.minimum_window_size = self.window().size()
 
-        # self.layout.setSizeConstraint(QLayout.SetFixedSize)
+        if self.input_pane.toPlainText().strip('\n ') == '':
+            self.input_pane.setPlainText(
+                'geometry={0}.xyz\nbasis=cc-pVTZ-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
+            import_structure = ''
+            if QMessageBox.question(self, '',
+                                    'Would you like to import the molecular geometry from a file?',
+                                    defaultButton=QMessageBox.Yes) == QMessageBox.Yes:
+                if import_structure := self.import_structure():
+                    self.vod_selector.setCurrentText('Edit ' + os.path.basename(import_structure))
+            if not import_structure and (database_import := self.database_import_structure()):
+                self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
 
         container = QWidget(self)
         container.setLayout(self.layout)
@@ -483,6 +502,17 @@ class ProjectWindow(QMainWindow):
         guided_form.addRow('Method', self.guided_combo_method)
         self.guided_combo_method.currentTextChanged.connect(
             lambda text: self.input_specification_change('method', text))
+
+        self.guided_combo_basis_quality = QComboBox(self)
+        guided_form.addRow('Basis set quality', self.guided_combo_basis_quality)
+        self.guided_combo_basis_quality.addItems(self.basis_qualities)
+
+        self.guided_combo_basis_default = QComboBox(self)
+        guided_form.addRow('Default Basis Set', self.guided_combo_basis_default)
+        self.guided_combo_basis_default.addItems(self.load_default_basis_set_pulldown())
+        self.guided_combo_basis_quality.currentTextChanged.connect(self.reload_default_basis_set_pulldown)
+
+
         self.guided_layout.addLayout(guided_form)
         self.guided_basis_input = QLineEdit()
         self.guided_basis_input.setMinimumWidth(200)
@@ -527,6 +557,31 @@ class ProjectWindow(QMainWindow):
         self.input_specification['variables'][key] = value
         self.refresh_input_from_specification()
 
+    def read_basis_qualities(self):
+        result = ['All Qualities']
+        if self.whole_of_basis_registry is None:
+            self.whole_of_basis_registry = self.project.basis_registry()
+        for keyfound in self.whole_of_basis_registry.keys():
+            if keyfound != None:
+                if self.whole_of_basis_registry[keyfound]['quality'] not in result:
+                    result.append(self.whole_of_basis_registry[keyfound]['quality'])
+        return result
+
+    def load_default_basis_set_pulldown(self):
+        result = ['Select basis set...']
+        for keyfound in self.whole_of_basis_registry.keys():
+#            print(keyfound,'#',self.whole_of_basis_registry[keyfound]['quality'],'#',self.guided_combo_basis_quality.currentText(),'#')
+            if keyfound != None:
+                if ( (self.whole_of_basis_registry[keyfound]['quality'] == self.guided_combo_basis_quality.currentText()) or \
+                     (self.guided_combo_basis_quality.currentIndex() == 0)) :
+                    result.append(self.whole_of_basis_registry[keyfound]['name'])
+        return result
+
+    def reload_default_basis_set_pulldown(self):
+        self.guided_combo_basis_default.clear()
+        self.guided_combo_basis_default.addItems(self.load_default_basis_set_pulldown())
+        return
+
     def allowed_methods(self):
         result = []
         if self.whole_of_procedures_registry is None:
@@ -546,10 +601,11 @@ class ProjectWindow(QMainWindow):
         if command and command != 'embedded':
             self.vod_selector_action(external_path=self.external_viewer_commands[command], force=True)
 
-    def vod_selector_action(self, external_path=None, force=False):
+    def vod_selector_action(self, text1, external_path=None, force=False):
         if force and self.vod_selector.currentText().strip() == 'None':
             self.vod_selector.setCurrentText('Output')
         text = self.vod_selector.currentText().strip()
+        if text == '': text = text1
         if text == '':
             return
         elif text == 'None':
@@ -749,8 +805,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         self.add_vod(html, **kwargs)
 
     def embedded_builder(self, file, **kwargs):
-        width = self.output_tabs.geometry().width() - 310
-        height = self.output_tabs.geometry().height() - 40
+        width = max(400, self.output_tabs.geometry().width() - 310)
+        height = max(400, self.output_tabs.geometry().height() - 40)
 
         html = """<!DOCTYPE html>
 <html>
@@ -895,6 +951,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
             self.adopt_structure_file(filename)
+            return filename
 
     def adopt_structure_file(self, filename):
         if os.path.exists(filename):
@@ -913,6 +970,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             os.remove(filename)
             os.rmdir(os.path.dirname(filename))
             self.edit_input_structure()
+            return filename
 
     def import_input(self):
         _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(

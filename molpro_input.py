@@ -36,7 +36,7 @@ orientation_options  = {
 }
 
 
-def parse(input: str, allowed_methods: list, debug=False):
+def parse(input: str, allowed_methods=[], debug=False):
     r"""
     Take a molpro input, and logically parse it, on the assumption that it's a single-task input.
 
@@ -137,7 +137,7 @@ def parse(input: str, allowed_methods: list, debug=False):
             if 'method' in specification: return {}  # input too complex
             if 'precursor_methods' not in specification: specification['precursor_methods'] = []
             specification['precursor_methods'].append(line.lower())
-        elif any([re.fullmatch('{?' + df_prefix + local_prefix + spin_prefix + method, command, flags=re.IGNORECASE) for
+        elif any([re.fullmatch('{?' + df_prefix + local_prefix + spin_prefix + re.escape(method), command, flags=re.IGNORECASE) for
                   df_prefix
                   in df_prefixes
                   for local_prefix in local_prefixes for spin_prefix in spin_prefixes for method in allowed_methods]):
@@ -240,12 +240,14 @@ def canonicalise(input):
         if line.lower().strip() in job_type_aliases.keys(): line = job_type_aliases[line.lower().strip()]
         if line.lower().strip() in wave_fct_symm_aliases.keys():
             line = wave_fct_symm_aliases[line.lower().strip()]
+        line = line.replace('!','&&&&&') # protect trailing comments
         while (newline := re.sub(r'(\[[0-9!]+),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
         if re.match(r'[a-z][a-z0-9_]* *= *\[?[!a-z0-9_. ]*\]? *,', line, flags=re.IGNORECASE):
             line = line.replace(',', '\n')
         line = re.sub(' *}','}',line)
         line = re.sub('{ *','{',line)
-        line = line.replace('!', ',').strip() + '\n'
+        line = line.replace('!', ',').strip() + '\n' # unprotect
+        line = line.replace('&&&&&', '!').strip() + '\n' # unprotect
         if line.strip('\n') != '':
             new_result += line.strip('\n ') + '\n'
     return new_result.strip('\n ') + '\n'
