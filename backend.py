@@ -1,5 +1,8 @@
+from lxml import etree
 from PyQt5.QtWidgets import QDialog, QComboBox, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
-    QGridLayout
+    QGridLayout, QWidget, QFormLayout
+
+from utilities import MainEditFile
 
 
 def configure_backend(parent):
@@ -23,7 +26,10 @@ def configure_backend(parent):
             self.button_box.accepted.connect(self.accept)
             self.button_box.rejected.connect(self.reject)
             self.layout = QVBoxLayout()
-            self.layout.addWidget(QLabel('Current backend '+self.backend+' submission command:\n'+parent.project.backend_get(self.backend,'run_command')+'\nHost: '+parent.project.backend_get(self.backend,'host')))
+            self.layout.addWidget(QLabel(
+                'Current backend ' + self.backend + ' submission command:\n' + parent.project.backend_get(self.backend,
+                                                                                                          'run_command') + '\nHost: ' + parent.project.backend_get(
+                    self.backend, 'host')))
             if parameters:
                 grid_layout = QGridLayout()
                 self.parameter_values = {}
@@ -59,3 +65,48 @@ def configure_backend(parent):
         for parameter in parameters.keys():
             if dlg.parameter_values[parameter].text():
                 parent.project.backend_parameter_set(dlg.backend, parameter, dlg.parameter_values[parameter].text())
+
+
+class BackendConfigurationEditor(QDialog):
+    def __init__(self, file, parent):
+        super().__init__(parent)
+        # win = MainEditFile(file)
+        # win.setMinimumSize(600, 400)
+        self.file = file
+
+        backends_ = [backend.get('name') for backend in (etree.parse(file).xpath('//backend'))]
+        self.layout = QFormLayout()
+        self.edit_combo = QComboBox()
+        self.edit_combo.addItem('')
+        self.edit_combo.addItems(backends_)
+        self.edit_combo.currentTextChanged.connect(lambda text, file=self.file: edit(text, file))
+        self.layout.addRow('Edit backend', self.edit_combo)
+        self.new_combo = QComboBox()
+        self.new_combo.addItems(['', 'local', 'remote linux', 'Slurm', 'Other'])
+        self.new_combo.currentTextChanged.connect(lambda text, file=self.file: new(text, file))
+        self.layout.addRow('New backend', self.new_combo)
+        self.setLayout(self.layout)
+
+
+def edit(text, file):
+    print('backend.edit', text, file)
+
+
+def new(text, file):
+    print('backend.new', text, file)
+    root = etree.parse(file)
+    n = etree.SubElement(root.getroot(), 'backend')
+    n.set('name', 'new one')
+    n.set('run_command', 'molpro')
+    if text == 'remote linux':
+        n.set('host', 'someone@some.computer.somewhere')
+    if text == 'Slurm':
+        n.set('run_command', 'your_job_submission_script')
+        n.set('run_jobnumber', 'Submitted batch job *([0-9]+)')
+        n.set('kill_command', 'scancel')
+        n.set('status_command', 'squeue -j')
+        n.set('status_running', ' (CF|CG|R|ST|S) *[0-9]')
+        n.set('status_waiting', ' (PD|SE) *[0-9]')
+    if text != 'local':
+        n.set('cache', '.cache/sjef')
+    print(etree.tostring(root))
