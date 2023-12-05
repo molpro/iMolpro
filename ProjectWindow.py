@@ -511,11 +511,12 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_basis_quality = QComboBox(self)
         guided_form.addRow('Basis set quality', self.guided_combo_basis_quality)
         self.guided_combo_basis_quality.addItems(self.basis_qualities)
+        self.guided_combo_basis_quality.currentTextChanged.connect(self.reload_default_basis_set_pulldown)
 
         self.guided_combo_basis_default = QComboBox(self)
         guided_form.addRow('Default Basis Set', self.guided_combo_basis_default)
         self.guided_combo_basis_default.addItems(self.load_default_basis_set_pulldown())
-        self.guided_combo_basis_quality.currentTextChanged.connect(self.reload_default_basis_set_pulldown)
+
 
 
         self.guided_layout.addLayout(guided_form)
