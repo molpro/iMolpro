@@ -135,7 +135,7 @@ class ProjectWindow(QMainWindow):
         try:
             self.whole_of_procedures_registry = self.project.procedures_registry()
             self.whole_of_basis_registry = self.project.basis_registry()
-            if not self.whole_of_basis_registry or not self.whole_of_basis_registry:
+            if not self.whole_of_procedures_registry or not self.whole_of_basis_registry:
                 raise ValueError
         except Exception as e:
             msg = QMessageBox()
