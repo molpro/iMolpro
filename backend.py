@@ -1,6 +1,6 @@
 from lxml import etree
 from PyQt5.QtWidgets import QDialog, QComboBox, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
-    QGridLayout, QWidget, QFormLayout
+    QGridLayout, QWidget, QFormLayout, QMessageBox
 
 from utilities import MainEditFile
 
@@ -68,6 +68,8 @@ def configure_backend(parent):
 
 
 class BackendConfigurationEditor(QDialog):
+    choose = '- Choose below -'
+
     def __init__(self, file, parent):
         super().__init__(parent)
         # win = MainEditFile(file)
@@ -79,12 +81,12 @@ class BackendConfigurationEditor(QDialog):
         self.layout.addLayout(form_layout)
         self.setWindowTitle('Configuration of backends')
         self.edit_combo = QComboBox()
-        self.edit_combo.addItem('')
+        self.edit_combo.addItem(self.choose)
         self.edit_combo.addItems(self.backends)
         self.edit_combo.currentTextChanged.connect(self.edit)
         form_layout.addRow('Edit or delete:', self.edit_combo)
         self.new_combo = QComboBox()
-        self.new_combo.addItems(['', 'local', 'remote linux', 'Slurm', 'Other'])
+        self.new_combo.addItems([self.choose, 'local', 'remote linux', 'Slurm', 'Other'])
         self.new_combo.currentTextChanged.connect(self.new)
         form_layout.addRow('New:', self.new_combo)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok)
@@ -98,13 +100,13 @@ class BackendConfigurationEditor(QDialog):
         return backends_
 
     def edit(self, text):
-        if not text: return
+        if not text or text == self.choose: return
         dlg = BackendEditor(text, self)
         result = dlg.exec()
-        self.edit_combo.setCurrentText('')
+        self.edit_combo.setCurrentText(self.choose)
 
     def new(self, text):
-        if not text: return
+        if not text or text == self.choose: return
         root = etree.parse(self.file)
         n = etree.SubElement(root.getroot(), 'backend')
         sequence = 1
@@ -125,11 +127,14 @@ class BackendConfigurationEditor(QDialog):
         if text != 'local':
             n.set('cache', '.cache/sjef')
         root.write(self.file, pretty_print=True, xml_declaration=True, encoding='utf-8')
+        self.reset(name)
+
+    def reset(self, name):
         self.edit_combo.clear()
-        self.edit_combo.addItem('')
+        self.edit_combo.addItem(self.choose)
         self.edit_combo.addItems(self.backends)
         self.edit_combo.setCurrentText(name)
-        self.new_combo.setCurrentText('')
+        self.new_combo.setCurrentText(self.choose)
 
 
 class BackendEditor(QDialog):
@@ -139,28 +144,40 @@ class BackendEditor(QDialog):
         self.parent = parent
         self.setWindowTitle('Configure backend ' + backend)
         layout = QVBoxLayout()
-        et= etree.parse(parent.file).xpath('//backend[@name="'+backend+'"]')[0]
-        self.fields = { field : QLineEdit(et.get(field)) for field in ['name', 'run_command', 'host', 'cache', 'status_command', 'status_running', 'status_waiting']}
+        et = etree.parse(parent.file).xpath('//backend[@name="' + backend + '"]')[0]
+        self.fields = {field: QLineEdit(et.get(field)) for field in
+                       ['name', 'run_command', 'host', 'cache', 'status_command', 'status_running', 'status_waiting']}
         form_layout = QFormLayout()
         for field, editor in self.fields.items():
-            form_layout.addRow(field,editor)
+            form_layout.addRow(field, editor)
         layout.addLayout(form_layout)
-        buttons = QDialogButtonBox(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
-        buttons.accepted.connect(self.act)
-        buttons.rejected.connect(self.close)
-        layout.addWidget(buttons)
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Discard | QDialogButtonBox.Ok)
+        self.buttons.button(QDialogButtonBox.Discard).setText('Delete')
+        self.buttons.accepted.connect(self.act)
+        self.buttons.rejected.connect(self.close)
+        self.buttons.clicked.connect(self.clicked)
+        layout.addWidget(self.buttons)
 
         self.setLayout(layout)
 
     def act(self):
         root = etree.parse(self.parent.file)
-        backend_node = root.xpath('//backend[@name="'+self.backend+'"]')[0]
+        backend_node = root.xpath('//backend[@name="' + self.backend + '"]')[0]
         for field, editor in self.fields.items():
             if editor.text():
-                backend_node.set(field,editor.text())
+                backend_node.set(field, editor.text())
             elif backend_node.get(field):
                 del backend_node.attrib[field]
         root.write(self.parent.file, pretty_print=True, xml_declaration=True, encoding='utf-8')
         self.close()
 
-
+    def clicked(self, button):
+        if button == self.buttons.button(QDialogButtonBox.Discard):
+            if QMessageBox.question(self, 'Confirm', 'Are you sure you want to delete backend ' + self.backend + '?',
+                                    QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes:
+                root = etree.parse(self.parent.file)
+                node = root.xpath('//backend[@name="' + self.backend + '"]')[0]
+                node.getparent().remove(node)
+                root.write(self.parent.file, pretty_print=True, xml_declaration=True, encoding='utf-8')
+                self.parent.reset(self.parent.choose)
+                self.close()
