@@ -22,7 +22,7 @@ from RecentMenu import RecentMenu
 from database import database_choose_structure
 from help import HelpManager
 from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set, MainEditFile
-from backend import configure_backend
+from backend import configure_backend, BackendConfigurationEditor
 from settings import settings
 
 
@@ -367,9 +367,8 @@ class ProjectWindow(QMainWindow):
         menubar.show()
 
     def edit_backend_configuration(self):
-        self.backend_configuration_editor = MainEditFile(str(pathlib.Path.home() / '.sjef/molpro/backends.xml'))
-        self.backend_configuration_editor.setMinimumSize(600, 400)
-        self.backend_configuration_editor.show()
+        self.backend_configuration_editor = BackendConfigurationEditor(str(pathlib.Path.home() / '.sjef/molpro/backends.xml'), self)
+        self.backend_configuration_editor.exec()
 
     def edit_input_structure(self):
         f = self.geometry_files()
