@@ -445,7 +445,6 @@ class ProjectWindow(QMainWindow):
         if not input_text: input_text = ''
         self.input_specification = molpro_input.parse(input_text, self.allowed_methods())
         guided = molpro_input.equivalent(input_text, self.input_specification)
-        self.orbitals_input_action('postscripts' in self.input_specification and self.orbital_put_command in self.input_specification['postscripts'])
         return guided
 
     def input_tab_changed_consequence(self, index=0):
@@ -539,6 +538,7 @@ class ProjectWindow(QMainWindow):
 
     def refresh_guided_pane(self):
         if self.trace: print('refresh_guided_pane')
+        self.orbitals_input_action('postscripts' in self.input_specification and self.orbital_put_command in self.input_specification['postscripts'])
         self.guided_combo_orientation.setCurrentText(
             self.input_specification['orientation'] if 'orientation' in self.input_specification else
             list(molpro_input.orientation_options.keys())[0])
