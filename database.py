@@ -32,10 +32,11 @@ class DatabaseSearchDialog(QDialog):
         self.chemspider_checkbox.setChecked('CHEMSPIDER_API_KEY' in settings)
         checkbox_layout = QHBoxLayout()
         checkbox_layout.addWidget(QLabel('Databases: '))
-        checkbox_layout.addWidget(self.pubchem_checkbox)
         checkbox_layout.addWidget(self.chemspider_checkbox)
+        checkbox_layout.addWidget(self.pubchem_checkbox)
         checkbox_layout.addStretch()
         self.layout.addLayout(checkbox_layout)
+        self.layout.addWidget(QLabel('Warning: PubChem interface is sometimes unstable'))
 
         self.buttonbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttonbox.accepted.connect(self.accept)
@@ -70,6 +71,32 @@ class DatabaseFetchDialog(QDialog):
                 return '1 match'
             else:
                 return str(i) + ' matches'
+
+
+        if use_chemspider:
+            if 'CHEMSPIDER_API_KEY' not in settings:
+                text, ok = QInputDialog().getText(self, 'ChemSpider API key',
+                                                  'To use ChemSpider, give the value of your API key - see https://developer.rsc.org/')
+                if ok and text:
+                    settings['CHEMSPIDER_API_KEY'] = text
+
+            if 'CHEMSPIDER_API_KEY' in settings:
+                cs = ChemSpider(settings['CHEMSPIDER_API_KEY'])
+                self.database = 'ChemSpider'
+                self.compounds = cs.search(query)
+                self.layout.addWidget(
+                    QLabel('ChemSpider found ' + matches(len(self.compounds)) + ' for ' + query))
+                if self.compounds:
+                    self.chooser = QComboBox()
+                    self.chooser.addItems(
+                        [str(compound.csid) + ' (' + compound.common_name + ')' for compound in self.compounds])
+                    self.layout.addWidget(self.chooser)
+                    self.buttonbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+                    self.buttonbox.accepted.connect(self.accept)
+                    self.buttonbox.rejected.connect(self.reject)
+                    self.layout.addWidget(self.buttonbox)
+                    https_verify_pop()
+                    return
 
         if use_pubchem:
             self.database = 'PubChem'
@@ -108,31 +135,6 @@ class DatabaseFetchDialog(QDialog):
                 self.layout.addWidget(self.buttonbox)
                 https_verify_pop()
                 return
-
-        if use_chemspider:
-            if 'CHEMSPIDER_API_KEY' not in settings:
-                text, ok = QInputDialog().getText(self, 'ChemSpider API key',
-                                                  'To use ChemSpider, give the value of your API key - see https://developer.rsc.org/')
-                if ok and text:
-                    settings['CHEMSPIDER_API_KEY'] = text
-
-            if 'CHEMSPIDER_API_KEY' in settings:
-                cs = ChemSpider(settings['CHEMSPIDER_API_KEY'])
-                self.database = 'ChemSpider'
-                self.compounds = cs.search(query)
-                self.layout.addWidget(
-                    QLabel('ChemSpider found ' + matches(len(self.compounds)) + ' for ' + query))
-                if self.compounds:
-                    self.chooser = QComboBox()
-                    self.chooser.addItems(
-                        [str(compound.csid) + ' (' + compound.common_name + ')' for compound in self.compounds])
-                    self.layout.addWidget(self.chooser)
-                    self.buttonbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-                    self.buttonbox.accepted.connect(self.accept)
-                    self.buttonbox.rejected.connect(self.reject)
-                    self.layout.addWidget(self.buttonbox)
-                    https_verify_pop()
-                    return
 
         self.buttonbox = QDialogButtonBox(QDialogButtonBox.Cancel)
         self.buttonbox.rejected.connect(self.reject)
