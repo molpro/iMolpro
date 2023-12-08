@@ -442,7 +442,7 @@ class ProjectWindow(QMainWindow):
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
-        self.input_specification = molpro_input.parse(input_text, self.allowed_methods(),self.whole_of_basis_registry.keys())
+        self.input_specification = molpro_input.parse(input_text, self.allowed_methods(),self.whole_of_basis_registry)
         guided = molpro_input.equivalent(input_text, self.input_specification)
         return guided
 

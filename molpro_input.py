@@ -36,7 +36,7 @@ orientation_options  = {
 }
 
 
-def parse(input: str, allowed_methods=[], whole_of_basis_registry_keys=[], debug=False):
+def parse(input: str, allowed_methods=[], whole_of_basis_registry={}, debug=False):
     r"""
     Take a molpro input, and logically parse it, on the assumption that it's a single-task input.
 
@@ -108,9 +108,17 @@ def parse(input: str, allowed_methods=[], whole_of_basis_registry_keys=[], debug
             if '}' in specification['basis']:
                 specification['basis'] = re.sub('}.*$', '', specification['basis']).rstrip('\n ')
                 specification['basis'] = re.sub('default *= *','',specification['basis'])
-                if (specification['basis'].lower() not in (basis_keys.lower() for basis_keys in whole_of_basis_registry_keys)):
+                if (specification['basis'].lower() not in (basis_keys.lower() for basis_keys in whole_of_basis_registry.keys())):
                     specification.pop('basis')
                     if debug: print ('KD Debug: war nix - did not find this default basis set in library')
+                else:
+                    for basis_keys in whole_of_basis_registry.keys():
+                        if (basis_keys.lower() == specification['basis'].lower()):
+                            specification['basis'] = basis_keys
+                            specification['hamiltonian'] = re.sub(r'\(.*','',whole_of_basis_registry[basis_keys]['type'])
+                            if debug: print (specification['basis'])
+                            if debug: print (specification['hamiltonian'])
+                            break
             else:
                 basis_active = True
         elif basis_active:
