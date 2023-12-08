@@ -49,11 +49,13 @@ class HelpManager:
         self.menubar.win.setWindowTitle(name)
         self.menubar.win.show()
 
+
 class HelpMainWindow(QMainWindow):
     def __init__(self, text=None):
         super().__init__()
         self.window = HelpWindow(text)
         self.setCentralWidget(self.window)
+
     def setSource(self, url):
         self.window.setSource(url)
 
@@ -71,4 +73,3 @@ def help_dialog(file, parent=None):
     layout.addWidget(button_box)
     button_box.accepted.connect(help_window.close)
     help_window.exec()
-

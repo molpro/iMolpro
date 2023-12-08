@@ -91,7 +91,7 @@ class BackendConfigurationEditor(QDialog):
         self.new_combo.addItems([self.choose, 'local', 'remote linux', 'Slurm', 'Other'])
         self.new_combo.currentTextChanged.connect(self.new)
         form_layout.addRow('New:', self.new_combo)
-        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok|QDialogButtonBox.Help)
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Help)
         self.buttons.accepted.connect(self.close)
         self.buttons.clicked.connect(self.clicked)
         self.layout.addWidget(self.buttons)
@@ -138,6 +138,7 @@ class BackendConfigurationEditor(QDialog):
         self.edit_combo.addItems(self.backends)
         self.edit_combo.setCurrentText(name)
         self.new_combo.setCurrentText(self.choose)
+
     def clicked(self, button):
         if button == self.buttons.button(QDialogButtonBox.Help):
             help_dialog('doc/backends.md', self)
