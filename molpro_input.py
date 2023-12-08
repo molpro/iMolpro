@@ -99,6 +99,7 @@ def parse(input: str, allowed_methods=[], whole_of_basis_registry_keys=[], debug
             specification['geometry_external'] = True
         elif command == 'basis':
             print('KD Debug: do we ever come here? CASE OF: command == basis: command is',command)
+            print('KD Debug: needs a syntax error such as\nbasis cc-pwCVDZ\n')
             specification['basis'] = 'default='+re.sub('^basis *, *', '', line, flags=re.IGNORECASE).rstrip('\n ')
         elif re.match('^basis *= *{', line, re.IGNORECASE):
             print ('CASE OF basis  = { soandso line is:',line)
@@ -110,7 +111,8 @@ def parse(input: str, allowed_methods=[], whole_of_basis_registry_keys=[], debug
                 print('spec basis ist im { soandso Fall 1',specification['basis'])
                 specification['basis'] = re.sub('default *= *','',specification['basis'])
                 print('spec basis ist im { soandso Fall 2',specification['basis'])
-                if (specification['basis'] not in whole_of_basis_registry_keys):
+                print('keys:',whole_of_basis_registry_keys)
+                if (specification['basis'].lower() not in (basis_keys.lower() for basis_keys in whole_of_basis_registry_keys)):
                     specification.pop('basis')
                     print(specification)
                     print ('war nix')
