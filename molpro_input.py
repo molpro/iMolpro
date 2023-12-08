@@ -107,18 +107,16 @@ def parse(input: str, allowed_methods=[], whole_of_basis_registry_keys=[], debug
             specification['basis'] = re.sub('^basis *= *{', '', line, flags=re.IGNORECASE).rstrip('\n ')
             if '}' in specification['basis']:
                 specification['basis'] = re.sub('}.*$', '', specification['basis']).rstrip('\n ')
-                print('spec basis ist im { soandso Fall 1',specification['basis'])
                 specification['basis'] = re.sub('default *= *','',specification['basis'])
-                print('spec basis ist im { soandso Fall 2',specification['basis'])
                 if (specification['basis'].lower() not in (basis_keys.lower() for basis_keys in whole_of_basis_registry_keys)):
                     specification.pop('basis')
-                    print(specification)
+
                     print ('war nix')
             else:
                 basis_active = True
         elif basis_active:
             specification['basis'] += ('\n' + re.sub(' *[}!].*$', '', line)).strip(' \n')
-            print('basis is active 1 spec ist jetzt',specification['basis'])
+            print('basis is active 1 needs a second line in basis block spec is now',specification['basis'])
             basis_active = not re.match('.*}.*', line)
         elif re.match('^basis *=', line, re.IGNORECASE):
             print ('KD Debug: I think we never get here: CASE OF basis  = soandso line is:',line)
