@@ -98,8 +98,8 @@ def parse(input: str, allowed_methods=[], whole_of_basis_registry_keys=[], debug
             specification['geometry'] = re.sub(' *!.*', '', specification['geometry'])
             specification['geometry_external'] = True
         elif command == 'basis':
-            print('KD Debug: do we ever come here? CASE OF: command == basis: command is',command)
-            print('KD Debug: needs a syntax error such as\nbasis cc-pwCVDZ\n')
+            if debug: print('KD Debug: do we ever come here? CASE OF: command == basis: command is',command)
+            if debug: print('KD Debug: needs a syntax error such as\nbasis cc-pwCVDZ\n')
             specification['basis'] = 'default='+re.sub('^basis *, *', '', line, flags=re.IGNORECASE).rstrip('\n ')
         elif re.match('^basis *= *{', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
@@ -110,7 +110,7 @@ def parse(input: str, allowed_methods=[], whole_of_basis_registry_keys=[], debug
                 specification['basis'] = re.sub('default *= *','',specification['basis'])
                 if (specification['basis'].lower() not in (basis_keys.lower() for basis_keys in whole_of_basis_registry_keys)):
                     specification.pop('basis')
-                    print ('war nix')
+                    if debug: print ('KD Debug: war nix - did not find this default basis set in library')
             else:
                 basis_active = True
         elif basis_active:
@@ -118,7 +118,7 @@ def parse(input: str, allowed_methods=[], whole_of_basis_registry_keys=[], debug
             print('basis is active 1 needs a second line in basis block spec is now',specification['basis'])
             basis_active = not re.match('.*}.*', line)
         elif re.match('^basis *=', line, re.IGNORECASE):
-            print ('KD Debug: I think we never get here: CASE OF basis  = soandso line is:',line)
+            if debug: print ('KD Debug: I think we never get here: CASE OF basis  = soandso line is:',line)
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
             basis = re.sub('basis *= *', '', line, flags=re.IGNORECASE)
