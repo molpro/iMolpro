@@ -362,7 +362,6 @@ class ProjectWindow(QMainWindow):
                           'Edit backend configuration file')
         help_manager = HelpManager(menubar)
         help_manager.register('Overview', 'README')
-        help_manager.register('Another', 'something else')
         help_manager.register('Backends', 'doc/backends.md')
         menubar.show()
 
