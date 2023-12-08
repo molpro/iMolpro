@@ -20,7 +20,7 @@ If jobs are to be run informally on the remote, this is all that is needed, prov
 - `status_waiting` A [regular expression](http://www.cplusplus.com/reference/regex/ECMAScript/) that matches the output of _status_command_ if the job is waiting to run.
 - `status_running` A [regular expression](http://www.cplusplus.com/reference/regex/ECMAScript/) that matches the output of _status_command_ if the job is running.
 
-In `iMolpro`, an appropriate construction template for Slurm batch systems is provided.
+In `iMolpro`, an editor is provided for the backend specification file, together with appropriate construction template for local and remote, including Slurm, execution.
 
 Within the definition of `run_command`, a simple keyword substitution mechanism is available:
 
