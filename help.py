@@ -1,3 +1,4 @@
+import os
 import pathlib
 
 from PyQt5.QtWidgets import QTextBrowser, QMainWindow, QShortcut, QWidget, QHBoxLayout, QDialog, QVBoxLayout, \
@@ -60,10 +61,11 @@ class HelpMainWindow(QMainWindow):
         self.window.setSource(url)
 
 
-def help_dialog(file, parent=None):
+def help_dialog(file: str, parent=None):
     help_window = QDialog(parent)
     help_pane = HelpWindow()
-    help_pane.setSource(QUrl(file))
+    absfile = file if os.path.isabs(file) else str((pathlib.Path(__file__).parent / file).resolve())
+    help_pane.setSource(QUrl(absfile))
     help_pane.setWindowTitle('Backends')
     help_pane.show()
     layout = QVBoxLayout()
