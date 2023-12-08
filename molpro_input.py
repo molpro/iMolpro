@@ -229,7 +229,7 @@ def canonicalise(input):
                     re.sub('{\n', r'{',
                            re.sub('\n+', '\n',
                                   re.sub(' *, *', ',',
-                                         re.sub('basis[=,] *([^{\n]+)\n',
+                                         re.sub('basis *[=,] *([^{\n]+)\n',
                                                 r'basis={default=\1}\n',
                                                 input.replace(';',
                                                               '\n'))))))).rstrip(
