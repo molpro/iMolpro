@@ -518,10 +518,6 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_basis_default.currentTextChanged.connect(lambda text: self.input_specification_change('basis', text))
 
         self.guided_layout.addLayout(guided_form)
-#        self.guided_basis_input = QLineEdit()
-#        self.guided_basis_input.setMinimumWidth(200)
-#        guided_form.addRow('Basis set', self.guided_basis_input)
-#        self.guided_basis_input.textChanged.connect(lambda text: self.input_specification_change('basis', text))
 
         self.guided_orbitals_input = QCheckBox()
         self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
@@ -568,7 +564,6 @@ class ProjectWindow(QMainWindow):
             basis_index = self.guided_combo_basis_default.findText(self.input_specification['basis'], Qt.MatchFixedString)
             self.guided_combo_basis_default.setCurrentIndex(basis_index)
             print('KD Debug: basis=',self.input_specification['basis'])
-#            self.guided_basis_input.setText(self.input_specification['basis'])
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
 

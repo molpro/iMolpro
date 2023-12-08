@@ -111,7 +111,6 @@ def parse(input: str, allowed_methods=[], whole_of_basis_registry_keys=[], debug
                 print('spec basis ist im { soandso Fall 1',specification['basis'])
                 specification['basis'] = re.sub('default *= *','',specification['basis'])
                 print('spec basis ist im { soandso Fall 2',specification['basis'])
-                print('keys:',whole_of_basis_registry_keys)
                 if (specification['basis'].lower() not in (basis_keys.lower() for basis_keys in whole_of_basis_registry_keys)):
                     specification.pop('basis')
                     print(specification)
