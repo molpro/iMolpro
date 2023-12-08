@@ -705,7 +705,6 @@ class ProjectWindow(QMainWindow):
                 self.project.filename('', self.input_specification['geometry'], run=-1))):
             QMessageBox.critical(self, 'Geometry missing', 'Cannot submit job because no geometry is defined')
             return False
-        print(self.input_specification['geometry'])
         self.project.run(force=force)
         for i in range(len(self.output_tabs)):
             if self.output_tabs.tabText(i) == 'out':
