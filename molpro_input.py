@@ -102,7 +102,6 @@ def parse(input: str, allowed_methods=[], whole_of_basis_registry_keys=[], debug
             print('KD Debug: needs a syntax error such as\nbasis cc-pwCVDZ\n')
             specification['basis'] = 'default='+re.sub('^basis *, *', '', line, flags=re.IGNORECASE).rstrip('\n ')
         elif re.match('^basis *= *{', line, re.IGNORECASE):
-            print ('CASE OF basis  = { soandso line is:',line)
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
             specification['basis'] = re.sub('^basis *= *{', '', line, flags=re.IGNORECASE).rstrip('\n ')
@@ -122,7 +121,7 @@ def parse(input: str, allowed_methods=[], whole_of_basis_registry_keys=[], debug
             print('basis is active 1 spec ist jetzt',specification['basis'])
             basis_active = not re.match('.*}.*', line)
         elif re.match('^basis *=', line, re.IGNORECASE):
-            print ('KD Debug do we ever get here? CASE OF basis  = soandso line is:',line)
+            print ('KD Debug: I think we never get here: CASE OF basis  = soandso line is:',line)
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
             basis = re.sub('basis *= *', '', line, flags=re.IGNORECASE)
