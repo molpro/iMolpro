@@ -442,7 +442,7 @@ class ProjectWindow(QMainWindow):
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
-        self.input_specification = molpro_input.parse(input_text, self.allowed_methods())
+        self.input_specification = molpro_input.parse(input_text, self.allowed_methods(),self.whole_of_basis_registry.keys())
         guided = molpro_input.equivalent(input_text, self.input_specification)
         return guided
 
@@ -518,10 +518,10 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_basis_default.currentTextChanged.connect(lambda text: self.input_specification_change('basis', text))
 
         self.guided_layout.addLayout(guided_form)
-        self.guided_basis_input = QLineEdit()
-        self.guided_basis_input.setMinimumWidth(200)
-        guided_form.addRow('Basis set', self.guided_basis_input)
-        self.guided_basis_input.textChanged.connect(lambda text: self.input_specification_change('basis', text))
+#        self.guided_basis_input = QLineEdit()
+#        self.guided_basis_input.setMinimumWidth(200)
+#        guided_form.addRow('Basis set', self.guided_basis_input)
+#        self.guided_basis_input.textChanged.connect(lambda text: self.input_specification_change('basis', text))
 
         self.guided_orbitals_input = QCheckBox()
         self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
@@ -565,7 +565,10 @@ class ProjectWindow(QMainWindow):
                                     prefix)
             self.guided_combo_method.setCurrentIndex(method_index)
         if 'basis' in self.input_specification:
-            self.guided_basis_input.setText(self.input_specification['basis'])
+            basis_index = self.guided_combo_basis_default.findText(self.input_specification['basis'], Qt.MatchFixedString)
+            self.guided_combo_basis_default.setCurrentIndex(basis_index)
+            print('KD Debug: basis=',self.input_specification['basis'])
+#            self.guided_basis_input.setText(self.input_specification['basis'])
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
 

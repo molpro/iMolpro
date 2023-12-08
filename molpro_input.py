@@ -36,7 +36,7 @@ orientation_options  = {
 }
 
 
-def parse(input: str, allowed_methods=[], debug=False):
+def parse(input: str, allowed_methods=[], whole_of_basis_registry_keys=[], debug=False):
     r"""
     Take a molpro input, and logically parse it, on the assumption that it's a single-task input.
 
@@ -98,24 +98,35 @@ def parse(input: str, allowed_methods=[], debug=False):
             specification['geometry'] = re.sub(' *!.*', '', specification['geometry'])
             specification['geometry_external'] = True
         elif command == 'basis':
+            print('KD Debug: do we ever come here? CASE OF: command == basis: command is',command)
             specification['basis'] = 'default='+re.sub('^basis *, *', '', line, flags=re.IGNORECASE).rstrip('\n ')
         elif re.match('^basis *= *{', line, re.IGNORECASE):
+            print ('CASE OF basis  = { soandso line is:',line)
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
             specification['basis'] = re.sub('^basis *= *{', '', line, flags=re.IGNORECASE).rstrip('\n ')
             if '}' in specification['basis']:
                 specification['basis'] = re.sub('}.*$', '', specification['basis']).rstrip('\n ')
+                print('spec basis ist im { soandso Fall 1',specification['basis'])
+                specification['basis'] = re.sub('default *= *','',specification['basis'])
+                print('spec basis ist im { soandso Fall 2',specification['basis'])
+                if (specification['basis'] not in whole_of_basis_registry_keys):
+                    specification.pop('basis')
+                    print(specification)
+                    print ('war nix')
             else:
                 basis_active = True
         elif basis_active:
             specification['basis'] += ('\n' + re.sub(' *[}!].*$', '', line)).strip(' \n')
+            print('basis is active 1 spec ist jetzt',specification['basis'])
             basis_active = not re.match('.*}.*', line)
         elif re.match('^basis *=', line, re.IGNORECASE):
+            print ('KD Debug do we ever get here? CASE OF basis  = soandso line is:',line)
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
             basis = re.sub('basis *= *', '', line, flags=re.IGNORECASE)
             basis = re.sub(' *!.*', '', basis)
-            specification['basis'] = 'default=' + basis
+            specification['basis'] = basis
         elif re.match('(set,)?[a-z][a-z0-9_]* *=.*$', line, flags=re.IGNORECASE):
             # print('variable found, line=', line)
             if debug: print('variable')
@@ -190,7 +201,7 @@ def create_input(specification: dict):
             ' \n') + '\n' + ('' if 'geometry_external' in specification else '}\n')
 
     if 'basis' in specification:
-        _input += 'basis={' + specification['basis'] + '}\n'
+        _input += 'basis={default=' + specification['basis'] + '}\n'
     if 'variables' in specification:
         for k, v in specification['variables'].items():
             if v != '':
