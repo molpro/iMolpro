@@ -110,7 +110,6 @@ def parse(input: str, allowed_methods=[], whole_of_basis_registry_keys=[], debug
                 specification['basis'] = re.sub('default *= *','',specification['basis'])
                 if (specification['basis'].lower() not in (basis_keys.lower() for basis_keys in whole_of_basis_registry_keys)):
                     specification.pop('basis')
-
                     print ('war nix')
             else:
                 basis_active = True

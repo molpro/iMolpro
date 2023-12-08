@@ -561,11 +561,11 @@ class ProjectWindow(QMainWindow):
                                     prefix)
             self.guided_combo_method.setCurrentIndex(method_index)
         if 'basis' in self.input_specification:
-            print ('KD Debug 1',self.input_specification['basis'])
+            if self.KD_debug: print ('KD Debug 1',self.input_specification['basis'])
             basis_index = self.guided_combo_basis_default.findText(self.input_specification['basis'], Qt.MatchFixedString)
-            print('KD Debug: TODO: Hamiltonian must be set first! basis_index =',basis_index)
+            if self.KD_debug: print('KD Debug: TODO: Hamiltonian must be set first! basis_index =',basis_index)
             self.guided_combo_basis_default.setCurrentIndex(basis_index)
-            print('KD Debug 2: basis=',self.input_specification['basis'])
+            if self.KD_debug: print('KD Debug 2: basis=',self.input_specification['basis'])
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
 
