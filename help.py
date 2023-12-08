@@ -42,12 +42,21 @@ class HelpManager:
         if not os.path.exists(_file):
             _file = str(pathlib.Path(__file__).parent / (content + '.html'))
         if not os.path.exists(_file):
-            self.menubar.win = HelpWindow(content)
+            self.menubar.win = HelpMainWindow(content)
         else:
-            self.menubar.win = HelpWindow()
+            self.menubar.win = HelpMainWindow()
             self.menubar.win.setSource(QUrl(_file))
         self.menubar.win.setWindowTitle(name)
         self.menubar.win.show()
+
+class HelpMainWindow(QMainWindow):
+    def __init__(self, text=None):
+        super().__init__()
+        self.window = HelpWindow(text)
+        self.setCentralWidget(self.window)
+    def setSource(self, url):
+        self.window.setSource(url)
+
 
 def help_dialog(file, parent=None):
     help_window = QDialog(parent)
