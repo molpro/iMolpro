@@ -2,6 +2,7 @@ from lxml import etree
 from PyQt5.QtWidgets import QDialog, QComboBox, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
     QGridLayout, QWidget, QFormLayout, QMessageBox
 
+from help import HelpManager, help_dialog
 from utilities import MainEditFile
 
 
@@ -75,6 +76,7 @@ class BackendConfigurationEditor(QDialog):
         # win = MainEditFile(file)
         # win.setMinimumSize(600, 400)
         self.file = file
+        self.parent = parent
 
         self.layout = QVBoxLayout()
         form_layout = QFormLayout()
@@ -89,9 +91,10 @@ class BackendConfigurationEditor(QDialog):
         self.new_combo.addItems([self.choose, 'local', 'remote linux', 'Slurm', 'Other'])
         self.new_combo.currentTextChanged.connect(self.new)
         form_layout.addRow('New:', self.new_combo)
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok)
-        buttons.accepted.connect(self.close)
-        self.layout.addWidget(buttons)
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok|QDialogButtonBox.Help)
+        self.buttons.accepted.connect(self.close)
+        self.buttons.clicked.connect(self.clicked)
+        self.layout.addWidget(self.buttons)
         self.setLayout(self.layout)
 
     @property
@@ -114,8 +117,8 @@ class BackendConfigurationEditor(QDialog):
             sequence += 1
         name = text.replace(' ', '_') + '_' + str(sequence)
         n.set('name', name)
-        n.set('run_command', 'molpro')
-        if text == 'remote linux':
+        n.set('run_command', 'molpro {-n %n!MPI size} {-M %M!Total memory} {-m %m!Process memory} {-G %G!GA memory}')
+        if text == 'remote linux' or text == 'Slurm':
             n.set('host', 'someone@some.computer.somewhere')
         if text == 'Slurm':
             n.set('run_command', 'your_job_submission_script')
@@ -135,6 +138,9 @@ class BackendConfigurationEditor(QDialog):
         self.edit_combo.addItems(self.backends)
         self.edit_combo.setCurrentText(name)
         self.new_combo.setCurrentText(self.choose)
+    def clicked(self, button):
+        if button == self.buttons.button(QDialogButtonBox.Help):
+            help_dialog('doc/backends.md', self)
 
 
 class BackendEditor(QDialog):
@@ -146,16 +152,23 @@ class BackendEditor(QDialog):
         layout = QVBoxLayout()
         et = etree.parse(parent.file).xpath('//backend[@name="' + backend + '"]')[0]
         self.fields = {field: QLineEdit(et.get(field)) for field in
-                       ['name', 'run_command', 'host', 'cache', 'status_command', 'status_running', 'status_waiting']}
+                       ['name', 'run_command', 'host', 'cache', 'kill_command', 'status_command', 'run_jobnumber',
+                        'status_running', 'status_waiting']}
+        for e in self.fields.values():
+            e.setFixedWidth(400)
+            e.setCursorPosition(0)
+        self.fields['name'].setFixedWidth(150)
         form_layout = QFormLayout()
         for field, editor in self.fields.items():
             form_layout.addRow(field, editor)
         layout.addLayout(form_layout)
-        self.buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Discard | QDialogButtonBox.Ok)
+        self.buttons = QDialogButtonBox(
+            QDialogButtonBox.Help | QDialogButtonBox.Cancel | QDialogButtonBox.Discard | QDialogButtonBox.Ok)
         self.buttons.button(QDialogButtonBox.Discard).setText('Delete')
         self.buttons.accepted.connect(self.act)
         self.buttons.rejected.connect(self.close)
         self.buttons.clicked.connect(self.clicked)
+
         layout.addWidget(self.buttons)
 
         self.setLayout(layout)
@@ -169,6 +182,7 @@ class BackendEditor(QDialog):
             elif backend_node.get(field):
                 del backend_node.attrib[field]
         root.write(self.parent.file, pretty_print=True, xml_declaration=True, encoding='utf-8')
+        self.parent.reset(self.parent.choose)
         self.close()
 
     def clicked(self, button):
@@ -181,3 +195,5 @@ class BackendEditor(QDialog):
                 root.write(self.parent.file, pretty_print=True, xml_declaration=True, encoding='utf-8')
                 self.parent.reset(self.parent.choose)
                 self.close()
+        elif button == self.buttons.button(QDialogButtonBox.Help):
+            help_dialog('doc/backends.md', self)
