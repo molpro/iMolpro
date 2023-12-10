@@ -809,7 +809,6 @@ Jmol.jmolBr()
 Jmol.jmolMenu(myJmol,[
 """
             for i in range(len(orbs.index)):
-                print(orbs.orbitals[i])
                 html += ('["model ' + str(firstorb) + '; vibration off; mo ' + str(orbs.index[i]) + '", "' +
                          orbs.orbitals[i]['ID'] +
                          (' occ=' + '{:.3f}'.format(orbs.orbitals[i]['occupation']) if 'occupation' in orbs.orbitals[
