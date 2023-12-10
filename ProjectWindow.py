@@ -7,6 +7,7 @@ import subprocess
 import sys
 import re
 
+import numpy
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
@@ -807,12 +808,15 @@ Jmol.jmolHtml('<td>Orbitals: ')
 Jmol.jmolBr()
 Jmol.jmolMenu(myJmol,[
 """
-            energy_reverse = list(orbs.energies)
-            energy_reverse.reverse()
-            i = len(energy_reverse)
-            for energy in energy_reverse:
-                html += '["model ' + str(firstorb) + '; vibration off; mo ' + str(i) + '", "' + str(energy) + '"],'
-                i -= 1
+            for i in range(len(orbs.index) - 1, -1, -1):
+                print(orbs.orbitals[i])
+                html += ('["model ' + str(firstorb) + '; vibration off; mo ' + str(orbs.index[i]) + '", "' +
+                         orbs.orbitals[i]['ID'] +
+                         (' occ=' + '{:.3f}'.format(orbs.orbitals[i]['occupation']) if 'occupation' in orbs.orbitals[
+                             i] else '') +
+                         (' ene=' + '{:.3f}'.format(orbs.orbitals[i]['energy']) if 'energy' in orbs.orbitals[
+                             i] else '') +
+                         '"],')
             html += """
 ],10);
 Jmol.jmolBr()
