@@ -808,7 +808,7 @@ Jmol.jmolHtml('<td>Orbitals: ')
 Jmol.jmolBr()
 Jmol.jmolMenu(myJmol,[
 """
-            for i in range(len(orbs.index) - 1, -1, -1):
+            for i in range(len(orbs.index)):
                 print(orbs.orbitals[i])
                 html += ('["model ' + str(firstorb) + '; vibration off; mo ' + str(orbs.index[i]) + '", "' +
                          orbs.orbitals[i]['ID'] +
