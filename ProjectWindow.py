@@ -827,6 +827,9 @@ Jmol.jmolBr()
  ];
  Jmol.jmolHtml("Resolution:<br>")
  Jmol.jmolRadioGroup(myJmol, r, "<br>", "Resolution");
+Jmol.jmolBr()
+Jmol.jmolBr()
+Jmol.jmolCheckbox(myJmol,'mo TITLEFORMAT "Model %M, MO %I/%N|Energy = %E %U|?Label = %S|?Occupancy = %O"', "mo TITLEFORMAT ' '","orbital info")
 
 Jmol.jmolBr()
 </script>
