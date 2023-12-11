@@ -44,7 +44,6 @@ def parse(input: str, allowed_methods=[], debug=False):
     :return:
     :rtype dict:
     """
-
     if os.path.exists(input):
         return parse(open(input, 'r').read())
 
@@ -58,7 +57,6 @@ def parse(input: str, allowed_methods=[], debug=False):
     specification = {}
     variables = {}
     geometry_active = False
-    basis_active = False
 
     specification['job_type'] = 'Single Point Energy'
     for line in canonicalise(input).split('\n'):
@@ -98,18 +96,19 @@ def parse(input: str, allowed_methods=[], debug=False):
             specification['geometry'] = re.sub(' *!.*', '', specification['geometry'])
             specification['geometry_external'] = True
         elif command == 'basis':
+            raise ValueError('** warning should not happen basis',line)
             specification['basis'] = 'default='+re.sub('^basis *, *', '', line, flags=re.IGNORECASE).rstrip('\n ')
-        elif re.match('^basis *= *{', line, re.IGNORECASE):
+        elif re.match('^basis *= *', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
-            specification['basis'] = re.sub('^basis *= *{', '', line, flags=re.IGNORECASE).rstrip('\n ')
-            if '}' in specification['basis']:
-                specification['basis'] = re.sub('}.*$', '', specification['basis']).rstrip('\n ')
-            else:
-                basis_active = True
-        elif basis_active:
-            specification['basis'] += ('\n' + re.sub(' *[}!].*$', '', line)).strip(' \n')
-            basis_active = not re.match('.*}.*', line)
+            specification['basis'] = {'default': (re.sub(' *basis *= *', '', command))}
+            fields = line.split(',')
+            specification['basis']['elements']={}
+            for field in fields[1:]:
+                ff=field.split('=')
+                specification['basis']['elements'][ff[0][0].upper()+ff[0][1:].lower()]=ff[1].strip('\n ')
+            specification['basis']['quality'] = basis_quality(specification)
+            print('made basis specification',specification)
         elif re.match('^basis *=', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
@@ -190,7 +189,11 @@ def create_input(specification: dict):
             ' \n') + '\n' + ('' if 'geometry_external' in specification else '}\n')
 
     if 'basis' in specification:
-        _input += 'basis={' + specification['basis'] + '}\n'
+        _input += 'basis=' + specification['basis']['default']
+        if 'elements' in specification['basis']:
+            for e, b in specification['basis']['elements'].items():
+                _input += ',' + e + '=' + b
+        _input += '\n'
     if 'variables' in specification:
         for k, v in specification['variables'].items():
             if v != '':
@@ -211,7 +214,8 @@ def create_input(specification: dict):
 def basis_quality(specification):
     quality_letters = {2: 'D', 3: 'T', 4: 'Q', 5: '5', 6: '6', 7: '7'}
     if 'basis' in specification:
-        bases = specification['basis'].split(',')
+        bases = [specification['basis']['default']]
+        if 'elements' in specification['basis']: bases+=specification['basis']['elements'].values()
         qualities = []
         for basis in bases:
             quality = 0
@@ -229,14 +233,18 @@ def canonicalise(input):
                     re.sub('{\n', r'{',
                            re.sub('\n+', '\n',
                                   re.sub(' *, *', ',',
-                                         re.sub('basis *[=,] *([^{\n]+)\n',
-                                                r'basis={default=\1}\n',
                                                 input.replace(';',
-                                                              '\n'))))))).rstrip(
+                                                              '\n')))))).rstrip(
                                                                   '\n ').lstrip(
                                                                       '\n ') + '\n'
     new_result = ''
     for line in re.sub('set[, ]', '', result.strip(), flags=re.IGNORECASE).split('\n'):
+
+        # transform out alternate formats of basis
+        line = re.sub('basis *, *', 'basis=', line, flags=re.IGNORECASE)
+        line = re.sub('basis= *{(.*)} *$', r'basis=\1', line, flags=re.IGNORECASE)
+        line = re.sub('basis= *default *= *', r'basis=', line, flags=re.IGNORECASE)
+
         if line.lower().strip() in job_type_aliases.keys(): line = job_type_aliases[line.lower().strip()]
         if line.lower().strip() in wave_fct_symm_aliases.keys():
             line = wave_fct_symm_aliases[line.lower().strip()]
