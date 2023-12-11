@@ -561,12 +561,19 @@ class ProjectWindow(QMainWindow):
                                     self.input_specification['method'], 'base_method=', base_method, 'prefix=',
                                     prefix)
             self.guided_combo_method.setCurrentIndex(method_index)
+        if 'hamiltonian' in self.input_specification:
+            hamiltonian_index = self.guided_combo_hamiltonian.findText(self.input_specification['hamiltonian'], Qt.MatchFixedString)
+            basis_copy = None
+            if 'basis' in self.input_specification:
+                basis_copy = self.input_specification['basis']
+            self.guided_combo_hamiltonian.setCurrentIndex(hamiltonian_index)
+            self.input_specification['basis'] = None
+            if basis_copy != None:
+                self.reload_default_basis_set_pulldown
+                self.input_specification['basis'] = basis_copy
         if 'basis' in self.input_specification:
-            if self.KD_debug: print ('KD Debug 1',self.input_specification['basis'])
             basis_index = self.guided_combo_basis_default.findText(self.input_specification['basis'], Qt.MatchFixedString)
-            if self.KD_debug: print('KD Debug: TODO: Hamiltonian must be set first! basis_index =',basis_index)
             self.guided_combo_basis_default.setCurrentIndex(basis_index)
-            if self.KD_debug: print('KD Debug 2: basis=',self.input_specification['basis'])
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
 

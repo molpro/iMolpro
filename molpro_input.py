@@ -115,9 +115,11 @@ def parse(input: str, allowed_methods=[], whole_of_basis_registry={}, debug=Fals
                     for basis_keys in whole_of_basis_registry.keys():
                         if (basis_keys.lower() == specification['basis'].lower()):
                             specification['basis'] = basis_keys
-                            specification['hamiltonian'] = re.sub(r'\(.*','',whole_of_basis_registry[basis_keys]['type'])
-                            if debug: print (specification['basis'])
-                            if debug: print (specification['hamiltonian'])
+                            hamiltonian_found = re.sub(r'\(.*','',whole_of_basis_registry[basis_keys]['type'])
+                            for hamiltonian_type in hamiltonian.keys():
+                                if (hamiltonian_found.lower() == hamiltonian[hamiltonian_type].lower()):
+                                    specification['hamiltonian'] = hamiltonian_type
+                                    break
                             break
             else:
                 basis_active = True
