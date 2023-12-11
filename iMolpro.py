@@ -1,6 +1,11 @@
+import pathlib
+import shutil
+
 from PyQt5.QtCore import QEvent
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
 import sys
+
+from settings import settings
 from Chooser import Chooser
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
@@ -20,6 +25,10 @@ if __name__ == '__main__':
     if hasattr(sys, '_MEIPASS'):
         sys.stdout = open('/tmp/iMolpro.stdout', 'w')
     app = App(sys.argv)
+
+    if 'Trash' not in settings:
+        settings['Trash'] = str(pathlib.Path(os.path.expanduser('~')) / pathlib.Path('.molpro') / 'iMolpro.trash')
+    shutil.rmtree(settings['Trash'], ignore_errors=True)
 
     window_manager = WindowManager()
     chooser = Chooser(window_manager)
