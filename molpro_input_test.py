@@ -91,3 +91,18 @@ def test_basis_qualities(qtbot):
         'basis={default=cc-pVTZ,H=cc-pVDZ}': 0,
     }.items():
         assert basis_quality(parse(test, allowed_methods=allowed_methods_)) == quality
+        assert parse(test, allowed_methods=allowed_methods_)['basis']['quality'] == quality
+
+def test_basis_variants(qtbot):
+    for test, outcome in {
+        'basis=cc-pVDZ':'basis=cc-pVDZ',
+        'basis,cc-pVDZ': 'basis=cc-pVDZ',
+        'basis=default=cc-pVDZ': 'basis=cc-pVDZ',
+        'basis={default=cc-pVDZ}': 'basis=cc-pVDZ',
+        'basis={cc-pVDZ}': 'basis=cc-pVDZ',
+        'basis,default=cc-pVDZ': 'basis=cc-pVDZ',
+        'basis,cc-pVDZ,h=cc-pVDZ(s)': 'basis=cc-pVDZ,H=cc-pVDZ(s)',
+        'basis,cc-pVDZ,zR=cc-pVDZ(s),h=cc-pVTZ': 'basis=cc-pVDZ,Zr=cc-pVDZ(s),H=cc-pVTZ',
+        'basis={cc-pVDZ,zR=cc-pVDZ(s),h=cc-pVTZ}': 'basis=cc-pVDZ,Zr=cc-pVDZ(s),H=cc-pVTZ',
+    }.items():
+        assert create_input(parse(test))== outcome.strip('\n')+'\n'

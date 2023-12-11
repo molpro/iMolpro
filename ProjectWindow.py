@@ -516,13 +516,16 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_basis_default = QComboBox(self)
         guided_form.addRow('Default Basis Set', self.guided_combo_basis_default)
         self.guided_combo_basis_default.addItems(self.load_default_basis_set_pulldown())
-        self.guided_combo_basis_default.currentTextChanged.connect(lambda text: self.input_specification_change('basis', text))
+        #TODO do something else
+        # self.guided_combo_basis_default.currentTextChanged.connect(lambda text: self.input_specification_change('basis', text))
 
         self.guided_layout.addLayout(guided_form)
+
+        #TODO get rid of this
         self.guided_basis_input = QLineEdit()
         self.guided_basis_input.setMinimumWidth(200)
         guided_form.addRow('Basis set', self.guided_basis_input)
-        self.guided_basis_input.textChanged.connect(lambda text: self.input_specification_change('basis', text))
+        # self.guided_basis_input.textChanged.connect(lambda text: self.input_specification_change('basis', text))
 
         self.guided_orbitals_input = QCheckBox()
         self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
@@ -566,7 +569,7 @@ class ProjectWindow(QMainWindow):
                                     prefix)
             self.guided_combo_method.setCurrentIndex(method_index)
         if 'basis' in self.input_specification:
-            self.guided_basis_input.setText(self.input_specification['basis'])
+            self.guided_basis_input.setText('TODO get rid of this: '+str(self.input_specification['basis']))
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
 
