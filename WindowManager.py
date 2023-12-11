@@ -13,7 +13,7 @@ class WindowManager:
         self.fullAction = None
 
     def register(self, widget: QWidget):
-        if widget is None or (hasattr(widget,'invalid') and widget.invalid):
+        if widget is None or (hasattr(widget, 'invalid') and widget.invalid):
             return
         if self.fullAction and not self.openWindows:
             self.fullAction()
@@ -52,12 +52,3 @@ class WindowManager:
                     return
             else:
                 return
-
-    def erase(self, project_window):
-        filename = project_window.project.filename(run=-1)
-        self.unregister(project_window)
-        del project_window.project
-        del project_window
-        import gc
-        gc.collect()
-        shutil.rmtree(filename)

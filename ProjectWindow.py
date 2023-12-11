@@ -297,7 +297,7 @@ class ProjectWindow(QMainWindow):
         menubar.addSeparator('Projects')
         menubar.addAction('Move to...', 'Projects', self.move_to, tooltip='Move the project')
         menubar.addAction('Copy to...', 'Projects', self.copy_to, tooltip='Make a copy of the project')
-        # menubar.addAction('Erase', 'Projects', self.erase, tooltip='Completely erase the project') # TODO get erase() working
+        menubar.addAction('Erase', 'Projects', self.erase, tooltip='Completely erase the project')
         menubar.addSeparator('Projects')
         menubar.addAction('Quit', 'Projects', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
                           tooltip='Quit')
@@ -746,6 +746,7 @@ class ProjectWindow(QMainWindow):
             firstmodel = firstorb = orbs.coordinateSet
         except (IndexError, KeyError):
             orbs = None
+        if not 'mo_translucent' in settings: settings['mo_translucent'] = 0.3
         html = """<!DOCTYPE html>
 <html>
 <head>
@@ -762,7 +763,7 @@ var Info = {
   width: """ + str(width) + """,
   script: "load '""" + re.sub('\\\\', '\\\\\\\\',
                               file) + """'; set antialiasDisplay ON; set showFrank OFF; model """ + str(
-            firstmodel) + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7; mo titleFormat ' '",
+            firstmodel) + """; """ + command + """; mo nomesh fill translucent """+str(settings['mo_translucent'])+"""; mo resolution 7; mo titleFormat ' '",
   use: "HTML5",
   j2sPath: "j2s",
   serverURL: "php/jsmol.php",
@@ -1069,17 +1070,12 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         result = QMessageBox.question(self, 'Erase project',
                                       'Are you sure you want to erase project ' + self.project.filename(run=-1))
         if result == QMessageBox.Yes:
-            QMessageBox.information(self, 'Erase project', 'Erasing of projects is not yet implemented')
-            return
-            # print('erasing ', self.project.filename(run=-1))
-            # self.window_manager.erase(self)
-            # return
-            # del self.statusBar
-            # shutil.rmtree(self.project.filename(run=-1))
-            # del self
-            # return
-            # self.project.erase()
-            # self.close()
+            trash = pathlib.Path(settings['Trash'])
+            trash.mkdir(parents=True, exist_ok=True)
+            current_dir = os.path.dirname(self.project.filename(run=-1))
+            self.project.move(str(trash / os.path.basename(self.project.filename(run=-1))))
+            settings['project_directory'] = current_dir
+            self.close()
 
     def show_input_specification(self):
         QMessageBox.information(self, 'Input specification', 'Input specification:\r\n' +
