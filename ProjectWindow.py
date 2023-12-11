@@ -7,6 +7,7 @@ import subprocess
 import sys
 import re
 
+import numpy
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
@@ -705,7 +706,6 @@ class ProjectWindow(QMainWindow):
                 self.project.filename('', self.input_specification['geometry'], run=-1))):
             QMessageBox.critical(self, 'Geometry missing', 'Cannot submit job because no geometry is defined')
             return False
-        print(self.input_specification['geometry'])
         self.project.run(force=force)
         for i in range(len(self.output_tabs)):
             if self.output_tabs.tabText(i) == 'out':
@@ -808,12 +808,14 @@ Jmol.jmolHtml('<td>Orbitals: ')
 Jmol.jmolBr()
 Jmol.jmolMenu(myJmol,[
 """
-            energy_reverse = list(orbs.energies)
-            energy_reverse.reverse()
-            i = len(energy_reverse)
-            for energy in energy_reverse:
-                html += '["model ' + str(firstorb) + '; vibration off; mo ' + str(i) + '", "' + str(energy) + '"],'
-                i -= 1
+            for i in range(len(orbs.index)):
+                html += ('["model ' + str(firstorb) + '; vibration off; mo ' + str(orbs.index[i]) + '", "' +
+                         orbs.orbitals[i]['ID'] +
+                         (' occ=' + '{:.3f}'.format(orbs.orbitals[i]['occupation']) if 'occupation' in orbs.orbitals[
+                             i] else '') +
+                         (' ene=' + '{:.3f}'.format(orbs.orbitals[i]['energy']) if 'energy' in orbs.orbitals[
+                             i] else '') +
+                         '"],')
             html += """
 ],10);
 Jmol.jmolBr()
@@ -828,6 +830,9 @@ Jmol.jmolBr()
  ];
  Jmol.jmolHtml("Resolution:<br>")
  Jmol.jmolRadioGroup(myJmol, r, "<br>", "Resolution");
+Jmol.jmolBr()
+Jmol.jmolBr()
+Jmol.jmolCheckbox(myJmol,'mo TITLEFORMAT "Model %M, MO %I/%N|Energy = %E %U|?Label = %S|?Occupancy = %O"', "mo TITLEFORMAT ' '","orbital info")
 
 Jmol.jmolBr()
 </script>

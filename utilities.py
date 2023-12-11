@@ -2,6 +2,7 @@ import os
 import json
 from collections.abc import MutableMapping
 
+import numpy
 from PyQt5.Qt import Qt
 from PyQt5.QtCore import QTimer, QPoint, QCoreApplication
 from PyQt5.QtGui import QFont, QFontDatabase, QTextCursor, QCursor
@@ -316,14 +317,29 @@ class OrbitalSetMolden(OrbitalSet):
         self.coordinateSet = 2
         super().__init__()
         self.orbitals = []
-        vibact = False
+        mo_section = False
         for line in content.split('\n'):
             if line.strip() == '[MO]':
-                vibact = True
-            elif vibact and line.strip() and line.strip()[0] == '[':
-                vibact = False
-            elif vibact and line.strip()[:3] == 'Ene':
-                self.orbitals.append({'energy': float(re.sub(' +', ' ', line.strip()).split(' ')[1])})
+                mo_section = True
+                mo_header = False
+            elif mo_section and line.strip() and line.strip()[0] == '[':
+                mo_section = False
+            elif mo_section and not mo_header and re.match('.*=.*',line.strip()):
+                mo_header = True
+                self.orbitals.append({})
+            elif mo_section and mo_header and not re.match('.*=.*', line.strip()):
+                mo_header = False
+            if mo_section and mo_header:
+                value = re.sub('.*= *', '', line.strip())
+                if re.match(' *Sym *=', line):
+                    self.orbitals[-1]['ID'] = value
+                elif re.match(' *Ene *=', line):
+                    self.orbitals[-1]['energy'] = float(value)
+                elif re.match(' *Occup *=', line):
+                    self.orbitals[-1]['occupation'] = float(value)
+                elif re.match(' *Spin *=', line):
+                    self.orbitals[-1]['spin'] = value
+        self.index = [list(numpy.argsort(self.energies)).index(i) + 1 for i in range(len(self.orbitals))]
 
 
 class OrbitalSetXML(OrbitalSet):
@@ -350,9 +366,11 @@ class OrbitalSetXML(OrbitalSet):
                 'energy': float(c.attrib['energy']),
                 'ID': c.attrib['ID'],
                 'symmetryID': c.attrib['symmetryID'],
+                'occupation' : float(c.attrib['occupation']),
             }
             for c in xpath
         ]
+        self.index = [i + 1 for i in range(len(self.orbitals))]
 
 
 class VibrationSet:
