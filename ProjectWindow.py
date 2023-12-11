@@ -743,6 +743,7 @@ class ProjectWindow(QMainWindow):
             firstmodel = firstorb = orbs.coordinateSet
         except (IndexError, KeyError):
             orbs = None
+        if not 'mo_translucent' in settings: settings['mo_translucent'] = 0.3
         html = """<!DOCTYPE html>
 <html>
 <head>
@@ -759,7 +760,7 @@ var Info = {
   width: """ + str(width) + """,
   script: "load '""" + re.sub('\\\\', '\\\\\\\\',
                               file) + """'; set antialiasDisplay ON; set showFrank OFF; model """ + str(
-            firstmodel) + """; """ + command + """; mo nomesh fill translucent 0.3; mo resolution 7; mo titleFormat ' '",
+            firstmodel) + """; """ + command + """; mo nomesh fill translucent """+str(settings['mo_translucent'])+"""; mo resolution 7; mo titleFormat ' '",
   use: "HTML5",
   j2sPath: "j2s",
   serverURL: "php/jsmol.php",
