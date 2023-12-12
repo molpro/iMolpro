@@ -201,8 +201,6 @@ class ProjectWindow(QMainWindow):
         self.input_tabs.addTab(self.input_pane, 'freehand')
         self.setup_guided_pane()
         self.input_text_changed_consequence(0)
-        self.input_tabs.setCurrentIndex(1)
-        self.guided_action.setChecked(self.input_tabs.currentIndex() == 1)
 
         top_layout = QHBoxLayout()
         splitter = QSplitter(Qt.Horizontal)
@@ -243,6 +241,8 @@ class ProjectWindow(QMainWindow):
             if not import_structure and (database_import := self.database_import_structure()):
                 self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
 
+        self.input_tabs.setCurrentIndex(1)
+        self.guided_action.setChecked(self.input_tabs.currentIndex() == 1)
         self.guided_orbitals_input.setChecked(hasattr(self,
                                                       'input_specification') and 'postscripts' in self.input_specification and self.orbital_put_command in
                                               self.input_specification['postscripts'])
