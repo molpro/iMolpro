@@ -129,6 +129,15 @@ class ProjectWindow(QMainWindow):
 
         self.input_pane = EditFile(self.project.filename('inp', run=-1), latency)
         self.setWindowTitle(filename)
+        import_structure = ''
+        if self.input_pane.toPlainText().strip('\n ') == '':
+            self.input_pane.setPlainText(
+                'geometry={0}.xyz\nbasis=cc-pVTZ-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
+            if QMessageBox.question(self, '',
+                                    'Would you like to import the molecular geometry from a file?',
+                                    defaultButton=QMessageBox.Yes) == QMessageBox.Yes:
+                if import_structure := self.import_structure():
+                    self.vod_selector.setCurrentText('Edit ' + os.path.basename(import_structure))
 
         self.output_panes = {
             suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 10) for suffix in
@@ -231,17 +240,8 @@ class ProjectWindow(QMainWindow):
         self.vod_selector.currentTextChanged.connect(self.vod_selector_action)
         self.minimum_window_size = self.window().size()
 
-        if self.input_pane.toPlainText().strip('\n ') == '':
-            self.input_pane.setPlainText(
-                'geometry={0}.xyz\nbasis=cc-pVTZ-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
-            import_structure = ''
-            if QMessageBox.question(self, '',
-                                    'Would you like to import the molecular geometry from a file?',
-                                    defaultButton=QMessageBox.Yes) == QMessageBox.Yes:
-                if import_structure := self.import_structure():
-                    self.vod_selector.setCurrentText('Edit ' + os.path.basename(import_structure))
-            if not import_structure and (database_import := self.database_import_structure()):
-                self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
+        if not import_structure and (database_import := self.database_import_structure()):
+            self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
 
         self.guided_orbitals_input.setChecked(hasattr(self,
                                                       'input_specification') and 'postscripts' in self.input_specification and self.orbital_put_command in
