@@ -83,6 +83,9 @@ class ProjectWindow(QMainWindow):
     vod = None
     trace = settings['ProjectWindow_debug'] if 'ProjectWindow_debug' in settings else 0
     KD_debug = settings['KD_debug'] if 'KD_debug' in settings else 0
+    null_prompt = '- Select -'
+    all_qualities = 'All Qualities'
+    basis_qualities=[all_qualities,'SZ','DZ','TZ','QZ','5Z','6Z']
 
     def __init__(self, filename, window_manager, latency=1000):
         super().__init__(None)
@@ -152,7 +155,7 @@ class ProjectWindow(QMainWindow):
 #        print(self.project.basis_registry()['def2-TZVP']['quality'],'\n\n\n')
 
         self.hamiltonians = self.read_hamiltonians()
-        self.basis_qualities = self.read_basis_qualities()
+        # self.basis_qualities = self.read_basis_qualities()
 
         self.setup_menubar()
 
@@ -498,7 +501,7 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_hamiltonian = QComboBox(self)
         guided_form.addRow('Hamiltonian', self.guided_combo_hamiltonian)
         self.guided_combo_hamiltonian.addItems(molpro_input.hamiltonian)
-        self.guided_combo_hamiltonian.currentTextChanged.connect(self.reload_default_basis_set_pulldown)
+        self.guided_combo_hamiltonian.currentTextChanged.connect(self.changed_hamiltonian)
 
         self.guided_combo_method = QComboBox(self)
         # print(self.project.registry('commandset').keys())
@@ -511,25 +514,38 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_basis_quality = QComboBox(self)
         guided_form.addRow('Basis set quality', self.guided_combo_basis_quality)
         self.guided_combo_basis_quality.addItems(self.basis_qualities)
-        self.guided_combo_basis_quality.currentTextChanged.connect(self.reload_default_basis_set_pulldown)
+        self.guided_combo_basis_quality.currentTextChanged.connect(self.changed_basis_quality)
 
         self.guided_combo_basis_default = QComboBox(self)
         guided_form.addRow('Default Basis Set', self.guided_combo_basis_default)
-        self.guided_combo_basis_default.addItems(self.load_default_basis_set_pulldown())
+        # self.guided_combo_basis_default.addItems(self.load_default_basis_set_pulldown())
         #TODO do something else
-        # self.guided_combo_basis_default.currentTextChanged.connect(lambda text: self.input_specification_change('basis', text))
+        self.guided_combo_basis_default.currentTextChanged.connect(self.guided_combo_basis_default_changed)
+
+        self.desired_basis_quality = 0
 
         self.guided_layout.addLayout(guided_form)
 
         #TODO get rid of this
-        self.guided_basis_input = QLineEdit()
-        self.guided_basis_input.setMinimumWidth(200)
-        guided_form.addRow('Basis set', self.guided_basis_input)
+        # self.guided_basis_input = QLineEdit()
+        # self.guided_basis_input.setMinimumWidth(200)
+        # guided_form.addRow('Basis set', self.guided_basis_input)
         # self.guided_basis_input.textChanged.connect(lambda text: self.input_specification_change('basis', text))
 
         self.guided_orbitals_input = QCheckBox()
         self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
         guided_form.addRow('Generate orbitals for plotting', self.guided_orbitals_input)
+
+    def changed_hamiltonian(self, text):
+        print('changed_hamiltonian', text)
+        self.input_specification['hamiltonian'] = text
+        del self.input_specification['basis']
+        self.refresh_guided_pane()
+
+    def changed_basis_quality(self,text):
+        self.desired_basis_quality= self.basis_qualities.index(text)
+        print('quality changed to',self.desired_basis_quality)
+        self.refresh_guided_pane()
 
     def orbitals_input_action(self, parameter):
         if not 'postscripts' in self.input_specification: self.input_specification['postscripts'] = []
@@ -545,7 +561,7 @@ class ProjectWindow(QMainWindow):
         return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
 
     def refresh_guided_pane(self):
-        if self.trace: print('refresh_guided_pane')
+        if True or self.trace: print('refresh_guided_pane')
         self.orbitals_input_action('postscripts' in self.input_specification and self.orbital_put_command in self.input_specification['postscripts'])
         self.guided_combo_orientation.setCurrentText(
             self.input_specification['orientation'] if 'orientation' in self.input_specification else
@@ -568,10 +584,48 @@ class ProjectWindow(QMainWindow):
                                     self.input_specification['method'], 'base_method=', base_method, 'prefix=',
                                     prefix)
             self.guided_combo_method.setCurrentIndex(method_index)
-        if 'basis' in self.input_specification:
-            self.guided_basis_input.setText('TODO get rid of this: '+str(self.input_specification['basis']))
+        # if 'basis' in self.input_specification:
+        #     self.guided_basis_input.setText('TODO get rid of this: '+str(self.input_specification['basis']))
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
+
+        if not 'basis' in self.input_specification or not 'default' in self.input_specification['basis'] or not self.input_specification['basis']['default']:
+            quality = self.desired_basis_quality if self.desired_basis_quality>0 else 3
+            print('fixing up basis, quality=',quality,'hamiltonian=',self.input_specification['hamiltonian'] if 'hamiltonian' in self.input_specification else '*None*')
+            self.input_specification['basis']={'default':'cc-pV('+self.basis_qualities[quality][0]+'+d)Z'+('-PP' if 'hamiltonian' in self.input_specification and self.input_specification['hamiltonian']=='Pseudopotential' else ''), 'elements':{}, 'quality':quality}
+            self.refresh_input_from_specification()
+            return
+
+        if not 'hamiltonian' in self.input_specification:
+            self.input_specification['hamiltonian'] = 'Pseudopotential' if self.input_specification['basis']['default'][-3:] == '-PP' else 'All Electron'
+            self.guided_combo_hamiltonian.setCurrentText(self.input_specification['hamiltonian'])
+            print('resetting hamiltonian=',self.input_specification['hamiltonian'] if 'hamiltonian' in self.input_specification else '*None*')
+            return
+
+        print('hamiltonian before selecting possible basis sets',self.input_specification['hamiltonian'])
+        possible_basis_sets = [k for k in self.whole_of_basis_registry.keys() if (
+                    self.desired_basis_quality== 0 or molpro_input.basis_quality({'basis':{'default':k}}) ==
+                    self.desired_basis_quality) and (not 'hamiltonian' in self.input_specification or molpro_input.basis_hamiltonian({'basis':{'default':k}}) == self.input_specification['hamiltonian'])]
+        print('possible_basis_sets',possible_basis_sets)
+        self.guided_combo_basis_default.clear()
+        self.guided_combo_basis_default.addItems([self.null_prompt]+possible_basis_sets)
+        print('about to setCurrentText, spec',self.input_specification['basis'])
+        if self.input_specification['basis']['elements'] or not self.input_specification['basis']['default'] in possible_basis_sets:
+            self.guided_combo_basis_default.setCurrentText(self.null_prompt)
+        else:
+            self.guided_combo_basis_default.setCurrentText(self.input_specification['basis']['default'])
+        self.guided_combo_basis_default.show()
+
+        self.guided_combo_basis_quality.setCurrentText(self.basis_qualities[self.desired_basis_quality])
+
+    def guided_combo_basis_default_changed(self, text):
+        if not text or text == self.null_prompt: return
+        print('guided_combo_basis_default_changed', text)
+        self.input_specification['basis']['default'] = text
+        self.input_specification['basis']['elements'] = {}
+        self.input_specification['basis']['quality'] = molpro_input.basis_quality(self.input_specification)
+        self.refresh_input_from_specification()
+
 
     def input_specification_change(self, key, value):
         self.input_specification[key] = value
@@ -593,7 +647,7 @@ class ProjectWindow(QMainWindow):
         return result
 
     def read_basis_qualities(self):
-        result = ['All Qualities']
+        result = [self.all_qualities]
         if self.whole_of_basis_registry is None:
             self.whole_of_basis_registry = self.project.basis_registry()
         for keyfound in self.whole_of_basis_registry.keys():

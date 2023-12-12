@@ -10,10 +10,10 @@ wave_fct_symm_aliases = {
 }
 
 hamiltonian = {
-    'All Electron (if available)': 'AE',
-    'Pseudopot. if available': 'PP',
-    'DK': 'DK',
-    'DK3': 'DK3'
+    'All Electron': '',
+    'Pseudopotential': '-PP',
+    'Douglas-Kroll-Hess': '-DK',
+    'Douglas-Kroll-Hess 3': '-DK3',
 }
 
 
@@ -164,6 +164,8 @@ def parse(input: str, allowed_methods=[], debug=False):
         specification['precursor_methods'].pop()
     if variables:
         specification['variables'] = variables
+    if 'hamiltonian' not in specification:
+        specification['hamiltonian'] = basis_hamiltonian(specification)
     return specification
 
 
@@ -225,6 +227,13 @@ def basis_quality(specification):
         if all(quality == qualities[0] for quality in qualities):
             return qualities[0]
     return 0
+
+def basis_hamiltonian(specification):
+    for v, k in hamiltonian.items():
+        if k and k in specification['basis']['default']: return v
+    return 'All Electron'
+
+
 
 
 def canonicalise(input):
