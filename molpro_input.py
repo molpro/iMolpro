@@ -230,7 +230,7 @@ def basis_quality(specification):
 
 def basis_hamiltonian(specification):
     for v, k in hamiltonian.items():
-        if k and k in specification['basis']['default']: return v
+        if k and 'basis' in specification and 'default' in specification['basis'] and k in specification['basis']['default']: return v
     return 'All Electron'
 
 
