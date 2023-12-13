@@ -912,25 +912,8 @@ class BasisAndHamiltonianChooser(QWidget):
             'Hamiltonian': self.combo_hamiltonian,
             'Quality': self.guided_combo_basis_quality,
             'Basis': self.guided_combo_basis_default,
+            # 'Core correlation': QLabel(''), # TODO overlay core correlation and density functional
         }, title='Hamiltonian and basis'))
-        # layout.addWidget(QLabel('Hamiltonian and basis'))
-        # subpane = QWidget(self)
-        # subpane.setStyleSheet('* {font-size: '+str(self.fontInfo().pointSize()-1)+'pt;}')
-        # layout.addWidget(subpane)
-        # layout2 = QHBoxLayout(subpane)
-        # layout.addLayout(layout2)
-        # layouth = QVBoxLayout()
-        # layout2.addLayout(layouth)
-        # layouth.addWidget(QLabel('Hamiltonian'))
-        # layouth.addWidget(self.combo_hamiltonian)
-        # layoutq = QVBoxLayout()
-        # layout2.addLayout(layoutq)
-        # layoutq.addWidget(QLabel('Quality'))
-        # layoutq.addWidget(self.guided_combo_basis_quality)
-        # layoutb = QVBoxLayout()
-        # layout2.addLayout(layoutb)
-        # layoutb.addWidget(QLabel('Basis'))
-        # layoutb.addWidget(self.guided_combo_basis_default)
 
     def refresh(self):
         # print('enter refresh_hamiltonian_and_basis', self.input_specification, self.desired_basis_quality, self.parent.desired_basis_quality)
@@ -1049,12 +1032,9 @@ class GuidedPane(QWidget):
         self.guided_layout = QVBoxLayout()
         self.guided_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.guided_layout)
-        self.guided_form = QFormLayout()
-        self.guided_form.setContentsMargins(0, 0, 0, 0)
 
         self.guided_combo_orientation = QComboBox(self)
         self.guided_combo_orientation.addItems(molpro_input.orientation_options.keys())
-        self.guided_form.addRow('Orientation', self.guided_combo_orientation)
         self.guided_combo_orientation.currentTextChanged.connect(
             lambda text: self.input_specification_change('orientation', text))
 
@@ -1107,13 +1087,15 @@ class GuidedPane(QWidget):
         self.basis_and_hamiltonian_chooser = BasisAndHamiltonianChooser(self)
         self.guided_layout.addWidget(self.basis_and_hamiltonian_chooser)
 
-        self.guided_layout.addLayout(self.guided_form)
         self.guided_orbitals_input = QCheckBox()
         self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
         self.guided_orbitals_input.setChecked(hasattr(self,
                                                       'input_specification') and 'postscripts' in self.input_specification and self.orbital_put_command in
                                               self.input_specification['postscripts'])
-        self.guided_form.addRow('Generate orbitals for plotting', self.guided_orbitals_input)
+        self.guided_layout.addWidget(RowOfTitledWidgets({
+            'Orientation': self.guided_combo_orientation,
+            'Plot orbitals': self.guided_orbitals_input,
+        }, title='Miscellaneous'))
     @property
     def input_specification(self):
         return self.parent.input_specification
