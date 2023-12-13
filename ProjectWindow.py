@@ -8,6 +8,7 @@ import sys
 import re
 
 import numpy
+from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
@@ -199,6 +200,7 @@ class ProjectWindow(QMainWindow):
         top_layout.addWidget(splitter)
 
         left_widget = QWidget(self)
+        left_widget.setContentsMargins(0, 0, 0, 0)
         left_widget.setLayout(left_layout)
         splitter.addWidget(left_widget)
         self.output_tabs = QTabWidget(self)
@@ -450,9 +452,12 @@ class ProjectWindow(QMainWindow):
 
     def setup_guided_pane(self):
         self.guided_pane = QWidget(self)
+        self.guided_pane.setContentsMargins(0, 0, 0, 0)
         self.guided_layout = QVBoxLayout()
+        self.guided_layout.setContentsMargins(0, 0, 0, 0)
         self.guided_pane.setLayout(self.guided_layout)
         self.guided_form = QFormLayout()
+        self.guided_form.setContentsMargins(0, 0, 0, 0)
 
         self.guided_combo_orientation = QComboBox(self)
         self.guided_combo_orientation.addItems(molpro_input.orientation_options.keys())
@@ -466,39 +471,46 @@ class ProjectWindow(QMainWindow):
 
         self.charge_line = QLineEdit()
         self.charge_line.setValidator(QIntValidator())
-        self.guided_form.addRow("Charge", self.charge_line)
         self.charge_line.textChanged.connect(lambda text: self.input_specification_variable_change('charge', text))
 
         self.spin_line = QLineEdit()
         self.spin_line.setValidator(QIntValidator())
-        self.guided_form.addRow("Spin", self.spin_line)
         self.spin_line.textChanged.connect(lambda text: self.input_specification_variable_change('spin', text))
 
         self.guided_combo_wave_fct_symm = QComboBox(self)
         self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
-        self.guided_form.addRow('Wave function symmetry', self.guided_combo_wave_fct_symm)
         self.guided_combo_wave_fct_symm.currentTextChanged.connect(
             lambda text: self.input_specification_change('wave_fct_symm', text))
 
-        textLabel_calculation = QLabel()
-        textLabel_calculation.setText("Calculation:")
-        self.guided_layout.addWidget(textLabel_calculation)
+
+        # textLabel_calculation = QLabel()
+        # textLabel_calculation.setText("Calculation:")
+        # self.guided_layout.addWidget(textLabel_calculation)
 
         self.guided_combo_job_type = QComboBox(self)
         self.guided_combo_job_type.setMaximumWidth(180)
         self.guided_combo_job_type.addItems(molpro_input.job_type_commands.keys())
-        self.guided_form.addRow('Type', self.guided_combo_job_type)
         self.guided_combo_job_type.currentTextChanged.connect(
             lambda text: self.input_specification_change('job_type', text))
 
         self.guided_combo_method = QComboBox(self)
 
         self.guided_combo_method.addItems(self.allowed_methods())
-        self.guided_form.addRow('Method', self.guided_combo_method)
         self.guided_combo_method.currentTextChanged.connect(
             lambda text: self.input_specification_change('method', text))
 
         self.guided_layout.addLayout(self.guided_form)
+        self.guided_layout.addWidget(RowOfTitledWidgets({
+            'Charge':self.charge_line,
+            'Spin':self.spin_line,
+            'Symmetry':self.guided_combo_wave_fct_symm,
+        },title='Wavefunction parameters'))
+
+        self.guided_layout.addWidget(RowOfTitledWidgets({
+            'Type':self.guided_combo_job_type,
+            'Method':self.guided_combo_method,
+            'Functional': QWidget(),
+        }, title='Calculation'))
         self.desired_basis_quality = 0
         self.basis_and_hamiltonian_chooser = BasisAndHamiltonianChooser(self)
         self.guided_layout.addWidget(self.basis_and_hamiltonian_chooser)
@@ -1035,28 +1047,52 @@ class BasisAndHamiltonianChooser(QWidget):
 
     def __init__(self, parent: ProjectWindow):
         super().__init__(parent)
-        # self.setStyleSheet('background-color: blue;')
         self.parent = parent
+
+        self.basis_registry = self.parent.project.basis_registry()
+        self.desired_basis_quality = 0
 
         self.combo_hamiltonian = QComboBox(self)
         self.combo_hamiltonian.addItems([h['text'] for h in molpro_input.hamiltonians.values()])
         self.combo_hamiltonian.currentTextChanged.connect(self.changed_hamiltonian)
 
-        self.basis_registry = self.parent.project.basis_registry()
-        self.desired_basis_quality = 0
-
-        guided_form = QFormLayout(self)
-        guided_form.addRow('Hamiltonian', self.combo_hamiltonian)
         self.guided_combo_basis_quality = QComboBox(self)
-        guided_form.addRow('Basis set quality', self.guided_combo_basis_quality)
         self.guided_combo_basis_quality.addItems(self.basis_qualities)
         self.guided_combo_basis_quality.currentTextChanged.connect(self.changed_basis_quality)
+
         self.guided_combo_basis_default = QComboBox(self)
-        guided_form.addRow('Default Basis Set', self.guided_combo_basis_default)
-        # self.guided_combo_basis_default.addItems(self.load_default_basis_set_pulldown())
         self.guided_combo_basis_default.currentTextChanged.connect(self.changed_default_basis)
-        self.desired_basis_quality = 0
-        # print('basis_registry', self.basis_registry)
+
+        # layout = QFormLayout(self)
+        # layout.addRow('Hamiltonian', self.combo_hamiltonian)
+        # layout.addRow('Basis set quality', self.guided_combo_basis_quality)
+        # layout.addRow('Default Basis Set', self.guided_combo_basis_default)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(RowOfTitledWidgets({
+            'Hamiltonian': self.combo_hamiltonian,
+            'Quality': self.guided_combo_basis_quality,
+            'Basis': self.guided_combo_basis_default,
+        }, title='Hamiltonian and basis'))
+        # layout.addWidget(QLabel('Hamiltonian and basis'))
+        # subpane = QWidget(self)
+        # subpane.setStyleSheet('* {font-size: '+str(self.fontInfo().pointSize()-1)+'pt;}')
+        # layout.addWidget(subpane)
+        # layout2 = QHBoxLayout(subpane)
+        # layout.addLayout(layout2)
+        # layouth = QVBoxLayout()
+        # layout2.addLayout(layouth)
+        # layouth.addWidget(QLabel('Hamiltonian'))
+        # layouth.addWidget(self.combo_hamiltonian)
+        # layoutq = QVBoxLayout()
+        # layout2.addLayout(layoutq)
+        # layoutq.addWidget(QLabel('Quality'))
+        # layoutq.addWidget(self.guided_combo_basis_quality)
+        # layoutb = QVBoxLayout()
+        # layout2.addLayout(layoutb)
+        # layoutb.addWidget(QLabel('Basis'))
+        # layoutb.addWidget(self.guided_combo_basis_default)
 
     def refresh(self):
         # print('enter refresh_hamiltonian_and_basis', self.input_specification, self.desired_basis_quality, self.parent.desired_basis_quality)
@@ -1148,3 +1184,25 @@ class BasisAndHamiltonianChooser(QWidget):
 
     def hamiltonian_type(self, key):
         return re.sub(r'\(.*', '', self.basis_registry[key]['type'])
+
+
+class RowOfTitledWidgets(QWidget):
+    def __init__(self, widgets, title=None, parent=None):
+        super().__init__(parent)
+        self.setContentsMargins(0, 0, 0, 0)
+        layout = QVBoxLayout(self)
+        if title is not None:
+            layout.addWidget(QLabel(title + ':'))
+        subpane = QWidget(self)
+        subpane.setContentsMargins(0, 0, 0, 0)
+        subpane.setStyleSheet(
+            '* {background-color: lightblue; font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;}')
+        subpane.setAutoFillBackground(True)
+        layout.addWidget(subpane)
+        layout2 = QHBoxLayout(subpane)
+        self.layouts = {}
+        for k, v in widgets.items():
+            self.layouts[k] = QVBoxLayout()
+            layout2.addLayout(self.layouts[k])
+            self.layouts[k].addWidget(QLabel(k))
+            self.layouts[k].addWidget(v)
