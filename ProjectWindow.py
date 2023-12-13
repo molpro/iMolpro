@@ -11,7 +11,7 @@ from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
-    QSplitter, QMenu, QCheckBox
+    QSplitter, QMenu, QCheckBox, QGridLayout
 from PyQt5.QtGui import QIntValidator
 from pymolpro import Project
 
@@ -1004,9 +1004,9 @@ class GuidedPane(QWidget):
         self.guided_combo_orientation.currentTextChanged.connect(
             lambda text: self.input_specification_change('orientation', text))
 
-        textLabel_wave_fct_char = QLabel()
-        textLabel_wave_fct_char.setText("Wave Function Characteristics:")
-        self.guided_layout.addWidget(textLabel_wave_fct_char)
+        # textLabel_wave_fct_char = QLabel()
+        # textLabel_wave_fct_char.setText("Wave Function Characteristics:")
+        # self.guided_layout.addWidget(textLabel_wave_fct_char)
 
         self.charge_line = QLineEdit()
         self.charge_line.setValidator(QIntValidator())
@@ -1138,19 +1138,21 @@ class RowOfTitledWidgets(QWidget):
     def __init__(self, widgets, title=None, parent=None):
         super().__init__(parent)
         self.setContentsMargins(0, 0, 0, 0)
+        # self.setStyleSheet('background-color: lightblue;')
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
         if title is not None:
-            layout.addWidget(QLabel(title + ':'))
+            q_label = QLabel(title + ':')
+            q_label.setContentsMargins(0, 0, 0, 0)
+            layout.addWidget(q_label)
         subpane = QWidget(self)
         subpane.setContentsMargins(0, 0, 0, 0)
-        subpane.setStyleSheet(
-            '/* background-color: lightblue; */ font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
+        subpane.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
         subpane.setAutoFillBackground(True)
         layout.addWidget(subpane)
-        layout2 = QHBoxLayout(subpane)
-        self.layouts = {}
+        layout2 = QGridLayout(subpane)
+        layout2.setContentsMargins(0, 0, 0, 0)
+        layout2.setSpacing(0)
         for k, v in widgets.items():
-            self.layouts[k] = QVBoxLayout()
-            layout2.addLayout(self.layouts[k])
-            self.layouts[k].addWidget(QLabel(k))
-            self.layouts[k].addWidget(v)
+            layout2.addWidget(QLabel(k), 0, list(widgets.keys()).index(k), alignment=Qt.AlignCenter)
+            layout2.addWidget(v, 1, list(widgets.keys()).index(k), alignment=Qt.AlignCenter)
