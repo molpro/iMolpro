@@ -146,7 +146,7 @@ class ProjectWindow(QMainWindow):
         self.input_tabs.currentChanged.connect(self.input_tab_changed_consequence)
         left_layout.addWidget(self.input_tabs)
         self.input_tabs.setMinimumHeight(300)
-        self.input_tabs.setMinimumWidth(300)
+        self.input_tabs.setMinimumWidth(350)
         self.statusBar.setMaximumWidth(400)
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.run_button)
@@ -1038,19 +1038,21 @@ class GuidedPane(QWidget):
             lambda text: self.input_specification_change('method', text))
 
         self.guided_layout.addWidget(RowOfTitledWidgets({
+            'Type': self.guided_combo_job_type,
+            'Method': self.guided_combo_method,
+            'Functional': QWidget(),
+        }, title='Calculation'))
+
+        self.desired_basis_quality = 0
+        self.basis_and_hamiltonian_chooser = BasisAndHamiltonianChooser(self)
+        self.guided_layout.addWidget(self.basis_and_hamiltonian_chooser)
+
+        self.guided_layout.addWidget(RowOfTitledWidgets({
             'Charge': self.charge_line,
             'Spin': self.spin_line,
             'Symmetry': self.guided_combo_wave_fct_symm,
         }, title='Wavefunction parameters'))
 
-        self.guided_layout.addWidget(RowOfTitledWidgets({
-            'Type': self.guided_combo_job_type,
-            'Method': self.guided_combo_method,
-            'Functional': QWidget(),
-        }, title='Calculation'))
-        self.desired_basis_quality = 0
-        self.basis_and_hamiltonian_chooser = BasisAndHamiltonianChooser(self)
-        self.guided_layout.addWidget(self.basis_and_hamiltonian_chooser)
 
         self.guided_orbitals_input = QCheckBox()
         self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
