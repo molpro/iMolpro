@@ -525,11 +525,11 @@ class ProjectWindow(QMainWindow):
                                                    ps != self.orbital_put_command]
         if parameter:
             self.input_specification['postscripts'].append(self.orbital_put_command)
-        print('in orbitals_input_action',self.input_specification)
+        # print('in orbitals_input_action',self.input_specification)
         self.refresh_input_from_specification()
-        print('in orbitals_input_action',self.input_specification)
+        # print('in orbitals_input_action',self.input_specification)
         self.guided_orbitals_input.setChecked(parameter)
-        print('in orbitals_input_action',self.input_specification)
+        # print('in orbitals_input_action',self.input_specification)
 
     @property
     def orbital_put_command(self):
@@ -537,7 +537,7 @@ class ProjectWindow(QMainWindow):
 
     def refresh_guided_pane(self):
         self.orbitals_input_action('postscripts' in self.input_specification and self.orbital_put_command in self.input_specification['postscripts'])
-        print('in refresh guided pane',self.input_specification)
+        # print('in refresh guided pane',self.input_specification)
         self.guided_combo_orientation.setCurrentText(
             self.input_specification['orientation'] if 'orientation' in self.input_specification else
             list(molpro_input.orientation_options.keys())[0])
@@ -1080,20 +1080,18 @@ class BasisAndHamiltonianChooser(QWidget):
     basis_qualities=[all_qualities,'SZ','DZ','TZ','QZ','5Z','6Z']
     def __init__(self, parent:ProjectWindow):
         super().__init__(parent)
-        self.setStyleSheet('background-color: blue;')
+        # self.setStyleSheet('background-color: blue;')
         self.parent = parent
 
         self.combo_hamiltonian = QComboBox(self)
-        self.combo_hamiltonian.addItems(molpro_input.hamiltonian)
+        self.combo_hamiltonian.addItems([h['text'] for h in molpro_input.hamiltonians.values()])
         self.combo_hamiltonian.currentTextChanged.connect(self.changed_hamiltonian)
 
-        self.whole_of_basis_registry = self.parent.project.basis_registry()
+        self.basis_registry = self.parent.project.basis_registry()
         self.desired_basis_quality=0
 
         guided_form = QFormLayout(self)
         guided_form.addRow('Hamiltonian', self.combo_hamiltonian)
-        self.combo_hamiltonian.addItems(molpro_input.hamiltonian)
-        self.combo_hamiltonian.currentTextChanged.connect(self.changed_hamiltonian)
         self.guided_combo_basis_quality = QComboBox(self)
         guided_form.addRow('Basis set quality', self.guided_combo_basis_quality)
         self.guided_combo_basis_quality.addItems(self.basis_qualities)
@@ -1103,38 +1101,43 @@ class BasisAndHamiltonianChooser(QWidget):
         # self.guided_combo_basis_default.addItems(self.load_default_basis_set_pulldown())
         self.guided_combo_basis_default.currentTextChanged.connect(self.changed_default_basis)
         self.desired_basis_quality = 0
+        # print('basis_registry', self.basis_registry)
 
 
     def refresh(self):
-        print('enter refresh_hamiltonian_and_basis', self.input_specification, self.desired_basis_quality, self.parent.desired_basis_quality)
+        # print('enter refresh_hamiltonian_and_basis', self.input_specification, self.desired_basis_quality, self.parent.desired_basis_quality)
         while True:
             if not 'basis' in self.input_specification or not 'default' in self.input_specification['basis'] or not \
                     self.input_specification['basis']['default']:
                 quality = self.desired_basis_quality if self.desired_basis_quality > 0 else 3
-                print('fixing up basis, quality=', quality, 'hamiltonian=', self.input_specification[
-                    'hamiltonian'] if 'hamiltonian' in self.input_specification else '*None*')
+                # print('fixing up basis, quality=', quality, 'hamiltonian=', self.input_specification[
+                #     'hamiltonian'] if 'hamiltonian' in self.input_specification else '*None*')
                 self.input_specification['basis'] = self.default_basis_for_hamiltonian(self.desired_basis_quality)
                 continue
 
             if not 'hamiltonian' in self.input_specification:
-                self.input_specification['hamiltonian'] = 'Pseudopotential' if self.input_specification['basis'][
-                                                                                   'default'][
-                                                                               -3:] == '-PP' else 'All Electron'
-                self.combo_hamiltonian.setCurrentText(self.input_specification['hamiltonian'])
-                print('resetting hamiltonian=', self.input_specification[
-                    'hamiltonian'] if 'hamiltonian' in self.input_specification else '*None*')
+                raise ValueError('hamiltonian should always be set in input_specification')
+                # self.input_specification['hamiltonian'] = molpro_input.basis_hamiltonian(self.input_specification)
+                # self.combo_hamiltonian.setCurrentText(self.input_specification['hamiltonian'])
+                # print('resetting hamiltonian=', self.input_specification[
+                #     'hamiltonian'] if 'hamiltonian' in self.input_specification else '*None*')
                 continue
 
-            print('hamiltonian before selecting possible basis sets', self.input_specification['hamiltonian'])
-            possible_basis_sets = [k for k in self.whole_of_basis_registry.keys() if (
-                    self.desired_basis_quality == 0 or molpro_input.basis_quality({'basis': {'default': k}}) ==
-                    self.desired_basis_quality) and (
-                                           not 'hamiltonian' in self.input_specification or molpro_input.basis_hamiltonian(
-                                       {'basis': {'default': k}}) == self.input_specification['hamiltonian'])]
-            print('possible_basis_sets', possible_basis_sets)
+            # print('hamiltonian before selecting possible basis sets', self.input_specification['hamiltonian'])
+            possible_basis_sets = [k for k in self.basis_registry.keys() if (#True or
+                    self.desired_basis_quality == 0 or self.basis_registry[k][
+                'quality'] == self.basis_qualities[self.desired_basis_quality]
+            )
+                                   and (
+                                           not 'hamiltonian' in self.input_specification or
+                                           self.hamiltonian_type(k)== self.input_specification[
+                                               'hamiltonian']
+                                   )]
+            # print('basis_registry types ', [self.hamiltonian_type(v) for v in self.basis_registry.keys()])
+            # print('possible_basis_sets', possible_basis_sets)
             self.guided_combo_basis_default.clear()
             self.guided_combo_basis_default.addItems([self.null_prompt] + possible_basis_sets)
-            print('about to setCurrentText, spec', self.input_specification['basis'])
+            # print('about to setCurrentText, spec', self.input_specification['basis'])
             if self.input_specification['basis']['elements'] or not self.input_specification['basis'][
                                                                         'default'] in possible_basis_sets:
                 self.guided_combo_basis_default.setCurrentText(self.null_prompt)
@@ -1144,11 +1147,12 @@ class BasisAndHamiltonianChooser(QWidget):
 
 
             self.guided_combo_basis_quality.setCurrentText(self.basis_qualities[self.desired_basis_quality])
+            self.combo_hamiltonian.setCurrentText(molpro_input.hamiltonians[self.input_specification['hamiltonian']]['text'])
             break
 
     def changed_hamiltonian(self, text):
-        print('changed_hamiltonian', text)
-        self.input_specification['hamiltonian'] = text
+        self.input_specification['hamiltonian'] = list(molpro_input.hamiltonians.keys())[ [v['text'] for v in molpro_input.hamiltonians.values()].index(text)]
+        # print('changed_hamiltonian sets to ',self.input_specification['hamiltonian'])
         if 'basis' in self.input_specification and 'default' in self.input_specification['basis']:
             self.input_specification['basis'] = self.default_basis_for_hamiltonian(self.desired_basis_quality)
         self.write()
@@ -1156,14 +1160,14 @@ class BasisAndHamiltonianChooser(QWidget):
 
     def changed_basis_quality(self,text):
         self.desired_basis_quality= self.basis_qualities.index(text)
-        print('quality changed to',self.desired_basis_quality)
+        # print('quality changed to',self.desired_basis_quality, 'and at this point hamiltonian=',self.input_specification['hamiltonian'])
         self.refresh()
 
     def default_basis_for_hamiltonian(self, desired_basis_quality=0):
         quality = self.desired_basis_quality if desired_basis_quality > 0 else 3
-        return {'default': 'cc-pV(' + self.basis_qualities[quality][0] + '+d)Z' + (
-            '-PP' if 'hamiltonian' in self.input_specification and self.input_specification[
-                'hamiltonian'] == 'Pseudopotential' else ''), 'elements': {}, 'quality': quality}
+        return {'default': 'cc-pV(' + self.basis_qualities[quality][0] + '+d)Z' +
+                           molpro_input.hamiltonians[self.input_specification['hamiltonian']]['basis_string'],
+                'elements': {}, 'quality': quality}
 
     def changed_default_basis (self, text):
         if not text or text == self.null_prompt: return
@@ -1173,7 +1177,7 @@ class BasisAndHamiltonianChooser(QWidget):
         self.write()
 
     def write(self):
-        print('write', self.input_specification,self.parent.input_specification)
+        # print('write', self.input_specification,self.parent.input_specification)
         self.parent.refresh_input_from_specification()
     @property
     def input_specification(self):
@@ -1183,10 +1187,10 @@ class BasisAndHamiltonianChooser(QWidget):
     @property
     def hamiltonians(self):
         result = set()
-        for keyfound in self.whole_of_basis_registry.keys():
+        for keyfound in self.basis_registry.keys():
             if keyfound is not None:
                 result.add(self.hamiltonian_type(keyfound))
         return result
 
     def hamiltonian_type(self, key):
-        return re.sub(r'\(.*', '', self.whole_of_basis_registry[key]['type'])
+        return re.sub(r'\(.*', '', self.basis_registry[key]['type'])

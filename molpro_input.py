@@ -16,6 +16,13 @@ hamiltonian = {
     'Douglas-Kroll-Hess 3': '-DK3',
 }
 
+hamiltonians = {
+    'AE': {'text': 'All Electron', 'basis_string': ''},
+    'PP': {'text': 'Pseudopotential', 'basis_string': '-PP'},
+    'DK': {'text': 'Douglas-Kroll-Hess', 'basis_string': '-DK'},
+    'DK3': {'text': 'Douglas-Kroll-Hess 3', 'basis_string': '-DK3'},
+}
+
 
 
 job_type_commands = {
@@ -108,7 +115,7 @@ def parse(input: str, allowed_methods=[], debug=False):
                 ff=field.split('=')
                 specification['basis']['elements'][ff[0][0].upper()+ff[0][1:].lower()]=ff[1].strip('\n ')
             specification['basis']['quality'] = basis_quality(specification)
-            print('made basis specification',specification)
+            # print('made basis specification',specification)
         elif re.match('^basis *=', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
@@ -229,9 +236,11 @@ def basis_quality(specification):
     return 0
 
 def basis_hamiltonian(specification):
-    for v, k in hamiltonian.items():
-        if k and 'basis' in specification and 'default' in specification['basis'] and k in specification['basis']['default']: return v
-    return 'All Electron'
+    result = 'AE'
+    for v, k in hamiltonians.items():
+        if k and 'basis' in specification and 'default' in specification['basis'] and k['basis_string'] in specification['basis']['default']: result = v
+    # print('basis_hamiltonian: ', result)
+    return result
 
 
 
