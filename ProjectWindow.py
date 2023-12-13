@@ -7,8 +7,6 @@ import subprocess
 import sys
 import re
 
-import numpy
-from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
@@ -53,7 +51,6 @@ class ViewProjectOutput(ViewFile):
         self.project = project
         self.suffix = suffix
         self.instance = -1 if suffix == 'inp' else instance
-        # print('ViewProjectOutput',instance,suffix,self.project.filename(suffix,run=self.instance))
         super().__init__(self.project.filename(suffix, run=self.instance), latency=latency, point_size=point_size)
         super().setMinimumWidth(width)
         self.refresh_output_file_timer = QTimer(self)
@@ -83,7 +80,6 @@ class ProjectWindow(QMainWindow):
     chooser_signal = pyqtSignal(QWidget, name='chooserSignal')
     vod = None
     trace = settings['ProjectWindow_debug'] if 'ProjectWindow_debug' in settings else 0
-    KD_debug = settings['KD_debug'] if 'KD_debug' in settings else 0
     null_prompt = '- Select -'
     all_qualities = 'All Qualities'
     basis_qualities = [all_qualities, 'SZ', 'DZ', 'TZ', 'QZ', '5Z', '6Z']
@@ -104,12 +100,6 @@ class ProjectWindow(QMainWindow):
             self.invalid = True
             return
 
-        # print(self.project.registry())
-        # print(self.project.registry('PLUGIN'))
-        # print(self.project.registry('RO')['TRUNC']['default_value'])
-        # print(self.project.registry('commandset').keys())
-        # print(self.project.registry('commandset')['CCSD'])
-        # print(self.project.procedures_registry())
         settings['project_directory'] = os.path.dirname(self.project.filename(run=-1))
 
         if 'PATH' in os.environ and 'SHELL' in os.environ:
@@ -225,7 +215,6 @@ class ProjectWindow(QMainWindow):
 
         self.input_tabs.setCurrentIndex(1)
         self.guided_action.setChecked(self.input_tabs.currentIndex() == 1)
-
 
         container = QWidget(self)
         container.setLayout(self.layout)
@@ -423,10 +412,6 @@ class ProjectWindow(QMainWindow):
         if self.trace: print('input_tab_changed_consequence, index=', index, self.input_tabs.currentIndex())
         if self.input_tabs.currentIndex() == 1:
             self.guided_pane.refresh()
-
-
-
-
 
     def vod_external_launch(self, command=''):
         if command and command != 'embedded':
@@ -916,25 +901,13 @@ class BasisAndHamiltonianChooser(QWidget):
         }, title='Hamiltonian and basis'))
 
     def refresh(self):
-        # print('enter refresh_hamiltonian_and_basis', self.input_specification, self.desired_basis_quality, self.parent.desired_basis_quality)
         while True:
             if not 'basis' in self.input_specification or not 'default' in self.input_specification['basis'] or not \
                     self.input_specification['basis']['default']:
-                quality = self.desired_basis_quality if self.desired_basis_quality > 0 else 3
-                # print('fixing up basis, quality=', quality, 'hamiltonian=', self.input_specification[
-                #     'hamiltonian'] if 'hamiltonian' in self.input_specification else '*None*')
-                self.input_specification['basis'] = self.default_basis_for_hamiltonian(self.desired_basis_quality)
+                self.input_specification['basis'] = self.default_basis_for_hamiltonian(
+                    self.desired_basis_quality if self.desired_basis_quality > 0 else 3)
                 continue
 
-            if not 'hamiltonian' in self.input_specification:
-                raise ValueError('hamiltonian should always be set in input_specification')
-                # self.input_specification['hamiltonian'] = molpro_input.basis_hamiltonian(self.input_specification)
-                # self.combo_hamiltonian.setCurrentText(self.input_specification['hamiltonian'])
-                # print('resetting hamiltonian=', self.input_specification[
-                #     'hamiltonian'] if 'hamiltonian' in self.input_specification else '*None*')
-                continue
-
-            # print('hamiltonian before selecting possible basis sets', self.input_specification['hamiltonian'])
             possible_basis_sets = [k for k in self.basis_registry.keys() if (  # True or
                     self.desired_basis_quality == 0 or self.basis_registry[k][
                 'quality'] == self.basis_qualities[self.desired_basis_quality]
@@ -944,11 +917,8 @@ class BasisAndHamiltonianChooser(QWidget):
                                            self.hamiltonian_type(k) == self.input_specification[
                                                'hamiltonian']
                                    )]
-            # print('basis_registry types ', [self.hamiltonian_type(v) for v in self.basis_registry.keys()])
-            # print('possible_basis_sets', possible_basis_sets)
             self.guided_combo_basis_default.clear()
             self.guided_combo_basis_default.addItems([self.null_prompt] + possible_basis_sets)
-            # print('about to setCurrentText, spec', self.input_specification['basis'])
             if self.input_specification['basis']['elements'] or not self.input_specification['basis'][
                                                                         'default'] in possible_basis_sets:
                 self.guided_combo_basis_default.setCurrentText(self.null_prompt)
@@ -964,7 +934,6 @@ class BasisAndHamiltonianChooser(QWidget):
     def changed_hamiltonian(self, text):
         self.input_specification['hamiltonian'] = list(molpro_input.hamiltonians.keys())[
             [v['text'] for v in molpro_input.hamiltonians.values()].index(text)]
-        # print('changed_hamiltonian sets to ',self.input_specification['hamiltonian'])
         if 'basis' in self.input_specification and 'default' in self.input_specification['basis']:
             self.input_specification['basis'] = self.default_basis_for_hamiltonian(self.desired_basis_quality)
         self.write()
@@ -972,7 +941,6 @@ class BasisAndHamiltonianChooser(QWidget):
 
     def changed_basis_quality(self, text):
         self.desired_basis_quality = self.basis_qualities.index(text)
-        # print('quality changed to',self.desired_basis_quality, 'and at this point hamiltonian=',self.input_specification['hamiltonian'])
         self.refresh()
 
     def default_basis_for_hamiltonian(self, desired_basis_quality=0):
@@ -1013,7 +981,6 @@ class GuidedPane(QWidget):
         self.parent = parent
         self.project = self.parent.project
         self.trace = self.parent.trace
-        self.KD_debug = self.parent.KD_debug
         self.input_pane = self.parent.input_pane
         self.setContentsMargins(0, 0, 0, 0)
 
@@ -1027,7 +994,6 @@ class GuidedPane(QWidget):
             msg.setDetailedText('Guided mode will not work correctly\r\n' + str(e))
             msg.exec()
             self.whole_of_procedures_registry = {}
-
 
         self.guided_layout = QVBoxLayout()
         self.guided_layout.setContentsMargins(0, 0, 0, 0)
@@ -1055,7 +1021,6 @@ class GuidedPane(QWidget):
         self.guided_combo_wave_fct_symm.currentTextChanged.connect(
             lambda text: self.input_specification_change('wave_fct_symm', text))
 
-
         # textLabel_calculation = QLabel()
         # textLabel_calculation.setText("Calculation:")
         # self.guided_layout.addWidget(textLabel_calculation)
@@ -1073,14 +1038,14 @@ class GuidedPane(QWidget):
             lambda text: self.input_specification_change('method', text))
 
         self.guided_layout.addWidget(RowOfTitledWidgets({
-            'Charge':self.charge_line,
-            'Spin':self.spin_line,
-            'Symmetry':self.guided_combo_wave_fct_symm,
-        },title='Wavefunction parameters'))
+            'Charge': self.charge_line,
+            'Spin': self.spin_line,
+            'Symmetry': self.guided_combo_wave_fct_symm,
+        }, title='Wavefunction parameters'))
 
         self.guided_layout.addWidget(RowOfTitledWidgets({
-            'Type':self.guided_combo_job_type,
-            'Method':self.guided_combo_method,
+            'Type': self.guided_combo_job_type,
+            'Method': self.guided_combo_method,
             'Functional': QWidget(),
         }, title='Calculation'))
         self.desired_basis_quality = 0
@@ -1096,16 +1061,15 @@ class GuidedPane(QWidget):
             'Orientation': self.guided_combo_orientation,
             'Plot orbitals': self.guided_orbitals_input,
         }, title='Miscellaneous'))
+
     @property
     def input_specification(self):
         return self.parent.input_specification
-
 
     def refresh(self):
         self.orbitals_input_action(
             'postscripts' in self.input_specification and self.orbital_put_command in self.input_specification[
                 'postscripts'])
-        # print('in refresh guided pane',self.input_specification)
         self.guided_combo_orientation.setCurrentText(
             self.input_specification['orientation'] if 'orientation' in self.input_specification else
             list(molpro_input.orientation_options.keys())[0])
@@ -1123,9 +1087,6 @@ class GuidedPane(QWidget):
             prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
                 'method'] else None
             method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
-            if self.KD_debug: print('KD Debug, index=', method_index, 'method=',
-                                    self.input_specification['method'], 'base_method=', base_method, 'prefix=',
-                                    prefix)
             self.guided_combo_method.setCurrentIndex(method_index)
         # if 'basis' in self.input_specification:
         #     self.guided_basis_input.setText('TODO get rid of this: '+str(self.input_specification['basis']))
@@ -1142,6 +1103,7 @@ class GuidedPane(QWidget):
             if self.whole_of_procedures_registry[keyfound]['class'] == 'PROG':
                 result.append(self.whole_of_procedures_registry[keyfound]['name'])
         return result
+
     def orbitals_input_action(self, parameter):
         if not 'postscripts' in self.input_specification: self.input_specification['postscripts'] = []
         self.input_specification['postscripts'] = [ps for ps in self.input_specification['postscripts'] if
