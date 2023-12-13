@@ -48,7 +48,7 @@ class WindowManager:
                                          filename + ' already exists; please choose another file name')
                 else:
                     self.register(ProjectWindow(filename, self))
-                    self.openWindows[-1].orbitals_input_action(True)
+                    self.openWindows[-1].guided_pane.orbitals_input_action(True)
                     return
             else:
                 return
