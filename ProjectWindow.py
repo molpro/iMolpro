@@ -138,18 +138,6 @@ class ProjectWindow(QMainWindow):
             ['out', 'log', 'inp']}
 
         self.webengine_profiles = []
-
-        try:
-            self.whole_of_procedures_registry = self.project.procedures_registry()
-            if not self.whole_of_procedures_registry:
-                raise ValueError
-        except Exception as e:
-            msg = QMessageBox()
-            msg.setText('Error in finding local molpro')
-            msg.setDetailedText('Guided mode will not work correctly\r\n' + str(e))
-            msg.exec()
-            self.whole_of_procedures_registry = {}
-
         self.setup_menubar()
 
         self.run_button = QPushButton('Run')
@@ -192,7 +180,7 @@ class ProjectWindow(QMainWindow):
         left_layout.addLayout(button_layout_2)
         left_layout.addWidget(self.statusBar)
         self.input_tabs.addTab(self.input_pane, 'freehand')
-        self.setup_guided_pane()
+        self.guided_pane = GuidedPane(self)
         self.input_text_changed_consequence(0)
 
         top_layout = QHBoxLayout()
@@ -237,25 +225,11 @@ class ProjectWindow(QMainWindow):
 
         self.input_tabs.setCurrentIndex(1)
         self.guided_action.setChecked(self.input_tabs.currentIndex() == 1)
-        self.guided_orbitals_input.setChecked(hasattr(self,
-                                                      'input_specification') and 'postscripts' in self.input_specification and self.orbital_put_command in
-                                              self.input_specification['postscripts'])
+
 
         container = QWidget(self)
         container.setLayout(self.layout)
         self.setCentralWidget(container)
-        # self.installEventFilter(self)
-
-    # def eventFilter(self, obj, event):
-    #     if (event.type() == QEvent.Resize):
-    #         print('resize event received', self.geometry(), self.geometry().width(), self.geometry().height())
-    #         if self.output_tabs:
-    #             print('output_tabs size', self.output_tabs.geometry())
-    #         if self.input_tabs:
-    #             print('input_tabs size', self.input_tabs.geometry())
-    #         if self.vod:
-    #             print('vod size', self.vod.geometry())
-    #     return super().eventFilter(obj, event)
 
     def discover_external_viewer_commands(self):
         external_command_stems = [
@@ -441,154 +415,18 @@ class ProjectWindow(QMainWindow):
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
-        self.input_specification = molpro_input.parse(input_text, self.allowed_methods())
+        self.input_specification = molpro_input.parse(input_text, self.guided_pane.allowed_methods())
         guided = molpro_input.equivalent(input_text, self.input_specification)
         return guided
 
     def input_tab_changed_consequence(self, index=0):
         if self.trace: print('input_tab_changed_consequence, index=', index, self.input_tabs.currentIndex())
         if self.input_tabs.currentIndex() == 1:
-            self.refresh_guided_pane()
-
-    def setup_guided_pane(self):
-        self.guided_pane = QWidget(self)
-        self.guided_pane.setContentsMargins(0, 0, 0, 0)
-        self.guided_layout = QVBoxLayout()
-        self.guided_layout.setContentsMargins(0, 0, 0, 0)
-        self.guided_pane.setLayout(self.guided_layout)
-        self.guided_form = QFormLayout()
-        self.guided_form.setContentsMargins(0, 0, 0, 0)
-
-        self.guided_combo_orientation = QComboBox(self)
-        self.guided_combo_orientation.addItems(molpro_input.orientation_options.keys())
-        self.guided_form.addRow('Orientation', self.guided_combo_orientation)
-        self.guided_combo_orientation.currentTextChanged.connect(
-            lambda text: self.input_specification_change('orientation', text))
-
-        textLabel_wave_fct_char = QLabel()
-        textLabel_wave_fct_char.setText("Wave Function Characteristics:")
-        self.guided_layout.addWidget(textLabel_wave_fct_char)
-
-        self.charge_line = QLineEdit()
-        self.charge_line.setValidator(QIntValidator())
-        self.charge_line.textChanged.connect(lambda text: self.input_specification_variable_change('charge', text))
-
-        self.spin_line = QLineEdit()
-        self.spin_line.setValidator(QIntValidator())
-        self.spin_line.textChanged.connect(lambda text: self.input_specification_variable_change('spin', text))
-
-        self.guided_combo_wave_fct_symm = QComboBox(self)
-        self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
-        self.guided_combo_wave_fct_symm.currentTextChanged.connect(
-            lambda text: self.input_specification_change('wave_fct_symm', text))
+            self.guided_pane.refresh()
 
 
-        # textLabel_calculation = QLabel()
-        # textLabel_calculation.setText("Calculation:")
-        # self.guided_layout.addWidget(textLabel_calculation)
 
-        self.guided_combo_job_type = QComboBox(self)
-        self.guided_combo_job_type.setMaximumWidth(180)
-        self.guided_combo_job_type.addItems(molpro_input.job_type_commands.keys())
-        self.guided_combo_job_type.currentTextChanged.connect(
-            lambda text: self.input_specification_change('job_type', text))
 
-        self.guided_combo_method = QComboBox(self)
-
-        self.guided_combo_method.addItems(self.allowed_methods())
-        self.guided_combo_method.currentTextChanged.connect(
-            lambda text: self.input_specification_change('method', text))
-
-        self.guided_layout.addLayout(self.guided_form)
-        self.guided_layout.addWidget(RowOfTitledWidgets({
-            'Charge':self.charge_line,
-            'Spin':self.spin_line,
-            'Symmetry':self.guided_combo_wave_fct_symm,
-        },title='Wavefunction parameters'))
-
-        self.guided_layout.addWidget(RowOfTitledWidgets({
-            'Type':self.guided_combo_job_type,
-            'Method':self.guided_combo_method,
-            'Functional': QWidget(),
-        }, title='Calculation'))
-        self.desired_basis_quality = 0
-        self.basis_and_hamiltonian_chooser = BasisAndHamiltonianChooser(self)
-        self.guided_layout.addWidget(self.basis_and_hamiltonian_chooser)
-
-        self.guided_orbitals_input = QCheckBox()
-        self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
-        self.guided_form.addRow('Generate orbitals for plotting', self.guided_orbitals_input)
-
-    def orbitals_input_action(self, parameter):
-        if not 'postscripts' in self.input_specification: self.input_specification['postscripts'] = []
-        self.input_specification['postscripts'] = [ps for ps in self.input_specification['postscripts'] if
-                                                   ps != self.orbital_put_command]
-        if parameter:
-            self.input_specification['postscripts'].append(self.orbital_put_command)
-        self.refresh_input_from_specification()
-        self.guided_orbitals_input.setChecked(parameter)
-
-    @property
-    def orbital_put_command(self):
-        return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
-
-    def refresh_guided_pane(self):
-        self.orbitals_input_action(
-            'postscripts' in self.input_specification and self.orbital_put_command in self.input_specification[
-                'postscripts'])
-        # print('in refresh guided pane',self.input_specification)
-        self.guided_combo_orientation.setCurrentText(
-            self.input_specification['orientation'] if 'orientation' in self.input_specification else
-            list(molpro_input.orientation_options.keys())[0])
-        self.guided_combo_wave_fct_symm.setCurrentText(
-            self.input_specification['wave_fct_symm'] if 'wave_fct_symm' in self.input_specification else
-            list(molpro_input.wave_fct_symm_commands.keys())[0])
-        if 'variables' in self.input_specification:
-            if 'charge' in self.input_specification['variables']:
-                self.charge_line.setText(self.input_specification['variables']['charge'])
-            if 'spin' in self.input_specification['variables']:
-                self.spin_line.setText(self.input_specification['variables']['spin'])
-
-        if 'method' in self.input_specification:
-            base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
-            prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
-                'method'] else None
-            method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
-            if self.KD_debug: print('KD Debug, index=', method_index, 'method=',
-                                    self.input_specification['method'], 'base_method=', base_method, 'prefix=',
-                                    prefix)
-            self.guided_combo_method.setCurrentIndex(method_index)
-        # if 'basis' in self.input_specification:
-        #     self.guided_basis_input.setText('TODO get rid of this: '+str(self.input_specification['basis']))
-        if 'job_type' in self.input_specification:
-            self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
-
-        self.basis_and_hamiltonian_chooser.refresh()
-
-    def input_specification_change(self, key, value):
-        self.input_specification[key] = value
-        self.refresh_input_from_specification()
-
-    def input_specification_variable_change(self, key, value):
-        if 'variables' not in self.input_specification:
-            self.input_specification['variables'] = {}
-        self.input_specification['variables'][key] = value
-        self.refresh_input_from_specification()
-
-    def allowed_methods(self):
-        result = []
-        if self.whole_of_procedures_registry is None:
-            self.whole_of_procedures_registry = self.project.procedures_registry()
-        for keyfound in self.whole_of_procedures_registry.keys():
-            if self.whole_of_procedures_registry[keyfound]['class'] == 'PROG':
-                result.append(self.whole_of_procedures_registry[keyfound]['name'])
-        return result
-
-    def refresh_input_from_specification(self):
-        if self.trace: print('refresh_input_from_specification')
-        new_input = molpro_input.create_input(self.input_specification)
-        if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
-            self.input_pane.setPlainText(new_input)
 
     def vod_external_launch(self, command=''):
         if command and command != 'embedded':
@@ -1186,6 +1024,172 @@ class BasisAndHamiltonianChooser(QWidget):
         return re.sub(r'\(.*', '', self.basis_registry[key]['type'])
 
 
+class GuidedPane(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.project = self.parent.project
+        self.trace = self.parent.trace
+        self.KD_debug = self.parent.KD_debug
+        self.input_pane = self.parent.input_pane
+        self.setContentsMargins(0, 0, 0, 0)
+
+        try:
+            self.whole_of_procedures_registry = self.project.procedures_registry()
+            if not self.whole_of_procedures_registry:
+                raise ValueError
+        except Exception as e:
+            msg = QMessageBox()
+            msg.setText('Error in finding local molpro')
+            msg.setDetailedText('Guided mode will not work correctly\r\n' + str(e))
+            msg.exec()
+            self.whole_of_procedures_registry = {}
+
+
+        self.guided_layout = QVBoxLayout()
+        self.guided_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.guided_layout)
+        self.guided_form = QFormLayout()
+        self.guided_form.setContentsMargins(0, 0, 0, 0)
+
+        self.guided_combo_orientation = QComboBox(self)
+        self.guided_combo_orientation.addItems(molpro_input.orientation_options.keys())
+        self.guided_form.addRow('Orientation', self.guided_combo_orientation)
+        self.guided_combo_orientation.currentTextChanged.connect(
+            lambda text: self.input_specification_change('orientation', text))
+
+        textLabel_wave_fct_char = QLabel()
+        textLabel_wave_fct_char.setText("Wave Function Characteristics:")
+        self.guided_layout.addWidget(textLabel_wave_fct_char)
+
+        self.charge_line = QLineEdit()
+        self.charge_line.setValidator(QIntValidator())
+        self.charge_line.textChanged.connect(lambda text: self.input_specification_variable_change('charge', text))
+
+        self.spin_line = QLineEdit()
+        self.spin_line.setValidator(QIntValidator())
+        self.spin_line.textChanged.connect(lambda text: self.input_specification_variable_change('spin', text))
+
+        self.guided_combo_wave_fct_symm = QComboBox(self)
+        self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
+        self.guided_combo_wave_fct_symm.currentTextChanged.connect(
+            lambda text: self.input_specification_change('wave_fct_symm', text))
+
+
+        # textLabel_calculation = QLabel()
+        # textLabel_calculation.setText("Calculation:")
+        # self.guided_layout.addWidget(textLabel_calculation)
+
+        self.guided_combo_job_type = QComboBox(self)
+        self.guided_combo_job_type.setMaximumWidth(180)
+        self.guided_combo_job_type.addItems(molpro_input.job_type_commands.keys())
+        self.guided_combo_job_type.currentTextChanged.connect(
+            lambda text: self.input_specification_change('job_type', text))
+
+        self.guided_combo_method = QComboBox(self)
+
+        self.guided_combo_method.addItems(self.allowed_methods())
+        self.guided_combo_method.currentTextChanged.connect(
+            lambda text: self.input_specification_change('method', text))
+
+        self.guided_layout.addWidget(RowOfTitledWidgets({
+            'Charge':self.charge_line,
+            'Spin':self.spin_line,
+            'Symmetry':self.guided_combo_wave_fct_symm,
+        },title='Wavefunction parameters'))
+
+        self.guided_layout.addWidget(RowOfTitledWidgets({
+            'Type':self.guided_combo_job_type,
+            'Method':self.guided_combo_method,
+            'Functional': QWidget(),
+        }, title='Calculation'))
+        self.desired_basis_quality = 0
+        self.basis_and_hamiltonian_chooser = BasisAndHamiltonianChooser(self)
+        self.guided_layout.addWidget(self.basis_and_hamiltonian_chooser)
+
+        self.guided_layout.addLayout(self.guided_form)
+        self.guided_orbitals_input = QCheckBox()
+        self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
+        self.guided_orbitals_input.setChecked(hasattr(self,
+                                                      'input_specification') and 'postscripts' in self.input_specification and self.orbital_put_command in
+                                              self.input_specification['postscripts'])
+        self.guided_form.addRow('Generate orbitals for plotting', self.guided_orbitals_input)
+    @property
+    def input_specification(self):
+        return self.parent.input_specification
+
+
+    def refresh(self):
+        self.orbitals_input_action(
+            'postscripts' in self.input_specification and self.orbital_put_command in self.input_specification[
+                'postscripts'])
+        # print('in refresh guided pane',self.input_specification)
+        self.guided_combo_orientation.setCurrentText(
+            self.input_specification['orientation'] if 'orientation' in self.input_specification else
+            list(molpro_input.orientation_options.keys())[0])
+        self.guided_combo_wave_fct_symm.setCurrentText(
+            self.input_specification['wave_fct_symm'] if 'wave_fct_symm' in self.input_specification else
+            list(molpro_input.wave_fct_symm_commands.keys())[0])
+        if 'variables' in self.input_specification:
+            if 'charge' in self.input_specification['variables']:
+                self.charge_line.setText(self.input_specification['variables']['charge'])
+            if 'spin' in self.input_specification['variables']:
+                self.spin_line.setText(self.input_specification['variables']['spin'])
+
+        if 'method' in self.input_specification:
+            base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
+            prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
+                'method'] else None
+            method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
+            if self.KD_debug: print('KD Debug, index=', method_index, 'method=',
+                                    self.input_specification['method'], 'base_method=', base_method, 'prefix=',
+                                    prefix)
+            self.guided_combo_method.setCurrentIndex(method_index)
+        # if 'basis' in self.input_specification:
+        #     self.guided_basis_input.setText('TODO get rid of this: '+str(self.input_specification['basis']))
+        if 'job_type' in self.input_specification:
+            self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
+
+        self.basis_and_hamiltonian_chooser.refresh()
+
+    def allowed_methods(self):
+        result = []
+        if self.whole_of_procedures_registry is None:
+            self.whole_of_procedures_registry = self.project.procedures_registry()
+        for keyfound in self.whole_of_procedures_registry.keys():
+            if self.whole_of_procedures_registry[keyfound]['class'] == 'PROG':
+                result.append(self.whole_of_procedures_registry[keyfound]['name'])
+        return result
+    def orbitals_input_action(self, parameter):
+        if not 'postscripts' in self.input_specification: self.input_specification['postscripts'] = []
+        self.input_specification['postscripts'] = [ps for ps in self.input_specification['postscripts'] if
+                                                   ps != self.orbital_put_command]
+        if parameter:
+            self.input_specification['postscripts'].append(self.orbital_put_command)
+        self.refresh_input_from_specification()
+        self.guided_orbitals_input.setChecked(parameter)
+
+    @property
+    def orbital_put_command(self):
+        return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
+
+    def input_specification_change(self, key, value):
+        self.input_specification[key] = value
+        self.refresh_input_from_specification()
+
+    def input_specification_variable_change(self, key, value):
+        if 'variables' not in self.input_specification:
+            self.input_specification['variables'] = {}
+        self.input_specification['variables'][key] = value
+        self.refresh_input_from_specification()
+
+    def refresh_input_from_specification(self):
+        if self.trace: print('refresh_input_from_specification')
+        new_input = molpro_input.create_input(self.input_specification)
+        if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
+            self.input_pane.setPlainText(new_input)
+
+
 class RowOfTitledWidgets(QWidget):
     def __init__(self, widgets, title=None, parent=None):
         super().__init__(parent)
@@ -1196,7 +1200,7 @@ class RowOfTitledWidgets(QWidget):
         subpane = QWidget(self)
         subpane.setContentsMargins(0, 0, 0, 0)
         subpane.setStyleSheet(
-            '* {background-color: lightblue; font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;}')
+            '/* background-color: lightblue; */ font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
         subpane.setAutoFillBackground(True)
         layout.addWidget(subpane)
         layout2 = QHBoxLayout(subpane)
