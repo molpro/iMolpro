@@ -196,10 +196,17 @@ def create_input(specification: dict):
             for e, b in specification['basis']['elements'].items():
                 _input += ',' + e + '=' + b
         _input += '\n'
+    if 'variables' not in specification: specification['variables'] = {}
+    if specification['hamiltonian'][:2] == 'DK':
+        specification['variables']['dkho'] = specification['hamiltonian'][2] if len(
+            specification['hamiltonian']) > 2 else '1'
+    elif 'dkho' in specification['variables']:
+        del specification['variables']['dkho']
     if 'variables' in specification:
         for k, v in specification['variables'].items():
             if v != '':
                 _input += k + '=' + v + '\n'
+    if len(specification['variables']) == 0: del specification['variables']
     if 'precursor_methods' in specification:
         for m in specification['precursor_methods']:
             _input += m + '\n'
@@ -234,7 +241,9 @@ def basis_hamiltonian(specification):
     for v, k in hamiltonians.items():
         if k and 'basis' in specification and 'default' in specification['basis'] and k['basis_string'] in \
                 specification['basis']['default']: result = v
-    # print('basis_hamiltonian: ', result)
+    if 'variables' in specification and 'dkho' in specification['variables']:
+        result = 'DK' + str(specification['variables']['dkho']) if str(
+            specification['variables']['dkho']) != 1 else 'DK'
     return result
 
 
