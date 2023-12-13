@@ -508,10 +508,12 @@ class ProjectWindow(QMainWindow):
         self.guided_combo_method.currentTextChanged.connect(
             lambda text: self.input_specification_change('method', text))
 
+        self.guided_layout.addLayout(self.guided_form)
         # self.setup_basis_and_hamiltonian(self.guided_form)
-        print(self.input_specification)
+        # print(self.input_specification)
         self.desired_basis_quality=0
-        self.basis_and_hamiltonian_chooser = BasisAndHamiltonianChooser(self.input_specification, self)
+        self.basis_and_hamiltonian_chooser = BasisAndHamiltonianChooser( self)
+        self.guided_layout.addWidget(self.basis_and_hamiltonian_chooser)
 
         self.guided_orbitals_input = QCheckBox()
         self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
@@ -532,7 +534,6 @@ class ProjectWindow(QMainWindow):
         # TODO do something else
         self.guided_combo_basis_default.currentTextChanged.connect(self.guided_combo_basis_default_changed)
         self.desired_basis_quality = 0
-        self.guided_layout.addLayout(guided_form)
         # TODO get rid of this
         # self.guided_basis_input = QLineEdit()
         # self.guided_basis_input.setMinimumWidth(200)
@@ -1172,22 +1173,36 @@ class BasisAndHamiltonianChooser(QWidget):
     r"""
     Choose basis and hamiltonian
     """
-    def __init__(self, input_specification:dict, parent:ProjectWindow):
+    null_prompt = '- Select -'
+    all_qualities = 'All Qualities'
+    basis_qualities=[all_qualities,'SZ','DZ','TZ','QZ','5Z','6Z']
+    def __init__(self, parent:ProjectWindow):
         super().__init__(parent)
-        self.input_specification = input_specification
         self.parent = parent
-        self.parent.setup_basis_and_hamiltonian(self.parent.guided_form)
-        self.guided_combo_hamiltonian = parent.guided_combo_hamiltonian
-        self.guided_combo_basis_quality = parent.guided_combo_basis_quality
-        self.guided_combo_basis_default = parent.guided_combo_basis_default
-        self.whole_of_basis_registry = parent.whole_of_basis_registry
-        self.desired_basis_quality = parent.desired_basis_quality
-        self.null_prompt = parent.null_prompt
-        self.basis_qualities = parent.basis_qualities
+
+        self.combo_hamiltonian = QComboBox(self)
+        self.combo_hamiltonian.addItems(molpro_input.hamiltonian)
+        self.combo_hamiltonian.currentTextChanged.connect(self.changed_hamiltonian)
+
+        self.whole_of_basis_registry = self.parent.project.basis_registry()
+        self.desired_basis_quality=0
+
+        guided_form = QFormLayout(self)
+        guided_form.addRow('Hamiltonian', self.combo_hamiltonian)
+        self.combo_hamiltonian.addItems(molpro_input.hamiltonian)
+        self.combo_hamiltonian.currentTextChanged.connect(self.changed_hamiltonian)
+        self.guided_combo_basis_quality = QComboBox(self)
+        guided_form.addRow('Basis set quality', self.guided_combo_basis_quality)
+        self.guided_combo_basis_quality.addItems(self.basis_qualities)
+        self.guided_combo_basis_quality.currentTextChanged.connect(self.changed_basis_quality)
+        self.guided_combo_basis_default = QComboBox(self)
+        guided_form.addRow('Default Basis Set', self.guided_combo_basis_default)
+        # self.guided_combo_basis_default.addItems(self.load_default_basis_set_pulldown())
+        self.guided_combo_basis_default.currentTextChanged.connect(self.changed_default_basis)
+        self.desired_basis_quality = 0
+
 
     def refresh(self):
-        # self.parent.refresh_hamiltonian_and_basis()
-        # return
         print('enter refresh_hamiltonian_and_basis', self.input_specification, self.desired_basis_quality, self.parent.desired_basis_quality)
         while True:
             if not 'basis' in self.input_specification or not 'default' in self.input_specification['basis'] or not \
@@ -1202,7 +1217,7 @@ class BasisAndHamiltonianChooser(QWidget):
                 self.input_specification['hamiltonian'] = 'Pseudopotential' if self.input_specification['basis'][
                                                                                    'default'][
                                                                                -3:] == '-PP' else 'All Electron'
-                self.guided_combo_hamiltonian.setCurrentText(self.input_specification['hamiltonian'])
+                self.combo_hamiltonian.setCurrentText(self.input_specification['hamiltonian'])
                 print('resetting hamiltonian=', self.input_specification[
                     'hamiltonian'] if 'hamiltonian' in self.input_specification else '*None*')
                 continue
@@ -1227,3 +1242,39 @@ class BasisAndHamiltonianChooser(QWidget):
 
             self.guided_combo_basis_quality.setCurrentText(self.basis_qualities[self.desired_basis_quality])
             break
+
+    def changed_hamiltonian(self, text):
+        print('changed_hamiltonian', text)
+        self.input_specification['hamiltonian'] = text
+        if 'basis' in self.input_specification and 'default' in self.input_specification['basis']:
+            self.input_specification['basis'] = self.default_basis_for_hamiltonian(self.desired_basis_quality)
+        self.write()
+        self.refresh()
+
+    def changed_basis_quality(self,text):
+        self.desired_basis_quality= self.basis_qualities.index(text)
+        print('quality changed to',self.desired_basis_quality)
+        self.refresh()
+
+    def default_basis_for_hamiltonian(self, desired_basis_quality=0):
+        quality = self.desired_basis_quality if desired_basis_quality > 0 else 3
+        return {'default': 'cc-pV(' + self.basis_qualities[quality][0] + '+d)Z' + (
+            '-PP' if 'hamiltonian' in self.input_specification and self.input_specification[
+                'hamiltonian'] == 'Pseudopotential' else ''), 'elements': {}, 'quality': quality}
+
+    def changed_default_basis (self, text):
+        if not text or text == self.null_prompt: return
+        self.input_specification['basis']['default'] = text
+        self.input_specification['basis']['elements'] = {}
+        self.input_specification['basis']['quality'] = molpro_input.basis_quality(self.input_specification)
+        self.write()
+
+    def write(self):
+        print('write', self.input_specification,self.parent.input_specification)
+        self.parent.refresh_input_from_specification()
+    @property
+    def input_specification(self):
+        return self.parent.input_specification
+
+
+
