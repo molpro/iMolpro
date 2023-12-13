@@ -55,7 +55,6 @@ def parse(input: str, allowed_methods=[], debug=False):
     specification = {}
     variables = {}
     geometry_active = False
-
     specification['job_type'] = 'Single Point Energy'
     for line in canonicalise(input).split('\n'):
         line = line.strip()
@@ -209,9 +208,9 @@ def create_input(specification: dict):
     if len(specification['variables']) == 0: del specification['variables']
     if 'precursor_methods' in specification:
         for m in specification['precursor_methods']:
-            _input += m + '\n'
+            _input += m.lower() + '\n'
     if 'method' in specification:
-        _input += specification['method'] + '\n'
+        _input += specification['method'].lower() + '\n'
     if 'job_type' in specification:
         _input += job_type_commands[specification['job_type']] + '\n'
     if 'postscripts' in specification:

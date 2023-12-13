@@ -118,10 +118,13 @@ class ProjectWindow(QMainWindow):
 
         self.discover_external_viewer_commands()
 
+
         self.input_pane = EditFile(self.project.filename('inp', run=-1), latency)
         self.setWindowTitle(filename)
 
-        self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), [])
+
+
+        self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), self.allowed_methods())
 
         self.output_panes = {
             suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 10) for suffix in
@@ -404,7 +407,7 @@ class ProjectWindow(QMainWindow):
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
-        self.input_specification = molpro_input.parse(input_text, self.guided_pane.allowed_methods())
+        self.input_specification = molpro_input.parse(input_text, self.allowed_methods())
         guided = molpro_input.equivalent(input_text, self.input_specification)
         return guided
 
@@ -412,6 +415,24 @@ class ProjectWindow(QMainWindow):
         if self.trace: print('input_tab_changed_consequence, index=', index, self.input_tabs.currentIndex())
         if self.input_tabs.currentIndex() == 1:
             self.guided_pane.refresh()
+
+    def allowed_methods(self):
+        result = []
+        if not hasattr(self,'procedures_registry'):
+            try:
+                self.procedures_registry = self.project.procedures_registry()
+                if not self.procedures_registry:
+                    raise ValueError
+            except Exception as e:
+                msg = QMessageBox()
+                msg.setText('Error in finding local molpro')
+                msg.setDetailedText('Guided mode will not work correctly\r\n' + str(e))
+                msg.exec()
+                self.procedures_registry = {}
+        for keyfound in self.procedures_registry.keys():
+            if self.procedures_registry[keyfound]['class'] == 'PROG':
+                result.append(self.procedures_registry[keyfound]['name'])
+        return result
 
     def vod_external_launch(self, command=''):
         if command and command != 'embedded':
@@ -984,17 +1005,6 @@ class GuidedPane(QWidget):
         self.input_pane = self.parent.input_pane
         self.setContentsMargins(0, 0, 0, 0)
 
-        try:
-            self.whole_of_procedures_registry = self.project.procedures_registry()
-            if not self.whole_of_procedures_registry:
-                raise ValueError
-        except Exception as e:
-            msg = QMessageBox()
-            msg.setText('Error in finding local molpro')
-            msg.setDetailedText('Guided mode will not work correctly\r\n' + str(e))
-            msg.exec()
-            self.whole_of_procedures_registry = {}
-
         self.guided_layout = QVBoxLayout()
         self.guided_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.guided_layout)
@@ -1033,7 +1043,7 @@ class GuidedPane(QWidget):
 
         self.guided_combo_method = QComboBox(self)
 
-        self.guided_combo_method.addItems(self.allowed_methods())
+        self.guided_combo_method.addItems(self.parent.allowed_methods())
         self.guided_combo_method.currentTextChanged.connect(
             lambda text: self.input_specification_change('method', text))
 
@@ -1052,7 +1062,6 @@ class GuidedPane(QWidget):
             'Spin': self.spin_line,
             'Symmetry': self.guided_combo_wave_fct_symm,
         }, title='Wavefunction parameters'))
-
 
         self.guided_orbitals_input = QCheckBox()
         self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
@@ -1097,15 +1106,6 @@ class GuidedPane(QWidget):
 
         self.basis_and_hamiltonian_chooser.refresh()
 
-    def allowed_methods(self):
-        result = []
-        if self.whole_of_procedures_registry is None:
-            self.whole_of_procedures_registry = self.project.procedures_registry()
-        for keyfound in self.whole_of_procedures_registry.keys():
-            if self.whole_of_procedures_registry[keyfound]['class'] == 'PROG':
-                result.append(self.whole_of_procedures_registry[keyfound]['name'])
-        return result
-
     def orbitals_input_action(self, parameter):
         if not 'postscripts' in self.input_specification: self.input_specification['postscripts'] = []
         self.input_specification['postscripts'] = [ps for ps in self.input_specification['postscripts'] if
@@ -1121,6 +1121,12 @@ class GuidedPane(QWidget):
 
     def input_specification_change(self, key, value):
         self.input_specification[key] = value
+        if key == 'method':
+            self.input_specification['precursor_methods'] = []
+            if self.input_specification['method'].upper() not in ['RHF', 'RKS', 'UHF', 'UKS', 'HF', 'KS'] and not \
+            self.input_specification['precursor_methods']:
+                self.input_specification['precursor_methods'].append('HF')
+            if not self.input_specification['precursor_methods']: del self.input_specification['precursor_methods']
         self.refresh_input_from_specification()
 
     def input_specification_variable_change(self, key, value):
