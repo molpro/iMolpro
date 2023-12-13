@@ -85,7 +85,7 @@ class ProjectWindow(QMainWindow):
     KD_debug = settings['KD_debug'] if 'KD_debug' in settings else 0
     null_prompt = '- Select -'
     all_qualities = 'All Qualities'
-    basis_qualities=[all_qualities,'SZ','DZ','TZ','QZ','5Z','6Z']
+    basis_qualities = [all_qualities, 'SZ', 'DZ', 'TZ', 'QZ', '5Z', '6Z']
 
     def __init__(self, filename, window_manager, latency=1000):
         super().__init__(None)
@@ -140,8 +140,7 @@ class ProjectWindow(QMainWindow):
 
         try:
             self.whole_of_procedures_registry = self.project.procedures_registry()
-            self.whole_of_basis_registry = self.project.basis_registry()
-            if not self.whole_of_procedures_registry or not self.whole_of_basis_registry:
+            if not self.whole_of_procedures_registry:
                 raise ValueError
         except Exception as e:
             msg = QMessageBox()
@@ -149,14 +148,6 @@ class ProjectWindow(QMainWindow):
             msg.setDetailedText('Guided mode will not work correctly\r\n' + str(e))
             msg.exec()
             self.whole_of_procedures_registry = {}
-            self.whole_of_basis_registry = {}
-
-#        print(self.project.basis_registry(),'\n\n\n')
-#        print(self.project.basis_registry().keys(),'\n\n\n')
-#        print(self.project.basis_registry()['def2-TZVP'],'\n\n\n')
-#        print(self.project.basis_registry()['def2-TZVP']['quality'],'\n\n\n')
-
-        # self.basis_qualities = self.read_basis_qualities()
 
         self.setup_menubar()
 
@@ -371,7 +362,8 @@ class ProjectWindow(QMainWindow):
         menubar.show()
 
     def edit_backend_configuration(self):
-        self.backend_configuration_editor = BackendConfigurationEditor(str(pathlib.Path.home() / '.sjef/molpro/backends.xml'), self)
+        self.backend_configuration_editor = BackendConfigurationEditor(
+            str(pathlib.Path.home() / '.sjef/molpro/backends.xml'), self)
         self.backend_configuration_editor.exec()
 
     def edit_input_structure(self):
@@ -397,7 +389,7 @@ class ProjectWindow(QMainWindow):
 
     def add_output_tab(self, run: int):
         tab_name = os.path.basename(self.project.filename('out', run=run))
-        self.output_panes[tab_name]=ViewProjectOutput(self.project, 'out', instance=run)
+        self.output_panes[tab_name] = ViewProjectOutput(self.project, 'out', instance=run)
         self.output_tabs.addTab(self.output_panes[tab_name], tab_name)
         for i in range(len(self.output_tabs)):
             if self.output_tabs.tabText(i) == tab_name:
@@ -500,7 +492,6 @@ class ProjectWindow(QMainWindow):
             lambda text: self.input_specification_change('job_type', text))
 
         self.guided_combo_method = QComboBox(self)
-        # print(self.project.registry('commandset').keys())
 
         self.guided_combo_method.addItems(self.allowed_methods())
         self.guided_form.addRow('Method', self.guided_combo_method)
@@ -508,16 +499,13 @@ class ProjectWindow(QMainWindow):
             lambda text: self.input_specification_change('method', text))
 
         self.guided_layout.addLayout(self.guided_form)
-        self.desired_basis_quality=0
-        self.basis_and_hamiltonian_chooser = BasisAndHamiltonianChooser( self)
+        self.desired_basis_quality = 0
+        self.basis_and_hamiltonian_chooser = BasisAndHamiltonianChooser(self)
         self.guided_layout.addWidget(self.basis_and_hamiltonian_chooser)
 
         self.guided_orbitals_input = QCheckBox()
         self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
         self.guided_form.addRow('Generate orbitals for plotting', self.guided_orbitals_input)
-
-
-
 
     def orbitals_input_action(self, parameter):
         if not 'postscripts' in self.input_specification: self.input_specification['postscripts'] = []
@@ -525,18 +513,17 @@ class ProjectWindow(QMainWindow):
                                                    ps != self.orbital_put_command]
         if parameter:
             self.input_specification['postscripts'].append(self.orbital_put_command)
-        # print('in orbitals_input_action',self.input_specification)
         self.refresh_input_from_specification()
-        # print('in orbitals_input_action',self.input_specification)
         self.guided_orbitals_input.setChecked(parameter)
-        # print('in orbitals_input_action',self.input_specification)
 
     @property
     def orbital_put_command(self):
         return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
 
     def refresh_guided_pane(self):
-        self.orbitals_input_action('postscripts' in self.input_specification and self.orbital_put_command in self.input_specification['postscripts'])
+        self.orbitals_input_action(
+            'postscripts' in self.input_specification and self.orbital_put_command in self.input_specification[
+                'postscripts'])
         # print('in refresh guided pane',self.input_specification)
         self.guided_combo_orientation.setCurrentText(
             self.input_specification['orientation'] if 'orientation' in self.input_specification else
@@ -566,10 +553,6 @@ class ProjectWindow(QMainWindow):
 
         self.basis_and_hamiltonian_chooser.refresh()
 
-
-
-
-
     def input_specification_change(self, key, value):
         self.input_specification[key] = value
         self.refresh_input_from_specification()
@@ -579,36 +562,6 @@ class ProjectWindow(QMainWindow):
             self.input_specification['variables'] = {}
         self.input_specification['variables'][key] = value
         self.refresh_input_from_specification()
-
-
-    def read_basis_qualities(self):
-        result = [self.all_qualities]
-        if self.whole_of_basis_registry is None:
-            self.whole_of_basis_registry = self.project.basis_registry()
-        for keyfound in self.whole_of_basis_registry.keys():
-            if keyfound != None:
-                if self.whole_of_basis_registry[keyfound]['quality'] not in result:
-                    result.append(self.whole_of_basis_registry[keyfound]['quality'])
-        return result
-
-    def load_default_basis_set_pulldown(self):
-        result = ['Select basis set...']
-        for keyfound in self.whole_of_basis_registry.keys():
-#            print(keyfound,'#',self.whole_of_basis_registry[keyfound]['quality'],'#',self.guided_combo_basis_quality.currentText(),'#')
-            if keyfound != None:
-                type_without_bracket = re.sub(r'\(.*','',self.whole_of_basis_registry[keyfound]['type'])
-                if (self.guided_combo_hamiltonian.currentText() in molpro_input.hamiltonian.keys()):
-                    hamiltonian_short = molpro_input.hamiltonian[self.guided_combo_hamiltonian.currentText()]
-                    if (hamiltonian_short == type_without_bracket):
-                        if ( (self.whole_of_basis_registry[keyfound]['quality'] == self.guided_combo_basis_quality.currentText()) or \
-                             (self.guided_combo_basis_quality.currentIndex() == 0)) :
-                            result.append(self.whole_of_basis_registry[keyfound]['name'])
-        return result
-
-    def reload_default_basis_set_pulldown(self):
-        self.guided_combo_basis_default.clear()
-        self.guided_combo_basis_default.addItems(self.load_default_basis_set_pulldown())
-        return
 
     def allowed_methods(self):
         result = []
@@ -695,7 +648,7 @@ class ProjectWindow(QMainWindow):
     def run(self, force=False):
         if 'geometry' not in self.input_specification or (
                 self.input_specification['geometry'][-4:] == '.xyz' and not os.path.exists(
-                self.project.filename('', self.input_specification['geometry'], run=-1))):
+            self.project.filename('', self.input_specification['geometry'], run=-1))):
             QMessageBox.critical(self, 'Geometry missing', 'Cannot submit job because no geometry is defined')
             return False
         self.project.run(force=force)
@@ -752,7 +705,7 @@ var Info = {
   width: """ + str(width) + """,
   script: "load '""" + re.sub('\\\\', '\\\\\\\\',
                               file) + """'; set antialiasDisplay ON; set showFrank OFF; model """ + str(
-            firstmodel) + """; """ + command + """; mo nomesh fill translucent """+str(settings['mo_translucent'])+"""; mo resolution 7; mo titleFormat ' '",
+            firstmodel) + """; """ + command + """; mo nomesh fill translucent """ + str(settings['mo_translucent']) + """; mo resolution 7; mo titleFormat ' '",
   use: "HTML5",
   j2sPath: "j2s",
   serverURL: "php/jsmol.php",
@@ -1040,8 +993,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 
     def move_to(self):
         file_name, filter_ = QFileDialog.getSaveFileName(self, 'Move project to...',
-                                                        os.path.dirname(self.project.filename(run=-1)),
-                                                        'Molpro project (*.molpro)', )
+                                                         os.path.dirname(self.project.filename(run=-1)),
+                                                         'Molpro project (*.molpro)', )
         if file_name:
             self.project.move(file_name)
             self.window_manager.register(ProjectWindow(file_name, self.window_manager))
@@ -1049,8 +1002,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
 
     def copy_to(self):
         file_name, filter_ = QFileDialog.getSaveFileName(self, 'Copy project to...',
-                                                        os.path.dirname(self.project.filename(run=-1)),
-                                                        'Molpro project (*.molpro)', )
+                                                         os.path.dirname(self.project.filename(run=-1)),
+                                                         'Molpro project (*.molpro)', )
         if file_name:
             self.project.copy(file_name, keep_run_directories=0)
             return file_name
@@ -1071,14 +1024,16 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                                 re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                                                   ',\n  '))
 
+
 class BasisAndHamiltonianChooser(QWidget):
     r"""
     Choose basis and hamiltonian
     """
     null_prompt = '- Select -'
     all_qualities = 'All Qualities'
-    basis_qualities=[all_qualities,'SZ','DZ','TZ','QZ','5Z','6Z']
-    def __init__(self, parent:ProjectWindow):
+    basis_qualities = [all_qualities, 'SZ', 'DZ', 'TZ', 'QZ', '5Z', '6Z']
+
+    def __init__(self, parent: ProjectWindow):
         super().__init__(parent)
         # self.setStyleSheet('background-color: blue;')
         self.parent = parent
@@ -1088,7 +1043,7 @@ class BasisAndHamiltonianChooser(QWidget):
         self.combo_hamiltonian.currentTextChanged.connect(self.changed_hamiltonian)
 
         self.basis_registry = self.parent.project.basis_registry()
-        self.desired_basis_quality=0
+        self.desired_basis_quality = 0
 
         guided_form = QFormLayout(self)
         guided_form.addRow('Hamiltonian', self.combo_hamiltonian)
@@ -1102,7 +1057,6 @@ class BasisAndHamiltonianChooser(QWidget):
         self.guided_combo_basis_default.currentTextChanged.connect(self.changed_default_basis)
         self.desired_basis_quality = 0
         # print('basis_registry', self.basis_registry)
-
 
     def refresh(self):
         # print('enter refresh_hamiltonian_and_basis', self.input_specification, self.desired_basis_quality, self.parent.desired_basis_quality)
@@ -1124,13 +1078,13 @@ class BasisAndHamiltonianChooser(QWidget):
                 continue
 
             # print('hamiltonian before selecting possible basis sets', self.input_specification['hamiltonian'])
-            possible_basis_sets = [k for k in self.basis_registry.keys() if (#True or
+            possible_basis_sets = [k for k in self.basis_registry.keys() if (  # True or
                     self.desired_basis_quality == 0 or self.basis_registry[k][
                 'quality'] == self.basis_qualities[self.desired_basis_quality]
             )
                                    and (
                                            not 'hamiltonian' in self.input_specification or
-                                           self.hamiltonian_type(k)== self.input_specification[
+                                           self.hamiltonian_type(k) == self.input_specification[
                                                'hamiltonian']
                                    )]
             # print('basis_registry types ', [self.hamiltonian_type(v) for v in self.basis_registry.keys()])
@@ -1145,21 +1099,22 @@ class BasisAndHamiltonianChooser(QWidget):
                 self.guided_combo_basis_default.setCurrentText(self.input_specification['basis']['default'])
             self.guided_combo_basis_default.show()
 
-
             self.guided_combo_basis_quality.setCurrentText(self.basis_qualities[self.desired_basis_quality])
-            self.combo_hamiltonian.setCurrentText(molpro_input.hamiltonians[self.input_specification['hamiltonian']]['text'])
+            self.combo_hamiltonian.setCurrentText(
+                molpro_input.hamiltonians[self.input_specification['hamiltonian']]['text'])
             break
 
     def changed_hamiltonian(self, text):
-        self.input_specification['hamiltonian'] = list(molpro_input.hamiltonians.keys())[ [v['text'] for v in molpro_input.hamiltonians.values()].index(text)]
+        self.input_specification['hamiltonian'] = list(molpro_input.hamiltonians.keys())[
+            [v['text'] for v in molpro_input.hamiltonians.values()].index(text)]
         # print('changed_hamiltonian sets to ',self.input_specification['hamiltonian'])
         if 'basis' in self.input_specification and 'default' in self.input_specification['basis']:
             self.input_specification['basis'] = self.default_basis_for_hamiltonian(self.desired_basis_quality)
         self.write()
         self.refresh()
 
-    def changed_basis_quality(self,text):
-        self.desired_basis_quality= self.basis_qualities.index(text)
+    def changed_basis_quality(self, text):
+        self.desired_basis_quality = self.basis_qualities.index(text)
         # print('quality changed to',self.desired_basis_quality, 'and at this point hamiltonian=',self.input_specification['hamiltonian'])
         self.refresh()
 
@@ -1169,7 +1124,7 @@ class BasisAndHamiltonianChooser(QWidget):
                            molpro_input.hamiltonians[self.input_specification['hamiltonian']]['basis_string'],
                 'elements': {}, 'quality': quality}
 
-    def changed_default_basis (self, text):
+    def changed_default_basis(self, text):
         if not text or text == self.null_prompt: return
         self.input_specification['basis']['default'] = text
         self.input_specification['basis']['elements'] = {}
@@ -1177,12 +1132,11 @@ class BasisAndHamiltonianChooser(QWidget):
         self.write()
 
     def write(self):
-        # print('write', self.input_specification,self.parent.input_specification)
         self.parent.refresh_input_from_specification()
+
     @property
     def input_specification(self):
         return self.parent.input_specification
-
 
     @property
     def hamiltonians(self):

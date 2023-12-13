@@ -2,18 +2,11 @@ import os
 import re
 
 wave_fct_symm_commands = {
-    'Automatic' : '',
-    'No Symmetry' : 'symmetry,nosym'
+    'Automatic': '',
+    'No Symmetry': 'symmetry,nosym'
 }
 wave_fct_symm_aliases = {
-     'nosym' : 'symmetry,nosym',
-}
-
-hamiltonian = {
-    'All Electron': '',
-    'Pseudopotential': '-PP',
-    'Douglas-Kroll-Hess': '-DK',
-    'Douglas-Kroll-Hess 3': '-DK3',
+    'nosym': 'symmetry,nosym',
 }
 
 hamiltonians = {
@@ -22,8 +15,6 @@ hamiltonians = {
     'DK': {'text': 'Douglas-Kroll-Hess', 'basis_string': '-DK'},
     'DK3': {'text': 'Douglas-Kroll-Hess 3', 'basis_string': '-DK3'},
 }
-
-
 
 job_type_commands = {
     'Single Point Energy': '',
@@ -36,7 +27,7 @@ job_type_aliases = {
     '{freq}': 'frequencies',
     'freq': 'frequencies',
 }
-orientation_options  = {
+orientation_options = {
     'Mass': 'mass',
     'Charge': 'charge',
     'No orientation': 'noorient'
@@ -70,14 +61,14 @@ def parse(input: str, allowed_methods=[], debug=False):
         line = line.strip()
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
         if re.match('^orient *, *', line, re.IGNORECASE):
-            line = re.sub('^orient *, *','',line, flags=re.IGNORECASE)
+            line = re.sub('^orient *, *', '', line, flags=re.IGNORECASE)
             for orientation_option in orientation_options.keys():
                 if (line.lower() == orientation_options[orientation_option].lower()):
                     specification['orientation'] = orientation_option
                     break
         elif ((command.lower() == 'nosym') or (re.match('^symmetry *, *', line, re.IGNORECASE))):
-            line = re.sub('^symmetry *, *','',line, flags=re.IGNORECASE)
-            line = "symmetry,"+line
+            line = re.sub('^symmetry *, *', '', line, flags=re.IGNORECASE)
+            line = "symmetry," + line
             for symmetry_command in wave_fct_symm_commands.keys():
                 if (line.lower() == wave_fct_symm_commands[symmetry_command]):
                     specification['wave_fct_symm'] = symmetry_command
@@ -103,17 +94,17 @@ def parse(input: str, allowed_methods=[], debug=False):
             specification['geometry'] = re.sub(' *!.*', '', specification['geometry'])
             specification['geometry_external'] = True
         elif command == 'basis':
-            raise ValueError('** warning should not happen basis',line)
-            specification['basis'] = 'default='+re.sub('^basis *, *', '', line, flags=re.IGNORECASE).rstrip('\n ')
+            raise ValueError('** warning should not happen basis', line)
+            specification['basis'] = 'default=' + re.sub('^basis *, *', '', line, flags=re.IGNORECASE).rstrip('\n ')
         elif re.match('^basis *= *', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
             specification['basis'] = {'default': (re.sub(' *basis *= *', '', command))}
             fields = line.split(',')
-            specification['basis']['elements']={}
+            specification['basis']['elements'] = {}
             for field in fields[1:]:
-                ff=field.split('=')
-                specification['basis']['elements'][ff[0][0].upper()+ff[0][1:].lower()]=ff[1].strip('\n ')
+                ff = field.split('=')
+                specification['basis']['elements'][ff[0][0].upper() + ff[0][1:].lower()] = ff[1].strip('\n ')
             specification['basis']['quality'] = basis_quality(specification)
             # print('made basis specification',specification)
         elif re.match('^basis *=', line, re.IGNORECASE):
@@ -143,7 +134,8 @@ def parse(input: str, allowed_methods=[], debug=False):
             if 'method' in specification: return {}  # input too complex
             if 'precursor_methods' not in specification: specification['precursor_methods'] = []
             specification['precursor_methods'].append(line.lower())
-        elif any([re.fullmatch('{?' + df_prefix + local_prefix + spin_prefix + re.escape(method), command, flags=re.IGNORECASE) for
+        elif any([re.fullmatch('{?' + df_prefix + local_prefix + spin_prefix + re.escape(method), command,
+                               flags=re.IGNORECASE) for
                   df_prefix
                   in df_prefixes
                   for local_prefix in local_prefixes for spin_prefix in spin_prefixes for method in allowed_methods]):
@@ -161,7 +153,8 @@ def parse(input: str, allowed_methods=[], debug=False):
             if old_job_type_command == 'optg' and job_type_command == 'frequencies':
                 job_type_command = 'optg; frequencies'
             specification['job_type'] = \
-            [job_type for job_type in job_type_commands.keys() if job_type_commands[job_type] == job_type_command][0]
+                [job_type for job_type in job_type_commands.keys() if job_type_commands[job_type] == job_type_command][
+                    0]
         elif any([re.match('{? *' + postscript, command, flags=re.IGNORECASE) for postscript in postscripts]):
             if 'postscripts' not in specification: specification['postscripts'] = []
             specification['postscripts'].append(line.lower())
@@ -185,10 +178,10 @@ def create_input(specification: dict):
     """
     _input = ''
     if 'orientation' in specification:
-        _input += 'orient,' + orientation_options[specification['orientation']]+'\n'
+        _input += 'orient,' + orientation_options[specification['orientation']] + '\n'
 
     if 'wave_fct_symm' in specification:
-        _input += wave_fct_symm_commands[specification['wave_fct_symm']]+'\n'
+        _input += wave_fct_symm_commands[specification['wave_fct_symm']] + '\n'
 
     if 'geometry' in specification:
         _input += ('geometry=' + specification[
@@ -224,7 +217,7 @@ def basis_quality(specification):
     quality_letters = {2: 'D', 3: 'T', 4: 'Q', 5: '5', 6: '6', 7: '7'}
     if 'basis' in specification:
         bases = [specification['basis']['default']]
-        if 'elements' in specification['basis']: bases+=specification['basis']['elements'].values()
+        if 'elements' in specification['basis']: bases += specification['basis']['elements'].values()
         qualities = []
         for basis in bases:
             quality = 0
@@ -235,26 +228,26 @@ def basis_quality(specification):
             return qualities[0]
     return 0
 
+
 def basis_hamiltonian(specification):
     result = 'AE'
     for v, k in hamiltonians.items():
-        if k and 'basis' in specification and 'default' in specification['basis'] and k['basis_string'] in specification['basis']['default']: result = v
+        if k and 'basis' in specification and 'default' in specification['basis'] and k['basis_string'] in \
+                specification['basis']['default']: result = v
     # print('basis_hamiltonian: ', result)
     return result
-
-
 
 
 def canonicalise(input):
     result = re.sub('\n}', '}',
                     re.sub(' *= *', '=',
-                    re.sub('{\n', r'{',
-                           re.sub('\n+', '\n',
-                                  re.sub(' *, *', ',',
+                           re.sub('{\n', r'{',
+                                  re.sub('\n+', '\n',
+                                         re.sub(' *, *', ',',
                                                 input.replace(';',
                                                               '\n')))))).rstrip(
-                                                                  '\n ').lstrip(
-                                                                      '\n ') + '\n'
+        '\n ').lstrip(
+        '\n ') + '\n'
     new_result = ''
     for line in re.sub('set[, ]', '', result.strip(), flags=re.IGNORECASE).split('\n'):
 
@@ -266,14 +259,14 @@ def canonicalise(input):
         if line.lower().strip() in job_type_aliases.keys(): line = job_type_aliases[line.lower().strip()]
         if line.lower().strip() in wave_fct_symm_aliases.keys():
             line = wave_fct_symm_aliases[line.lower().strip()]
-        line = line.replace('!','&&&&&') # protect trailing comments
+        line = line.replace('!', '&&&&&')  # protect trailing comments
         while (newline := re.sub(r'(\[[0-9!]+),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
         if re.match(r'[a-z][a-z0-9_]* *= *\[?[!a-z0-9_. ]*\]? *,', line, flags=re.IGNORECASE):
             line = line.replace(',', '\n')
-        line = re.sub(' *}','}',line)
-        line = re.sub('{ *','{',line)
-        line = line.replace('!', ',').strip() + '\n' # unprotect
-        line = line.replace('&&&&&', '!').strip() + '\n' # unprotect
+        line = re.sub(' *}', '}', line)
+        line = re.sub('{ *', '{', line)
+        line = line.replace('!', ',').strip() + '\n'  # unprotect
+        line = line.replace('&&&&&', '!').strip() + '\n'  # unprotect
         if line.strip('\n') != '':
             new_result += line.strip('\n ') + '\n'
     return new_result.strip('\n ') + '\n'
