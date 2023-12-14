@@ -409,7 +409,7 @@ class ProjectWindow(QMainWindow):
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
         self.input_specification = molpro_input.parse(input_text, self.allowed_methods())
-        guided = molpro_input.equivalent(input_text, self.input_specification)
+        guided = len(self.input_specification) and molpro_input.equivalent(input_text, self.input_specification)
         return guided
 
     def input_tab_changed_consequence(self, index=0):
@@ -503,9 +503,9 @@ class ProjectWindow(QMainWindow):
         return result
 
     def run(self, force=False):
-        if 'geometry' not in self.input_specification or (
+        if self.guided_possible() and ('geometry' not in self.input_specification or (
                 self.input_specification['geometry'][-4:] == '.xyz' and not os.path.exists(
-            self.project.filename('', self.input_specification['geometry'], run=-1))):
+            self.project.filename('', self.input_specification['geometry'], run=-1)))):
             QMessageBox.critical(self, 'Geometry missing', 'Cannot submit job because no geometry is defined')
             return False
         self.project.run(force=force)
@@ -1140,6 +1140,7 @@ class GuidedPane(QWidget):
 
     def refresh_input_from_specification(self):
         if self.trace: print('refresh_input_from_specification')
+        if not self.parent.guided_possible(): return
         new_input = molpro_input.create_input(self.input_specification)
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
             self.input_pane.setPlainText(new_input)
