@@ -80,6 +80,8 @@ def parse(input: str, allowed_methods=[], debug=False):
                 if (line.lower() == wave_fct_symm_commands[symmetry_command]):
                     specification['wave_fct_symm'] = symmetry_command
                     break
+        elif re.match('^dkho *=.*',command,re.IGNORECASE):
+            specification['hamiltonian']=re.sub('^dkho *= *', 'DK', command, flags=re.IGNORECASE).replace('DK1','DK')
         elif any( [line.lower() == v['command'].lower() for v in orbital_types.values()]):
             last_orbital_generator = [k for k, v in orbital_types.items() if command.lower() == v['command'].lower()]
         elif any([re.match('put,molden,' + k + '.molden', line, flags=re.IGNORECASE) for k in orbital_types.keys()]):
@@ -260,7 +262,7 @@ def basis_hamiltonian(specification):
                 specification['basis']['default']: result = v
     if 'variables' in specification and 'dkho' in specification['variables']:
         result = 'DK' + str(specification['variables']['dkho']) if str(
-            specification['variables']['dkho']) != 1 else 'DK'
+            specification['variables']['dkho']) != '1' else 'DK'
     return result
 
 
