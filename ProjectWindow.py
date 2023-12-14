@@ -16,6 +16,7 @@ from PyQt5.QtGui import QIntValidator
 from pymolpro import Project
 
 import molpro_input
+from CheckableComboBox import CheckableComboBox
 from MenuBar import MenuBar
 from OldOutputMenu import OldOutputMenu
 from RecentMenu import RecentMenu
@@ -1063,14 +1064,16 @@ class GuidedPane(QWidget):
             'Symmetry': self.guided_combo_wave_fct_symm,
         }, title='Wavefunction parameters'))
 
-        self.guided_orbitals_input = QCheckBox()
-        self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
-        self.guided_orbitals_input.setChecked(hasattr(self,
-                                                      'input_specification') and 'postscripts' in self.input_specification and self.orbital_put_command in
-                                              self.input_specification['postscripts'])
+        # self.guided_orbitals_input = QCheckBox()
+        # self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
+        # self.guided_orbitals_input.setChecked(hasattr(self,
+        #                                               'input_specification') and 'postscripts' in self.input_specification and self.orbital_put_command in
+        #                                       self.input_specification['postscripts'])
+        self.guided_orbitals_input = OrbitalInput(self)
         self.guided_layout.addWidget(RowOfTitledWidgets({
-            'Orientation': self.guided_combo_orientation,
             'Plot orbitals': self.guided_orbitals_input,
+            'Orientation': self.guided_combo_orientation,
+            'Density Fitting': QLabel(''),
         }, title='Miscellaneous'))
 
     @property
@@ -1078,9 +1081,9 @@ class GuidedPane(QWidget):
         return self.parent.input_specification
 
     def refresh(self):
-        self.orbitals_input_action(
-            'postscripts' in self.input_specification and self.orbital_put_command in self.input_specification[
-                'postscripts'])
+        # self.orbitals_input_action(
+        #     'postscripts' in self.input_specification and self.orbital_put_command in self.input_specification[
+        #         'postscripts'])
         self.guided_combo_orientation.setCurrentText(
             self.input_specification['orientation'] if 'orientation' in self.input_specification else
             list(molpro_input.orientation_options.keys())[0])
@@ -1106,14 +1109,14 @@ class GuidedPane(QWidget):
 
         self.basis_and_hamiltonian_chooser.refresh()
 
-    def orbitals_input_action(self, parameter):
-        if not 'postscripts' in self.input_specification: self.input_specification['postscripts'] = []
-        self.input_specification['postscripts'] = [ps for ps in self.input_specification['postscripts'] if
-                                                   ps != self.orbital_put_command]
-        if parameter:
-            self.input_specification['postscripts'].append(self.orbital_put_command)
-        self.refresh_input_from_specification()
-        self.guided_orbitals_input.setChecked(parameter)
+    # def orbitals_input_action(self, parameter):
+    #     if not 'postscripts' in self.input_specification: self.input_specification['postscripts'] = []
+    #     self.input_specification['postscripts'] = [ps for ps in self.input_specification['postscripts'] if
+    #                                                ps != self.orbital_put_command]
+    #     if parameter:
+    #         self.input_specification['postscripts'].append(self.orbital_put_command)
+    #     self.refresh_input_from_specification()
+    #     self.guided_orbitals_input.setChecked(parameter)
 
     @property
     def orbital_put_command(self):
@@ -1164,3 +1167,25 @@ class RowOfTitledWidgets(QWidget):
         for k, v in widgets.items():
             layout2.addWidget(QLabel(k), 0, list(widgets.keys()).index(k), alignment=Qt.AlignCenter)
             layout2.addWidget(v, 1, list(widgets.keys()).index(k), alignment=Qt.AlignCenter)
+
+class OrbitalInput(CheckableComboBox):
+    r"""
+    Helper for constructing input for producing various kinds of orbitals
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.addItems([o['text'] for o in molpro_input.orbital_types.values()])
+        if 'orbitals' in self.parent.input_specification:
+            for o in self.parent.input_specification['orbitals']:
+                for i in range(self.model().rowCount()):
+                    if self.model().item(i).text() == molpro_input.orbital_types[o]['text']:
+                        self.model().item(i).setCheckState(Qt.Checked)
+        self.currentTextChanged.connect(self.onCurrentTextChanged)
+
+    def onCurrentTextChanged(self, text):
+        self.parent.input_specification['orbitals'] = [k for k,v in molpro_input.orbital_types.items() for t in self.currentData() if t == v['text']]
+        if 'nbo' in self.parent.input_specification['orbitals']:
+            self.parent.input_specification_change('wave_fct_symm', 'No Symmetry')
+        self.parent.refresh_input_from_specification()
+

@@ -16,6 +16,13 @@ hamiltonians = {
     'DK3': {'text': 'Douglas-Kroll-Hess 3', 'basis_string': '-DK3'},
 }
 
+orbital_types = {
+    'canonical': {'text': 'Canonical', 'command': ''},
+    'boys': {'text': 'Boys', 'command': 'locali'},
+    'pipek': {'text': 'Pipek-Mezey', 'command': 'locali,pipek'},
+    'nbo': {'text': 'NBO', 'command': 'nbo'},
+}
+
 job_type_commands = {
     'Single Point Energy': '',
     'Geometry Optimisation': 'optg',
@@ -56,6 +63,7 @@ def parse(input: str, allowed_methods=[], debug=False):
     variables = {}
     geometry_active = False
     specification['job_type'] = 'Single Point Energy'
+    last_orbital_generator = ''
     for line in canonicalise(input).split('\n'):
         line = line.strip()
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
@@ -72,6 +80,11 @@ def parse(input: str, allowed_methods=[], debug=False):
                 if (line.lower() == wave_fct_symm_commands[symmetry_command]):
                     specification['wave_fct_symm'] = symmetry_command
                     break
+        elif any( [line.lower() == v['command'].lower() for v in orbital_types.values()]):
+            last_orbital_generator = [k for k, v in orbital_types.items() if command.lower() == v['command'].lower()]
+        elif any([re.match('put,molden,' + k + '.molden', line, flags=re.IGNORECASE) for k in orbital_types.keys()]):
+            if 'orbitals' not in specification: specification['orbitals'] = []
+            specification['orbitals'].append(re.sub('put,molden, *([^.]*).*',r'\1',line))
         elif re.match('^geometry *= *{', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
@@ -158,6 +171,7 @@ def parse(input: str, allowed_methods=[], debug=False):
             if 'postscripts' not in specification: specification['postscripts'] = []
             specification['postscripts'].append(line.lower())
 
+
     if 'method' not in specification and 'precursor_methods' in specification:
         specification['method'] = specification['precursor_methods'][-1]
         specification['precursor_methods'].pop()
@@ -213,6 +227,10 @@ def create_input(specification: dict):
         _input += specification['method'].lower() + '\n'
     if 'job_type' in specification:
         _input += job_type_commands[specification['job_type']] + '\n'
+    if 'orbitals' in specification:
+        for k in specification['orbitals']:
+            _input += orbital_types[k]['command'] + '\n'
+            _input += 'put,molden,' + k + '.molden' + '\n'
     if 'postscripts' in specification:
         for m in specification['postscripts']:
             _input += m + '\n'
