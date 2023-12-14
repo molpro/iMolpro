@@ -417,6 +417,14 @@ class ProjectWindow(QMainWindow):
         if self.input_tabs.currentIndex() == 1:
             self.guided_pane.refresh()
 
+    def available_functionals(self):
+        result = []
+        for priority in range(5,-1,-1):
+            for keyfound in self.project.registry('dfunc'):
+                if self.project.registry('dfunc')[keyfound]['priority'] == priority:
+                    result.append(keyfound)
+        return result
+
     def allowed_methods(self):
         result = []
         if not hasattr(self,'procedures_registry'):
@@ -1048,10 +1056,13 @@ class GuidedPane(QWidget):
         self.guided_combo_method.currentTextChanged.connect(
             lambda text: self.input_specification_change('method', text))
 
+        self.guided_combo_functional = QComboBox(self)
+        self.guided_combo_functional.addItems(self.parent.available_functionals())
+
         self.guided_layout.addWidget(RowOfTitledWidgets({
             'Type': self.guided_combo_job_type,
             'Method': self.guided_combo_method,
-            'Functional': QWidget(),
+            'Functional': self.guided_combo_functional,
         }, title='Calculation'))
 
         self.desired_basis_quality = 0
