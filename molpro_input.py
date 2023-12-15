@@ -41,6 +41,15 @@ orientation_options = {
     'No orientation': 'noorient'
 }
 
+properties={
+    'Quadrupole moment' : 'gexpec,qm',
+    'Second moment' : 'gexpec,sm',
+    'Kinetic energy' : 'gexpec,ekin',
+    'Cowan-Griffin' : 'gexpec,rel',
+    'Mass-velocity':'gexpec,massv',
+    'Darwin': 'gexpec,darw',
+}
+
 initial_orbital_methods = ['HF', 'KS']
 
 def parse(input: str, allowed_methods=[], debug=False):
@@ -93,9 +102,12 @@ def parse(input: str, allowed_methods=[], debug=False):
                 if (line.lower() == wave_fct_symm_commands[symmetry_command]):
                     specification['wave_fct_symm'] = symmetry_command
                     break
-        elif re.match('^dkho *=.*',command,re.IGNORECASE):
-            specification['hamiltonian']=re.sub('^dkho *= *', 'DK', command, flags=re.IGNORECASE).replace('DK1','DK')
-        elif any( [line.lower() == v['command'].lower() for v in orbital_types.values()]):
+        elif re.match('^dkho *=.*', command, re.IGNORECASE):
+            specification['hamiltonian'] = re.sub('^dkho *= *', 'DK', command, flags=re.IGNORECASE).replace('DK1', 'DK')
+        elif line.lower() in properties.values():
+            if 'properties' not in specification: specification['properties'] = []
+            specification['properties'] += [k for k, v in properties.items() if line.lower() == v]
+        elif any([line.lower() == v['command'].lower() for v in orbital_types.values()]):
             last_orbital_generator = [k for k, v in orbital_types.items() if command.lower() == v['command'].lower()]
         elif any([re.match('put,molden,' + k + '.molden', line, flags=re.IGNORECASE) for k in orbital_types.keys()]):
             if 'orbitals' not in specification: specification['orbitals'] = []
@@ -235,6 +247,9 @@ def create_input(specification: dict):
             if v != '':
                 _input += k + '=' + v + '\n'
     if len(specification['variables']) == 0: del specification['variables']
+    if 'properties' in specification:
+        for p in specification['properties']:
+            _input += properties[p] + '\n'
     first = True
     for l in (specification['precursor_methods'] if 'precursor_methods' in specification else [])+[specification['method']] if 'method' in specification else []:
         _input_line = l.lower()

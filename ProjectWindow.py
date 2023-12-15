@@ -1058,6 +1058,8 @@ class GuidedPane(QWidget):
         self.combo_uhf = QCheckBox(self)
         self.combo_uhf.stateChanged.connect(lambda state: self.input_specification_change('spin_unrestricted_orbitals',  state!=0))
 
+        self.combo_properties = PropertyInput(self)
+
         self.guided_layout.addWidget(RowOfTitledWidgets({
             'Type': self.guided_combo_job_type,
             'Method': self.guided_combo_method,
@@ -1075,14 +1077,12 @@ class GuidedPane(QWidget):
             'UHF': self.combo_uhf,
         }, title='Wavefunction parameters'))
 
-        # self.guided_orbitals_input = QCheckBox()
-        # self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
-        # self.guided_orbitals_input.setChecked(hasattr(self,
-        #                                               'input_specification') and 'postscripts' in self.input_specification and self.orbital_put_command in
-        #                                       self.input_specification['postscripts'])
         self.guided_orbitals_input = OrbitalInput(self)
         self.guided_layout.addWidget(RowOfTitledWidgets({
             'Export orbitals': self.guided_orbitals_input,
+            'Expectation values': self.combo_properties,
+        }, title='Properties'))
+        self.guided_layout.addWidget(RowOfTitledWidgets({
             'Orientation': self.guided_combo_orientation,
             'Density Fitting': QLabel(''),
         }, title='Miscellaneous'))
@@ -1196,11 +1196,30 @@ class OrbitalInput(CheckableComboBox):
                 for i in range(self.model().rowCount()):
                     if self.model().item(i).text() == molpro_input.orbital_types[o]['text']:
                         self.model().item(i).setCheckState(Qt.Checked)
-        self.currentTextChanged.connect(self.onCurrentTextChanged)
+        self.model().dataChanged.connect(self.refresh)
 
-    def onCurrentTextChanged(self, text):
+    def refresh(self, text):
         self.parent.input_specification['orbitals'] = [k for k,v in molpro_input.orbital_types.items() for t in self.currentData() if t == v['text']]
         if any([b in self.parent.input_specification['orbitals'] for b in ['nbo','ibo']]):
             self.parent.input_specification_change('wave_fct_symm', 'No Symmetry')
+        self.parent.refresh_input_from_specification()
+
+class PropertyInput(CheckableComboBox):
+    r"""
+    Helper for constructing input for properties
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.addItems(molpro_input.properties.keys())
+        if 'properties' in self.parent.input_specification:
+            for o in self.parent.input_specification['properties']:
+                for i in range(self.model().rowCount()):
+                    if self.model().item(i).text() == o:
+                        self.model().item(i).setCheckState(Qt.Checked)
+        self.model().dataChanged.connect(self.refresh)
+
+    def refresh(self, text):
+        self.parent.input_specification['properties'] = [k for k,v in molpro_input.properties.items() for t in self.currentData() if t == k]
         self.parent.refresh_input_from_specification()
 
