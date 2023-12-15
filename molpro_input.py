@@ -41,6 +41,7 @@ orientation_options = {
     'No orientation': 'noorient'
 }
 
+initial_orbital_methods = ['HF', 'KS']
 
 def parse(input: str, allowed_methods=[], debug=False):
     r"""
@@ -68,6 +69,17 @@ def parse(input: str, allowed_methods=[], debug=False):
     for line in canonicalise(input).split('\n'):
         line = line.strip()
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
+        for s in ['u', 'r']:
+            for m in initial_orbital_methods:
+                try:
+                    loc = command.lower().index(s+m.lower())
+                    command0 = command
+                    command = command[:loc]+command[loc+1:]
+                    line = re.sub(command0, command, line)
+                    if s == 'u':
+                        specification['spin_unrestricted_orbitals'] = True
+                except ValueError:
+                    pass
         if re.match('^orient *, *', line, re.IGNORECASE):
             line = re.sub('^orient *, *', '', line, flags=re.IGNORECASE)
             for orientation_option in orientation_options.keys():
@@ -223,11 +235,18 @@ def create_input(specification: dict):
             if v != '':
                 _input += k + '=' + v + '\n'
     if len(specification['variables']) == 0: del specification['variables']
-    if 'precursor_methods' in specification:
-        for m in specification['precursor_methods']:
-            _input += m.lower() + '\n'
-    if 'method' in specification:
-        _input += specification['method'].lower() + '\n'
+    first = True
+    for l in (specification['precursor_methods'] if 'precursor_methods' in specification else [])+[specification['method']] if 'method' in specification else []:
+        _input_line = l.lower()
+        if first and 'spin_unrestricted_orbitals' in specification and specification['spin_unrestricted_orbitals']:
+            for m in initial_orbital_methods:
+                try:
+                    loc = l.lower().index(m.lower())
+                    _input_line = l.lower()[:loc]+'u'+l.lower()[loc:]
+                except ValueError:
+                    pass
+        _input += _input_line + '\n'
+        first = False
     if 'job_type' in specification:
         _input += job_type_commands[specification['job_type']] + '\n'
     if 'orbitals' in specification:
@@ -284,6 +303,10 @@ def canonicalise(input):
         line = re.sub('basis *, *', 'basis=', line, flags=re.IGNORECASE)
         line = re.sub('basis= *{(.*)} *$', r'basis=\1', line, flags=re.IGNORECASE)
         line = re.sub('basis= *default *= *', r'basis=', line, flags=re.IGNORECASE)
+
+        # transform out alternate spin markers
+        for m in initial_orbital_methods:
+            line = re.sub('r'+m,m,line,flags=re.IGNORECASE)
 
         if line.lower().strip() in job_type_aliases.keys(): line = job_type_aliases[line.lower().strip()]
         if line.lower().strip() in wave_fct_symm_aliases.keys():
