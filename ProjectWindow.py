@@ -896,7 +896,7 @@ class BasisAndHamiltonianChooser(QWidget):
         self.parent = parent
 
         self.basis_registry = self.parent.project.basis_registry()
-        self.desired_basis_quality = 0
+        self.desired_basis_quality = molpro_input.basis_quality(self.parent.input_specification)
 
         self.combo_hamiltonian = QComboBox(self)
         self.combo_hamiltonian.addItems([h['text'] for h in molpro_input.hamiltonians.values()])
