@@ -11,7 +11,7 @@ We now proceed to specify an MP2 geometry optimisation and frequency calculation
 You are free to change the input either using the `guided` pane, or by directly editing the molpro input in the `freehand` pane; if you do the latter, guided mode can still be used later provided that the molpro input is sufficiently simple that it can be parsed.
 
 In order to run the job, simply press the `Run` button, which will launch the job on the local machine. The output will be displayed in the right pane, and the job status is shown at the bottom left.
-When it is finished, you can view orbitals and vibrational modes by selecting `example.molden` in `Structure display`:  
+When it is finished, you can view orbitals and vibrational modes by selecting `example.molden` in `Display`:  
 <img src="ProjectWindow3.png" alt="Project Window" width="600"/>  
 You can then select particular vibrational modes to animate, or orbitals to see contour graphics. Finer control can be achieved through the Jmol menu, or by typing any Jmol command.
 
