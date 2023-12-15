@@ -216,6 +216,7 @@ class ProjectWindow(QMainWindow):
                     self.vod_selector.setCurrentText('Edit ' + os.path.basename(import_structure))
             if not import_structure and (database_import := self.database_import_structure()):
                 self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
+            self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), self.allowed_methods())
 
         self.input_tabs.setCurrentIndex(1)
         self.guided_action.setChecked(self.input_tabs.currentIndex() == 1)
@@ -408,8 +409,8 @@ class ProjectWindow(QMainWindow):
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
-        self.input_specification = molpro_input.parse(input_text, self.allowed_methods())
-        guided = len(self.input_specification) and molpro_input.equivalent(input_text, self.input_specification)
+        input_specification = molpro_input.parse(input_text, self.allowed_methods())
+        guided = len(input_specification) and molpro_input.equivalent(input_text, input_specification)
         return guided
 
     def input_tab_changed_consequence(self, index=0):
