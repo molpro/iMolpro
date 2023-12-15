@@ -6,7 +6,7 @@ select `New project` and place it in the filesystem using the dialog that is pre
 <img src="ProjectWindow.png" alt="Project Window" width="600"/>  
 The left part of the project window is all about specifying the input for a Molpro job, and the right part displays usually aspects of a completed calculation, but, as here, can also be filled with the initial structure. The structure displayed at this point is editable using the embedded Jmol builder, for which options can be found be clicking near the top left corner.
 
-We now proceed to specify an MP2 geometry optimisation and frequency calculation using the 'guided mode' controls in the left region. The raw molpro input that is generated  can be seen and edited by selecting the `freehand` tab. On toggling back to `guided`, the right hand pane gives a read-only view of the input, which now looks like this:  
+We now proceed to specify an MP2 geometry optimisation and frequency calculation using the 'guided mode' controls in the left region, also opting for the canonical orbitals to be exported for later plotting. The raw molpro input that is generated  can be seen and edited by selecting the `freehand` tab. On toggling back to `guided`, the right hand pane gives a read-only view of the input, which now looks like this:  
 <img src="ProjectWindow2.png" alt="Project Window" width="600"/>  
 You are free to change the input either using the `guided` pane, or by directly editing the molpro input in the `freehand` pane; if you do the latter, guided mode can still be used later provided that the molpro input is sufficiently simple that it can be parsed.
 
