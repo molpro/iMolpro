@@ -19,7 +19,7 @@ class HelpWindow(QWidget):
         self.browser.setOpenExternalLinks(True)
         # self.setCentralWidget(self.browser)
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
-        self.setMinimumWidth(600)
+        self.setMinimumWidth(650)
         self.setMinimumHeight(400)
         self.shortcutClose = QShortcut('Ctrl+W', self)
         self.shortcutClose.activated.connect(self.close)
