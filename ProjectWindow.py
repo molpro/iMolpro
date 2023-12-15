@@ -158,7 +158,7 @@ class ProjectWindow(QMainWindow):
         self.vod_selector = QComboBox(self)
         vod_select_layout = QFormLayout()
         button_layout.addLayout(vod_select_layout)
-        vod_select_layout.addRow('Structure display:', self.vod_selector)
+        vod_select_layout.addRow('Display:', self.vod_selector)
         left_layout.addLayout(button_layout)
         button_layout_2 = QHBoxLayout()
         self.backend_selector = QComboBox(self)
