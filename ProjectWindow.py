@@ -1072,7 +1072,7 @@ class GuidedPane(QWidget):
         #                                       self.input_specification['postscripts'])
         self.guided_orbitals_input = OrbitalInput(self)
         self.guided_layout.addWidget(RowOfTitledWidgets({
-            'Plot orbitals': self.guided_orbitals_input,
+            'Export orbitals': self.guided_orbitals_input,
             'Orientation': self.guided_combo_orientation,
             'Density Fitting': QLabel(''),
         }, title='Miscellaneous'))
@@ -1187,7 +1187,7 @@ class OrbitalInput(CheckableComboBox):
 
     def onCurrentTextChanged(self, text):
         self.parent.input_specification['orbitals'] = [k for k,v in molpro_input.orbital_types.items() for t in self.currentData() if t == v['text']]
-        if 'nbo' in self.parent.input_specification['orbitals']:
+        if any([b in self.parent.input_specification['orbitals'] for b in ['nbo','ibo']]):
             self.parent.input_specification_change('wave_fct_symm', 'No Symmetry')
         self.parent.refresh_input_from_specification()
 

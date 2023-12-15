@@ -18,9 +18,10 @@ hamiltonians = {
 
 orbital_types = {
     'canonical': {'text': 'Canonical', 'command': ''},
-    'boys': {'text': 'Boys', 'command': 'locali'},
+    'ibo': {'text': 'Intrinsic Bond', 'command': 'ibba'},
     'pipek': {'text': 'Pipek-Mezey', 'command': 'locali,pipek'},
     'nbo': {'text': 'NBO', 'command': 'nbo'},
+    'boys': {'text': 'Boys', 'command': 'locali'},
 }
 
 job_type_commands = {
