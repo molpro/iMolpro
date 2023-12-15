@@ -955,16 +955,19 @@ class BasisAndHamiltonianChooser(QWidget):
             break
 
     def changed_hamiltonian(self, text):
-        self.input_specification['hamiltonian'] = list(molpro_input.hamiltonians.keys())[
+        new_hamiltonian_ = list(molpro_input.hamiltonians.keys())[
             [v['text'] for v in molpro_input.hamiltonians.values()].index(text)]
-        if 'basis' in self.input_specification and 'default' in self.input_specification['basis']:
-            self.input_specification['basis'] = self.default_basis_for_hamiltonian(self.desired_basis_quality)
-        self.write()
-        self.refresh()
+        if self.input_specification['hamiltonian'] != new_hamiltonian_:
+            self.input_specification['hamiltonian'] = new_hamiltonian_
+            if 'basis' in self.input_specification and 'default' in self.input_specification['basis']:
+                self.input_specification['basis'] = self.default_basis_for_hamiltonian(self.desired_basis_quality)
+            self.write()
+            self.refresh()
 
     def changed_basis_quality(self, text):
-        self.desired_basis_quality = self.basis_qualities.index(text)
-        self.refresh()
+        if self.desired_basis_quality != self.basis_qualities.index(text):
+            self.desired_basis_quality = self.basis_qualities.index(text)
+            self.refresh()
 
     def default_basis_for_hamiltonian(self, desired_basis_quality=0):
         quality = self.desired_basis_quality if desired_basis_quality > 0 else 3
