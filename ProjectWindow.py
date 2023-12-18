@@ -12,7 +12,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineP
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
     QSplitter, QMenu, QCheckBox, QGridLayout
-from PyQt5.QtGui import QIntValidator
+from PyQt5.QtGui import QIntValidator, QFont
 from pymolpro import Project
 
 import molpro_input
@@ -22,7 +22,7 @@ from OldOutputMenu import OldOutputMenu
 from RecentMenu import RecentMenu
 from database import database_choose_structure
 from help import HelpManager
-from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set, MainEditFile
+from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set
 from backend import configure_backend, BackendConfigurationEditor
 from settings import settings
 
@@ -48,12 +48,19 @@ class StatusBar(QLabel):
 
 
 class ViewProjectOutput(ViewFile):
-    def __init__(self, project, suffix='out', width=800, latency=100, filename_latency=2000, point_size=10, instance=0):
+    def __init__(self, project, suffix='out', width=132, latency=100, filename_latency=2000, point_size=8, instance=0):
         self.project = project
         self.suffix = suffix
         self.instance = -1 if suffix == 'inp' else instance
+        minimum_point_size = point_size-2
+        self.character_width = width
         super().__init__(self.project.filename(suffix, run=self.instance), latency=latency, point_size=point_size)
-        super().setMinimumWidth(width)
+        target_width = self.fontMetrics().size(0, ''.join(['M' for k in range(width)])).width()
+        self.setFont(QFont(self.font().family(), minimum_point_size))
+        minimum_width = self.fontMetrics().size(0, ''.join(['M' for k in range(width)])).width()
+        super().setMinimumWidth(minimum_width)
+        self.resize(target_width, 900)
+        # self.resize(target_width, self.minimumHeight())
         self.refresh_output_file_timer = QTimer(self)
         self.refresh_output_file_timer.timeout.connect(self.refresh_output_file)
         self.refresh_output_file_timer.start(filename_latency)  # find a better way
@@ -62,6 +69,17 @@ class ViewProjectOutput(ViewFile):
         latest_filename = self.project.filename(self.suffix, run=self.instance)
         if latest_filename != self.filename:
             self.reset(latest_filename)
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        contingency = 4
+        for size in range(100, 1, -1):
+            self.setFont(QFont(self.font().family(), size))
+            f_metrics = self.fontMetrics()
+            if f_metrics.size(0,
+                              ''.join(['M' for k in range(
+                                  self.character_width)])).width() + contingency < self.size().width():
+                break
 
 
 class WebEngineView(QWebEngineView):
@@ -84,6 +102,12 @@ class ProjectWindow(QMainWindow):
     null_prompt = '- Select -'
     all_qualities = 'All Qualities'
     basis_qualities = [all_qualities, 'SZ', 'DZ', 'TZ', 'QZ', '5Z', '6Z']
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        # print('ProjectWindow.resizeEvent', self.size())
+        settings['project_window_width'] = self.size().width()
+        settings['project_window_height'] = self.size().height()
 
     def __init__(self, filename, window_manager, latency=1000):
         super().__init__(None)
@@ -128,8 +152,12 @@ class ProjectWindow(QMainWindow):
         self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), self.allowed_methods())
 
         self.output_panes = {
-            suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 10) for suffix in
-            ['out', 'log', 'inp']}
+            suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 9, width=80 if suffix=='inp' else 132) for suffix in
+            [
+                'out',
+                 'log',
+             'inp'
+             ]}
 
         self.webengine_profiles = []
         self.setup_menubar()
@@ -203,7 +231,7 @@ class ProjectWindow(QMainWindow):
         self.rebuild_vod_selector()
         self.output_panes['out'].textChanged.connect(self.rebuild_vod_selector)
         self.vod_selector.currentTextChanged.connect(self.vod_selector_action)
-        self.minimum_window_size = self.window().size()
+        # self.minimum_window_size = self.window().size()
 
         if self.input_pane.toPlainText().strip('\n ') == '':
             self.input_pane.setPlainText(

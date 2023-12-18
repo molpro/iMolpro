@@ -21,6 +21,8 @@ class WindowManager:
         widget.close_signal.connect(self.unregister)
         widget.new_signal.connect(self.new)
         widget.chooser_signal.connect(self.emptyAction)
+        if 'project_window_width' in settings and 'project_window_height' in settings:
+            widget.resize(settings['project_window_width'], settings['project_window_height'])
         widget.show()
 
     def unregister(self, widget: QWidget):
