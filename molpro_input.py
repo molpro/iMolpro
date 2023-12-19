@@ -173,7 +173,6 @@ def parse(input: str, allowed_methods=[], debug=False):
                   df_prefix
                   in df_prefixes
                   for local_prefix in local_prefixes for method in allowed_methods]):
-            print('setting method', line.lower())
             parse_method(specification, line.lower())
         elif command != '' and (any(
                 [command.lower() == re.sub('.*; ', '', job_type_commands[job_type].lower()) for job_type in
