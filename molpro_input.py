@@ -41,16 +41,17 @@ orientation_options = {
     'No orientation': 'noorient'
 }
 
-properties={
-    'Quadrupole moment' : 'gexpec,qm',
-    'Second moment' : 'gexpec,sm',
-    'Kinetic energy' : 'gexpec,ekin',
-    'Cowan-Griffin' : 'gexpec,rel',
-    'Mass-velocity':'gexpec,massv',
+properties = {
+    'Quadrupole moment': 'gexpec,qm',
+    'Second moment': 'gexpec,sm',
+    'Kinetic energy': 'gexpec,ekin',
+    'Cowan-Griffin': 'gexpec,rel',
+    'Mass-velocity': 'gexpec,massv',
     'Darwin': 'gexpec,darw',
 }
 
 initial_orbital_methods = ['HF', 'KS']
+
 
 def parse(input: str, allowed_methods=[], debug=False):
     r"""
@@ -63,9 +64,9 @@ def parse(input: str, allowed_methods=[], debug=False):
     if os.path.exists(input):
         return parse(open(input, 'r').read())
 
-    precursor_methods = ['HF', 'KS', 'LOCALI', 'CASSCF', 'OCC', 'CORE', 'CLOSED', 'FROZEN', 'WF', 'LOCAL', 'DFIT',
+    precursor_methods = ['RHF', 'RKS', 'UHF', 'RHF', 'LOCALI', 'CASSCF', 'OCC', 'CORE', 'CLOSED', 'FROZEN', 'WF',
+                         'LOCAL', 'DFIT',
                          'DIRECT', 'EXPLICIT', 'THRESH', 'GTHRESH', 'PRINT', 'GRID']
-    spin_prefixes = ['', 'R', 'U']
     local_prefixes = ['', 'L']
     df_prefixes = ['', 'DF-', 'PNO-']
     postscripts = ['PUT', 'TABLE', 'NOORBITALS', 'NOBASIS']  # FIXME not very satisfactory
@@ -78,17 +79,11 @@ def parse(input: str, allowed_methods=[], debug=False):
     for line in canonicalise(input).split('\n'):
         line = line.strip()
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
-        for s in ['u', 'r']:
-            for m in initial_orbital_methods:
-                try:
-                    loc = command.lower().index(s+m.lower())
-                    command0 = command
-                    command = command[:loc]+command[loc+1:]
-                    line = re.sub(command0, command, line)
-                    if s == 'u':
-                        specification['spin_unrestricted_orbitals'] = True
-                except ValueError:
-                    pass
+        for m in initial_orbital_methods:
+            if m.lower() in command.lower() and not any([s + m.lower() in command.lower() for s in ['r', 'u']]):
+                loc = command.lower().index(m.lower())
+                command = re.sub(m.lower(), 'r' + m.lower(), command, flags=re.IGNORECASE)
+                line = re.sub(m.lower(), 'r' + m.lower(), line, flags=re.IGNORECASE)
         if re.match('^orient *, *', line, re.IGNORECASE):
             line = re.sub('^orient *, *', '', line, flags=re.IGNORECASE)
             for orientation_option in orientation_options.keys():
@@ -111,7 +106,7 @@ def parse(input: str, allowed_methods=[], debug=False):
             last_orbital_generator = [k for k, v in orbital_types.items() if command.lower() == v['command'].lower()]
         elif any([re.match('put,molden,' + k + '.molden', line, flags=re.IGNORECASE) for k in orbital_types.keys()]):
             if 'orbitals' not in specification: specification['orbitals'] = []
-            specification['orbitals'].append(re.sub('put,molden, *([^.]*).*',r'\1',line))
+            specification['orbitals'].append(re.sub('put,molden, *([^.]*).*', r'\1', line))
         elif re.match('^geometry *= *{', line, re.IGNORECASE):
             if 'precursor_methods' in specification: return {}  # input too complex
             if 'method' in specification: return {}  # input too complex
@@ -164,21 +159,22 @@ def parse(input: str, allowed_methods=[], debug=False):
                 # print('field, key=', key, 'value=', value)
                 variables[key] = value.replace('!', ',')  # unprotect
         elif any(
-                [re.match('{? *' + df_prefix + spin_prefix + precursor_method + '[;}]', command + ';',
+                [re.match('{? *' + df_prefix + precursor_method + '[;}]', command + ';',
                           flags=re.IGNORECASE) for
                  df_prefix
                  in
                  df_prefixes
-                 for spin_prefix in spin_prefixes for precursor_method in precursor_methods]):
+                 for precursor_method in precursor_methods]):
             if 'method' in specification: return {}  # input too complex
             if 'precursor_methods' not in specification: specification['precursor_methods'] = []
             specification['precursor_methods'].append(line.lower())
-        elif any([re.fullmatch('{?' + df_prefix + local_prefix + spin_prefix + re.escape(method), command,
+        elif any([re.fullmatch('{?' + df_prefix + local_prefix + re.escape(method), command,
                                flags=re.IGNORECASE) for
                   df_prefix
                   in df_prefixes
-                  for local_prefix in local_prefixes for spin_prefix in spin_prefixes for method in allowed_methods]):
-            specification['method'] = line.lower()
+                  for local_prefix in local_prefixes for method in allowed_methods]):
+            print('setting method', line.lower())
+            parse_method(specification, line.lower())
         elif command != '' and (any(
                 [command.lower() == re.sub('.*; ', '', job_type_commands[job_type].lower()) for job_type in
                  job_type_commands.keys() if job_type != '']) or command.lower() in job_type_aliases.keys()):
@@ -198,15 +194,22 @@ def parse(input: str, allowed_methods=[], debug=False):
             if 'postscripts' not in specification: specification['postscripts'] = []
             specification['postscripts'].append(line.lower())
 
-
     if 'method' not in specification and 'precursor_methods' in specification:
-        specification['method'] = specification['precursor_methods'][-1]
+        parse_method(specification, specification['precursor_methods'][-1])
         specification['precursor_methods'].pop()
     if variables:
         specification['variables'] = variables
     if 'hamiltonian' not in specification:
         specification['hamiltonian'] = basis_hamiltonian(specification)
     return specification
+
+
+def parse_method(specification, method):
+    specification['method'], specification['method_options'] = (method.lower() + ',').split(',', 1)
+    if re.match('[ru]ks', specification['method']):
+        specification['density_functional'], specification['method_options'] = (
+                    specification['method_options'] + ',').split(',', 1)
+    specification['method_options'] = specification['method_options'].rstrip(',')
 
 
 def create_input(specification: dict):
@@ -251,15 +254,14 @@ def create_input(specification: dict):
         for p in specification['properties']:
             _input += properties[p] + '\n'
     first = True
-    for l in (specification['precursor_methods'] if 'precursor_methods' in specification else [])+[specification['method']] if 'method' in specification else []:
+    for l in (specification['precursor_methods'] if 'precursor_methods' in specification else []) + [
+        specification['method']] if 'method' in specification else []:
         _input_line = l.lower()
-        if first and 'spin_unrestricted_orbitals' in specification and specification['spin_unrestricted_orbitals']:
-            for m in initial_orbital_methods:
-                try:
-                    loc = l.lower().index(m.lower())
-                    _input_line = l.lower()[:loc]+'u'+l.lower()[loc:]
-                except ValueError:
-                    pass
+        if l == specification['method']:
+            if re.match('[ru]ks', l, re.IGNORECASE) and 'density_functional' in specification and specification['density_functional']:
+                _input_line += ','+specification['density_functional']
+            if 'method_options' in specification and specification['method_options']:
+                _input_line += ','+specification['method_options']
         _input += _input_line + '\n'
         first = False
     if 'job_type' in specification:
@@ -321,7 +323,7 @@ def canonicalise(input):
 
         # transform out alternate spin markers
         for m in initial_orbital_methods:
-            line = re.sub('r'+m,m,line,flags=re.IGNORECASE)
+            line = re.sub('r' + m, m, line, flags=re.IGNORECASE)
 
         if line.lower().strip() in job_type_aliases.keys(): line = job_type_aliases[line.lower().strip()]
         if line.lower().strip() in wave_fct_symm_aliases.keys():

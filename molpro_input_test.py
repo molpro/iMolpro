@@ -1,7 +1,7 @@
 from molpro_input import parse, create_input, basis_quality, equivalent, canonicalise
 import time
 
-allowed_methods_ = ['HF', 'CCSD', 'RKS', 'CASSCF', 'MRCI']
+allowed_methods_ = ['RHF', 'CCSD', 'RKS', 'CASSCF', 'MRCI']
 
 
 def test_file(qtbot, tmpdir):
@@ -13,6 +13,21 @@ def test_file(qtbot, tmpdir):
 
 
 def test_create_input(qtbot):
+    for specification in [
+        {'job_type': 'Single Point Energy', 'geometry': 'F\nH,F,1.7\n',
+         'basis': {'default': 'cc-pVTZ', 'elements': {}, 'quality': 3},
+         'precursor_methods': ['{rks,b3lyp}'], 'method': 'ccsd', 'hamiltonian': 'AE', 'method_options': ''},
+        {'job_type': 'Single Point Energy', 'geometry': 'F\nH,F,1.7\n',
+         'basis': {'default': 'cc-pVTZ', 'elements': {}, 'quality': 3},
+         'precursor_methods': [], 'method': 'rks', 'density_functional': 'b3lyp', 'hamiltonian': 'AE', 'method_options': ''},
+        {'job_type': 'Single Point Energy', 'geometry': 'F\nH,F,1.7\n',
+         'basis': {'default': 'cc-pVTZ', 'elements': {}, 'quality': 3},
+         'precursor_methods': [], 'method': 'rhf', 'hamiltonian': 'AE', 'method_options': 'b3lyp'},
+    ]:
+        # print(create_input(specification))
+        # print('new_specification', parse(create_input(specification), allowed_methods=allowed_methods_))
+        assert parse(create_input(specification), allowed_methods=allowed_methods_) == specification
+
     for test_text in [
         'Geometry={F;H,F,1.7};basis={default=cc-pVTZ,h=cc-pVDZ} !some comment;{ks,b3lyp};locali\nccsd\n',
         'Geometry={\nF;H,F,1.7};basis={default=cc-pVTZ,h=cc-pVDZ} !some comment;{ks,b3lyp};locali\nccsd\n',
@@ -23,9 +38,15 @@ def test_create_input(qtbot):
         'geometry=thing.xyz',
         'geometry={H};uhf',
         'geometry={H};{uhf}',
+        'geometry={H};{rhf}',
+        'geometry={H};{hf}',
         'geometry={H};{uks,b3lyp};ccsd',
+        'geometry={H};{rks,b3lyp};ccsd',
+        'geometry={H};{ks,b3lyp};ccsd',
         'geometry={H};uks,b3lyp;ccsd',
         'geometry={H};uks,b3lyp',
+        'geometry={H};rks,b3lyp',
+        'geometry={H};ks,b3lyp',
     ]:
         # print('test_text', test_text)
         specification = parse(test_text, allowed_methods=allowed_methods_)

@@ -434,6 +434,8 @@ class ProjectWindow(QMainWindow):
             self.input_tabs.removeTab(1)
         if guided and len(self.input_tabs) < 2:
             self.input_tabs.addTab(self.guided_pane, 'guided')
+        if guided:
+            self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), self.allowed_methods())
 
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
@@ -463,9 +465,6 @@ class ProjectWindow(QMainWindow):
         for keyfound in self.procedures_registry.keys():
             if self.procedures_registry[keyfound]['class'] == 'PROG':
                 result.append(self.procedures_registry[keyfound]['name'])
-        for m in ['HF', 'KS']:
-            if 'R' + m in result: result[result.index('R' + m)] = m
-            if 'U' + m in result: del result[result.index('U' + m)]
         return result
 
     def vod_external_launch(self, command=''):
