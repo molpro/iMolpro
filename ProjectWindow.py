@@ -1083,9 +1083,6 @@ class GuidedPane(QWidget):
         self.guided_combo_method.currentTextChanged.connect(
             lambda text: self.input_specification_change('method', text))
 
-        self.combo_uhf = QCheckBox(self)
-        self.combo_uhf.stateChanged.connect(lambda state: self.input_specification_change('spin_unrestricted_orbitals',  state!=0))
-
         self.combo_properties = PropertyInput(self)
 
         self.guided_layout.addWidget(RowOfTitledWidgets({
@@ -1102,7 +1099,6 @@ class GuidedPane(QWidget):
             'Charge': self.charge_line,
             'Spin': self.spin_line,
             'Symmetry': self.guided_combo_wave_fct_symm,
-            'UHF': self.combo_uhf,
         }, title='Wavefunction parameters'))
 
         self.guided_orbitals_input = OrbitalInput(self)
@@ -1145,9 +1141,6 @@ class GuidedPane(QWidget):
         #     self.guided_basis_input.setText('TODO get rid of this: '+str(self.input_specification['basis']))
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
-        self.combo_uhf.setChecked(
-            'spin_unrestricted_orbitals' in self.input_specification and self.input_specification[
-                'spin_unrestricted_orbitals'])
 
         self.basis_and_hamiltonian_chooser.refresh()
 
