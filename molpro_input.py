@@ -41,7 +41,7 @@ orientation_options = {
 }
 
 
-def parse(input: str, allowed_methods=[], debug=False):
+def parse(input: str, allowed_methods=[], available_functionals=[], debug=False):
     r"""
     Take a molpro input, and logically parse it, on the assumption that it's a single-task input.
 
@@ -147,13 +147,26 @@ def parse(input: str, allowed_methods=[], debug=False):
                  for spin_prefix in spin_prefixes for precursor_method in precursor_methods]):
             if 'method' in specification: return {}  # input too complex
             if 'precursor_methods' not in specification: specification['precursor_methods'] = []
-            specification['precursor_methods'].append(line.lower())
+            line_up_to_comma = re.sub(' *,.*','',line.lower())
+            specification['precursor_methods'].append(line_up_to_comma)
+            print('precursor method:',line_up_to_comma)
+            if ',' in line:
+                line_after_comma = re.sub('.*,','',line.lower())
+                print('line_after_comma is:',line_after_comma,'#Ende#')
+                for functional_name in available_functionals:
+                    if line_after_comma.upper() == functional_name.upper() :
+                        specification['functional'] = functional_name
+                        print('set functional via precursor method:',specification['functional'])
+                        break
+
         elif any([re.fullmatch('{?' + df_prefix + local_prefix + spin_prefix + re.escape(method), command,
                                flags=re.IGNORECASE) for
                   df_prefix
                   in df_prefixes
                   for local_prefix in local_prefixes for spin_prefix in spin_prefixes for method in allowed_methods]):
             specification['method'] = line.lower()
+            specification['method'] = re.sub(' *,.*','',specification['method'])
+            print ('recognised method:',specification['method'])
         elif command != '' and (any(
                 [command.lower() == re.sub('.*; ', '', job_type_commands[job_type].lower()) for job_type in
                  job_type_commands.keys() if job_type != '']) or command.lower() in job_type_aliases.keys()):
@@ -177,6 +190,7 @@ def parse(input: str, allowed_methods=[], debug=False):
     if 'method' not in specification and 'precursor_methods' in specification:
         specification['method'] = specification['precursor_methods'][-1]
         specification['precursor_methods'].pop()
+        print ('recognised method via precursor:',specification['method'])
     if variables:
         specification['variables'] = variables
     if 'hamiltonian' not in specification:
@@ -226,7 +240,12 @@ def create_input(specification: dict):
         for m in specification['precursor_methods']:
             _input += m.lower() + '\n'
     if 'method' in specification:
-        _input += specification['method'].lower() + '\n'
+        _input += specification['method'].lower()
+        print ('create_input: method: ', specification['method'])
+        if specification['method'].upper() in ['RKS', 'UKS', 'KS']:
+            if 'functional' in specification:
+                _input += ','+specification['functional']
+        _input +=  '\n'
     if 'job_type' in specification:
         _input += job_type_commands[specification['job_type']] + '\n'
     if 'orbitals' in specification:

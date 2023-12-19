@@ -408,7 +408,7 @@ class ProjectWindow(QMainWindow):
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
-        self.input_specification = molpro_input.parse(input_text, self.allowed_methods())
+        self.input_specification = molpro_input.parse(input_text, self.allowed_methods(), self.available_functionals())
         guided = molpro_input.equivalent(input_text, self.input_specification)
         return guided
 
@@ -1058,6 +1058,8 @@ class GuidedPane(QWidget):
 
         self.guided_combo_functional = QComboBox(self)
         self.guided_combo_functional.addItems(self.parent.available_functionals())
+        self.guided_combo_functional.currentTextChanged.connect(
+            lambda text: self.input_specification_change('functional', text))
 
         self.guided_layout.addWidget(RowOfTitledWidgets({
             'Type': self.guided_combo_job_type,
@@ -1115,6 +1117,8 @@ class GuidedPane(QWidget):
             self.guided_combo_method.setCurrentIndex(method_index)
         # if 'basis' in self.input_specification:
         #     self.guided_basis_input.setText('TODO get rid of this: '+str(self.input_specification['basis']))
+        if 'functional' in self.input_specification:
+            self.guided_combo_functional.setCurrentText(self.input_specification['functional'])
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
 
@@ -1134,6 +1138,11 @@ class GuidedPane(QWidget):
         return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
 
     def input_specification_change(self, key, value):
+        print('\n\nwill set: key,value:',key,' ',value)
+        if 'method' in self.input_specification:
+            print('before method:',self.input_specification['method'])
+        if 'functional' in self.input_specification:
+            print('func:',self.input_specification['functional'])
         self.input_specification[key] = value
         if key == 'method':
             self.input_specification['precursor_methods'] = []
@@ -1150,6 +1159,7 @@ class GuidedPane(QWidget):
         self.refresh_input_from_specification()
 
     def refresh_input_from_specification(self):
+        print('self.input_specification ist: ',self.input_specification)
         if self.trace: print('refresh_input_from_specification')
         new_input = molpro_input.create_input(self.input_specification)
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
