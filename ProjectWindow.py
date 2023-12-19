@@ -12,7 +12,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineP
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
     QSplitter, QMenu, QCheckBox, QGridLayout
-from PyQt5.QtGui import QIntValidator
+from PyQt5.QtGui import QIntValidator, QFont
 from pymolpro import Project
 
 import molpro_input
@@ -22,7 +22,7 @@ from OldOutputMenu import OldOutputMenu
 from RecentMenu import RecentMenu
 from database import database_choose_structure
 from help import HelpManager
-from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set, MainEditFile
+from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set
 from backend import configure_backend, BackendConfigurationEditor
 from settings import settings
 
@@ -48,12 +48,19 @@ class StatusBar(QLabel):
 
 
 class ViewProjectOutput(ViewFile):
-    def __init__(self, project, suffix='out', width=800, latency=100, filename_latency=2000, point_size=10, instance=0):
+    def __init__(self, project, suffix='out', width=132, latency=100, filename_latency=2000, point_size=8, instance=0):
         self.project = project
         self.suffix = suffix
         self.instance = -1 if suffix == 'inp' else instance
+        minimum_point_size = point_size-2
+        self.character_width = width
         super().__init__(self.project.filename(suffix, run=self.instance), latency=latency, point_size=point_size)
-        super().setMinimumWidth(width)
+        target_width = self.fontMetrics().size(0, ''.join(['M' for k in range(width)])).width()
+        self.setFont(QFont(self.font().family(), minimum_point_size))
+        minimum_width = self.fontMetrics().size(0, ''.join(['M' for k in range(width)])).width()
+        super().setMinimumWidth(minimum_width)
+        self.resize(target_width, 900)
+        # self.resize(target_width, self.minimumHeight())
         self.refresh_output_file_timer = QTimer(self)
         self.refresh_output_file_timer.timeout.connect(self.refresh_output_file)
         self.refresh_output_file_timer.start(filename_latency)  # find a better way
@@ -62,6 +69,17 @@ class ViewProjectOutput(ViewFile):
         latest_filename = self.project.filename(self.suffix, run=self.instance)
         if latest_filename != self.filename:
             self.reset(latest_filename)
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        contingency = 4
+        for size in range(100, 1, -1):
+            self.setFont(QFont(self.font().family(), size))
+            f_metrics = self.fontMetrics()
+            if f_metrics.size(0,
+                              ''.join(['M' for k in range(
+                                  self.character_width)])).width() + contingency < self.size().width():
+                break
 
 
 class WebEngineView(QWebEngineView):
@@ -84,6 +102,12 @@ class ProjectWindow(QMainWindow):
     null_prompt = '- Select -'
     all_qualities = 'All Qualities'
     basis_qualities = [all_qualities, 'SZ', 'DZ', 'TZ', 'QZ', '5Z', '6Z']
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        # print('ProjectWindow.resizeEvent', self.size())
+        settings['project_window_width'] = self.size().width()
+        settings['project_window_height'] = self.size().height()
 
     def __init__(self, filename, window_manager, latency=1000):
         super().__init__(None)
@@ -128,8 +152,12 @@ class ProjectWindow(QMainWindow):
         self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), self.allowed_methods())
 
         self.output_panes = {
-            suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 10) for suffix in
-            ['out', 'log', 'inp']}
+            suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 9, width=80 if suffix=='inp' else 132) for suffix in
+            [
+                'out',
+                 'log',
+             'inp'
+             ]}
 
         self.webengine_profiles = []
         self.setup_menubar()
@@ -158,7 +186,7 @@ class ProjectWindow(QMainWindow):
         self.vod_selector = QComboBox(self)
         vod_select_layout = QFormLayout()
         button_layout.addLayout(vod_select_layout)
-        vod_select_layout.addRow('Structure display:', self.vod_selector)
+        vod_select_layout.addRow('Display:', self.vod_selector)
         left_layout.addLayout(button_layout)
         button_layout_2 = QHBoxLayout()
         self.backend_selector = QComboBox(self)
@@ -203,7 +231,7 @@ class ProjectWindow(QMainWindow):
         self.rebuild_vod_selector()
         self.output_panes['out'].textChanged.connect(self.rebuild_vod_selector)
         self.vod_selector.currentTextChanged.connect(self.vod_selector_action)
-        self.minimum_window_size = self.window().size()
+        # self.minimum_window_size = self.window().size()
 
         if self.input_pane.toPlainText().strip('\n ') == '':
             self.input_pane.setPlainText(
@@ -216,6 +244,7 @@ class ProjectWindow(QMainWindow):
                     self.vod_selector.setCurrentText('Edit ' + os.path.basename(import_structure))
             if not import_structure and (database_import := self.database_import_structure()):
                 self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
+            self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), self.allowed_methods())
 
         self.input_tabs.setCurrentIndex(1)
         self.guided_action.setChecked(self.input_tabs.currentIndex() == 1)
@@ -327,6 +356,7 @@ class ProjectWindow(QMainWindow):
                           'Edit backend configuration file')
         help_manager = HelpManager(menubar)
         help_manager.register('Overview', 'README')
+        help_manager.register('Example', 'doc/example.md')
         help_manager.register('Backends', 'doc/backends.md')
         menubar.show()
 
@@ -408,8 +438,8 @@ class ProjectWindow(QMainWindow):
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
-        self.input_specification = molpro_input.parse(input_text, self.allowed_methods(), self.available_functionals())
-        guided = molpro_input.equivalent(input_text, self.input_specification)
+        input_specification = molpro_input.parse(input_text, self.allowed_methods(), self.available_functionals())
+        guided = len(input_specification) and molpro_input.equivalent(input_text, input_specification)
         return guided
 
     def input_tab_changed_consequence(self, index=0):
@@ -441,6 +471,9 @@ class ProjectWindow(QMainWindow):
         for keyfound in self.procedures_registry.keys():
             if self.procedures_registry[keyfound]['class'] == 'PROG':
                 result.append(self.procedures_registry[keyfound]['name'])
+        for m in ['HF', 'KS']:
+            if 'R' + m in result: result[result.index('R' + m)] = m
+            if 'U' + m in result: del result[result.index('U' + m)]
         return result
 
     def vod_external_launch(self, command=''):
@@ -511,9 +544,9 @@ class ProjectWindow(QMainWindow):
         return result
 
     def run(self, force=False):
-        if 'geometry' not in self.input_specification or (
+        if self.guided_possible() and ('geometry' not in self.input_specification or (
                 self.input_specification['geometry'][-4:] == '.xyz' and not os.path.exists(
-            self.project.filename('', self.input_specification['geometry'], run=-1))):
+            self.project.filename('', self.input_specification['geometry'], run=-1)))):
             QMessageBox.critical(self, 'Geometry missing', 'Cannot submit job because no geometry is defined')
             return False
         self.project.run(force=force)
@@ -903,7 +936,7 @@ class BasisAndHamiltonianChooser(QWidget):
         self.parent = parent
 
         self.basis_registry = self.parent.project.basis_registry()
-        self.desired_basis_quality = 0
+        self.desired_basis_quality = molpro_input.basis_quality(self.parent.input_specification)
 
         self.combo_hamiltonian = QComboBox(self)
         self.combo_hamiltonian.addItems([h['text'] for h in molpro_input.hamiltonians.values()])
@@ -962,16 +995,19 @@ class BasisAndHamiltonianChooser(QWidget):
             break
 
     def changed_hamiltonian(self, text):
-        self.input_specification['hamiltonian'] = list(molpro_input.hamiltonians.keys())[
+        new_hamiltonian_ = list(molpro_input.hamiltonians.keys())[
             [v['text'] for v in molpro_input.hamiltonians.values()].index(text)]
-        if 'basis' in self.input_specification and 'default' in self.input_specification['basis']:
-            self.input_specification['basis'] = self.default_basis_for_hamiltonian(self.desired_basis_quality)
-        self.write()
-        self.refresh()
+        if self.input_specification['hamiltonian'] != new_hamiltonian_:
+            self.input_specification['hamiltonian'] = new_hamiltonian_
+            if 'basis' in self.input_specification and 'default' in self.input_specification['basis']:
+                self.input_specification['basis'] = self.default_basis_for_hamiltonian(self.desired_basis_quality)
+            self.write()
+            self.refresh()
 
     def changed_basis_quality(self, text):
-        self.desired_basis_quality = self.basis_qualities.index(text)
-        self.refresh()
+        if self.desired_basis_quality != self.basis_qualities.index(text):
+            self.desired_basis_quality = self.basis_qualities.index(text)
+            self.refresh()
 
     def default_basis_for_hamiltonian(self, desired_basis_quality=0):
         quality = self.desired_basis_quality if desired_basis_quality > 0 else 3
@@ -1061,6 +1097,11 @@ class GuidedPane(QWidget):
         self.guided_combo_functional.currentTextChanged.connect(
             lambda text: self.input_specification_change('functional', text))
 
+        self.combo_uhf = QCheckBox(self)
+        self.combo_uhf.stateChanged.connect(lambda state: self.input_specification_change('spin_unrestricted_orbitals',  state!=0))
+
+        self.combo_properties = PropertyInput(self)
+
         self.guided_layout.addWidget(RowOfTitledWidgets({
             'Type': self.guided_combo_job_type,
             'Method': self.guided_combo_method,
@@ -1075,16 +1116,15 @@ class GuidedPane(QWidget):
             'Charge': self.charge_line,
             'Spin': self.spin_line,
             'Symmetry': self.guided_combo_wave_fct_symm,
+            'UHF': self.combo_uhf,
         }, title='Wavefunction parameters'))
 
-        # self.guided_orbitals_input = QCheckBox()
-        # self.guided_orbitals_input.stateChanged.connect(self.orbitals_input_action)
-        # self.guided_orbitals_input.setChecked(hasattr(self,
-        #                                               'input_specification') and 'postscripts' in self.input_specification and self.orbital_put_command in
-        #                                       self.input_specification['postscripts'])
         self.guided_orbitals_input = OrbitalInput(self)
         self.guided_layout.addWidget(RowOfTitledWidgets({
-            'Plot orbitals': self.guided_orbitals_input,
+            'Export orbitals': self.guided_orbitals_input,
+            'Expectation values': self.combo_properties,
+        }, title='Properties'))
+        self.guided_layout.addWidget(RowOfTitledWidgets({
             'Orientation': self.guided_combo_orientation,
             'Density Fitting': QLabel(''),
         }, title='Miscellaneous'))
@@ -1121,6 +1161,9 @@ class GuidedPane(QWidget):
             self.guided_combo_functional.setCurrentText(self.input_specification['functional'])
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
+        self.combo_uhf.setChecked(
+            'spin_unrestricted_orbitals' in self.input_specification and self.input_specification[
+                'spin_unrestricted_orbitals'])
 
         self.basis_and_hamiltonian_chooser.refresh()
 
@@ -1161,6 +1204,7 @@ class GuidedPane(QWidget):
     def refresh_input_from_specification(self):
         print('self.input_specification ist: ',self.input_specification)
         if self.trace: print('refresh_input_from_specification')
+        if not self.parent.guided_possible(): return
         new_input = molpro_input.create_input(self.input_specification)
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
             self.input_pane.setPlainText(new_input)
@@ -1202,11 +1246,30 @@ class OrbitalInput(CheckableComboBox):
                 for i in range(self.model().rowCount()):
                     if self.model().item(i).text() == molpro_input.orbital_types[o]['text']:
                         self.model().item(i).setCheckState(Qt.Checked)
-        self.currentTextChanged.connect(self.onCurrentTextChanged)
+        self.model().dataChanged.connect(self.refresh)
 
-    def onCurrentTextChanged(self, text):
+    def refresh(self, text):
         self.parent.input_specification['orbitals'] = [k for k,v in molpro_input.orbital_types.items() for t in self.currentData() if t == v['text']]
-        if 'nbo' in self.parent.input_specification['orbitals']:
+        if any([b in self.parent.input_specification['orbitals'] for b in ['nbo','ibo']]):
             self.parent.input_specification_change('wave_fct_symm', 'No Symmetry')
+        self.parent.refresh_input_from_specification()
+
+class PropertyInput(CheckableComboBox):
+    r"""
+    Helper for constructing input for properties
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.addItems(molpro_input.properties.keys())
+        if 'properties' in self.parent.input_specification:
+            for o in self.parent.input_specification['properties']:
+                for i in range(self.model().rowCount()):
+                    if self.model().item(i).text() == o:
+                        self.model().item(i).setCheckState(Qt.Checked)
+        self.model().dataChanged.connect(self.refresh)
+
+    def refresh(self, text):
+        self.parent.input_specification['properties'] = [k for k,v in molpro_input.properties.items() for t in self.currentData() if t == k]
         self.parent.refresh_input_from_specification()
 

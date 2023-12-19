@@ -9,3 +9,17 @@ On launching, you will normally see the Chooser window that allows you to open o
 Molecular structures can be prepared and edited within the program, or imported from an external database search ([PubChem](https://pubchem.ncbi.nlm.nih.gov) or [ChemSpider](https://www.chemspider.com)). On opening a new project, you are prompted first of all to import a local file, or if declined, a database search, but if preferred the geometry can simply be edited directly into the input, or in the embedded structure editor. Geometry import can be carried out at any later stage also.
 
 Once the input has been prepared, the job can be submitted either locally (default) or remotely (via a configured sjef backend). The sjef backend specifications can be edited from the program. Once running, the job status and output are monitored and displayed continuously.
+
+### License
+iMolpro is licensed under the [GNU GPL v3](https://www.gnu.org/licenses/licenses.html#GPL).
+### Acknowledgements
+The following libraries are used.
+
+* [PyQt5](https://riverbankcomputing.com/software/pyqt/intro), a set of Python bindings for [The Qt Company](https://www.qt.io/)'s Qt application framework,
+licensed under the [GNU GPL v3](https://www.gnu.org/licenses/licenses.html#GPL).
+* [Jmol](http://www.jmol.org/), an open-source Java viewer for chemical structures in 3D, licensed under the [GNU LGPL](https://www.gnu.org/licenses/licenses.html#LGPL).
+* [PyInstaller](https://pyinstaller.org/)
+* [pysjef](https://github.com/molpro/pysjef)
+* [pymolpro](https://github.com/molpro/pymolpro)
+* [PubChemPy](https://github.com/mcs07/PubChemPy), licensed under the MIT license.
+* [ChemSpiPy](https://github.com/mcs07/ChemSpiPy), licensed under the MIT license.

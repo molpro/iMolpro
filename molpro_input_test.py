@@ -21,6 +21,11 @@ def test_create_input(qtbot):
         'geometry={\nHe\n}\nhf',
         'geometry={\nHe\n}\nhf\nccsd',
         'geometry=thing.xyz',
+        'geometry={H};uhf',
+        'geometry={H};{uhf}',
+        'geometry={H};{uks,b3lyp};ccsd',
+        'geometry={H};uks,b3lyp;ccsd',
+        'geometry={H};uks,b3lyp',
     ]:
         # print('test_text', test_text)
         specification = parse(test_text, allowed_methods=allowed_methods_)
@@ -45,8 +50,8 @@ def test_recreate_input(qtbot):
         specification = parse(test_text, allowed_methods=allowed_methods_)
         # print('specification',specification)
         # print(create_input(specification))
-        assert parse(create_input(specification),allowed_methods=allowed_methods_) == specification
-        assert equivalent(specification, test_text,debug=False)
+        assert parse(create_input(specification), allowed_methods=allowed_methods_) == specification
+        assert equivalent(specification, test_text, debug=False)
 
 
 def test_variables(qtbot):
@@ -74,7 +79,7 @@ def test_canonicalise(qtbot):
     for given, expected in {
         'geometry={\nHe\n}': 'geometry={He}\n',
         'a\n\n\nb\n': 'a\nb\n',
-        'basis={\ndefault=cc-pVTZ,h=cc-pVDZ\n} !some comment' : 'basis={default=cc-pVTZ,h=cc-pVDZ} !some comment\n'
+        'basis={\ndefault=cc-pVTZ,h=cc-pVDZ\n} !some comment': 'basis={default=cc-pVTZ,h=cc-pVDZ} !some comment\n'
     }.items():
         assert canonicalise(given) == expected
     for test_text in [
@@ -93,9 +98,10 @@ def test_basis_qualities(qtbot):
         assert basis_quality(parse(test, allowed_methods=allowed_methods_)) == quality
         assert parse(test, allowed_methods=allowed_methods_)['basis']['quality'] == quality
 
+
 def test_basis_variants(qtbot):
     for test, outcome in {
-        'basis=cc-pVDZ':'basis=cc-pVDZ',
+        'basis=cc-pVDZ': 'basis=cc-pVDZ',
         'basis,cc-pVDZ': 'basis=cc-pVDZ',
         'basis=default=cc-pVDZ': 'basis=cc-pVDZ',
         'basis={default=cc-pVDZ}': 'basis=cc-pVDZ',
@@ -105,4 +111,4 @@ def test_basis_variants(qtbot):
         'basis,cc-pVDZ,zR=cc-pVDZ(s),h=cc-pVTZ': 'basis=cc-pVDZ,Zr=cc-pVDZ(s),H=cc-pVTZ',
         'basis={cc-pVDZ,zR=cc-pVDZ(s),h=cc-pVTZ}': 'basis=cc-pVDZ,Zr=cc-pVDZ(s),H=cc-pVTZ',
     }.items():
-        assert create_input(parse(test))== outcome.strip('\n')+'\n'
+        assert create_input(parse(test)) == outcome.strip('\n') + '\n'

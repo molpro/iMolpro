@@ -18,9 +18,10 @@ hamiltonians = {
 
 orbital_types = {
     'canonical': {'text': 'Canonical', 'command': ''},
-    'boys': {'text': 'Boys', 'command': 'locali'},
+    'ibo': {'text': 'Intrinsic Bond', 'command': 'ibba'},
     'pipek': {'text': 'Pipek-Mezey', 'command': 'locali,pipek'},
     'nbo': {'text': 'NBO', 'command': 'nbo'},
+    'boys': {'text': 'Boys', 'command': 'locali'},
 }
 
 job_type_commands = {
@@ -40,6 +41,16 @@ orientation_options = {
     'No orientation': 'noorient'
 }
 
+properties={
+    'Quadrupole moment' : 'gexpec,qm',
+    'Second moment' : 'gexpec,sm',
+    'Kinetic energy' : 'gexpec,ekin',
+    'Cowan-Griffin' : 'gexpec,rel',
+    'Mass-velocity':'gexpec,massv',
+    'Darwin': 'gexpec,darw',
+}
+
+initial_orbital_methods = ['HF', 'KS']
 
 def parse(input: str, allowed_methods=[], available_functionals=[], debug=False):
     r"""
@@ -67,6 +78,17 @@ def parse(input: str, allowed_methods=[], available_functionals=[], debug=False)
     for line in canonicalise(input).split('\n'):
         line = line.strip()
         command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE)
+        for s in ['u', 'r']:
+            for m in initial_orbital_methods:
+                try:
+                    loc = command.lower().index(s+m.lower())
+                    command0 = command
+                    command = command[:loc]+command[loc+1:]
+                    line = re.sub(command0, command, line)
+                    if s == 'u':
+                        specification['spin_unrestricted_orbitals'] = True
+                except ValueError:
+                    pass
         if re.match('^orient *, *', line, re.IGNORECASE):
             line = re.sub('^orient *, *', '', line, flags=re.IGNORECASE)
             for orientation_option in orientation_options.keys():
@@ -80,9 +102,12 @@ def parse(input: str, allowed_methods=[], available_functionals=[], debug=False)
                 if (line.lower() == wave_fct_symm_commands[symmetry_command]):
                     specification['wave_fct_symm'] = symmetry_command
                     break
-        elif re.match('^dkho *=.*',command,re.IGNORECASE):
-            specification['hamiltonian']=re.sub('^dkho *= *', 'DK', command, flags=re.IGNORECASE).replace('DK1','DK')
-        elif any( [line.lower() == v['command'].lower() for v in orbital_types.values()]):
+        elif re.match('^dkho *=.*', command, re.IGNORECASE):
+            specification['hamiltonian'] = re.sub('^dkho *= *', 'DK', command, flags=re.IGNORECASE).replace('DK1', 'DK')
+        elif line.lower() in properties.values():
+            if 'properties' not in specification: specification['properties'] = []
+            specification['properties'] += [k for k, v in properties.items() if line.lower() == v]
+        elif any([line.lower() == v['command'].lower() for v in orbital_types.values()]):
             last_orbital_generator = [k for k, v in orbital_types.items() if command.lower() == v['command'].lower()]
         elif any([re.match('put,molden,' + k + '.molden', line, flags=re.IGNORECASE) for k in orbital_types.keys()]):
             if 'orbitals' not in specification: specification['orbitals'] = []
@@ -236,16 +261,27 @@ def create_input(specification: dict):
             if v != '':
                 _input += k + '=' + v + '\n'
     if len(specification['variables']) == 0: del specification['variables']
-    if 'precursor_methods' in specification:
-        for m in specification['precursor_methods']:
-            _input += m.lower() + '\n'
-    if 'method' in specification:
-        _input += specification['method'].lower()
-        print ('create_input: method: ', specification['method'])
-        if specification['method'].upper() in ['RKS', 'UKS', 'KS']:
+
+    if 'properties' in specification:
+        for p in specification['properties']:
+            _input += properties[p] + '\n'
+    first = True
+    for l in (specification['precursor_methods'] if 'precursor_methods' in specification else [])+[specification['method']] if 'method' in specification else []:
+        _input_line = l.lower()
+        if first and 'spin_unrestricted_orbitals' in specification and specification['spin_unrestricted_orbitals']:
+            for m in initial_orbital_methods:
+                try:
+                    loc = l.lower().index(m.lower())
+                    _input_line = l.lower()[:loc]+'u'+l.lower()[loc:]
+                except ValueError:
+                    pass
+        if l.upper() in ['RKS', 'UKS', 'KS']:
             if 'functional' in specification:
                 _input += ','+specification['functional']
-        _input +=  '\n'
+        
+        _input += _input_line + '\n'
+        first = False
+
     if 'job_type' in specification:
         _input += job_type_commands[specification['job_type']] + '\n'
     if 'orbitals' in specification:
@@ -302,6 +338,10 @@ def canonicalise(input):
         line = re.sub('basis *, *', 'basis=', line, flags=re.IGNORECASE)
         line = re.sub('basis= *{(.*)} *$', r'basis=\1', line, flags=re.IGNORECASE)
         line = re.sub('basis= *default *= *', r'basis=', line, flags=re.IGNORECASE)
+
+        # transform out alternate spin markers
+        for m in initial_orbital_methods:
+            line = re.sub('r'+m,m,line,flags=re.IGNORECASE)
 
         if line.lower().strip() in job_type_aliases.keys(): line = job_type_aliases[line.lower().strip()]
         if line.lower().strip() in wave_fct_symm_aliases.keys():
