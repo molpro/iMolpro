@@ -204,11 +204,13 @@ def parse(input: str, allowed_methods=[], debug=False):
 
 
 def parse_method(specification, method):
-    specification['method'], specification['method_options'] = (method.lower() + ',').split(',', 1)
+    specification['method'], method_options = (method.lower() + ',').split(',', 1)
     if re.match('[ru]ks', specification['method']):
-        specification['density_functional'], specification['method_options'] = (
-                    specification['method_options'] + ',').split(',', 1)
-    specification['method_options'] = specification['method_options'].rstrip(',')
+        specification['density_functional'], method_options = (
+                    method_options + ',').split(',', 1)
+    specification['method_options'] = method_options.rstrip(',').split(',')
+    if specification['method_options'][-1] == '':
+        del specification['method_options'][-1]
 
 
 def create_input(specification: dict):
@@ -260,7 +262,7 @@ def create_input(specification: dict):
             if re.match('[ru]ks', l, re.IGNORECASE) and 'density_functional' in specification and specification['density_functional']:
                 _input_line += ','+specification['density_functional']
             if 'method_options' in specification and specification['method_options']:
-                _input_line += ','+specification['method_options']
+                _input_line += ','+','.join(specification['method_options'])
         _input += _input_line + '\n'
         first = False
     if 'job_type' in specification:

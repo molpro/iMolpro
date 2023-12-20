@@ -16,13 +16,13 @@ def test_create_input(qtbot):
     for specification in [
         {'job_type': 'Single Point Energy', 'geometry': 'F\nH,F,1.7\n',
          'basis': {'default': 'cc-pVTZ', 'elements': {}, 'quality': 3},
-         'precursor_methods': ['{rks,b3lyp}'], 'method': 'ccsd', 'hamiltonian': 'AE', 'method_options': ''},
+         'precursor_methods': ['{rks,b3lyp}'], 'method': 'ccsd', 'hamiltonian': 'AE', 'method_options': []},
         {'job_type': 'Single Point Energy', 'geometry': 'F\nH,F,1.7\n',
          'basis': {'default': 'cc-pVTZ', 'elements': {}, 'quality': 3},
-         'precursor_methods': [], 'method': 'rks', 'density_functional': 'b3lyp', 'hamiltonian': 'AE', 'method_options': ''},
+         'precursor_methods': [], 'method': 'rks', 'density_functional': 'b3lyp', 'hamiltonian': 'AE', 'method_options': []},
         {'job_type': 'Single Point Energy', 'geometry': 'F\nH,F,1.7\n',
          'basis': {'default': 'cc-pVTZ', 'elements': {}, 'quality': 3},
-         'precursor_methods': [], 'method': 'rhf', 'hamiltonian': 'AE', 'method_options': 'b3lyp'},
+         'precursor_methods': [], 'method': 'rhf', 'hamiltonian': 'AE', 'method_options': ['b3lyp','opt1=val1','','opt2=val2','','opt3']},
     ]:
         # print(create_input(specification))
         # print('new_specification', parse(create_input(specification), allowed_methods=allowed_methods_))
@@ -47,6 +47,7 @@ def test_create_input(qtbot):
         'geometry={H};uks,b3lyp',
         'geometry={H};rks,b3lyp',
         'geometry={H};ks,b3lyp',
+        'geometry={H};ks,b3lyp,option1,,option2,,',
     ]:
         # print('test_text', test_text)
         specification = parse(test_text, allowed_methods=allowed_methods_)
