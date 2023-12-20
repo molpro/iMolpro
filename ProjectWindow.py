@@ -1153,6 +1153,9 @@ class GuidedPane(QWidget):
             self.guided_combo_method.setCurrentIndex(method_index)
         # if 'basis' in self.input_specification:
         #     self.guided_basis_input.setText('TODO get rid of this: '+str(self.input_specification['basis']))
+        if 'density_functional' in self.input_specification:
+            density_functional_index = self.guided_combo_functional.findText(self.input_specification['density_functional'], Qt.MatchFixedString)
+            self.guided_combo_functional.setCurrentIndex(density_functional_index)
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
 
