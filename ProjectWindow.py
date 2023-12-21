@@ -452,10 +452,11 @@ class ProjectWindow(QMainWindow):
     def available_functionals(self):
         project_registry = self.project.registry('dfunc')
         result = []
-        for priority in range(5,-1,-1):
-            for keyfound in project_registry:
-                if project_registry[keyfound]['priority'] == priority:
-                    result.append(keyfound)
+        if project_registry != None :
+            for priority in range(5,-1,-1):
+                for keyfound in project_registry:
+                    if project_registry[keyfound]['priority'] == priority:
+                        result.append(keyfound)
         return result
 
     def allowed_methods(self):
