@@ -961,7 +961,6 @@ class BasisAndHamiltonianChooser(QWidget):
             'Hamiltonian': self.combo_hamiltonian,
             'Quality': self.guided_combo_basis_quality,
             'Basis': self.guided_combo_basis_default,
-            # 'Core correlation': QLabel(''), # TODO overlay core correlation and density functional
         }, title='Hamiltonian and basis'))
 
     def refresh(self):
@@ -1099,6 +1098,11 @@ class GuidedPane(QWidget):
         self.guided_combo_functional.currentTextChanged.connect(
             lambda text: self.input_specification_change('density_functional', text))
 
+        self.guided_combo_core_correlation = QComboBox(self)
+        self.guided_combo_core_correlation.addItems(['large','mixed','small'])
+        # self.guided_combo_core_correlation.currentTextChanged.connect(
+        #     lambda text: self.input_specification_change('core_correlation', text))
+
         self.combo_properties = PropertyInput(self)
 
         self.method_row = RowOfTitledWidgets({'Type': self.guided_combo_job_type, 'Method': self.guided_combo_method,
@@ -1165,7 +1169,7 @@ class GuidedPane(QWidget):
                 self.method_row.ensure_not(['Core Correlation'])
             else:
                 self.method_row.ensure_not(['Functional'])
-                self.method_row.ensure({'Core Correlation': QLabel('unimplemented'), })
+                self.method_row.ensure({'Core Correlation': self.guided_combo_core_correlation, })
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
 
