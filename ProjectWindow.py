@@ -1175,6 +1175,8 @@ class GuidedPane(QWidget):
         return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
 
     def input_specification_change(self, key, value):
+        if not value:
+            return
         self.input_specification[key] = value
         if key == 'method':
             self.input_specification['precursor_methods'] = []
