@@ -1095,11 +1095,14 @@ class GuidedPane(QWidget):
 
         self.guided_combo_functional = QComboBox(self)
         self.guided_combo_functional.addItems(self.parent.available_functionals())
+        self.guided_combo_functional.hide()
         self.guided_combo_functional.currentTextChanged.connect(
             lambda text: self.input_specification_change('density_functional', text))
 
         self.guided_combo_core_correlation = QComboBox(self)
-        self.guided_combo_core_correlation.addItems(['large','mixed','small'])
+        self.guided_combo_core_correlation.addItems(['large', 'mixed', 'small'])
+        self.guided_combo_core_correlation.hide()
+        # TODO complete implementation of core correlation
         # self.guided_combo_core_correlation.currentTextChanged.connect(
         #     lambda text: self.input_specification_change('core_correlation', text))
 
@@ -1155,15 +1158,13 @@ class GuidedPane(QWidget):
                 'method'] else None
             method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
             self.guided_combo_method.setCurrentIndex(method_index)
-        # if 'basis' in self.input_specification:
-        #     self.guided_basis_input.setText('TODO get rid of this: '+str(self.input_specification['basis']))
             if re.match('[ru]ks', self.input_specification['method'], flags=re.IGNORECASE):
                 self.method_row.ensure_not(['Core Correlation'])
                 self.method_row.ensure({'Functional': self.guided_combo_functional, })
-                if 'density_functional' in self.input_specification:
-                    density_functional_index = self.guided_combo_functional.findText(
-                        self.input_specification['density_functional'], Qt.MatchFixedString)
-                    self.guided_combo_functional.setCurrentIndex(density_functional_index)
+                if 'density_functional' not in self.input_specification or not self.input_specification['density_functional']:
+                    self.input_specification['density_functional'] = self.guided_combo_functional.itemText(0)
+                self.guided_combo_functional.setCurrentIndex(self.guided_combo_functional.findText(
+                    self.input_specification['density_functional'], Qt.MatchFixedString))
             elif re.match('[ru]hf', self.input_specification['method']):
                 self.method_row.ensure_not(['Functional'])
                 self.method_row.ensure_not(['Core Correlation'])
