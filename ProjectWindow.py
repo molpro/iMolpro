@@ -235,7 +235,7 @@ class ProjectWindow(QMainWindow):
 
         if self.input_pane.toPlainText().strip('\n ') == '':
             self.input_pane.setPlainText(
-                'geometry={0}.xyz\nbasis=cc-pVTZ-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
+                'geometry={0}.xyz\nbasis=cc-pV(T+d)Z-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
             import_structure = ''
             if QMessageBox.question(self, '',
                                     'Would you like to import the molecular geometry from a file?',
