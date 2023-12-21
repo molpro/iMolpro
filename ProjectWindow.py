@@ -972,6 +972,7 @@ class BasisAndHamiltonianChooser(QWidget):
                     self.desired_basis_quality if self.desired_basis_quality > 0 else 3)
                 continue
 
+            self.desired_basis_quality = molpro_input.basis_quality(self.parent.input_specification)
             possible_basis_sets = [k for k in self.basis_registry.keys() if (  # True or
                     self.desired_basis_quality == 0 or self.basis_registry[k][
                 'quality'] == self.basis_qualities[self.desired_basis_quality]
