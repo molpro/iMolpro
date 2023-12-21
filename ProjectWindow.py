@@ -1101,11 +1101,9 @@ class GuidedPane(QWidget):
 
         self.combo_properties = PropertyInput(self)
 
-        self.guided_layout.addWidget(RowOfTitledWidgets({
-            'Type': self.guided_combo_job_type,
-            'Method': self.guided_combo_method,
-            'Functional': self.guided_combo_functional,
-        }, title='Calculation'))
+        self.method_row = RowOfTitledWidgets({'Type': self.guided_combo_job_type, 'Method': self.guided_combo_method,
+                                      'Functional': self.guided_combo_functional, }, title='Calculation')
+        self.guided_layout.addWidget(self.method_row)
 
         self.desired_basis_quality = 0
         self.basis_and_hamiltonian_chooser = BasisAndHamiltonianChooser(self)
@@ -1155,9 +1153,19 @@ class GuidedPane(QWidget):
             self.guided_combo_method.setCurrentIndex(method_index)
         # if 'basis' in self.input_specification:
         #     self.guided_basis_input.setText('TODO get rid of this: '+str(self.input_specification['basis']))
-        if 'density_functional' in self.input_specification:
-            density_functional_index = self.guided_combo_functional.findText(self.input_specification['density_functional'], Qt.MatchFixedString)
-            self.guided_combo_functional.setCurrentIndex(density_functional_index)
+            if re.match('[ru]ks', self.input_specification['method'], flags=re.IGNORECASE):
+                self.method_row.ensure_not(['Core Correlation'])
+                self.method_row.ensure({'Functional': self.guided_combo_functional, })
+                if 'density_functional' in self.input_specification:
+                    density_functional_index = self.guided_combo_functional.findText(
+                        self.input_specification['density_functional'], Qt.MatchFixedString)
+                    self.guided_combo_functional.setCurrentIndex(density_functional_index)
+            elif re.match('[ru]hf', self.input_specification['method']):
+                self.method_row.ensure_not(['Functional'])
+                self.method_row.ensure_not(['Core Correlation'])
+            else:
+                self.method_row.ensure_not(['Functional'])
+                self.method_row.ensure({'Core Correlation': QLabel('unimplemented'), })
         if 'job_type' in self.input_specification:
             self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
 
@@ -1187,6 +1195,7 @@ class GuidedPane(QWidget):
                 self.input_specification['precursor_methods'].append('HF')
             if not self.input_specification['precursor_methods']: del self.input_specification['precursor_methods']
         self.refresh_input_from_specification()
+        self.refresh()
 
     def input_specification_variable_change(self, key, value):
         if 'variables' not in self.input_specification:
@@ -1218,12 +1227,33 @@ class RowOfTitledWidgets(QWidget):
         subpane.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
         subpane.setAutoFillBackground(True)
         layout.addWidget(subpane)
-        layout2 = QGridLayout(subpane)
-        layout2.setContentsMargins(0, 0, 0, 0)
-        layout2.setSpacing(0)
+        self.layout2 = QGridLayout(subpane)
+        self.layout2.setContentsMargins(0, 0, 0, 0)
+        self.layout2.setSpacing(0)
+        self.widgets = {}
+        self.widget_captions = {}
+        self.ensure(widgets)
+
+    def ensure(self, widgets):
         for k, v in widgets.items():
-            layout2.addWidget(QLabel(k), 0, list(widgets.keys()).index(k), alignment=Qt.AlignCenter)
-            layout2.addWidget(v, 1, list(widgets.keys()).index(k), alignment=Qt.AlignCenter)
+            if k not in self.widgets.keys():
+                self.widget_captions[k] = QLabel(k)
+                self.layout2.addWidget(self.widget_captions[k], 0, len(self.widgets), alignment=Qt.AlignCenter)
+                self.layout2.addWidget(v, 1, len(self.widgets), alignment=Qt.AlignCenter)
+                self.widgets[k]=v
+                self.widget_captions[k].show()
+                self.widgets[k].show()
+
+    def ensure_not(self, widget_keys):
+        for k in widget_keys:
+            if k in self.widgets.keys():
+                self.layout2.removeWidget(self.widget_captions[k])
+                self.layout2.removeWidget(self.widgets[k])
+                self.widgets[k].hide()
+                self.widget_captions[k].hide()
+                del self.widgets[k]
+                del self.widget_captions[k]
+
 
 class OrbitalInput(CheckableComboBox):
     r"""
