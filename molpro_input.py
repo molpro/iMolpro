@@ -25,9 +25,9 @@ orbital_types = {
 }
 
 job_type_commands = {
-    'Single Point Energy': '',
-    'Geometry Optimisation': 'optg',
-    'Opt+Frequency': 'optg; frequencies',
+    'Single point energy': '',
+    'Geometry optimisation': 'optg,savexyz=optimised.xyz',
+    'Optimise + vib frequencies': 'optg,savexyz=optimised.xyz; frequencies',
     'Hessian': 'frequencies',
 }
 job_type_aliases = {
@@ -74,7 +74,7 @@ def parse(input: str, allowed_methods=[], debug=False):
     specification = {}
     variables = {}
     geometry_active = False
-    specification['job_type'] = 'Single Point Energy'
+    specification['job_type'] = 'Single point energy'
     last_orbital_generator = ''
     for line in canonicalise(input).split('\n'):
         line = line.strip()
@@ -175,17 +175,18 @@ def parse(input: str, allowed_methods=[], debug=False):
                   for local_prefix in local_prefixes for method in allowed_methods]):
             parse_method(specification, line.lower())
         elif command != '' and (any(
-                [command.lower() == re.sub('.*; ', '', job_type_commands[job_type].lower()) for job_type in
+                [line.lower() == job_type_commands[job_type].lower().split(';\n')[0] for job_type in
                  job_type_commands.keys() if job_type != '']) or command.lower() in job_type_aliases.keys()):
             old_job_type_command = job_type_commands[specification['job_type']]  # to support optg; freq
-            job_type_command = command.lower()
+            job_type_command = line.lower()
             if job_type_command in job_type_aliases.keys():
                 job_type_command = job_type_aliases[job_type_command]
             for job_type in job_type_commands.keys():
-                if job_type_command == re.sub('.*; ', '', job_type_commands[job_type].lower()):
+                if job_type_command == job_type_commands[job_type].lower().split(';\n')[0]:
                     specification['job_type'] = job_type
-            if old_job_type_command == 'optg' and job_type_command == 'frequencies':
-                job_type_command = 'optg; frequencies'
+            if old_job_type_command.split(',')[0] == job_type_commands['Geometry optimisation'].split(',')[
+                0] and job_type_command == 'frequencies':
+                job_type_command = job_type_commands['Optimise + vib frequencies']
             specification['job_type'] = \
                 [job_type for job_type in job_type_commands.keys() if job_type_commands[job_type] == job_type_command][
                     0]
@@ -207,7 +208,7 @@ def parse_method(specification, method):
     specification['method'], method_options = (method.lower() + ',').split(',', 1)
     if re.match('[ru]ks', specification['method']):
         specification['density_functional'], method_options = (
-                    method_options + ',').split(',', 1)
+                method_options + ',').split(',', 1)
     specification['method_options'] = method_options.rstrip(',').split(',')
     if specification['method_options'][-1] == '':
         del specification['method_options'][-1]
@@ -259,10 +260,11 @@ def create_input(specification: dict):
         specification['method']] if 'method' in specification else []:
         _input_line = l.lower()
         if l == specification['method']:
-            if re.match('[ru]ks', l, re.IGNORECASE) and 'density_functional' in specification and specification['density_functional']:
-                _input_line += ','+specification['density_functional']
+            if re.match('[ru]ks', l, re.IGNORECASE) and 'density_functional' in specification and specification[
+                'density_functional']:
+                _input_line += ',' + specification['density_functional']
             if 'method_options' in specification and specification['method_options']:
-                _input_line += ','+','.join(specification['method_options'])
+                _input_line += ',' + ','.join(specification['method_options'])
         _input += _input_line + '\n'
         first = False
     if 'job_type' in specification:
