@@ -1,5 +1,6 @@
 import concurrent.futures
 import difflib
+import glob
 import os
 import pathlib
 import shutil
@@ -11,7 +12,7 @@ from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
-    QSplitter, QMenu, QCheckBox, QGridLayout
+    QSplitter, QMenu, QCheckBox, QGridLayout, QInputDialog
 from PyQt5.QtGui import QIntValidator, QFont
 from pymolpro import Project
 
@@ -301,6 +302,10 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Search external databases for structure', 'Files', self.database_import_structure,
                           'Ctrl+Shift+Alt+I',
                           tooltip='Search PubChem and ChemSpider for a molecule and use it as the source of molecular structure in the input for the project')
+        menubar.addAction('Import optimised structure from the most recent run','Files', lambda dum, self=self: self.database_import_optimised(run='Last', file='Optimised.xyz'),
+                          tooltip='Import structure from the most recent geometry optimisation')
+        menubar.addAction('Choose a structure from a previous geometry optimisation','Files', self.database_import_optimised,
+                          tooltip='Choose a structure from a previous geometry optimisation')
         menubar.addAction('Import file', 'Files', self.import_file, 'Ctrl+I',
                           tooltip='Import one or more files, eg geometry definition, into the project')
         menubar.addAction('Export file', 'Files', self.export_file, 'Ctrl+E',
@@ -862,6 +867,41 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             os.rmdir(os.path.dirname(filename))
             self.edit_input_structure()
             return filename
+
+    def database_import_optimised(self, run=None, file=None):
+        run_directories = self.project.property_get('run_directories')
+        if not 'run_directories' in run_directories: return None
+        run_directories = run_directories['run_directories'].strip(' ').split(' ')
+        if run == 'Last':
+            return self.database_import_optimised(run=run_directories[0], file=file)
+        run_ = run_directories[0] if len(run_directories) == 1 else run if run else None
+        if run_ is None:
+            run_, ok = QInputDialog().getItem(self, 'Choose run from which to obtain optimised geometry', 'Which run?',
+                                              run_directories)
+            return self.database_import_optimised(run=run_) if ok else None
+        else:
+            run_directory_ = pathlib.Path(self.project.filename(run=-1)) / 'run' / (run_ + '.molpro')
+            filename = ''
+            if file:
+                filename = file
+            else:
+                files = glob.glob('optimised*.xyz', root_dir=run_directory_)
+                files_ = {}
+                if 'optimised.xyz' in files: files_['final'] = 'optimised.xyz'
+                files.sort(reverse=True)
+                for fn in files:
+                    if 'optimised_' in fn:
+                        files_[re.sub('optimised_', '', re.sub('.xyz', '', fn))] = fn
+                k, ok = QInputDialog().getItem(self, 'Choose geometry',
+                                               'Which geometry from run ' + run_ + ' should be selected?', files_.keys())
+                if ok:
+                    filename = files_[k]
+            if filename:
+                self.adopt_structure_file(run_directory_ / filename)
+                self.edit_input_structure()
+                return filename
+
+
 
     def import_input(self):
         _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
