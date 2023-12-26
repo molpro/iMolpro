@@ -302,10 +302,10 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Search external databases for structure', 'Files', self.database_import_structure,
                           'Ctrl+Shift+Alt+I',
                           tooltip='Search PubChem and ChemSpider for a molecule and use it as the source of molecular structure in the input for the project')
-        menubar.addAction('Import optimised structure from the most recent run','Files', lambda dum, self=self: self.database_import_optimised(run='Last', file='Optimised.xyz'),
-                          tooltip='Import structure from the most recent geometry optimisation')
-        menubar.addAction('Choose a structure from a previous geometry optimisation','Files', self.database_import_optimised,
-                          tooltip='Choose a structure from a previous geometry optimisation')
+        menubar.addAction('Adopt optimised structure from the most recent run','Files', lambda dum, self=self: self.database_import_optimised(run=0, file='Optimised.xyz'),
+                          tooltip='Adopt structure from the most recent geometry optimisation')
+        menubar.addAction('Select a structure from a previous geometry optimisation...','Files', self.database_import_optimised,
+                          tooltip='Select a structure from a previous geometry optimisation')
         menubar.addAction('Import file', 'Files', self.import_file, 'Ctrl+I',
                           tooltip='Import one or more files, eg geometry definition, into the project')
         menubar.addAction('Export file', 'Files', self.export_file, 'Ctrl+E',
@@ -869,39 +869,54 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
             return filename
 
     def database_import_optimised(self, run=None, file=None):
-        run_directories = self.project.property_get('run_directories')
-        if not 'run_directories' in run_directories: return None
-        run_directories = run_directories['run_directories'].strip(' ').split(' ')
-        if run == 'Last':
-            return self.database_import_optimised(run=run_directories[0], file=file)
-        run_ = run_directories[0] if len(run_directories) == 1 else run if run else None
+        run_directories = self.run_directories
+        for k in range(len(run_directories)):
+            run_directories[k] = os.path.splitext(os.path.basename(run_directories[k]))[0]
+        if len(run_directories) <= 1: return None
+        run_ = 1 if len(run_directories) == 2 else run
         if run_ is None:
-            run_, ok = QInputDialog().getItem(self, 'Choose run from which to obtain optimised geometry', 'Which run?',
-                                              run_directories)
-            return self.database_import_optimised(run=run_) if ok else None
+            selected_, ok = QInputDialog().getItem(self, 'Choose run from which to obtain optimised geometry',
+                                                   'Which run?',
+                                                   run_directories[-1:0:-1])
+            return self.database_import_optimised(run_directories[1:].index(selected_) + 1, file) if ok else None
         else:
-            run_directory_ = pathlib.Path(self.project.filename(run=-1)) / 'run' / (run_ + '.molpro')
             filename = ''
             if file:
                 filename = file
             else:
-                files = glob.glob('optimised*.xyz', root_dir=run_directory_)
-                files_ = {}
-                if 'optimised.xyz' in files: files_['final'] = 'optimised.xyz'
-                files.sort(reverse=True)
-                for fn in files:
-                    if 'optimised_' in fn:
-                        files_[re.sub('optimised_', '', re.sub('.xyz', '', fn))] = fn
+                files_ = self.optimised_structure_files(run_)
                 k, ok = QInputDialog().getItem(self, 'Choose geometry',
-                                               'Which geometry from run ' + run_ + ' should be selected?', files_.keys())
+                                               'Which geometry from run ' + run_directories[
+                                                   run_] + ' should be selected?', files_.keys())
                 if ok:
                     filename = files_[k]
             if filename:
-                self.adopt_structure_file(run_directory_ / filename)
+                self.adopt_structure_file(pathlib.Path(self.run_directories[run_]) / filename)
                 self.edit_input_structure()
                 return filename
 
+    def optimised_structure_files(self, run=0):
+        run_directory_ = self.project.filename('', '', run)
+        files = glob.glob('[Oo]ptimised*.xyz', root_dir=run_directory_)
+        files_ = {}
+        if 'Optimised.xyz' in files: files_['final'] = 'Optimised.xyz'
+        files.sort(reverse=True)
+        for fn in files:
+            if 'optimised_' in fn:
+                files_[re.sub('optimised_', '', re.sub('.xyz', '', fn))] = fn
+        return files_
 
+    @property
+    def run_directories(self):
+        last_filename = self.project.filename('', '', 0)
+        result = [last_filename]
+        if last_filename == self.project.filename('', '', -1):
+            return []
+        for i in range(1, 100000):
+            filename = self.project.filename('', '', i)
+            result.append(filename)
+            if filename == last_filename: break
+        return result
 
     def import_input(self):
         _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
