@@ -873,9 +873,9 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         for k in range(len(run_directories)):
             run_directories[k] = os.path.splitext(os.path.basename(run_directories[k]))[0]
         if len(run_directories) <= 1: return None
-        run_ = 1 if len(run_directories) == 2 else run
+        run_ = 1 if len(run_directories) == 2 else run if run else None
         if run_ is None:
-            selected_, ok = QInputDialog().getItem(self, 'Choose run from which to obtain optimised geometry',
+            selected_, ok = QInputDialog.getItem(self, 'Choose run from which to obtain optimised geometry',
                                                    'Which run?',
                                                    run_directories[-1:0:-1])
             return self.database_import_optimised(run_directories[1:].index(selected_) + 1, file) if ok else None
@@ -885,7 +885,7 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                 filename = file
             else:
                 files_ = self.optimised_structure_files(run_)
-                k, ok = QInputDialog().getItem(self, 'Choose geometry',
+                k, ok = QInputDialog.getItem(self, 'Choose geometry',
                                                'Which geometry from run ' + run_directories[
                                                    run_] + ' should be selected?', files_.keys())
                 if ok:
