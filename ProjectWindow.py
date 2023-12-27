@@ -179,7 +179,7 @@ class ProjectWindow(QMainWindow):
         self.input_tabs.currentChanged.connect(self.input_tab_changed_consequence)
         left_layout.addWidget(self.input_tabs)
         self.input_tabs.setMinimumHeight(300)
-        self.input_tabs.setMinimumWidth(350)
+        self.input_tabs.setMinimumWidth(400)
         self.statusBar.setMaximumWidth(400)
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.run_button)
@@ -253,6 +253,7 @@ class ProjectWindow(QMainWindow):
         container = QWidget(self)
         container.setLayout(self.layout)
         self.setCentralWidget(container)
+        splitter.setSizes([1,1])
 
     def discover_external_viewer_commands(self):
         external_command_stems = [
