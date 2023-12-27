@@ -434,7 +434,7 @@ class ProjectWindow(QMainWindow):
             self.input_tabs.setCurrentIndex(index)
 
     def input_text_changed_consequence(self, index=0):
-        if self.trace: print('input_text_changed_consequence, index=', index)
+        if True or self.trace: print('input_text_changed_consequence, index=', index)
         guided = self.guided_possible()
         if not guided and len(self.input_tabs) != 1:
             self.input_tabs.removeTab(1)
@@ -442,6 +442,7 @@ class ProjectWindow(QMainWindow):
             self.input_tabs.addTab(self.guided_pane, 'guided')
         if guided:
             self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), self.allowed_methods())
+            print('new input specification',self.input_specification)
 
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
@@ -1201,11 +1202,14 @@ class GuidedPane(QWidget):
         self.guided_combo_wave_fct_symm.setCurrentText(
             self.input_specification['wave_fct_symm'] if 'wave_fct_symm' in self.input_specification else
             list(molpro_input.wave_fct_symm_commands.keys())[0])
-        if 'variables' in self.input_specification:
-            if 'charge' in self.input_specification['variables']:
-                self.charge_line.setText(self.input_specification['variables']['charge'])
-            if 'spin' in self.input_specification['variables']:
-                self.spin_line.setText(self.input_specification['variables']['spin'])
+        if 'variables' in self.input_specification and 'charge' in self.input_specification['variables']:
+            self.charge_line.setText(self.input_specification['variables']['charge'])
+        else:
+            self.charge_line.setText('')
+        if 'variables' in self.input_specification and 'spin' in self.input_specification['variables']:
+            self.spin_line.setText(self.input_specification['variables']['spin'])
+        else:
+            self.spin_line.setText('')
 
         if 'method' in self.input_specification:
             base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
