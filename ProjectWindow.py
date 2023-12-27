@@ -434,7 +434,7 @@ class ProjectWindow(QMainWindow):
             self.input_tabs.setCurrentIndex(index)
 
     def input_text_changed_consequence(self, index=0):
-        if True or self.trace: print('input_text_changed_consequence, index=', index)
+        if self.trace: print('input_text_changed_consequence, index=', index)
         guided = self.guided_possible()
         if not guided and len(self.input_tabs) != 1:
             self.input_tabs.removeTab(1)
@@ -442,7 +442,6 @@ class ProjectWindow(QMainWindow):
             self.input_tabs.addTab(self.guided_pane, 'guided')
         if guided:
             self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), self.allowed_methods())
-            print('new input specification',self.input_specification)
 
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
