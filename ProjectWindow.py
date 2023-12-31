@@ -12,8 +12,8 @@ from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
-    QSplitter, QMenu, QCheckBox, QGridLayout, QInputDialog
-from PyQt5.QtGui import QIntValidator, QFont
+    QSplitter, QMenu, QGridLayout, QInputDialog, QDialog, QDialogButtonBox, QTableWidget, QTableWidgetItem, QCheckBox
+from PyQt5.QtGui import QIntValidator, QFont, QStandardItem
 from pymolpro import Project
 
 import molpro_input
@@ -979,7 +979,6 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                                 re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                                                   ',\n  '))
 
-
 class BasisAndHamiltonianChooser(QWidget):
     r"""
     Choose basis and hamiltonian
@@ -1098,6 +1097,7 @@ class BasisAndHamiltonianChooser(QWidget):
 
 
 class GuidedPane(QWidget):
+    method_changed_signal = pyqtSignal(str)
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
@@ -1171,6 +1171,11 @@ class GuidedPane(QWidget):
         self.basis_and_hamiltonian_chooser = BasisAndHamiltonianChooser(self)
         self.guided_layout.addWidget(self.basis_and_hamiltonian_chooser)
 
+        # self.method_option_input = MethodOptionInput(self.parent, self)
+        self.method_options_button = QPushButton('Edit')
+        self.method_options_button.clicked.connect(self.method_options_edit)
+        self.method_options_button.setToolTip('Specify options for the main method')
+
         self.guided_layout.addWidget(RowOfTitledWidgets({
             'Charge': self.charge_line,
             'Spin': self.spin_line,
@@ -1185,6 +1190,7 @@ class GuidedPane(QWidget):
         self.guided_layout.addWidget(RowOfTitledWidgets({
             'Orientation': self.guided_combo_orientation,
             'Density Fitting': QLabel(''),
+            'Options': self.method_options_button,
         }, title='Miscellaneous'))
 
     @property
@@ -1211,9 +1217,10 @@ class GuidedPane(QWidget):
             self.spin_line.setText('')
 
         if 'method' in self.input_specification:
+            self.method_options_button.setText('Edit')
             base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
-            prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
-                'method'] else None
+            # prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
+            #     'method'] else None
             method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
             self.guided_combo_method.setCurrentIndex(method_index)
             if re.match('[ru]ks', self.input_specification['method'], flags=re.IGNORECASE):
@@ -1252,6 +1259,7 @@ class GuidedPane(QWidget):
             return
         self.input_specification[key] = value
         if key == 'method':
+            self.method_changed_signal.emit(value)
             self.input_specification['precursor_methods'] = []
             if self.input_specification['method'].upper() not in ['RHF', 'RKS', 'UHF', 'UKS', 'HF', 'KS'] and not \
             self.input_specification['precursor_methods']:
@@ -1273,6 +1281,75 @@ class GuidedPane(QWidget):
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
             self.input_pane.setPlainText(new_input)
 
+    def method_options_edit(self,flag):
+        method_ = self.parent.input_specification['method']
+        available_options = [re.sub('.*:','',option) for option in list(self.parent.procedures_registry[method_.upper()]['options'])]
+        title = 'Options for method ' + self.parent.input_specification['method']
+        box = OptionsDialog(self.parent.input_specification['method_options'], available_options, title=title, parent=self)
+        result = box.exec()
+        if result is not None:
+            self.parent.input_specification['method_options'] = result
+            self.refresh_input_from_specification()
+
+
+class OptionsDialog(QDialog):
+    def __init__(self, current_options: dict, available_options: list, title=None, parent=None):
+        super().__init__(parent)
+        if title is not None:
+            self.setWindowTitle(title)
+        layout = QVBoxLayout(self)
+
+        self.current = QTableWidget(self)
+        self.current.setColumnCount(2)
+        self.current.setHorizontalHeaderLabels(['Value'])
+        self.current.horizontalHeader().setVisible(False)
+        self.remove_buttons = []
+        for k, v in current_options.items():
+            self.add(k, v)
+        layout.addWidget(self.current)
+
+        self.available = QComboBox(self)
+        self.available.addItem('')
+        self.available.addItems(available_options)
+        self.available.currentTextChanged.connect(self.add_from_registry)
+        layout.addWidget(QLabel('Add option:'))
+        layout.addWidget(self.available)
+
+        buttonbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttonbox.accepted.connect(self.accept)
+        buttonbox.rejected.connect(self.reject)
+        layout.addWidget(buttonbox)
+
+    def add(self, key, value):
+        row = self.current.rowCount()
+        self.current.setRowCount(row + 1)
+        self.current.setVerticalHeaderItem(row, QTableWidgetItem(key))
+        self.current.setCellWidget(row, 0, QLineEdit(value))
+        self.remove_buttons.append(QPushButton('Remove'))
+        self.current.setCellWidget(row, 1, self.remove_buttons[-1])
+        self.remove_buttons[-1].clicked.connect(lambda arg, key=key: self.remove(key))
+
+    def add_from_registry(self):
+        key = self.available.currentText()
+        if key == '': return
+        for row in range(self.current.rowCount()):
+            if key == self.current.verticalHeaderItem(row).text():
+                return
+        self.add(key, '')
+        self.available.setCurrentText('')
+
+    def remove(self, key):
+        for row in range(self.current.rowCount()):
+            print(row, self.current.verticalHeaderItem(row).text())
+            if key == self.current.verticalHeaderItem(row).text():
+                self.current.removeRow(row)
+                return
+
+    def exec(self):
+        result = super().exec()
+        if result == QDialog.Accepted:
+            return {self.current.verticalHeaderItem(row).text(): self.current.cellWidget(row, 0).text() for row in
+                    range(self.current.rowCount())}
 
 class RowOfTitledWidgets(QWidget):
     def __init__(self, widgets, title=None, parent=None):
@@ -1358,3 +1435,31 @@ class PropertyInput(CheckableComboBox):
         self.parent.input_specification['properties'] = [k for k,v in molpro_input.properties.items() for t in self.currentData() if t == k]
         self.parent.refresh_input_from_specification()
 
+
+class MethodOptionInput(CheckableComboBox):
+    def __init__(self,project_window:ProjectWindow, parent=None):
+        super().__init__(parent)
+        self.project_window = project_window
+        self.parent = parent
+        self.model().dataChanged.connect(self.refresh)
+        self.initialise()
+        self.parent.method_changed_signal.connect(self.initialise)
+        print(type(self.model()))
+
+    def initialise(self, text=''):
+        print('intialise called', text)
+        self.clear()
+        method_dict = self.project_window.procedures_registry[self.project_window.input_specification['method'].upper()]
+        print(method_dict)
+        print(self.project_window.input_specification['method'])
+        print(self.project_window.input_specification['method_options'])
+        self.addItems(method_dict['options'])
+        self.model().appendColumn([QStandardItem('extra') for k in method_dict['options']])
+
+    def refresh(self, text=None):
+        print('refresh called', str(text.data()), str(text.model().rowCount()),'cols:', str(text.model().columnCount()))
+        print(text.model().item(0).data())
+        print(text.model().item(1).data())
+        # self.parent.input_specification['method_options'] = [k for k, v in molpro_input.properties.items() for t in
+        #                                                  self.currentData() if t == k]
+        self.parent.refresh_input_from_specification()

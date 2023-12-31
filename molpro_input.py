@@ -209,9 +209,11 @@ def parse_method(specification, method):
     if re.match('[ru]ks', specification['method']):
         specification['density_functional'], method_options = (
                 method_options + ',').split(',', 1)
-    specification['method_options'] = method_options.rstrip(',').split(',')
-    if specification['method_options'][-1] == '':
-        del specification['method_options'][-1]
+    specification['method_options'] = {
+        m.split('=')[0].strip(): (m.split('=')[1].strip() if len(m.split('=')) > 1 else '') for m in
+        method_options.rstrip(',').split(',')}
+    if '' in specification['method_options']:
+            del specification['method_options']['']
 
 
 def create_input(specification: dict):
@@ -255,7 +257,6 @@ def create_input(specification: dict):
     if 'properties' in specification:
         for p in specification['properties']:
             _input += properties[p] + '\n'
-    first = True
     for l in (specification['precursor_methods'] if 'precursor_methods' in specification else []) + [
         specification['method']] if 'method' in specification else []:
         _input_line = l.lower()
@@ -264,9 +265,9 @@ def create_input(specification: dict):
                 'density_functional']:
                 _input_line += ',' + specification['density_functional']
             if 'method_options' in specification and specification['method_options']:
-                _input_line += ',' + ','.join(specification['method_options'])
+                for k, v in specification['method_options'].items():
+                    _input_line += ',' + k + ('=' + str(v) if str(v) != '' else '')
         _input += _input_line + '\n'
-        first = False
     if 'job_type' in specification:
         _input += job_type_commands[specification['job_type']] + '\n'
     if 'orbitals' in specification:
@@ -320,7 +321,7 @@ def canonicalise(input):
     for line in re.sub('set[, ]', '', result.strip(), flags=re.IGNORECASE).split('\n'):
 
         # transform out alternate formats of basis
-        line = re.sub('basis *, *', 'basis=', line, flags=re.IGNORECASE)
+        line = re.sub('basis *, *', 'basis=', line.rstrip(' ,'), flags=re.IGNORECASE)
         line = re.sub('basis= *{(.*)} *$', r'basis=\1', line, flags=re.IGNORECASE)
         line = re.sub('basis= *default *= *', r'basis=', line, flags=re.IGNORECASE)
 
