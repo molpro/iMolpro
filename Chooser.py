@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayo
 
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
-from settings import settings
+from settings import settings, settings_edit
 
 
 class Chooser(QMainWindow):
@@ -110,6 +110,7 @@ class Chooser(QMainWindow):
         menubar.addSeparator('Projects')
         menubar.addAction('Quit', 'Projects', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
                           tooltip='Quit')
+        menubar.addAction('Settings', 'Edit', lambda arg, parent=self: settings_edit(parent), tooltip='Edit settings')
 
         help_manager = HelpManager(menubar)
         help_manager.register('Overview', 'README')

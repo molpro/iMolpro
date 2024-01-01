@@ -7,14 +7,13 @@ import shutil
 import subprocess
 import sys
 import re
-import webbrowser
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
-    QSplitter, QMenu, QGridLayout, QInputDialog, QDialog, QDialogButtonBox, QTableWidget, QTableWidgetItem, QCheckBox
-from PyQt5.QtGui import QIntValidator, QFont, QStandardItem
+    QSplitter, QMenu, QGridLayout, QInputDialog
+from PyQt5.QtGui import QIntValidator, QFont
 from pymolpro import Project
 
 import molpro_input
@@ -26,7 +25,7 @@ from database import database_choose_structure
 from help import HelpManager
 from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set
 from backend import configure_backend, BackendConfigurationEditor
-from settings import settings
+from settings import settings, settings_edit
 
 
 class StatusBar(QLabel):
@@ -313,6 +312,8 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Export file', 'Files', self.export_file, 'Ctrl+E',
                           tooltip='Export one or more files from the project')
         menubar.addAction('Clean', 'Files', self.clean, tooltip='Remove old runs from the project')
+        menubar.addAction('Settings', 'Edit', lambda arg, parent=self: settings_edit(parent), tooltip='Edit settings')
+        menubar.addSeparator('Edit')
         menubar.addAction('Structure', 'Edit', self.edit_input_structure, 'Ctrl+D', 'Edit molecular geometry')
         menubar.addAction('Cut', 'Edit', self.input_pane.cut, 'Ctrl+X', 'Cut')
         menubar.addAction('Copy', 'Edit', self.input_pane.copy, 'Ctrl+C', 'Copy')
@@ -980,6 +981,8 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
                                 re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                                                   ',\n  '))
 
+
+
 class BasisAndHamiltonianChooser(QWidget):
     r"""
     Choose basis and hamiltonian
@@ -1333,67 +1336,6 @@ class GuidedPane(QWidget):
             self.refresh_input_from_specification()
 
 
-class OptionsDialog(QDialog):
-    def __init__(self, current_options: dict, available_options: list, title=None, parent=None, help_uri=None):
-        super().__init__(parent)
-        if title is not None:
-            self.setWindowTitle(title)
-        layout = QVBoxLayout(self)
-
-        self.current = QTableWidget(self)
-        self.current.setColumnCount(2)
-        self.current.setHorizontalHeaderLabels(['Value'])
-        self.current.horizontalHeader().setVisible(False)
-        self.remove_buttons = []
-        for k, v in current_options.items():
-            self.add(k, v)
-        layout.addWidget(self.current)
-
-        self.available = QComboBox(self)
-        self.available.addItem('')
-        self.available.addItems(available_options)
-        self.available.currentTextChanged.connect(self.add_from_registry)
-        layout.addWidget(QLabel('Add entry:'))
-        layout.addWidget(self.available)
-
-        buttonbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)# | QDialogButtonBox.Help if help_uri is not None else 0)
-        buttonbox.accepted.connect(self.accept)
-        buttonbox.rejected.connect(self.reject)
-        if help_uri is not None:
-            buttonbox.addButton('Documentation', QDialogButtonBox.HelpRole)
-            buttonbox.helpRequested.connect(lambda help_uri=help_uri: webbrowser.open(help_uri))
-        layout.addWidget(buttonbox)
-
-    def add(self, key, value):
-        row = self.current.rowCount()
-        self.current.setRowCount(row + 1)
-        self.current.setVerticalHeaderItem(row, QTableWidgetItem(key))
-        self.current.setCellWidget(row, 0, QLineEdit(value))
-        self.remove_buttons.append(QPushButton('Remove'))
-        self.current.setCellWidget(row, 1, self.remove_buttons[-1])
-        self.remove_buttons[-1].clicked.connect(lambda arg, key=key: self.remove(key))
-
-    def add_from_registry(self):
-        key = self.available.currentText()
-        if key == '': return
-        for row in range(self.current.rowCount()):
-            if key == self.current.verticalHeaderItem(row).text():
-                return
-        self.add(key, '')
-        self.available.setCurrentText('')
-
-    def remove(self, key):
-        for row in range(self.current.rowCount()):
-            print(row, self.current.verticalHeaderItem(row).text())
-            if key == self.current.verticalHeaderItem(row).text():
-                self.current.removeRow(row)
-                return
-
-    def exec(self):
-        result = super().exec()
-        if result == QDialog.Accepted:
-            return {self.current.verticalHeaderItem(row).text(): self.current.cellWidget(row, 0).text() for row in
-                    range(self.current.rowCount())}
 
 class RowOfTitledWidgets(QWidget):
     def __init__(self, widgets, title=None, parent=None):
