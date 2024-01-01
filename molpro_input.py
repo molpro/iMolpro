@@ -24,6 +24,11 @@ orbital_types = {
     'boys': {'text': 'Boys', 'command': 'locali'},
 }
 
+parameter_commands = {
+    'parameters': 'gparam',
+    'thresholds': 'gthresh',
+}
+
 job_type_commands = {
     'Single point energy': '',
     'Geometry optimisation': 'optg,savexyz=optimised.xyz',
@@ -158,6 +163,13 @@ def parse(input: str, allowed_methods=[], debug=False):
                 value = re.sub('.*= *', '', field)
                 # print('field, key=', key, 'value=', value)
                 variables[key] = value.replace('!', ',')  # unprotect
+        elif command in parameter_commands.values():
+            spec_field = [k for k, v in parameter_commands.items() if v == command][0]
+            fields = re.sub('^ *gthresh *,*', '', line.strip().lower(), flags=re.IGNORECASE).split(',')
+            specification[spec_field] = {
+                field.split('=')[0].strip().lower(): field.split('=')[1].strip().lower() if len(
+                    field.split('=')) > 1 else '' for field in fields}
+            if '' in specification[spec_field]: del specification[spec_field]['']
         elif any(
                 [re.match('{? *' + df_prefix + precursor_method + '[;}]', command + ';',
                           flags=re.IGNORECASE) for
@@ -213,7 +225,7 @@ def parse_method(specification, method):
         m.split('=')[0].strip(): (m.split('=')[1].strip() if len(m.split('=')) > 1 else '') for m in
         method_options.rstrip(',').split(',')}
     if '' in specification['method_options']:
-            del specification['method_options']['']
+        del specification['method_options']['']
 
 
 def create_input(specification: dict):
@@ -257,6 +269,12 @@ def create_input(specification: dict):
     if 'properties' in specification:
         for p in specification['properties']:
             _input += properties[p] + '\n'
+    for typ, command in parameter_commands.items():
+        if typ in specification and len(specification[typ]) > 0:
+            _input += command
+            for k, v in specification[typ].items():
+                _input += ',' + k.lower() + ('=' + str(v) if str(v) != '' else '')
+            _input += '\n'
     for l in (specification['precursor_methods'] if 'precursor_methods' in specification else []) + [
         specification['method']] if 'method' in specification else []:
         _input_line = l.lower()

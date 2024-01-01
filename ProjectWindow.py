@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import re
+import webbrowser
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
@@ -1171,8 +1172,15 @@ class GuidedPane(QWidget):
         self.basis_and_hamiltonian_chooser = BasisAndHamiltonianChooser(self)
         self.guided_layout.addWidget(self.basis_and_hamiltonian_chooser)
 
-        # self.method_option_input = MethodOptionInput(self.parent, self)
-        self.method_options_button = QPushButton('Edit')
+        self.thresholds_button = QPushButton('Thresholds')
+        self.thresholds_button.clicked.connect(self.thresholds_edit)
+        self.thresholds_button.setToolTip('Specify global thresholds')
+
+        self.parameters_button = QPushButton('Parameters')
+        self.parameters_button.clicked.connect(self.parameters_edit)
+        self.parameters_button.setToolTip('Specify global parameters')
+
+        self.method_options_button = QPushButton('Options')
         self.method_options_button.clicked.connect(self.method_options_edit)
         self.method_options_button.setToolTip('Specify options for the main method')
 
@@ -1187,11 +1195,18 @@ class GuidedPane(QWidget):
             'Export orbitals': self.guided_orbitals_input,
             'Expectation values': self.combo_properties,
         }, title='Properties'))
-        self.guided_layout.addWidget(RowOfTitledWidgets({
+        misc_layout = QHBoxLayout()
+        self.guided_layout.addLayout(misc_layout)
+        misc_layout.addWidget(RowOfTitledWidgets({
             'Orientation': self.guided_combo_orientation,
             'Density Fitting': QLabel(''),
-            'Options': self.method_options_button,
+            # 'Options': self.method_options_button,
         }, title='Miscellaneous'))
+        options_layout = QGridLayout()
+        options_layout.addWidget(self.thresholds_button, 1, 0)
+        options_layout.addWidget(self.parameters_button, 1, 1)
+        options_layout.addWidget(self.method_options_button,0,0)
+        misc_layout.addLayout(options_layout)
 
     @property
     def input_specification(self):
@@ -1217,7 +1232,6 @@ class GuidedPane(QWidget):
             self.spin_line.setText('')
 
         if 'method' in self.input_specification:
-            self.method_options_button.setText('Edit')
             base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
             # prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
             #     'method'] else None
@@ -1281,11 +1295,38 @@ class GuidedPane(QWidget):
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
             self.input_pane.setPlainText(new_input)
 
+    def thresholds_edit(self,flag):
+        project_registry = self.project.registry('THRESH')
+        available_options = [k.split(',')[0] for k in project_registry]
+        title = 'Global thresholds'
+        box = OptionsDialog(self.parent.input_specification['thresholds'] if 'thresholds' in self.parent.input_specification else {}, available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?id=program_control&s[]=gthresh#global_thresholds_gthresh')
+        result = box.exec()
+        if result is not None:
+            self.parent.input_specification['thresholds'] = result
+            self.refresh_input_from_specification()
+
+    def parameters_edit(self, flag):
+        available_options = [
+            'LSEG    ', 'INTREL  ', 'IVECT   ', 'MINVEC  ', 'IBANK   ', 'LTRACK  ',
+            'LTR     ', 'NCPUS   ', 'NOBUFF  ', 'IASYN   ', 'NCACHE  ', 'MXMBLK  ',
+            'MXMBLN  ', 'MINBR1  ', 'NCHUNK1 ', 'LENBUF  ', 'NTR     ', 'MXDMP   ',
+            'UNROLL  ', 'NOBLAS  ', 'MINDGM  ', 'MINDGV  ', 'MINDGL  ', 'MINDGR  ',
+            'MINDGC  ', 'MINDGF  ', 'MFLOPDGM', 'MFLOPDGV', 'MFLOPMXM',
+            'MFLOPMXV', 'MPPLAT  ', 'MPPSPEED', 'MXMALAT ', 'OLDDIAG2',
+            'MINCUDA ', 'MINDGM2 ', 'DSYEVD  ', 'DSYEVDG ',
+        ]
+        title = 'Global parameters'
+        box = OptionsDialog(self.parent.input_specification['parameters'] if 'parameters' in self.parent.input_specification else {}, available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?id=file_handling&s%5B%5D=gparam#molpro_system_parameters_gparam')
+        result = box.exec()
+        if result is not None:
+            self.parent.input_specification['parameters'] = result
+            self.refresh_input_from_specification()
+
     def method_options_edit(self,flag):
         method_ = self.parent.input_specification['method']
         available_options = [re.sub('.*:','',option) for option in list(self.parent.procedures_registry[method_.upper()]['options'])]
         title = 'Options for method ' + self.parent.input_specification['method']
-        box = OptionsDialog(self.parent.input_specification['method_options'], available_options, title=title, parent=self)
+        box = OptionsDialog(self.parent.input_specification['method_options'], available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?q='+method_+'&do=search')
         result = box.exec()
         if result is not None:
             self.parent.input_specification['method_options'] = result
@@ -1293,7 +1334,7 @@ class GuidedPane(QWidget):
 
 
 class OptionsDialog(QDialog):
-    def __init__(self, current_options: dict, available_options: list, title=None, parent=None):
+    def __init__(self, current_options: dict, available_options: list, title=None, parent=None, help_uri=None):
         super().__init__(parent)
         if title is not None:
             self.setWindowTitle(title)
@@ -1312,12 +1353,15 @@ class OptionsDialog(QDialog):
         self.available.addItem('')
         self.available.addItems(available_options)
         self.available.currentTextChanged.connect(self.add_from_registry)
-        layout.addWidget(QLabel('Add option:'))
+        layout.addWidget(QLabel('Add entry:'))
         layout.addWidget(self.available)
 
-        buttonbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttonbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)# | QDialogButtonBox.Help if help_uri is not None else 0)
         buttonbox.accepted.connect(self.accept)
         buttonbox.rejected.connect(self.reject)
+        if help_uri is not None:
+            buttonbox.addButton('Documentation', QDialogButtonBox.HelpRole)
+            buttonbox.helpRequested.connect(lambda help_uri=help_uri: webbrowser.open(help_uri))
         layout.addWidget(buttonbox)
 
     def add(self, key, value):
@@ -1436,30 +1480,3 @@ class PropertyInput(CheckableComboBox):
         self.parent.refresh_input_from_specification()
 
 
-class MethodOptionInput(CheckableComboBox):
-    def __init__(self,project_window:ProjectWindow, parent=None):
-        super().__init__(parent)
-        self.project_window = project_window
-        self.parent = parent
-        self.model().dataChanged.connect(self.refresh)
-        self.initialise()
-        self.parent.method_changed_signal.connect(self.initialise)
-        print(type(self.model()))
-
-    def initialise(self, text=''):
-        print('intialise called', text)
-        self.clear()
-        method_dict = self.project_window.procedures_registry[self.project_window.input_specification['method'].upper()]
-        print(method_dict)
-        print(self.project_window.input_specification['method'])
-        print(self.project_window.input_specification['method_options'])
-        self.addItems(method_dict['options'])
-        self.model().appendColumn([QStandardItem('extra') for k in method_dict['options']])
-
-    def refresh(self, text=None):
-        print('refresh called', str(text.data()), str(text.model().rowCount()),'cols:', str(text.model().columnCount()))
-        print(text.model().item(0).data())
-        print(text.model().item(1).data())
-        # self.parent.input_specification['method_options'] = [k for k, v in molpro_input.properties.items() for t in
-        #                                                  self.currentData() if t == k]
-        self.parent.refresh_input_from_specification()
