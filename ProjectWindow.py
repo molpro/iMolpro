@@ -26,6 +26,7 @@ from help import HelpManager
 from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set
 from backend import configure_backend, BackendConfigurationEditor
 from settings import settings, settings_edit
+from OptionsDialog import OptionsDialog
 
 
 class StatusBar(QLabel):
