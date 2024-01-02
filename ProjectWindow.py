@@ -1273,16 +1273,18 @@ class GuidedPane(QWidget):
         return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
 
     def input_specification_change(self, key, value):
-        if not value:
+        if not value or (key in self.input_specification and self.input_specification[key].lower() == value.lower()):
             return
-        self.input_specification[key] = value
         if key == 'method':
             self.method_changed_signal.emit(value)
             self.input_specification['precursor_methods'] = []
-            if self.input_specification['method'].upper() not in ['RHF', 'RKS', 'UHF', 'UKS', 'HF', 'KS'] and not \
-            self.input_specification['precursor_methods']:
+            if value.upper() not in ['RHF', 'RKS', 'UHF', 'UKS', 'HF', 'KS'] and not \
+                    self.input_specification['precursor_methods']:
                 self.input_specification['precursor_methods'].append('HF')
             if not self.input_specification['precursor_methods']: del self.input_specification['precursor_methods']
+            if self.input_specification['method'] != '':
+                self.input_specification['method_options'] = {}
+        self.input_specification[key] = value
         self.refresh_input_from_specification()
         self.refresh()
 
