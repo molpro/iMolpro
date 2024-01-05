@@ -69,11 +69,12 @@ def parse(input: str, allowed_methods=[], debug=False):
     if os.path.exists(input):
         return parse(open(input, 'r').read())
 
-    precursor_methods = ['RHF', 'RKS', 'UHF', 'RHF', 'LOCALI', 'CASSCF', 'OCC', 'CORE', 'CLOSED', 'FROZEN', 'WF',
+    print('allowed_methods', allowed_methods)
+    hartree_fock_methods = ['RHF', 'RKS', 'UHF', 'RHF', 'LDF-RHF', 'LDF-UHF']
+    precursor_methods = ['LOCALI', 'CASSCF', 'OCC', 'CORE', 'CLOSED', 'FROZEN', 'WF',
                          'LOCAL', 'DFIT',
                          'DIRECT', 'EXPLICIT', 'THRESH', 'GTHRESH', 'PRINT', 'GRID']
-    local_prefixes = ['', 'L']
-    df_prefixes = ['', 'DF-', 'PNO-']
+    df_prefixes = ['', 'DF-']
     postscripts = ['PUT', 'TABLE', 'NOORBITALS', 'NOBASIS']  # FIXME not very satisfactory
 
     specification = {}
@@ -180,11 +181,11 @@ def parse(input: str, allowed_methods=[], debug=False):
             if 'method' in specification: return {}  # input too complex
             if 'precursor_methods' not in specification: specification['precursor_methods'] = []
             specification['precursor_methods'].append(line.lower())
-        elif any([re.fullmatch('{?' + df_prefix + local_prefix + re.escape(method), command,
+        elif any([re.fullmatch('{?' + df_prefix + re.escape(method), command,
                                flags=re.IGNORECASE) for
                   df_prefix
                   in df_prefixes
-                  for local_prefix in local_prefixes for method in allowed_methods]):
+                  for method in allowed_methods]):
             parse_method(specification, line.lower())
         elif command != '' and (any(
                 [line.lower() == job_type_commands[job_type].lower().split(';\n')[0] for job_type in
