@@ -1194,6 +1194,13 @@ class GuidedPane(QWidget):
         self.method_options_button.clicked.connect(self.method_options_edit)
         self.method_options_button.setToolTip('Specify options for the main method')
 
+        self.step_options_combo = QComboBox(self)
+        self.step_options_combo.addItem('')
+        self.step_options_combo.addItems([step['command'] for step in self.input_specification['steps']])
+        self.step_options_combo.setCurrentIndex(0)
+        self.step_options_combo.currentIndexChanged.connect(
+            lambda text: self.step_options_edit(int(text-1)))
+
         self.guided_layout.addWidget(RowOfTitledWidgets({
             'Charge': self.charge_line,
             'Spin': self.spin_line,
@@ -1210,12 +1217,12 @@ class GuidedPane(QWidget):
         misc_layout.addWidget(RowOfTitledWidgets({
             'Orientation': self.guided_combo_orientation,
             'Density Fitting': QLabel(''),
-            # 'Options': self.method_options_button,
+            'Options': self.step_options_combo,
         }, title='Miscellaneous'))
         options_layout = QGridLayout()
-        options_layout.addWidget(self.thresholds_button, 1, 0)
+        options_layout.addWidget(self.thresholds_button, 0, 1)
         options_layout.addWidget(self.parameters_button, 1, 1)
-        options_layout.addWidget(self.method_options_button,0,0)
+        # options_layout.addWidget(self.method_options_button,0,0)
         misc_layout.addLayout(options_layout)
 
     @property
@@ -1332,16 +1339,30 @@ class GuidedPane(QWidget):
             self.parent.input_specification['parameters'] = result
             self.refresh_input_from_specification()
 
-    def method_options_edit(self,flag):
-        method_ = self.parent.input_specification.method
+    def step_options_edit(self,step:int):
+        if step < 0: return
+        step_ = self.parent.input_specification['steps'][step]
+        method_ = step_['command']
         available_options = [re.sub('.*:','',option) for option in list(self.parent.procedures_registry[method_.upper()]['options'])]
-        title = 'Options for method ' + self.parent.input_specification.method
-        existing_options = {o.split('=')[0]:o.split('=')[1] if len(o.split('='))>1 else '' for o in self.parent.input_specification.method_options}
+        title = 'Options for step ' + str(step+1) + ' (' + method_+')'
+        existing_options = {o.split('=')[0]:o.split('=')[1] if len(o.split('='))>1 else '' for o in (step_['options'] if 'options' in step_ else [])}
         box = OptionsDialog(existing_options, available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?q='+method_+'&do=search')
         result = box.exec()
         if result is not None:
-            self.parent.input_specification.method_options = [k+'='+v if v else k for k,v in result.items()]
+            self.parent.input_specification['steps'][step]['options'] = [k+'='+v if v else k for k,v in result.items()]
             self.refresh_input_from_specification()
+        self.step_options_combo.setCurrentIndex(0)
+    def method_options_edit(self,flag):
+        return self.step_options_edit([s['command'] for s in self.parent.input_specification['steps']].index(self.parent.input_specification.method))
+        # method_ = self.parent.input_specification.method
+        # available_options = [re.sub('.*:','',option) for option in list(self.parent.procedures_registry[method_.upper()]['options'])]
+        # title = 'Options for method ' + self.parent.input_specification.method
+        # existing_options = {o.split('=')[0]:o.split('=')[1] if len(o.split('='))>1 else '' for o in self.parent.input_specification.method_options}
+        # box = OptionsDialog(existing_options, available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?q='+method_+'&do=search')
+        # result = box.exec()
+        # if result is not None:
+        #     self.parent.input_specification.method_options = [k+'='+v if v else k for k,v in result.items()]
+        #     self.refresh_input_from_specification()
 
 
 
