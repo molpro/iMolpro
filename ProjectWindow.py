@@ -1282,15 +1282,10 @@ class GuidedPane(QWidget):
         if not value or (key in self.input_specification and self.input_specification[key].lower() == value.lower()):
             return
         if key == 'method':
+            self.input_specification.force_method(value)
             self.method_changed_signal.emit(value)
-            self.input_specification['precursor_methods'] = []
-            if value.upper() not in ['RHF', 'RKS', 'UHF', 'UKS', 'HF', 'KS'] and not \
-                    self.input_specification['precursor_methods']:
-                self.input_specification['precursor_methods'].append('HF')
-            if not self.input_specification['precursor_methods']: del self.input_specification['precursor_methods']
-            if self.input_specification['method'] != '':
-                self.input_specification['method_options'] = {}
-        self.input_specification[key] = value
+        else:
+            self.input_specification[key] = value
         self.refresh_input_from_specification()
         self.refresh()
 

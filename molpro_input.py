@@ -359,23 +359,23 @@ class InputSpecification(UserDict):
                 _input += m + '\n'
         return _input.rstrip('\n') + '\n'
 
-    def force_job_type(self, job_type):
-        r"""
-        Force the specification to be compliant with a particular job type
-
-        :param job_type: Force the job type to be this, and make specification['steps'] compliant.
-        :type job_type: str
-        """
-        if not 'steps' in self:
-            self['steps'] = []
-        for step in job_type_steps[job_type]:
-            if not any([step_['command'] == step['command'] for step_ in self['steps']]):
-                # print('appending', step)
-                self['steps'].append(step)
-        for step in self['steps']:
-            if not any([step_['command'] == step['command'] for step_ in job_type_steps]):
-                # print('removing', step)
-                del self['steps'][step]
+    # def force_job_type(self, job_type):
+    #     r"""
+    #     Force the specification to be compliant with a particular job type
+    #
+    #     :param job_type: Force the job type to be this, and make specification['steps'] compliant.
+    #     :type job_type: str
+    #     """
+    #     if not 'steps' in self:
+    #         self['steps'] = []
+    #     for step in job_type_steps[job_type]:
+    #         if not any([step_['command'] == step['command'] for step_ in self['steps']]):
+    #             # print('appending', step)
+    #             self['steps'].append(step)
+    #     for step in self['steps']:
+    #         if not any([step_['command'] == step['command'] for step_ in job_type_steps]):
+    #             # print('removing', step)
+    #             del self['steps'][step]
 
     @property
     def job_type(self):
@@ -385,64 +385,100 @@ class InputSpecification(UserDict):
         :rtype: str
         """
         for job_type_ in job_type_steps:
-            try:
-                for step in job_type_steps[job_type_]:
-                    if not any([step_['command'] == step['command'] for step_ in self['steps']]):
-                        raise ValueError('')
-                for step in self['steps']:
-                    if not any([step_['command'] == step['command'] for step_ in job_type_steps[job_type_]]):
-                        raise ValueError('')
-                return job_type_
-            except:
-                pass
+            ok = True
+            last_idx = None
+            for step in job_type_steps[job_type_]:
+                commands = [s['command'].lower() for s in self['steps']]
+                idx = commands.index(step['command'].lower()) if step['command'].lower() in commands else -1
+                if idx < 0 or (last_idx is not None and last_idx != idx-1):
+                    ok = False
+                last_idx = idx
+            if ok: job_type = job_type_
+        return job_type
 
-    def force_method(self, method, options=None):
-        r"""
-        Adjust the steps of specification so that they perform a specific single method
-        :param method:
-        :type method: str
-        :param options:
-        :type options: dict
-        """
-        old_keys = list(self['steps'].keys())
-        valid = True
-        if method in self.hartree_fock_methods:
-            start = 0
-        else:
-            start = 1
-            valid = self['steps'][old_keys[0]] in self.hartree_fock_methods
-        valid = valid and self['steps'][old_keys[start]] == method
-        for key in old_keys[start+1:]:
-            valid = valid and self['steps'][key]['command'] in [s['command'] for s in c for c in job_type_commands.values()]
-        if valid: return
-        new_steps=[]
-        if method not in self.hartree_fock_methods:
-            new_steps.append({'command': 'rhf'}) # TODO implement df
-        new_steps.append({'command': method}) # TODO implement df
-        for key in old_keys[start+1:]:
-            if self['steps'][key]['command'] in [s['command'] for s in c for c in job_type_commands.values()]:
-                new_steps.append(self['steps'][key])
-        self['steps'] = new_steps
 
+
+        #     try:
+        #         for step in job_type_steps[job_type_]:
+        #             print('try step in job_type_steps',step['command'], self['steps'])
+        #             if not any([step_['command'] == step['command'] for step_ in self['steps']]):
+        #                 print('no good')
+        #                 raise ValueError('')
+        #         for step in self['steps']:
+        #             print('try step in self[steps]',step['command'], job_type_steps)
+        #             if not any([step_['command'] == step['command'] for step_ in job_type_steps[job_type_]]):
+        #                 print('no good')
+        #                 raise ValueError('')
+        #         return job_type_
+        #     except:
+        #         pass
+        # return list(job_type_steps.keys())[0]
+    @job_type.setter
+    def job_type(self, new_job_type):
+        pass
 
 
     @property
     def method(self):
         r"""
-        If the specification implements a single method, return its command
-        :return:
-        :rtype:
+        Evaluate the single method implemented by the job
+        :return: If the input implements a single method, its command name. Otherwise, None
+        :rtype: str
         """
-        main_method=None
-        for step in self['steps']:
-            if step['command'] not in [step_['command'] for step_ in job_type_steps[job_type] for job_type in job_type_steps]:
-                main_method = step['command']
-        for step in self['steps']:
-            if step['command'] in self.hartree_fock_methods: continue
-            if step['command'] == main_method:
-                return main_method
-            else:
-                return None
+        methods = []
+        if 'steps' in self:
+            for i in range(len(self['steps'])):
+                command = self['steps'][i]['command'].lower()
+                if command not in [re.sub('[,;].*','',s).lower() for s in job_type_commands.values()]:
+                    methods.append(command)
+                    if command not in [m.lower() for m in self.hartree_fock_methods] and methods[0] in [m.lower() for m in self.hartree_fock_methods]:
+                        del methods[0]
+        # print('methods',methods)
+        if len(methods) == 1: return methods[0]
+
+    @method.setter
+    def method(self, method):
+        r"""
+        Adjust the steps of specification so that they perform a specific single method
+        :param method:
+        :type method: str
+        """
+        if method is None or method == '' or method == self.method: return
+        new_steps = []
+        if method.lower() not in [m.lower() for m in self.hartree_fock_methods]:
+            new_steps.append({'command': ('rhf' if method[0].lower() != 'u' else 'uhf')})  # TODO df
+        new_steps.append({'command': method.lower()})
+        if 'steps' in self:
+            for step in self['steps']:
+                if any([step_['command'] == step['command'] for step_ in job_type_steps[self.job_type]]):
+                    new_steps.append(step)
+        self['steps'] = new_steps
+
+    @property
+    def method_options(self):
+        r"""Get the options for a single-method job
+        """
+        if 'steps' in self:
+            for step in self['steps']:
+                if self.method == step['command'] and 'options' in step:
+                    return step['options']
+
+    @method_options.setter
+    def method_options(self, options):
+        r"""
+        Set the options for a single-method job
+        """
+        if 'steps' in self:
+            for step in self['steps']:
+                if self.method == step['command']:
+                    step['options'] = options
+
+    @method_options.deleter
+    def method_options(self):
+        if 'steps' in self:
+            for step in self['steps']:
+                if self.method == step['command']:
+                    del step['options']
 
 
     @property
@@ -471,6 +507,9 @@ class InputSpecification(UserDict):
             result = 'DK' + str(self['variables']['dkho']) if str(
                 self['variables']['dkho']) != '1' else 'DK'
         return result
+
+
+
 
 
 def canonicalise(input):
@@ -517,7 +556,7 @@ def canonicalise(input):
         line = line.replace('!', ',').strip() + '\n'  # unprotect
         line = line.replace('&&&&&', '!').strip() + '\n'  # unprotect
         # print('line before bracketing',line, in_group)
-        if line.strip()[0]!='{' and not re.match('^ *\w+ *=',line) and not in_group:
+        if line.strip() and line.strip()[0]!='{' and not re.match('^ *\w+ *=',line) and not in_group:
             comment_split= line.split('!')
             line = '{'+comment_split[0].strip()+'}' #+ (comment_split[1] if len(comment_split) > 1 else '')
         # print('line after bracketing',line)
