@@ -30,7 +30,7 @@ def test_create_input(methods):
         # print('initial specification',specification)
         # print('created input',specification.create_input(),'---')
         # print('new_specification', InputSpecification(specification.create_input()))
-        assert InputSpecification(specification.create_input()) == specification
+        assert InputSpecification(specification.input()) == specification
 
     for input in [
         'Geometry={F;H,F,1.7};basis={default=cc-pVTZ,h=cc-pVDZ} !some comment;{ks,b3lyp};{ccsd}\n',
@@ -57,7 +57,7 @@ def test_create_input(methods):
     ]:
         # print('new one---\n',input)
         specification = InputSpecification(input)
-        regenerated_input = specification.create_input()
+        regenerated_input = specification.input()
         regenerated_specification = InputSpecification(regenerated_input)
         assert regenerated_specification == specification
         if not equivalent(regenerated_input , input):
@@ -86,7 +86,7 @@ def test_recreate_input(methods):
         'geometry={Ne};{rhf};ccsd;{frequencies;thermo,temp=298;another}',
     ]:
         specification = InputSpecification(input)
-        regenerated_input = specification.create_input()
+        regenerated_input = specification.input()
         regenerated_specification = InputSpecification(regenerated_input)
         if not equivalent(regenerated_input, input) or regenerated_specification != specification:
             print('specification', specification)
@@ -106,7 +106,7 @@ def test_variables(methods):
     # print('parsed specification', specification)
     # print('recreated input', create_input(specification))
     # print('parsed recreated input', InputSpecification(create_input(specification)))
-    assert InputSpecification(specification.create_input()) == specification
+    assert InputSpecification(specification.input()) == specification
     assert specification['variables']['spin'] == '2'
     assert specification['variables']['occ'] == '[3,1,1]'
 
@@ -131,7 +131,7 @@ def test_canonicalise(methods):
     for test_text in [
         'geometry={He}',
     ]:
-        assert equivalent(test_text, InputSpecification(test_text).create_input())
+        assert equivalent(test_text, InputSpecification(test_text).input())
 
 
 def test_basis_qualities(methods):
@@ -156,7 +156,7 @@ def test_basis_variants(methods):
         'basis,cc-pVDZ,zR=cc-pVDZ(s),h=cc-pVTZ': 'basis=cc-pVDZ,Zr=cc-pVDZ(s),H=cc-pVTZ',
         'basis={cc-pVDZ,zR=cc-pVDZ(s),h=cc-pVTZ}': 'basis=cc-pVDZ,Zr=cc-pVDZ(s),H=cc-pVTZ',
     }.items():
-        assert InputSpecification(test).create_input() == outcome.strip('\n') + '\n'
+        assert InputSpecification(test).input() == outcome.strip('\n') + '\n'
 
 def test_method(methods):
     for test, outcome in {
@@ -202,3 +202,10 @@ def test_job_type(methods):
         for method in ['rhf', 'ccsd', 'ks']:
             specification.method = method
             assert specification.job_type == outcome
+        import molpro_input
+        for jt in molpro_input.job_type_steps:
+            # print('force jt',jt)
+            # print('before',specification, specification.job_type)
+            specification.job_type = jt
+            # print('after',specification, specification.job_type)
+            assert specification.job_type == jt

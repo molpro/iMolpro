@@ -31,16 +31,16 @@ parameter_commands = {
     'prints': 'gprint',
 }
 
-job_type_commands = {
-    'Single point energy': '',
-    'Geometry optimisation': 'optg,savexyz=optimised.xyz',
-    'Optimise + vib frequencies': 'optg,savexyz=optimised.xyz; frequencies',
-    'Hessian': 'frequencies',
-}
+# job_type_commands = {
+#     'Single point energy': '',
+#     'Geometry optimisation': 'optg,savexyz=optimised.xyz',
+#     'Optimise + vib frequencies': 'optg,savexyz=optimised.xyz; frequencies',
+#     'Hessian': 'frequencies',
+# }
 job_type_steps = {
     'Single point energy': [],
     'Geometry optimisation': [{'command': 'optg', 'options': {'savexyz': 'optimised.xyz'}}],
-    'Hessian': [{'command': 'frequencies', 'directives': {'command': 'thermo'}}],
+    'Hessian': [{'command': 'frequencies', 'directives': [{'command': 'thermo'}]}],
 }
 job_type_steps['Optimise + vib frequencies'] = job_type_steps['Geometry optimisation'] + job_type_steps['Hessian']
 job_type_aliases = {
@@ -65,7 +65,7 @@ properties = {
 
 initial_orbital_methods = ['HF', 'KS']
 
-supported_methods=[]
+supported_methods = []
 
 
 class InputSpecification(UserDict):
@@ -117,9 +117,9 @@ class InputSpecification(UserDict):
                     elif canonicalised_input_[j] in ';\n':
                         canonicalised_input_ = canonicalised_input_[:j] + line_end_protected_ + canonicalised_input_[
                                                                                                 j + 1:];
-        canonicalised_input_ = canonicalised_input_.replace(';','\n').replace(line_end_protected_,';')
+        canonicalised_input_ = canonicalised_input_.replace(';', '\n').replace(line_end_protected_, ';')
         for line in canonicalised_input_.split('\n'):
-            line = re.sub('basis *,','basis=',line,flags=re.IGNORECASE)
+            line = re.sub('basis *,', 'basis=', line, flags=re.IGNORECASE)
             group = line.strip()
             line = group.split(line_end_protected_)[0].replace('{', '').strip()
             command = re.sub('[;, !].*$', '', line, flags=re.IGNORECASE).replace('}', '').lower()
@@ -161,7 +161,8 @@ class InputSpecification(UserDict):
                 # print('geometry matched')
                 if 'steps' in self and self['steps']: self.data.clear(); return  # input too complex
                 if 'geometry' in self: self.data.clear(); return  # input too complex
-                self['geometry'] = re.sub(';','\n',re.sub('^geometry *= *{ *\n*', '', group + '\n', flags=re.IGNORECASE)).strip()
+                self['geometry'] = re.sub(';', '\n',
+                                          re.sub('^geometry *= *{ *\n*', '', group + '\n', flags=re.IGNORECASE)).strip()
                 if '}' in self['geometry']:
                     self['geometry'] = re.sub('}.*$', '', self['geometry']).strip()
                 else:
@@ -183,8 +184,10 @@ class InputSpecification(UserDict):
                 self['basis'] = 'default=' + re.sub('^basis *, *', '', line, flags=re.IGNORECASE).rstrip('\n ')
             elif re.match('^basis *= *', line, re.IGNORECASE):
                 if 'steps' in self and self['steps']: self.data.clear(); return  # input too complex
-                self['basis'] = {'default': (re.sub(',.*','',re.sub(' *basis *= *{*(default=)*', '', group.replace('{','').replace('}',''),flags=re.IGNORECASE)))}
-                fields = line.replace('}','').split(',')
+                self['basis'] = {'default': (re.sub(',.*', '', re.sub(' *basis *= *{*(default=)*', '',
+                                                                      group.replace('{', '').replace('}', ''),
+                                                                      flags=re.IGNORECASE)))}
+                fields = line.replace('}', '').split(',')
                 self['basis']['elements'] = {}
                 for field in fields[1:]:
                     ff = field.split('=')
@@ -199,7 +202,8 @@ class InputSpecification(UserDict):
                 if debug: print('variable')
                 line = re.sub(' *!.*$', '', re.sub('set *,', '', line, flags=re.IGNORECASE)).strip()
                 while (
-                newline := re.sub(r'(\[[0-9!]+),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
+                        newline := re.sub(r'(\[[0-9!]+),', r'\1!',
+                                          line)) != line: line = newline  # protect eg occ=[3,1,1]
                 fields = line.split(',')
                 for field in fields:
                     key = re.sub(' *=.*$', '', field)
@@ -230,7 +234,7 @@ class InputSpecification(UserDict):
                       for method in self.allowed_methods + ['optg', 'frequencies']]):
                 step = {}
                 method_ = command
-                method_options = (re.sub(';.*$','',line.lower()).replace('}','') + ',').split(',', 1)[1]
+                method_options = (re.sub(';.*$', '', line.lower()).replace('}', '') + ',').split(',', 1)[1]
                 # print('method_options',method_options)
                 if re.match('[ru]ks', method_):
                     step['density_functional'], method_options = (method_options + ',').split(',', 1)
@@ -289,7 +293,7 @@ class InputSpecification(UserDict):
             self['hamiltonian'] = self.basis_hamiltonian
         return self
 
-    def create_input(self):
+    def input(self):
         r"""
         Create a Molpro input from a declarative specification
         :param self:
@@ -390,33 +394,27 @@ class InputSpecification(UserDict):
             for step in job_type_steps[job_type_]:
                 commands = [s['command'].lower() for s in self['steps']]
                 idx = commands.index(step['command'].lower()) if step['command'].lower() in commands else -1
-                if idx < 0 or (last_idx is not None and last_idx != idx-1):
+                if idx < 0 or (last_idx is not None and last_idx != idx - 1):
                     ok = False
                 last_idx = idx
             if ok: job_type = job_type_
         return job_type
 
-
-
-        #     try:
-        #         for step in job_type_steps[job_type_]:
-        #             print('try step in job_type_steps',step['command'], self['steps'])
-        #             if not any([step_['command'] == step['command'] for step_ in self['steps']]):
-        #                 print('no good')
-        #                 raise ValueError('')
-        #         for step in self['steps']:
-        #             print('try step in self[steps]',step['command'], job_type_steps)
-        #             if not any([step_['command'] == step['command'] for step_ in job_type_steps[job_type_]]):
-        #                 print('no good')
-        #                 raise ValueError('')
-        #         return job_type_
-        #     except:
-        #         pass
-        # return list(job_type_steps.keys())[0]
     @job_type.setter
     def job_type(self, new_job_type):
-        pass
-
+        if self.job_type == new_job_type: return
+        if 'steps' not in self: self['steps'] = []
+        old_len = len(self['steps'])
+        new_steps = [
+                        step for step in self['steps']
+                        if step['command'].lower() not in [s['command'].lower() for j in job_type_steps for s in
+                                                           job_type_steps[j]]
+                    ] + job_type_steps[new_job_type]
+        for new_step in new_steps:
+            for step in self['steps']:
+                if step['command'].lower() == new_step['command'].lower() and 'options' in step:
+                    new_step['options'] = step['options']
+        self['steps'] = new_steps
 
     @property
     def method(self):
@@ -429,9 +427,11 @@ class InputSpecification(UserDict):
         if 'steps' in self:
             for i in range(len(self['steps'])):
                 command = self['steps'][i]['command'].lower()
-                if command not in [re.sub('[,;].*','',s).lower() for s in job_type_commands.values()]:
+                if command not in [s['command'].lower() for t in job_type_steps.values() for s in t]:
                     methods.append(command)
-                    if command not in [m.lower() for m in self.hartree_fock_methods] and methods[0] in [m.lower() for m in self.hartree_fock_methods]:
+                    if command not in [m.lower() for m in self.hartree_fock_methods] and methods[0] in [m.lower() for m
+                                                                                                        in
+                                                                                                        self.hartree_fock_methods]:
                         del methods[0]
         # print('methods',methods)
         if len(methods) == 1: return methods[0]
@@ -480,7 +480,6 @@ class InputSpecification(UserDict):
                 if self.method == step['command']:
                     del step['options']
 
-
     @property
     def basis_quality(self):
         quality_letters = {2: 'D', 3: 'T', 4: 'Q', 5: '5', 6: '6', 7: '7'}
@@ -509,9 +508,6 @@ class InputSpecification(UserDict):
         return result
 
 
-
-
-
 def canonicalise(input):
     result = re.sub('\n}', '}',
                     re.sub(' *= *', '=',
@@ -532,10 +528,11 @@ def canonicalise(input):
         line = re.sub('basis *, *', 'basis=', line.rstrip(' ,'), flags=re.IGNORECASE)
         line = re.sub('basis= *{(.*)} *(!.*)?$', r'basis=\1 \2', line, flags=re.IGNORECASE)
         line = re.sub('basis= *default *= *', r'basis=', line, flags=re.IGNORECASE).lower()
-        line = re.sub(' *!.*$','', line)
-        for cmd in ['hf','ks']:
-            for bra in ['','{']:
-                line=re.sub('^ *'+bra+' *'+cmd,bra+'r'+cmd, line, flags=re.IGNORECASE) # TODO unify with following
+        line = re.sub(' *!.*$', '', line)
+        for cmd in ['hf', 'ks']:
+            for bra in ['', '{']:
+                line = re.sub('^ *' + bra + ' *' + cmd, bra + 'r' + cmd, line,
+                              flags=re.IGNORECASE)  # TODO unify with following
 
         # transform out alternate spin markers
         # for m in initial_orbital_methods:
@@ -556,9 +553,9 @@ def canonicalise(input):
         line = line.replace('!', ',').strip() + '\n'  # unprotect
         line = line.replace('&&&&&', '!').strip() + '\n'  # unprotect
         # print('line before bracketing',line, in_group)
-        if line.strip() and line.strip()[0]!='{' and not re.match('^ *\w+ *=',line) and not in_group:
-            comment_split= line.split('!')
-            line = '{'+comment_split[0].strip()+'}' #+ (comment_split[1] if len(comment_split) > 1 else '')
+        if line.strip() and line.strip()[0] != '{' and not re.match('^ *\w+ *=', line) and not in_group:
+            comment_split = line.split('!')
+            line = '{' + comment_split[0].strip() + '}'  # + (comment_split[1] if len(comment_split) > 1 else '')
         # print('line after bracketing',line)
         in_group = in_group and not '}' in line
         if line.strip('\n') != '':
@@ -567,8 +564,8 @@ def canonicalise(input):
 
 
 def equivalent(input1, input2, debug=False):
-    if isinstance(input1, InputSpecification): return equivalent(input1.create_input(), input2, debug)
-    if isinstance(input2, InputSpecification): return equivalent(input1, input2.create_input(), debug)
+    if isinstance(input1, InputSpecification): return equivalent(input1.input(), input2, debug)
+    if isinstance(input2, InputSpecification): return equivalent(input1, input2.input(), debug)
     if debug:
         print('equivalent: input1=', input1)
         print('equivalent: input2=', input2)
