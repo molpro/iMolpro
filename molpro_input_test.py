@@ -157,3 +157,48 @@ def test_basis_variants(methods):
         'basis={cc-pVDZ,zR=cc-pVDZ(s),h=cc-pVTZ}': 'basis=cc-pVDZ,Zr=cc-pVDZ(s),H=cc-pVTZ',
     }.items():
         assert InputSpecification(test).create_input() == outcome.strip('\n') + '\n'
+
+def test_method(methods):
+    for test, outcome in {
+        '':None,
+        'rhf':'rhf',
+        'rhf;ccsd':'ccsd',
+        'rhf;ccsd;optg;frequencies': 'ccsd',
+        'rhf;ccsd;{optg};frequencies': 'ccsd',
+        'rhf;ccsd;mrci;{optg};frequencies': None,
+    }.items():
+        specification = InputSpecification(test)
+        assert specification.method == outcome
+        for method in ['rhf', 'ccsd', 'ks']:
+            specification.method = method
+            assert specification.method == method
+def test_method_options(methods):
+    for test, outcome in {
+        '':None,
+        'rhf':'rhf',
+        'rhf;ccsd':'ccsd',
+        'rhf;ccsd;optg;frequencies': 'ccsd',
+        'rhf;ccsd;{optg};frequencies': 'ccsd',
+        'rhf;ccsd;mrci;{optg};frequencies': None,
+    }.items():
+        specification = InputSpecification(test)
+        assert specification.method == outcome
+        if specification.method is not None:
+            options = {'option1': 'value1', 'option2': 'value2'}
+            specification.method_options = options
+            assert specification.method_options == options
+def test_job_type(methods):
+    for test, outcome in {
+        '': 'Single point energy',
+        'rhf': 'Single point energy',
+        'rhf;ccsd': 'Single point energy',
+        'rhf;ccsd;optg;frequencies': 'Optimise + vib frequencies',
+        'rhf;ccsd;{optg};frequencies': 'Optimise + vib frequencies',
+        'rhf;ccsd;mrci;{optg};frequencies': 'Optimise + vib frequencies',
+        'rhf;ccsd;{optg};mrci;frequencies': 'Hessian',
+    }.items():
+        specification = InputSpecification(test)
+        assert specification.job_type == outcome
+        for method in ['rhf', 'ccsd', 'ks']:
+            specification.method = method
+            assert specification.job_type == outcome
