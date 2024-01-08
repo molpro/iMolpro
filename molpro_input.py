@@ -31,12 +31,7 @@ parameter_commands = {
     'prints': 'gprint',
 }
 
-# job_type_commands = {
-#     'Single point energy': '',
-#     'Geometry optimisation': 'optg,savexyz=optimised.xyz',
-#     'Optimise + vib frequencies': 'optg,savexyz=optimised.xyz; frequencies',
-#     'Hessian': 'frequencies',
-# }
+
 job_type_steps = {
     'Single point energy': [],
     'Geometry optimisation': [{'command': 'optg', 'options': ['savexyz=optimised.xyz']}],
@@ -51,7 +46,7 @@ job_type_aliases = {
 orientation_options = {
     'Mass': 'mass',
     'Charge': 'charge',
-    'No orientation': 'noorient'
+    'None': 'noorient'
 }
 
 properties = {
@@ -217,16 +212,7 @@ class InputSpecification(UserDict):
                     field.split('=')[0].strip().lower(): field.split('=')[1].strip().lower() if len(
                         field.split('=')) > 1 else '' for field in fields}
                 if '' in self[spec_field]: del self[spec_field]['']
-            # elif False and any(
-            #         [re.match('{? *' + df_prefix + precursor_method + '[;}]', command + ';',
-            #                   flags=re.IGNORECASE) for
-            #          df_prefix
-            #          in
-            #          df_prefixes
-            #          for precursor_method in precursor_methods]):
-            #     if 'method' in self: self.data.clear(); return  # input too complex
-            #     if 'precursor_methods' not in self: self['precursor_methods'] = []
-            #     self['precursor_methods'].append(line.lower())
+
             elif any([re.fullmatch('{?' + df_prefix + re.escape(method), command,
                                    flags=re.IGNORECASE) for
                       df_prefix
@@ -235,14 +221,7 @@ class InputSpecification(UserDict):
                 step = {}
                 method_ = command
                 method_options = (re.sub(';.*$', '', line.lower()).replace('}', '') + ',').split(',', 1)[1]
-                # print('method_options',method_options)
-                # if re.match('[ru]ks', method_):
-                #     step['density_functional'], method_options = (method_options + ',').split(',', 1)
-                # method_options_ = {
-                #     m1.split('=')[0].strip(): (m1.split('=')[1].strip() if len(m1.split('=')) > 1 else '') for m1 in
-                #     method_options.rstrip(',').split(',')}
-                # if '' in method_options_:
-                #     del method_options_['']
+
                 method_options_ = method_options.strip(', \n').split(',')
                 if method_options_ and method_options_[-1]=='': method_options_=method_options_[:-2]
                 # print('method_options_',method_options_)
@@ -268,24 +247,6 @@ class InputSpecification(UserDict):
                     step['directives'].append(d)
                 # print('step', step)
                 self['steps'].append(step)
-            elif command != '' and (any(
-                    [line.lower() == job_type_commands[job_type].lower().split(';\n')[0] for job_type in
-                     job_type_commands.keys() if job_type != '']) or command.lower() in job_type_aliases.keys()):
-                assert 'job_type parsing should not happen here' != ''
-                old_job_type_command = job_type_commands[self['job_type']]  # to support optg; freq
-                job_type_command = line.lower()
-                if job_type_command in job_type_aliases.keys():
-                    job_type_command = job_type_aliases[job_type_command]
-                for job_type in job_type_commands.keys():
-                    if job_type_command == job_type_commands[job_type].lower().split(';\n')[0]:
-                        self['job_type'] = job_type
-                if old_job_type_command.split(',')[0] == job_type_commands['Geometry optimisation'].split(',')[
-                    0] and job_type_command == 'frequencies':
-                    job_type_command = job_type_commands['Optimise + vib frequencies']
-                self['job_type'] = \
-                    [job_type for job_type in job_type_commands.keys() if
-                     job_type_commands[job_type] == job_type_command][
-                        0]
             elif any([re.match('{? *' + postscript, command, flags=re.IGNORECASE) for postscript in postscripts]):
                 if 'postscripts' not in self: self['postscripts'] = []
                 self['postscripts'].append(line.lower())

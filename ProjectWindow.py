@@ -1190,7 +1190,7 @@ class GuidedPane(QWidget):
         self.parameters_button.clicked.connect(self.parameters_edit)
         self.parameters_button.setToolTip('Specify global parameters')
 
-        self.method_options_button = QPushButton('Options')
+        self.method_options_button = QPushButton('Options') #TODO delete when we are settled
         self.method_options_button.clicked.connect(self.method_options_edit)
         self.method_options_button.setToolTip('Specify options for the main method')
 
@@ -1220,8 +1220,8 @@ class GuidedPane(QWidget):
             'Options': self.step_options_combo,
         }, title='Miscellaneous'))
         options_layout = QGridLayout()
-        options_layout.addWidget(self.thresholds_button, 0, 1)
-        options_layout.addWidget(self.parameters_button, 1, 1)
+        options_layout.addWidget(self.thresholds_button, 0, 0)
+        options_layout.addWidget(self.parameters_button, 1, 0)
         # options_layout.addWidget(self.method_options_button,0,0)
         misc_layout.addLayout(options_layout)
 
