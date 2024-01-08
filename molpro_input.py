@@ -122,7 +122,7 @@ class InputSpecification(UserDict):
             line = re.sub('basis *,','basis=',line,flags=re.IGNORECASE)
             group = line.strip()
             line = group.split(line_end_protected_)[0].replace('{', '').strip()
-            command = re.sub('[, !].*$', '', line, flags=re.IGNORECASE).replace('}', '').lower()
+            command = re.sub('[;, !].*$', '', line, flags=re.IGNORECASE).replace('}', '').lower()
             for df_prefix in df_prefixes:
                 if command == df_prefix.lower() + 'hf': command = df_prefix.lower() + 'rhf'
                 if command == df_prefix.lower() + 'ks': command = df_prefix.lower() + 'rks'
@@ -230,7 +230,8 @@ class InputSpecification(UserDict):
                       for method in self.allowed_methods + ['optg', 'frequencies']]):
                 step = {}
                 method_ = command
-                method_options = (line.lower().replace('}','') + ',').split(',', 1)[1]
+                method_options = (re.sub(';.*$','',line.lower()).replace('}','') + ',').split(',', 1)[1]
+                # print('method_options',method_options)
                 if re.match('[ru]ks', method_):
                     step['density_functional'], method_options = (method_options + ',').split(',', 1)
                 method_options_ = {
@@ -242,14 +243,18 @@ class InputSpecification(UserDict):
                 if method_options_:
                     step['options'] = method_options_
                 # TODO parsing of extras from following directives
-                directives = group.replace('}', '').split(line_end_protected_)[1:]
+                # print('group before directives',group)
+                directives = group.replace('}', '').split(';')[1:]
                 # print('directives', directives)
+                # print('intial step', step)
                 for directive in directives:
                     cmd, opt = (directive + ',').split(',', 1)
+                    # print('cmd',cmd,'opt',opt)
                     opts = {m1.split('=')[0].strip(): (m1.split('=')[1].strip() if len(m1.split('=')) > 1 else '') for
                             m1 in opt.rstrip(',').split(',')}
                     if '' in opts: del opts['']
                     if 'directives' not in step: step['directives'] = []
+                    # print('cmd',cmd,'opts',opts)
                     step['directives'].append({'command': cmd, 'options': opts})
                 # print('step', step)
                 self['steps'].append(step)
@@ -338,9 +343,9 @@ class InputSpecification(UserDict):
             if 'options' in step:
                 for k, v in step['options'].items():
                     _input += ',' + k + ('=' + v if str(v) != '' else '')
-            if 'directives' in step['command']:
-                for directive in step['command']['directives']:
-                    _input += ',' + directive['command']
+            if 'directives' in step:
+                for directive in step['directives']:
+                    _input += ';' + directive['command']
                     if 'options' in directive:
                         for k, v in directive['options'].items():
                             _input += ',' + k + ('=' + v if str(v) != '' else '')
@@ -479,17 +484,11 @@ def canonicalise(input):
         '\n ').lstrip(
         '\n ') + '\n'
     new_result = ''
-    in_geometry = False
+    in_group = False
     for line in re.sub('set[, ]', '', result.strip(), flags=re.IGNORECASE).split('\n'):
 
-        # if not in_geometry:
-            # in_geometry = re.match(' *geometry *= *{', line, re.IGNORECASE) is not None
-        #     for sep in ['=', ',']:
-        #         if re.match('^{?\w+' + sep + '.*', line):
-        #             line = line.split(sep, 1)[0].lower() + sep + line.split(sep, 1)[1]
-        #             break
-        # else:
-            # in_geometry = in_geometry and not '}' in line
+        if not in_group:
+            in_group = '{' in line
         # transform out alternate formats of basis
         line = re.sub('basis *, *', 'basis=', line.rstrip(' ,'), flags=re.IGNORECASE)
         line = re.sub('basis= *{(.*)} *(!.*)?$', r'basis=\1 \2', line, flags=re.IGNORECASE)
@@ -497,7 +496,7 @@ def canonicalise(input):
         line = re.sub(' *!.*$','', line)
         for cmd in ['hf','ks']:
             for bra in ['','{']:
-                line=re.sub('^ *'+bra+' *'+cmd,bra+'r'+cmd, line, flags=re.IGNORECASE)
+                line=re.sub('^ *'+bra+' *'+cmd,bra+'r'+cmd, line, flags=re.IGNORECASE) # TODO unify with following
 
         # transform out alternate spin markers
         # for m in initial_orbital_methods:
@@ -517,14 +516,12 @@ def canonicalise(input):
         line = re.sub('{ *', '{', line)
         line = line.replace('!', ',').strip() + '\n'  # unprotect
         line = line.replace('&&&&&', '!').strip() + '\n'  # unprotect
-        # print('line before bracketing',line, in_geometry)
-        if line.strip()[0]!='{' and not re.match('^ *\w+ *=',line) and not in_geometry:
+        # print('line before bracketing',line, in_group)
+        if line.strip()[0]!='{' and not re.match('^ *\w+ *=',line) and not in_group:
             comment_split= line.split('!')
             line = '{'+comment_split[0].strip()+'}' #+ (comment_split[1] if len(comment_split) > 1 else '')
         # print('line after bracketing',line)
-        if not in_geometry:
-            in_geometry = re.match(' *geometry *= *{', line, re.IGNORECASE) is not None
-        in_geometry = in_geometry and not '}' in line
+        in_group = in_group and not '}' in line
         if line.strip('\n') != '':
             new_result += line.strip('\n ') + '\n'
     return new_result.strip('\n ') + '\n'
