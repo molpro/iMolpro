@@ -424,7 +424,7 @@ class ProjectWindow(QMainWindow):
         if not guided and index == 1:
             box = QMessageBox()
             box.setText('Guided mode cannot be used because the input is too complex')
-            spec_input = molpro_input.canonicalise(self.input_specification.create_input())
+            spec_input = molpro_input.canonicalise(self.input_specification.input())
             file_input = molpro_input.canonicalise(self.input_pane.toPlainText())
             box.setInformativeText(
                 'The input regenerated from the attempt to parse into guided mode is\n' +
@@ -1149,7 +1149,7 @@ class GuidedPane(QWidget):
 
         self.guided_combo_job_type = QComboBox(self)
         self.guided_combo_job_type.setMaximumWidth(180)
-        self.guided_combo_job_type.addItems(molpro_input.job_type_commands.keys())
+        self.guided_combo_job_type.addItems(molpro_input.job_type_steps.keys())
         self.guided_combo_job_type.currentTextChanged.connect(
             lambda text: self.input_specification_change('job_type', text))
 
@@ -1260,8 +1260,7 @@ class GuidedPane(QWidget):
             else:
                 self.method_row.ensure_not(['Functional'])
                 self.method_row.ensure({'Core Correlation': self.guided_combo_core_correlation, })
-        if 'job_type' in self.input_specification:
-            self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
+        self.guided_combo_job_type.setCurrentText(self.input_specification.job_type)
 
         self.basis_and_hamiltonian_chooser.refresh()
 
@@ -1282,8 +1281,10 @@ class GuidedPane(QWidget):
         if not value or (key in self.input_specification and self.input_specification[key].lower() == value.lower()):
             return
         if key == 'method':
-            self.input_specification.force_method(value)
+            self.input_specification.method=value
             self.method_changed_signal.emit(value)
+        elif key == 'job_type':
+            self.input_specification.job_type = value
         else:
             self.input_specification[key] = value
         self.refresh_input_from_specification()
@@ -1298,7 +1299,7 @@ class GuidedPane(QWidget):
     def refresh_input_from_specification(self):
         if self.trace: print('refresh_input_from_specification')
         if not self.parent.guided_possible(): return
-        new_input = molpro_input.create_input(self.input_specification)
+        new_input = self.input_specification.input()
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
             self.input_pane.setPlainText(new_input)
 
