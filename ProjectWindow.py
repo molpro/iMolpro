@@ -1250,10 +1250,10 @@ class GuidedPane(QWidget):
             if re.match('[ru]ks', self.input_specification.method, flags=re.IGNORECASE):
                 self.method_row.ensure_not(['Core Correlation'])
                 self.method_row.ensure({'Functional': self.guided_combo_functional, })
-                if 'density_functional' not in self.input_specification or not self.input_specification['density_functional']:
-                    self.input_specification['density_functional'] = self.guided_combo_functional.itemText(0)
+                if not self.input_specification.density_functional:
+                    self.input_specification.density_functional = self.guided_combo_functional.itemText(0)
                 self.guided_combo_functional.setCurrentIndex(self.guided_combo_functional.findText(
-                    self.input_specification['density_functional'], Qt.MatchFixedString))
+                    self.input_specification.density_functional, Qt.MatchFixedString))
             elif re.match('[ru]hf', self.input_specification.method):
                 self.method_row.ensure_not(['Functional'])
                 self.method_row.ensure_not(['Core Correlation'])
@@ -1285,6 +1285,8 @@ class GuidedPane(QWidget):
             self.method_changed_signal.emit(value)
         elif key == 'job_type':
             self.input_specification.job_type = value
+        elif key == 'density_functional':
+            self.input_specification.density_functional = value
         else:
             self.input_specification[key] = value
         self.refresh_input_from_specification()
