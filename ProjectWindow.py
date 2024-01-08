@@ -17,6 +17,7 @@ from PyQt5.QtGui import QIntValidator, QFont
 from pymolpro import Project
 
 import molpro_input
+from molpro_input import InputSpecification
 from CheckableComboBox import CheckableComboBox
 from MenuBar import MenuBar
 from OldOutputMenu import OldOutputMenu
@@ -151,7 +152,8 @@ class ProjectWindow(QMainWindow):
 
 
 
-        self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), self.allowed_methods())
+        molpro_input.supported_methods = self.allowed_methods()
+        self.input_specification = InputSpecification(self.input_pane.toPlainText())
 
         self.output_panes = {
             suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 9, width=80 if suffix=='inp' else 132) for suffix in
@@ -246,7 +248,7 @@ class ProjectWindow(QMainWindow):
                     self.vod_selector.setCurrentText('Edit ' + os.path.basename(import_structure))
             if not import_structure and (database_import := self.database_import_structure()):
                 self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
-            self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), self.allowed_methods())
+            self.input_specification = InputSpecification(self.input_pane.toPlainText())
 
         self.input_tabs.setCurrentIndex(1)
         self.guided_action.setChecked(self.input_tabs.currentIndex() == 1)
@@ -422,7 +424,7 @@ class ProjectWindow(QMainWindow):
         if not guided and index == 1:
             box = QMessageBox()
             box.setText('Guided mode cannot be used because the input is too complex')
-            spec_input = molpro_input.canonicalise(molpro_input.create_input(self.input_specification))
+            spec_input = molpro_input.canonicalise(self.input_specification.input())
             file_input = molpro_input.canonicalise(self.input_pane.toPlainText())
             box.setInformativeText(
                 'The input regenerated from the attempt to parse into guided mode is\n' +
@@ -444,12 +446,12 @@ class ProjectWindow(QMainWindow):
         if guided and len(self.input_tabs) < 2:
             self.input_tabs.addTab(self.guided_pane, 'guided')
         if guided:
-            self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), self.allowed_methods())
+            self.input_specification = InputSpecification(self.input_pane.toPlainText())
 
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
-        input_specification = molpro_input.parse(input_text, self.allowed_methods())
+        input_specification = InputSpecification(input_text)
         guided = len(input_specification) and molpro_input.equivalent(input_text, input_specification)
         return guided
 
@@ -1001,7 +1003,7 @@ class BasisAndHamiltonianChooser(QWidget):
         self.parent = parent
 
         self.basis_registry = self.parent.project.basis_registry()
-        self.desired_basis_quality = molpro_input.basis_quality(self.parent.input_specification)
+        self.desired_basis_quality = self.parent.input_specification.basis_quality
 
         self.combo_hamiltonian = QComboBox(self)
         self.combo_hamiltonian.addItems([h['text'] for h in molpro_input.hamiltonians.values()])
@@ -1083,7 +1085,7 @@ class BasisAndHamiltonianChooser(QWidget):
         if not text or text == self.null_prompt or text == self.input_specification['basis']['default']: return
         self.input_specification['basis']['default'] = text
         self.input_specification['basis']['elements'] = {}
-        self.input_specification['basis']['quality'] = molpro_input.basis_quality(self.input_specification)
+        self.input_specification['basis']['quality'] = self.input_specification.basis_quality
         self.write()
 
     def write(self):
@@ -1147,7 +1149,7 @@ class GuidedPane(QWidget):
 
         self.guided_combo_job_type = QComboBox(self)
         self.guided_combo_job_type.setMaximumWidth(180)
-        self.guided_combo_job_type.addItems(molpro_input.job_type_commands.keys())
+        self.guided_combo_job_type.addItems(molpro_input.job_type_steps.keys())
         self.guided_combo_job_type.currentTextChanged.connect(
             lambda text: self.input_specification_change('job_type', text))
 
@@ -1188,9 +1190,13 @@ class GuidedPane(QWidget):
         self.parameters_button.clicked.connect(self.parameters_edit)
         self.parameters_button.setToolTip('Specify global parameters')
 
-        self.method_options_button = QPushButton('Options')
+        self.method_options_button = QPushButton('Options') #TODO delete when we are settled
         self.method_options_button.clicked.connect(self.method_options_edit)
         self.method_options_button.setToolTip('Specify options for the main method')
+
+        self.step_options_combo = QComboBox(self)
+        self.step_options_combo.currentIndexChanged.connect(
+            lambda text: self.step_options_edit(int(text-1)))
 
         self.guided_layout.addWidget(RowOfTitledWidgets({
             'Charge': self.charge_line,
@@ -1208,12 +1214,12 @@ class GuidedPane(QWidget):
         misc_layout.addWidget(RowOfTitledWidgets({
             'Orientation': self.guided_combo_orientation,
             'Density Fitting': QLabel(''),
-            # 'Options': self.method_options_button,
+            'Options': self.step_options_combo,
         }, title='Miscellaneous'))
         options_layout = QGridLayout()
-        options_layout.addWidget(self.thresholds_button, 1, 0)
-        options_layout.addWidget(self.parameters_button, 1, 1)
-        options_layout.addWidget(self.method_options_button,0,0)
+        options_layout.addWidget(self.thresholds_button, 0, 0)
+        options_layout.addWidget(self.parameters_button, 1, 0)
+        # options_layout.addWidget(self.method_options_button,0,0)
         misc_layout.addLayout(options_layout)
 
     @property
@@ -1239,27 +1245,31 @@ class GuidedPane(QWidget):
         else:
             self.spin_line.setText('')
 
-        if 'method' in self.input_specification:
-            base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
+        if self.input_specification is not None:
+            base_method = re.sub('[a-z]+-', '', self.input_specification.method, flags=re.IGNORECASE)
             # prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
             #     'method'] else None
             method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
             self.guided_combo_method.setCurrentIndex(method_index)
-            if re.match('[ru]ks', self.input_specification['method'], flags=re.IGNORECASE):
+            if re.match('[ru]ks', self.input_specification.method, flags=re.IGNORECASE):
                 self.method_row.ensure_not(['Core Correlation'])
                 self.method_row.ensure({'Functional': self.guided_combo_functional, })
-                if 'density_functional' not in self.input_specification or not self.input_specification['density_functional']:
-                    self.input_specification['density_functional'] = self.guided_combo_functional.itemText(0)
+                if not self.input_specification.density_functional:
+                    self.input_specification.density_functional = self.guided_combo_functional.itemText(0)
                 self.guided_combo_functional.setCurrentIndex(self.guided_combo_functional.findText(
-                    self.input_specification['density_functional'], Qt.MatchFixedString))
-            elif re.match('[ru]hf', self.input_specification['method']):
+                    self.input_specification.density_functional, Qt.MatchFixedString))
+            elif re.match('[ru]hf', self.input_specification.method):
                 self.method_row.ensure_not(['Functional'])
                 self.method_row.ensure_not(['Core Correlation'])
             else:
                 self.method_row.ensure_not(['Functional'])
                 self.method_row.ensure({'Core Correlation': self.guided_combo_core_correlation, })
-        if 'job_type' in self.input_specification:
-            self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
+        self.guided_combo_job_type.setCurrentText(self.input_specification.job_type)
+
+        self.step_options_combo.clear()
+        self.step_options_combo.addItem('')
+        self.step_options_combo.addItems([step['command'] for step in self.input_specification['steps']])
+        self.step_options_combo.setCurrentIndex(0)
 
         self.basis_and_hamiltonian_chooser.refresh()
 
@@ -1280,15 +1290,14 @@ class GuidedPane(QWidget):
         if not value or (key in self.input_specification and self.input_specification[key].lower() == value.lower()):
             return
         if key == 'method':
+            self.input_specification.method=value
             self.method_changed_signal.emit(value)
-            self.input_specification['precursor_methods'] = []
-            if value.upper() not in ['RHF', 'RKS', 'UHF', 'UKS', 'HF', 'KS'] and not \
-                    self.input_specification['precursor_methods']:
-                self.input_specification['precursor_methods'].append('HF')
-            if not self.input_specification['precursor_methods']: del self.input_specification['precursor_methods']
-            if self.input_specification['method'] != '':
-                self.input_specification['method_options'] = {}
-        self.input_specification[key] = value
+        elif key == 'job_type':
+            self.input_specification.job_type = value
+        elif key == 'density_functional':
+            self.input_specification.density_functional = value
+        else:
+            self.input_specification[key] = value
         self.refresh_input_from_specification()
         self.refresh()
 
@@ -1301,7 +1310,7 @@ class GuidedPane(QWidget):
     def refresh_input_from_specification(self):
         if self.trace: print('refresh_input_from_specification')
         if not self.parent.guided_possible(): return
-        new_input = molpro_input.create_input(self.input_specification)
+        new_input = self.input_specification.input()
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
             self.input_pane.setPlainText(new_input)
 
@@ -1332,15 +1341,30 @@ class GuidedPane(QWidget):
             self.parent.input_specification['parameters'] = result
             self.refresh_input_from_specification()
 
-    def method_options_edit(self,flag):
-        method_ = self.parent.input_specification['method']
+    def step_options_edit(self,step:int):
+        if step < 0: return
+        step_ = self.parent.input_specification['steps'][step]
+        method_ = step_['command']
         available_options = [re.sub('.*:','',option) for option in list(self.parent.procedures_registry[method_.upper()]['options'])]
-        title = 'Options for method ' + self.parent.input_specification['method']
-        box = OptionsDialog(self.parent.input_specification['method_options'], available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?q='+method_+'&do=search')
+        title = 'Options for step ' + str(step+1) + ' (' + method_+')'
+        existing_options = {o.split('=')[0]:o.split('=')[1] if len(o.split('='))>1 else '' for o in (step_['options'] if 'options' in step_ else [])}
+        box = OptionsDialog(existing_options, available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?q='+method_+'&do=search')
         result = box.exec()
         if result is not None:
-            self.parent.input_specification['method_options'] = result
+            self.parent.input_specification['steps'][step]['options'] = [k+'='+v if v else k for k,v in result.items()]
             self.refresh_input_from_specification()
+        self.step_options_combo.setCurrentIndex(0)
+    def method_options_edit(self,flag):
+        return self.step_options_edit([s['command'] for s in self.parent.input_specification['steps']].index(self.parent.input_specification.method))
+        # method_ = self.parent.input_specification.method
+        # available_options = [re.sub('.*:','',option) for option in list(self.parent.procedures_registry[method_.upper()]['options'])]
+        # title = 'Options for method ' + self.parent.input_specification.method
+        # existing_options = {o.split('=')[0]:o.split('=')[1] if len(o.split('='))>1 else '' for o in self.parent.input_specification.method_options}
+        # box = OptionsDialog(existing_options, available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?q='+method_+'&do=search')
+        # result = box.exec()
+        # if result is not None:
+        #     self.parent.input_specification.method_options = [k+'='+v if v else k for k,v in result.items()]
+        #     self.refresh_input_from_specification()
 
 
 
