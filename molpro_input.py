@@ -39,7 +39,7 @@ parameter_commands = {
 # }
 job_type_steps = {
     'Single point energy': [],
-    'Geometry optimisation': [{'command': 'optg', 'options': {'savexyz': 'optimised.xyz'}}],
+    'Geometry optimisation': [{'command': 'optg', 'options': ['savexyz=optimised.xyz']}],
     'Hessian': [{'command': 'frequencies', 'directives': [{'command': 'thermo'}]}],
 }
 job_type_steps['Optimise + vib frequencies'] = job_type_steps['Geometry optimisation'] + job_type_steps['Hessian']
@@ -236,13 +236,16 @@ class InputSpecification(UserDict):
                 method_ = command
                 method_options = (re.sub(';.*$', '', line.lower()).replace('}', '') + ',').split(',', 1)[1]
                 # print('method_options',method_options)
-                if re.match('[ru]ks', method_):
-                    step['density_functional'], method_options = (method_options + ',').split(',', 1)
-                method_options_ = {
-                    m1.split('=')[0].strip(): (m1.split('=')[1].strip() if len(m1.split('=')) > 1 else '') for m1 in
-                    method_options.rstrip(',').split(',')}
-                if '' in method_options_:
-                    del method_options_['']
+                # if re.match('[ru]ks', method_):
+                #     step['density_functional'], method_options = (method_options + ',').split(',', 1)
+                # method_options_ = {
+                #     m1.split('=')[0].strip(): (m1.split('=')[1].strip() if len(m1.split('=')) > 1 else '') for m1 in
+                #     method_options.rstrip(',').split(',')}
+                # if '' in method_options_:
+                #     del method_options_['']
+                method_options_ = method_options.strip(', \n').split(',')
+                if method_options_ and method_options_[-1]=='': method_options_=method_options_[:-2]
+                # print('method_options_',method_options_)
                 step['command'] = method_
                 if method_options_:
                     step['options'] = method_options_
@@ -258,8 +261,11 @@ class InputSpecification(UserDict):
                             m1 in opt.rstrip(',').split(',')}
                     if '' in opts: del opts['']
                     if 'directives' not in step: step['directives'] = []
-                    # print('cmd',cmd,'opts',opts)
-                    step['directives'].append({'command': cmd, 'options': opts})
+                    opts = opt.rstrip(',').split(',')
+                    if opts and opts[-1]=='': opts=opts[:-2]
+                    d = {'command': cmd}
+                    if opts: d['options'] = opts
+                    step['directives'].append(d)
                 # print('step', step)
                 self['steps'].append(step)
             elif command != '' and (any(
@@ -342,17 +348,17 @@ class InputSpecification(UserDict):
                 _input += '\n'
         for step in (self['steps'] if 'steps' in self else []):
             _input += '{' + step['command']
-            if re.match('[ru]ks', step['command'], re.IGNORECASE) and 'density_functional' in step:
-                _input += ',' + step['density_functional']
+            # if re.match('[ru]ks', step['command'], re.IGNORECASE) and 'density_functional' in step:
+            #     _input += ',' + step['density_functional']
             if 'options' in step:
-                for k, v in step['options'].items():
-                    _input += ',' + k + ('=' + v if str(v) != '' else '')
+                for option in step['options']:
+                    _input += ',' + str(option)
             if 'directives' in step:
                 for directive in step['directives']:
                     _input += ';' + directive['command']
                     if 'options' in directive:
-                        for k, v in directive['options'].items():
-                            _input += ',' + k + ('=' + v if str(v) != '' else '')
+                        for option in directive['options']:
+                            _input += ',' + str(option)
             _input += '}\n'
         if 'orbitals' in self:
             for k in self['orbitals']:
@@ -462,6 +468,7 @@ class InputSpecification(UserDict):
             for step in self['steps']:
                 if self.method == step['command'] and 'options' in step:
                     return step['options']
+        return []
 
     @method_options.setter
     def method_options(self, options):
@@ -506,6 +513,22 @@ class InputSpecification(UserDict):
             result = 'DK' + str(self['variables']['dkho']) if str(
                 self['variables']['dkho']) != '1' else 'DK'
         return result
+
+    @property
+    def density_functional(self):
+        if self.method is not None and self.method.lower() in [m.lower() for m in
+                                                               self.hartree_fock_methods] and 'ks' in self.method.lower():
+            if self.method_options is not None and self.method_options:
+                return self.method_options[0].upper()
+
+    @density_functional.setter
+    def density_functional(self, density_functional):
+        if self.method is not None and self.method.lower() in [m.lower() for m in
+                                                               self.hartree_fock_methods] and 'ks' in self.method.lower():
+            if self.method_options is not None and self.method_options:
+                self.method_options[0] = density_functional
+            else:
+                self.method_options = [density_functional]
 
 
 def canonicalise(input):
