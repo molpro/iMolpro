@@ -1241,20 +1241,20 @@ class GuidedPane(QWidget):
         else:
             self.spin_line.setText('')
 
-        if 'method' in self.input_specification:
-            base_method = re.sub('[a-z]+-', '', self.input_specification['method'], flags=re.IGNORECASE)
+        if self.input_specification is not None:
+            base_method = re.sub('[a-z]+-', '', self.input_specification.method, flags=re.IGNORECASE)
             # prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
             #     'method'] else None
             method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
             self.guided_combo_method.setCurrentIndex(method_index)
-            if re.match('[ru]ks', self.input_specification['method'], flags=re.IGNORECASE):
+            if re.match('[ru]ks', self.input_specification.method, flags=re.IGNORECASE):
                 self.method_row.ensure_not(['Core Correlation'])
                 self.method_row.ensure({'Functional': self.guided_combo_functional, })
                 if 'density_functional' not in self.input_specification or not self.input_specification['density_functional']:
                     self.input_specification['density_functional'] = self.guided_combo_functional.itemText(0)
                 self.guided_combo_functional.setCurrentIndex(self.guided_combo_functional.findText(
                     self.input_specification['density_functional'], Qt.MatchFixedString))
-            elif re.match('[ru]hf', self.input_specification['method']):
+            elif re.match('[ru]hf', self.input_specification.method):
                 self.method_row.ensure_not(['Functional'])
                 self.method_row.ensure_not(['Core Correlation'])
             else:
@@ -1331,13 +1331,14 @@ class GuidedPane(QWidget):
             self.refresh_input_from_specification()
 
     def method_options_edit(self,flag):
-        method_ = self.parent.input_specification['method']
+        method_ = self.parent.input_specification.method
         available_options = [re.sub('.*:','',option) for option in list(self.parent.procedures_registry[method_.upper()]['options'])]
-        title = 'Options for method ' + self.parent.input_specification['method']
-        box = OptionsDialog(self.parent.input_specification['method_options'], available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?q='+method_+'&do=search')
+        title = 'Options for method ' + self.parent.input_specification.method
+        existing_options = {o.split('=')[0]:o.split('=')[1] if len(o.split('='))>1 else '' for o in self.parent.input_specification.method_options}
+        box = OptionsDialog(existing_options, available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?q='+method_+'&do=search')
         result = box.exec()
         if result is not None:
-            self.parent.input_specification['method_options'] = result
+            self.parent.input_specification.method_options = [k+'='+v if v else k for k,v in result.items()]
             self.refresh_input_from_specification()
 
 

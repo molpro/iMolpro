@@ -21,7 +21,7 @@ def test_create_input(methods):
     for spec in [
         {'geometry': 'F\nH,F,1.7',
          'basis': {'default': 'cc-pVTZ', 'elements': {}},
-         'steps': [{'command': 'rks', 'density_functional': 'b3lyp'}, {'command': 'ccsd'}],
+         'steps': [{'command': 'rks', 'options': ['b3lyp']}, {'command': 'ccsd'}],
             'hamiltonian':'AE',
          },
     ]:
@@ -78,7 +78,7 @@ def test_recreate_input(methods):
         'geometry={\nHe\n}\nhf\nccsd',
         'geometry={\nHe\n}\nhf\nccsd\n\n',
         'geometry={He}\nhf\nccsd\n\n',
-        # '\ngeometry={\nB\nH B 2.2\n}\nocc,5,1,1,context=mcscf\nrhf\ncasscf\nmrci', #TODO make options positional list
+        '\ngeometry={\nB\nH B 2.2\n}\nocc,5,1,1,context=mcscf\nrhf\ncasscf\nmrci,
         'geometry={He};rks,b3lyp',
         'geometry={He};{rks,b3lyp}',
         'geometry=newnewnew.xyz\nbasis=cc-pVTZ-PP\nrhf',
@@ -209,3 +209,18 @@ def test_job_type(methods):
             specification.job_type = jt
             # print('after',specification, specification.job_type)
             assert specification.job_type == jt
+
+def test_density_functional(methods):
+    for test, outcome in {
+        '': None,
+        'hf': None,
+        'ks': None,
+        'rks,b3lyp': 'B3LYP',
+        'rks,b3lyp,a=b': 'B3LYP',
+    }.items():
+        specification = InputSpecification(test)
+        print(specification)
+        assert specification.density_functional == outcome
+        if specification.density_functional:
+            specification.density_functional = 'PBE'
+            assert specification.density_functional == 'PBE'
