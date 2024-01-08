@@ -4,7 +4,7 @@ import pytest
 @pytest.fixture
 def methods():
     import molpro_input
-    molpro_input.supported_methods = ['RHF', 'CCSD', 'RKS', 'CASSCF', 'MRCI','UHF','UKS','OCC']
+    molpro_input.supported_methods = ['RHF', 'CCSD', 'RKS', 'CASSCF', 'MRCI','UHF','UKS','OCC','OPTG','FREQUENCIES','THERMO']
     yield supported_methods
 
 
@@ -83,19 +83,20 @@ def test_recreate_input(methods):
         'geometry={He};{rks,b3lyp}',
         'geometry=newnewnew.xyz\nbasis=cc-pVTZ-PP\nrhf',
         'geometry=wed.xyz\nbasis=cc-pVTZ-PP\nset,charge=1,spin=1,thing=whatsit\nxx=yy,p=q\nrhf',
+        'geometry={Ne};{rhf};ccsd;{frequencies;thermo,temp=298;another}',
     ]:
         specification = InputSpecification(input)
         regenerated_input = specification.create_input()
         regenerated_specification = InputSpecification(regenerated_input)
-        assert regenerated_specification == specification
-        if not equivalent(regenerated_input, input):
+        if not equivalent(regenerated_input, input) or regenerated_specification != specification:
             print('specification', specification)
             print('regenerated_specification', regenerated_specification)
             print('input', input)
             print('regenerated_input', regenerated_input)
             print('canonicalised input', canonicalise(input))
             print('canonicalised regenerated_input', canonicalise(regenerated_input))
-            assert canonicalise(regenerated_input) == canonicalise(input)
+        assert canonicalise(regenerated_input) == canonicalise(input)
+        assert regenerated_specification == specification
 
 
 def test_variables(methods):

@@ -17,6 +17,7 @@ from PyQt5.QtGui import QIntValidator, QFont
 from pymolpro import Project
 
 import molpro_input
+from molpro_input import InputSpecification
 from CheckableComboBox import CheckableComboBox
 from MenuBar import MenuBar
 from OldOutputMenu import OldOutputMenu
@@ -151,7 +152,8 @@ class ProjectWindow(QMainWindow):
 
 
 
-        self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), self.allowed_methods())
+        molpro_input.supported_methods = self.allowed_methods()
+        self.input_specification = InputSpecification(self.input_pane.toPlainText())
 
         self.output_panes = {
             suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 9, width=80 if suffix=='inp' else 132) for suffix in
@@ -246,7 +248,7 @@ class ProjectWindow(QMainWindow):
                     self.vod_selector.setCurrentText('Edit ' + os.path.basename(import_structure))
             if not import_structure and (database_import := self.database_import_structure()):
                 self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
-            self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), self.allowed_methods())
+            self.input_specification = InputSpecification(self.input_pane.toPlainText())
 
         self.input_tabs.setCurrentIndex(1)
         self.guided_action.setChecked(self.input_tabs.currentIndex() == 1)
@@ -422,7 +424,7 @@ class ProjectWindow(QMainWindow):
         if not guided and index == 1:
             box = QMessageBox()
             box.setText('Guided mode cannot be used because the input is too complex')
-            spec_input = molpro_input.canonicalise(molpro_input.create_input(self.input_specification))
+            spec_input = molpro_input.canonicalise(self.input_specification.create_input())
             file_input = molpro_input.canonicalise(self.input_pane.toPlainText())
             box.setInformativeText(
                 'The input regenerated from the attempt to parse into guided mode is\n' +
@@ -444,12 +446,12 @@ class ProjectWindow(QMainWindow):
         if guided and len(self.input_tabs) < 2:
             self.input_tabs.addTab(self.guided_pane, 'guided')
         if guided:
-            self.input_specification = molpro_input.parse(self.input_pane.toPlainText(), self.allowed_methods())
+            self.input_specification = InputSpecification(self.input_pane.toPlainText())
 
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
-        input_specification = molpro_input.parse(input_text, self.allowed_methods())
+        input_specification = InputSpecification(input_text)
         guided = len(input_specification) and molpro_input.equivalent(input_text, input_specification)
         return guided
 
@@ -1001,7 +1003,7 @@ class BasisAndHamiltonianChooser(QWidget):
         self.parent = parent
 
         self.basis_registry = self.parent.project.basis_registry()
-        self.desired_basis_quality = molpro_input.basis_quality(self.parent.input_specification)
+        self.desired_basis_quality = self.parent.input_specification.basis_quality
 
         self.combo_hamiltonian = QComboBox(self)
         self.combo_hamiltonian.addItems([h['text'] for h in molpro_input.hamiltonians.values()])
@@ -1083,7 +1085,7 @@ class BasisAndHamiltonianChooser(QWidget):
         if not text or text == self.null_prompt or text == self.input_specification['basis']['default']: return
         self.input_specification['basis']['default'] = text
         self.input_specification['basis']['elements'] = {}
-        self.input_specification['basis']['quality'] = molpro_input.basis_quality(self.input_specification)
+        self.input_specification['basis']['quality'] = self.input_specification.basis_quality
         self.write()
 
     def write(self):
