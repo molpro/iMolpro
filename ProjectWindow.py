@@ -1195,9 +1195,6 @@ class GuidedPane(QWidget):
         self.method_options_button.setToolTip('Specify options for the main method')
 
         self.step_options_combo = QComboBox(self)
-        self.step_options_combo.addItem('')
-        self.step_options_combo.addItems([step['command'] for step in self.input_specification['steps']])
-        self.step_options_combo.setCurrentIndex(0)
         self.step_options_combo.currentIndexChanged.connect(
             lambda text: self.step_options_edit(int(text-1)))
 
@@ -1268,6 +1265,11 @@ class GuidedPane(QWidget):
                 self.method_row.ensure_not(['Functional'])
                 self.method_row.ensure({'Core Correlation': self.guided_combo_core_correlation, })
         self.guided_combo_job_type.setCurrentText(self.input_specification.job_type)
+
+        self.step_options_combo.clear()
+        self.step_options_combo.addItem('')
+        self.step_options_combo.addItems([step['command'] for step in self.input_specification['steps']])
+        self.step_options_combo.setCurrentIndex(0)
 
         self.basis_and_hamiltonian_chooser.refresh()
 
