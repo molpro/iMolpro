@@ -863,9 +863,9 @@ Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
         if os.path.exists(filename):
             self.project.import_file(filename)
             text = self.input_pane.toPlainText()
-            if re.match('^ *geometry *= *[/a-z0-9].*', text, flags=re.IGNORECASE):
+            if re.search(r'geometry *= *[-_./\w]+ *[;\n]', text, flags=re.IGNORECASE):
                 self.input_pane.setPlainText(
-                    re.sub('^ *geometry *=.*[\n;]', 'geometry=' + os.path.basename(filename) + '\n', text))
+                    re.sub('geometry *=.*[\n;]', 'geometry=' + os.path.basename(filename) + '\n', text))
                 self.rebuild_vod_selector()
             else:
                 self.input_pane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
