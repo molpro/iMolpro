@@ -6,7 +6,7 @@ The following fields normally need to be specified in order to define the backen
 - `name` The name to be used as a handle for the backend
 - `host` Hostname, possibly with user name, for ssh communication with the remote. If omitted, jobs are run on the local machine. 
   - Password-free access to the remote host is needed, which can be achieved with appropriately authorised ssh keys. 
-  - The shell initialisation environment on the remote must not produce any output, so that, for example, you issue locally `ssh host pwd`, the output is exactly the home directory on the remote.  In the particular case of the Bash shell, you may need to protect some parts of `.bashrc` such that they are executed only if the shell is interactive.
+  - The shell initialisation environment on the remote must not produce any output, so that, for example, you issue locally `ssh host pwd`, the output is exactly the home directory on the remote.  In the particular case of the Bash shell, you may need to protect some parts of `.bashrc` such that they are executed only if the shell is interactive. Initialisation of [Intel oneAPI](https://www.intel.com/content/www/us/en/developer/tools/oneapi/toolkits.html) is known to be particularly problematic.
 
 The following fields are optional.
 - `run_command` The command used to run the job. This might simply be `molpro`, which is the default, or an explicit filesystem path to source a particular instance of molpro. The command can be appended with some options. At job submission time, the input file name is appended to `run_command`.
