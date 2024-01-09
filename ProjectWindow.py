@@ -1346,8 +1346,8 @@ class GuidedPane(QWidget):
     def step_options_edit(self,step:int):
         if step < 0: return
         step_ = self.parent.input_specification['steps'][step]
-        method_ = step_['command']
-        available_options = [re.sub('.*:','',option) for option in list(self.parent.procedures_registry[method_.upper()]['options'])]
+        method_ = step_['command'].upper()
+        available_options = [re.sub('.*:','',option) for option in list(self.parent.procedures_registry[method_.replace('FREQUENCIES','FREQ')]['options'])]
         title = 'Options for step ' + str(step+1) + ' (' + method_+')'
         existing_options = {o.split('=')[0]:o.split('=')[1] if len(o.split('='))>1 else '' for o in (step_['options'] if 'options' in step_ else [])}
         box = OptionsDialog(existing_options, available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?q='+method_+'&do=search')
