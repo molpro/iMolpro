@@ -210,7 +210,7 @@ class InputSpecification(UserDict):
                 fields = re.sub('^ *gthresh *,*', '', line.strip().lower(), flags=re.IGNORECASE).split(',')
                 self[spec_field] = {
                     field.split('=')[0].strip().lower(): field.split('=')[1].strip().lower() if len(
-                        field.split('=')) > 1 else '' for field in fields}
+                        field.split('=')) > 1 else '' for field in fields[1:]}
                 if '' in self[spec_field]: del self[spec_field]['']
 
             elif any([re.fullmatch('{?' + df_prefix + re.escape(method), command,

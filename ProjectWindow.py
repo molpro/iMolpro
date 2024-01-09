@@ -1187,10 +1187,10 @@ class GuidedPane(QWidget):
         self.thresholds_button.setToolTip('Specify global thresholds')
         self.thresholds_button.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
 
-        self.parameters_button = QPushButton('Parameters')
-        self.parameters_button.clicked.connect(self.parameters_edit)
-        self.parameters_button.setToolTip('Specify global parameters')
-        self.parameters_button.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
+        self.print_button = QPushButton('Print')
+        self.print_button.clicked.connect(self.print_edit)
+        self.print_button.setToolTip('Specify global print levels')
+        self.print_button.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
 
         self.method_options_button = QPushButton('Options') #TODO delete when we are settled
         self.method_options_button.clicked.connect(self.method_options_edit)
@@ -1220,7 +1220,7 @@ class GuidedPane(QWidget):
         }, title='Miscellaneous'))
         options_layout = QGridLayout()
         options_layout.addWidget(self.thresholds_button, 0, 0)
-        options_layout.addWidget(self.parameters_button, 1, 0)
+        options_layout.addWidget(self.print_button, 1, 0)
         # options_layout.addWidget(self.method_options_button,0,0)
         misc_layout.addLayout(options_layout)
 
@@ -1326,21 +1326,29 @@ class GuidedPane(QWidget):
             self.parent.input_specification['thresholds'] = result
             self.refresh_input_from_specification()
 
-    def parameters_edit(self, flag):
+    def print_edit(self, flag):
         available_options = [
-            'LSEG    ', 'INTREL  ', 'IVECT   ', 'MINVEC  ', 'IBANK   ', 'LTRACK  ',
-            'LTR     ', 'NCPUS   ', 'NOBUFF  ', 'IASYN   ', 'NCACHE  ', 'MXMBLK  ',
-            'MXMBLN  ', 'MINBR1  ', 'NCHUNK1 ', 'LENBUF  ', 'NTR     ', 'MXDMP   ',
-            'UNROLL  ', 'NOBLAS  ', 'MINDGM  ', 'MINDGV  ', 'MINDGL  ', 'MINDGR  ',
-            'MINDGC  ', 'MINDGF  ', 'MFLOPDGM', 'MFLOPDGV', 'MFLOPMXM',
-            'MFLOPMXV', 'MPPLAT  ', 'MPPSPEED', 'MXMALAT ', 'OLDDIAG2',
-            'MINCUDA ', 'MINDGM2 ', 'DSYEVD  ', 'DSYEVDG ',
+            'BASIS',
+            'DISTANCE',
+            'ANGLES',
+            'ORBITAL',
+            'ORBEN',
+            'CIVECTOR',
+            'PAIRS',
+            'CS',
+            'CP',
+            'REF',
+            'PSPACE',
+            'MICRO',
+            'CPU',
+            'IO',
+            'VARIABLE',
         ]
-        title = 'Global parameters'
-        box = OptionsDialog(self.parent.input_specification['parameters'] if 'parameters' in self.parent.input_specification else {}, available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?id=file_handling&s%5B%5D=gparam#molpro_system_parameters_gparam')
+        title = 'Global print levels'
+        box = OptionsDialog(self.parent.input_specification['prints'] if 'prints' in self.parent.input_specification else {}, available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?id=program_control#global_print_options_gprint_nogprint')
         result = box.exec()
         if result is not None:
-            self.parent.input_specification['parameters'] = result
+            self.parent.input_specification['prints'] = result
             self.refresh_input_from_specification()
 
     def step_options_edit(self,step:int):
