@@ -1185,10 +1185,12 @@ class GuidedPane(QWidget):
         self.thresholds_button = QPushButton('Thresholds')
         self.thresholds_button.clicked.connect(self.thresholds_edit)
         self.thresholds_button.setToolTip('Specify global thresholds')
+        self.thresholds_button.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
 
         self.parameters_button = QPushButton('Parameters')
         self.parameters_button.clicked.connect(self.parameters_edit)
         self.parameters_button.setToolTip('Specify global parameters')
+        self.parameters_button.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
 
         self.method_options_button = QPushButton('Options') #TODO delete when we are settled
         self.method_options_button.clicked.connect(self.method_options_edit)
@@ -1268,7 +1270,7 @@ class GuidedPane(QWidget):
 
         self.step_options_combo.clear()
         self.step_options_combo.addItem('')
-        self.step_options_combo.addItems([step['command'] for step in self.input_specification['steps']])
+        self.step_options_combo.addItems([step['command'].upper() for step in self.input_specification['steps']])
         self.step_options_combo.setCurrentIndex(0)
 
         self.basis_and_hamiltonian_chooser.refresh()
