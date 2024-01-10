@@ -410,7 +410,7 @@ class InputSpecification(UserDict):
         :param method:
         :type method: str
         """
-        if method is None or method == '' or method.lower() == self.method.lower(): return
+        if method is None or method == '' or (self.method is not None and method.lower() == self.method.lower()): return
         new_steps = []
         if method.lower() not in [m.lower() for m in self.hartree_fock_methods]:
             new_steps.append({'command': ('rhf' if method[0].lower() != 'u' else 'uhf')})  # TODO df

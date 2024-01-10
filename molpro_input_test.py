@@ -160,11 +160,12 @@ def test_basis_variants(methods):
     }.items():
         assert InputSpecification(test).input() == outcome.strip('\n') + '\n'
 
+
 def test_method(methods):
     for test, outcome in {
-        '':None,
-        'rhf':'rhf',
-        'rhf;ccsd':'ccsd',
+        '': None,
+        'rhf': 'rhf',
+        'rhf;ccsd': 'ccsd',
         'rhf;ccsd;optg;frequencies': 'ccsd',
         'rhf;ccsd;{optg};frequencies': 'ccsd',
         'rhf;ccsd;mrci;{optg};frequencies': None,
