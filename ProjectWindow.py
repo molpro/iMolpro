@@ -1440,7 +1440,7 @@ class OrbitalInput(CheckableComboBox):
     def refresh(self):
         self.clear()
         self.addItems([o['text'] for k, o in molpro_input.orbital_types.items() if
-                       k != 'nbo' or self.parent.input_specification.open_shell_electrons == 0])
+                       k != 'nbo' or self.parent.input_specification.open_shell_electrons is None or self.parent.input_specification.open_shell_electrons == 0])
         if 'orbitals' in self.parent.input_specification:
             for o in self.parent.input_specification['orbitals']:
                 for i in range(self.model().rowCount()):

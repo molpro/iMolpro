@@ -501,8 +501,11 @@ class InputSpecification(UserDict):
         from defbas import periodic_table
         if 'geometry' not in self: return 0
         if 'geometry_external' in self and self['geometry_external']:
-            with open(self['geometry'],'r') as f:
-                geometry = ''.join(f.readlines())
+            try:
+                with open(self['geometry'],'r') as f:
+                    geometry = ''.join(f.readlines())
+            except:
+                return None
         else:
             geometry = self['geometry']
         line_number = 0
