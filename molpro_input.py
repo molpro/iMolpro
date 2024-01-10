@@ -499,6 +499,7 @@ class InputSpecification(UserDict):
         :rtype: int
         """
         from defbas import periodic_table
+        if 'geometry' not in self: return 0
         if 'geometry_external' in self and self['geometry_external']:
             with open(self['geometry'],'r') as f:
                 geometry = ''.join(f.readlines())
