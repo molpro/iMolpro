@@ -1,4 +1,5 @@
 import os
+import re
 
 from molpro_input import equivalent, canonicalise, InputSpecification, supported_methods
 import pytest
@@ -228,8 +229,7 @@ def test_density_functional(methods):
             specification.density_functional = 'PBE'
             assert specification.density_functional == 'PBE'
 
-def test_open_shell_electrons(methods):
-    with open('BeH.xyz','w') as f: f.write('2\ncomment\nBe 0 0 0\nH 1 0 0')
+def test_open_shell_electrons(methods, tmpdir):
     for test, outcome in {
         'geometry={He}': 0,
         'geometry={Li}': 1,
@@ -239,9 +239,13 @@ def test_open_shell_electrons(methods):
         'geometry={N}': 3,
         'geometry={C}': 2,
         'geometry={C;He,C,1}': 0,
-        'geometry=BeH.xyz': 1,
     }.items():
         specification = InputSpecification(test)
         print(specification)
         assert specification.open_shell_electrons == outcome
-    os.remove('BeH.xyz')
+        open_shell_xyz_file = tmpdir / 'open_shell_electrons.xyz'
+        with open(open_shell_xyz_file, 'w') as f:
+            f.write(re.sub('.*{(.*)}.*', r'\1', test))
+        specification = InputSpecification(re.sub('{.*}',str(open_shell_xyz_file), test))
+        assert specification.open_shell_electrons == outcome
+        os.remove(open_shell_xyz_file)
