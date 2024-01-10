@@ -1254,7 +1254,8 @@ class GuidedPane(QWidget):
             self.spin_line.setText('')
 
         if self.input_specification is not None:
-            base_method = re.sub('[a-z]+-', '', self.input_specification.method, flags=re.IGNORECASE)
+            base_method = re.sub('^df-', '', self.input_specification.method, flags=re.IGNORECASE)
+            # print('method',self.input_specification.method,'base_method',base_method)
             # prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
             #     'method'] else None
             method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
@@ -1279,22 +1280,30 @@ class GuidedPane(QWidget):
         self.step_options_combo.addItems([step['command'].upper() for step in self.input_specification['steps']])
         self.step_options_combo.setCurrentIndex(0)
         try:
-            registry_df = self.parent.procedures_registry[self.input_specification.method.upper()]['DF']
-            if registry_df is None or registry_df == 0:
+            registry_df = self.parent.procedures_registry[self.input_specification.method.upper()]['DF'] # TODO do something about negative sign in registry
+            bit_pattern = '0000'+bin(abs(registry_df)).replace('b','0') if registry_df is not None else '0000'
+            # print(registry_df, bin(registry_df),bit_pattern)
+            closed_shell = bit_pattern[-1]=='1'
+            open_shell = bit_pattern[-2]=='1'
+            available = open_shell if self.input_specification.open_shell_electrons>0 else closed_shell
+            mandatory = bit_pattern[-4]=='1'
+            if not available:
+                # print('density fitting not possible')
                 self.checkbox_df.setDisabled(True)
                 self.checkbox_df.setChecked(False)
                 self.input_specification['density_fitting'] = False
                 self.refresh_input_from_specification()
+            elif mandatory:
+                # print('density fitting mandatory',bit_pattern[-4],bit_pattern[-2],bit_pattern[-1])
+                self.checkbox_df.setDisabled(True)
+                self.checkbox_df.setChecked(True)
+                self.input_specification['density_fitting'] = True
+                self.refresh_input_from_specification()
             else:
-                if abs(registry_df) >= 15:
-                    self.checkbox_df.setDisabled(True)
-                    self.checkbox_df.setChecked(True)
-                    self.input_specification['density_fitting'] = True
-                    self.refresh_input_from_specification()
-                else:
-                    self.checkbox_df.setDisabled(False)
-                    self.checkbox_df.setChecked(
-                        'density_fitting' in self.input_specification and self.input_specification['density_fitting'])
+                # print('density fitting possible')
+                self.checkbox_df.setDisabled(False)
+                self.checkbox_df.setChecked(
+                    'density_fitting' in self.input_specification and self.input_specification['density_fitting'])
         except KeyError:
             self.checkbox_df.setDisabled(True)
 

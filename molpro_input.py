@@ -76,6 +76,8 @@ class InputSpecification(UserDict):
                 self[k] = specification[k]
         if input is not None:
             self.parse(input)
+        if 'hamiltonian' not in self:
+            self['hamiltonian'] = 'PP'
 
     def parse(self, input: str, debug=False):
         r"""
@@ -223,6 +225,8 @@ class InputSpecification(UserDict):
                 if command[:3] == 'df-':
                     self['density_fitting'] = True
                     method_=command[3:]
+                elif command[:4] == 'pno-' or command[:4] == 'ldf-':
+                    self['density_fitting'] = True
                 elif 'density_fitting' in self and self['density_fitting'] and not any([step_['command'] == command for job_type in job_type_steps for step_ in job_type_steps[job_type]]):
                     return {}
                 method_options = (re.sub(';.*$', '', line.lower()).replace('}', '') + ',').split(',', 1)[1]
@@ -314,7 +318,7 @@ class InputSpecification(UserDict):
                 _input += '\n'
         for step in (self['steps'] if 'steps' in self else []):
             _input += '{'
-            if 'density_fitting' in self and self['density_fitting'] and not any([step_['command'] == step['command'] for step_ in job_type_steps[self.job_type]]):
+            if 'density_fitting' in self and self['density_fitting'] and not any([step_['command'] == step['command'] for step_ in job_type_steps[self.job_type]]) and step['command'].lower()[:4]!='pno-' and step['command'].lower()[:4]!='ldf-':
                 _input += 'df-'
             _input += step['command']
             # if re.match('[ru]ks', step['command'], re.IGNORECASE) and 'density_functional' in step:
@@ -513,7 +517,7 @@ class InputSpecification(UserDict):
                 with open(self['geometry'],'r') as f:
                     geometry = ''.join(f.readlines())
             except:
-                return None
+                return 0
         else:
             geometry = self['geometry']
         line_number = 0
