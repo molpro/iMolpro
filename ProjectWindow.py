@@ -1278,8 +1278,25 @@ class GuidedPane(QWidget):
         self.step_options_combo.addItem('')
         self.step_options_combo.addItems([step['command'].upper() for step in self.input_specification['steps']])
         self.step_options_combo.setCurrentIndex(0)
-        self.checkbox_df.setChecked(
-            'density_fitting' in self.input_specification and self.input_specification['density_fitting'])
+        try:
+            registry_df = self.parent.procedures_registry[self.input_specification.method.upper()]['DF']
+            if registry_df is None or registry_df == 0:
+                self.checkbox_df.setDisabled(True)
+                self.checkbox_df.setChecked(False)
+                self.input_specification['density_fitting'] = False
+                self.refresh_input_from_specification()
+            else:
+                if abs(registry_df) >= 15:
+                    self.checkbox_df.setDisabled(True)
+                    self.checkbox_df.setChecked(True)
+                    self.input_specification['density_fitting'] = True
+                    self.refresh_input_from_specification()
+                else:
+                    self.checkbox_df.setDisabled(False)
+                    self.checkbox_df.setChecked(
+                        'density_fitting' in self.input_specification and self.input_specification['density_fitting'])
+        except KeyError:
+            self.checkbox_df.setDisabled(True)
 
         self.basis_and_hamiltonian_chooser.refresh()
 
