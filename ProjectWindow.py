@@ -357,6 +357,9 @@ class ProjectWindow(QMainWindow):
             (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+[')
         self.old_output_menu = OldOutputMenu(self)
         menubar.addSubmenu(self.old_output_menu, 'View')
+        menubar.addSeparator('View')
+        menubar.addAction('Job stdout', 'View', lambda: self.add_output_tab(0, 'stdout', name='stdout'))
+        menubar.addAction('Job stderr', 'View', lambda: self.add_output_tab(0, 'stderr', name='stderr'))
 
         self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
         self.run_force_action = menubar.addAction('Run (force)', 'Job', self.run_force, 'Ctrl+Shift+R',
@@ -397,9 +400,9 @@ class ProjectWindow(QMainWindow):
             if self.vod:
                 self.output_tabs.addTab(self.vod, 'structure')
 
-    def add_output_tab(self, run: int):
-        tab_name = os.path.basename(self.project.filename('out', run=run))
-        self.output_panes[tab_name] = ViewProjectOutput(self.project, 'out', instance=run)
+    def add_output_tab(self, run: int, suffix='out', name=None):
+        tab_name = os.path.basename(self.project.filename(suffix, run=run)) if name is None else name
+        self.output_panes[tab_name] = ViewProjectOutput(self.project, suffix, instance=run)
         self.output_tabs.addTab(self.output_panes[tab_name], tab_name)
         for i in range(len(self.output_tabs)):
             if self.output_tabs.tabText(i) == tab_name:

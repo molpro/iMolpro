@@ -29,8 +29,13 @@ Within the definition of `run_command`, a simple keyword substitution mechanism 
 - `{prologue text%param!documentation}` is replaced by the value of parameter `param` if it is defined, prefixed by `prologue text`. Otherwise, the entire contents between `{}` is elided.
 - `{prologue %param:default value!documentation}` works similarly, with substitution of `default value` instead of elision if `param` is not defined. `!documentation` is ignored in constructing the completed run command, but can be queried by programs using the library, so it is good practice to write a description that would help a user to understand if and how the parameter should be specified.
 
+## Troubleshooting
+If the backend is not correctly configured, it can sometimes be difficult to diagnose the problem.
+- If job submission apparently works, but the job finishes in a short time, suspect that something is gone wrong. There might be some information in the standard output or standard error streams for the job, which can be accessed from the `View` menu.
+- Problems with ssh configuration usually result in a pop-up error box
+- Further information might be obtainable using the [sjef](https://github.com/molpro/sjef/blob/master/README.md) command-line tool, with verbosity options enabled (`sjef run -b my-backend -f -v -v project.molpro`)
 
-Example:
+## Example:
 ```xml
 <backends>
   <!-- there is a default template backend always added to the configuration file by the library
