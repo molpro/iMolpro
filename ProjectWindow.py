@@ -12,7 +12,7 @@ from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
-    QSplitter, QMenu, QGridLayout, QInputDialog
+    QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox
 from PyQt5.QtGui import QIntValidator, QFont
 from pymolpro import Project
 
@@ -1175,6 +1175,9 @@ class GuidedPane(QWidget):
         # self.guided_combo_core_correlation.currentTextChanged.connect(
         #     lambda text: self.input_specification_change('core_correlation', text))
 
+        self.checkbox_df = QCheckBox()
+        self.checkbox_df.clicked.connect(lambda text: self.input_specification_change('density_fitting',text))
+
         self.combo_properties = PropertyInput(self)
 
         self.method_row = RowOfTitledWidgets({'Type': self.guided_combo_job_type, 'Method': self.guided_combo_method,
@@ -1218,7 +1221,7 @@ class GuidedPane(QWidget):
         self.guided_layout.addLayout(misc_layout)
         misc_layout.addWidget(RowOfTitledWidgets({
             'Orientation': self.guided_combo_orientation,
-            'Density Fitting': QLabel(''),
+            'Density Fitting': self.checkbox_df,
             'Options': self.step_options_combo,
         }, title='Miscellaneous'))
         options_layout = QGridLayout()
@@ -1275,6 +1278,8 @@ class GuidedPane(QWidget):
         self.step_options_combo.addItem('')
         self.step_options_combo.addItems([step['command'].upper() for step in self.input_specification['steps']])
         self.step_options_combo.setCurrentIndex(0)
+        self.checkbox_df.setChecked(
+            'density_fitting' in self.input_specification and self.input_specification['density_fitting'])
 
         self.basis_and_hamiltonian_chooser.refresh()
 
@@ -1293,8 +1298,12 @@ class GuidedPane(QWidget):
     def orbital_put_command(self):
         return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
 
+
+    def df_action(self, text):
+        print(text)
+        self.parent.input_specification['density_fitting'] = text
     def input_specification_change(self, key, value):
-        if not value or (key in self.input_specification and self.input_specification[key].lower() == value.lower()):
+        if value is None or (key in self.input_specification and str(self.input_specification[key]).lower() == str(value).lower()):
             return
         if key == 'method':
             self.input_specification.method=value

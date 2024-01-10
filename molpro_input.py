@@ -220,6 +220,11 @@ class InputSpecification(UserDict):
                       for method in self.allowed_methods + ['optg', 'frequencies']]):
                 step = {}
                 method_ = command
+                if command[:3] == 'df-':
+                    self['density_fitting'] = True
+                    method_=command[3:]
+                elif 'density_fitting' in self and self['density_fitting'] and not any([step_['command'] == command for job_type in job_type_steps for step_ in job_type_steps[job_type]]):
+                    return {}
                 method_options = (re.sub(';.*$', '', line.lower()).replace('}', '') + ',').split(',', 1)[1]
 
                 method_options_ = method_options.strip(', \n').split(',')
@@ -308,7 +313,10 @@ class InputSpecification(UserDict):
                     _input += ',' + k.lower() + ('=' + str(v) if str(v) != '' else '')
                 _input += '\n'
         for step in (self['steps'] if 'steps' in self else []):
-            _input += '{' + step['command']
+            _input += '{'
+            if 'density_fitting' in self and self['density_fitting'] and not any([step_['command'] == step['command'] for step_ in job_type_steps[self.job_type]]):
+                _input += 'df-'
+            _input += step['command']
             # if re.match('[ru]ks', step['command'], re.IGNORECASE) and 'density_functional' in step:
             #     _input += ',' + step['density_functional']
             if 'options' in step:
