@@ -1,3 +1,5 @@
+import os
+
 from molpro_input import equivalent, canonicalise, InputSpecification, supported_methods
 import pytest
 
@@ -78,7 +80,7 @@ def test_recreate_input(methods):
         'geometry={\nHe\n}\nhf\nccsd',
         'geometry={\nHe\n}\nhf\nccsd\n\n',
         'geometry={He}\nhf\nccsd\n\n',
-        '\ngeometry={\nB\nH B 2.2\n}\nocc,5,1,1,context=mcscf\nrhf\ncasscf\nmrci,
+        '\ngeometry={\nB\nH B 2.2\n}\nocc,5,1,1,context=mcscf\nrhf\ncasscf\nmrci',
         'geometry={He};rks,b3lyp',
         'geometry={He};{rks,b3lyp}',
         'geometry=newnewnew.xyz\nbasis=cc-pVTZ-PP\nrhf',
@@ -224,3 +226,21 @@ def test_density_functional(methods):
         if specification.density_functional:
             specification.density_functional = 'PBE'
             assert specification.density_functional == 'PBE'
+
+def test_open_shell_electrons(methods):
+    with open('BeH.xyz','w') as f: f.write('2\ncomment\nBe 0 0 0\nH 1 0 0')
+    for test, outcome in {
+        'geometry={He}': 0,
+        'geometry={Li}': 1,
+        'geometry={1;;Li 0 0 0}': 1,
+        'geometry={2;;Li 0 0 0;H 1 0 0}': 0,
+        'geometry={2;;Be 0 0 0;H 1 0 0}': 1,
+        'geometry={N}': 3,
+        'geometry={C}': 2,
+        'geometry={C;He,C,1}': 0,
+        'geometry=BeH.xyz': 1,
+    }.items():
+        specification = InputSpecification(test)
+        print(specification)
+        assert specification.open_shell_electrons == outcome
+    os.remove('BeH.xyz')

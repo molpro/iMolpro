@@ -491,6 +491,36 @@ class InputSpecification(UserDict):
             else:
                 self.method_options = [density_functional]
 
+    @property
+    def open_shell_electrons(self):
+        r"""
+        Evaluate the number of open-shell electrons in the molecule's normal state.  This will typically be 0 or 1, but for some special cases (eg atoms) might be higher.
+        :return:
+        :rtype: int
+        """
+        from defbas import periodic_table
+        if 'geometry_external' in self and self['geometry_external']:
+            with open(self['geometry'],'r') as f:
+                geometry = ''.join(f.readlines())
+        else:
+            geometry = self['geometry']
+        line_number = 0
+        start_line = 1
+        total_nuclear_charge = 0
+        for line in geometry.replace(';','\n').split('\n'):
+            line_number += 1
+            if line.isdigit() and line_number==1: start_line = 3
+            if line_number >= start_line and line:
+                word = line.replace(' ',',').split(',')[0]
+                word = word[0].upper() + word[1:].lower()
+                atomic_number = periodic_table.index(word)+1
+                total_nuclear_charge += atomic_number
+        electrons = total_nuclear_charge%2
+        if atomic_number == total_nuclear_charge:
+            if word in ['C','O','Si','S','Ge','Se','Sn','Te','Pb','Po']: electrons = 2
+            if word in ['N','P','As','Sb','Bi']: electrons = 3
+        return electrons
+
 
 def canonicalise(input):
     result = re.sub('\n}', '}',
@@ -545,6 +575,8 @@ def canonicalise(input):
         if line.strip('\n') != '':
             new_result += line.strip('\n ') + '\n'
     return new_result.strip('\n ') + '\n'
+
+
 
 
 def equivalent(input1, input2, debug=False):
