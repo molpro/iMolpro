@@ -1275,6 +1275,8 @@ class GuidedPane(QWidget):
 
         self.basis_and_hamiltonian_chooser.refresh()
 
+        self.guided_orbitals_input.refresh()
+
     # def orbitals_input_action(self, parameter):
     #     if not 'postscripts' in self.input_specification: self.input_specification['postscripts'] = []
     #     self.input_specification['postscripts'] = [ps for ps in self.input_specification['postscripts'] if
@@ -1429,15 +1431,21 @@ class OrbitalInput(CheckableComboBox):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
-        self.addItems([o['text'] for o in molpro_input.orbital_types.values()])
+        self.refresh()
+        self.model().dataChanged.connect(self.action)
+
+    def refresh(self):
+        self.clear()
+        self.addItems([o['text'] for k, o in molpro_input.orbital_types.items() if
+                       k != 'nbo' or self.parent.input_specification.open_shell_electrons == 0])
         if 'orbitals' in self.parent.input_specification:
             for o in self.parent.input_specification['orbitals']:
                 for i in range(self.model().rowCount()):
                     if self.model().item(i).text() == molpro_input.orbital_types[o]['text']:
                         self.model().item(i).setCheckState(Qt.Checked)
-        self.model().dataChanged.connect(self.refresh)
+        self.updateText()
 
-    def refresh(self, text):
+    def action(self, text):
         self.parent.input_specification['orbitals'] = [k for k,v in molpro_input.orbital_types.items() for t in self.currentData() if t == v['text']]
         if any([b in self.parent.input_specification['orbitals'] for b in ['nbo','ibo']]):
             self.parent.input_specification_change('wave_fct_symm', 'No Symmetry')
