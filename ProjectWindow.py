@@ -498,7 +498,7 @@ class ProjectWindow(QMainWindow):
 
     def vod_selector_action(self, text1, external_path=None, force=False):
         if force and self.vod_selector.currentText().strip() == 'None':
-            self.vod_selector.setCurrentText('Output')
+            self.vod_selector.setCurrentText('Output structure')
         text = self.vod_selector.currentText().strip()
         if text == '': text = text1
         if text == '':
@@ -517,9 +517,9 @@ class ProjectWindow(QMainWindow):
                 subprocess.Popen([external_path, filename])
             else:
                 self.embedded_builder(filename)
-        elif text == 'Input':
+        elif text == 'Input structure':
             self.visualise_input(external_path=external_path)
-        elif text == 'Output':
+        elif text == 'Output structure':
             self.visualise_output(external_path, 'xml')
         else:
             for typ in molpro_input.orbital_types:
@@ -531,12 +531,12 @@ class ProjectWindow(QMainWindow):
         self.vod_selector.addItem('None')
         for t, f in self.geometry_files():
             self.vod_selector.addItem('Edit ' + f)
-        self.vod_selector.addItem('Input')
+        self.vod_selector.addItem('Input structure')
         if self.project.status == 'completed' or (
                 os.path.isfile(self.project.filename('xml')) and open(self.project.filename('xml'),
                                                                       'r').read().rstrip()[
                                                                  -9:] == '</molpro>'):
-            self.vod_selector.addItem('Output')
+            self.vod_selector.addItem('Output structure')
             for t, f in self.putfiles():
                 if f.replace('.molden','') in molpro_input.orbital_types:
                     self.vod_selector.addItem(molpro_input.orbital_types[f.replace('.molden','')]['text']+' orbitals')
