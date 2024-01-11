@@ -314,7 +314,7 @@ def factory_orbital_set(input: str, file_type=None, instance=-1):
 class OrbitalSetMolden(OrbitalSet):
     def __init__(self, content: str, instance=-1):
         import re
-        self.coordinateSet = 2
+        self.coordinateSet = 1
         super().__init__()
         self.orbitals = []
         mo_section = False
