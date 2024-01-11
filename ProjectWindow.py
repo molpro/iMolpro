@@ -131,8 +131,14 @@ class ProjectWindow(QMainWindow):
         settings['project_directory'] = os.path.dirname(self.project.filename(run=-1))
 
         if 'PATH' in os.environ and 'SHELL' in os.environ:
-            os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
+            try:
+                os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
                 'PATH']  # make PATH just as if running from shell
+            except Exception as e:
+                msg = QMessageBox()
+                msg.setText('Error in setting PATH')
+                msg.setDetailedText(str(e))
+                msg.exec()
         self.jsmol_min_js = str(pathlib.Path(__file__).parent / "JSmol.min.js")
         if hasattr(sys, '_MEIPASS'):
             os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
