@@ -372,6 +372,7 @@ class ProjectWindow(QMainWindow):
         help_manager.register('Overview', 'README')
         help_manager.register('Example', 'doc/example.md')
         help_manager.register('Backends', 'doc/backends.md')
+        help_manager.register('Display', 'doc/display.md')
         menubar.show()
 
     def edit_backend_configuration(self):
@@ -521,7 +522,7 @@ class ProjectWindow(QMainWindow):
         elif text == 'Output':
             self.visualise_output(external_path, 'xml')
         else:
-            self.visualise_output(external_path, '', text)
+            self.visualise_output(external_path, '',  self.project.filename('', text.replace(' orbitals','.molden').replace(' ','_'), run=0))
 
     def rebuild_vod_selector(self):
         self.vod_selector.clear()
@@ -535,7 +536,7 @@ class ProjectWindow(QMainWindow):
                                                                  -9:] == '</molpro>'):
             self.vod_selector.addItem('Output')
             for t, f in self.putfiles():
-                self.vod_selector.addItem(f)
+                self.vod_selector.addItem(f.replace('.molden',' orbitals').replace('_',' '))
 
     def putfiles(self):
         result = []
@@ -632,34 +633,13 @@ Jmol.getApplet("myJmol", Info);
 </script>
 </td>
 <td>
+<p>
 <script>
 Jmol.jmolLink(myJmol,'menu','Jmol menu')
 </script>
-<br><table><tr>
+</p>
+<table><tr>
 """
-        if vibs and vibs.frequencies:
-            html += """
-<script>
-Jmol.jmolHtml('<td>Vibrations: ')
-Jmol.jmolHtml(' ')
-Jmol.jmolCheckbox(myJmol,"vibration on", "vibration off", "animate", 1)
-Jmol.jmolHtml(' ')
-Jmol.script(myJmol, 'color vectors yellow')
-Jmol.jmolCheckbox(myJmol,"vectors on", "vectors off", "vectors")
-Jmol.jmolHtml(' ')
-Jmol.jmolBr()
-Jmol.jmolMenu(myJmol,[
-"""
-            for frequency in vibs.frequencies:
-                if abs(frequency) > 1.0:
-                    html += '["frame ' + str(firstvib) + '; vibration on", "' + str(frequency) + '"],'
-                firstvib += 1
-            html += """
-],10);
-Jmol.jmolBr()
-</script>
-</td>
-             """
 
         if orbs and orbs.energies:
             html += """
@@ -701,14 +681,40 @@ Jmol.jmolBr()
 </script>
 </td>
              """
+        elif vibs and vibs.frequencies:
+            html += """
+        <script>
+        Jmol.jmolHtml('<td>Vibrations: ')
+        Jmol.jmolHtml(' ')
+        Jmol.jmolCheckbox(myJmol,"vibration on", "vibration off", "animate", 1)
+        Jmol.jmolHtml(' ')
+        Jmol.script(myJmol, 'color vectors yellow')
+        Jmol.jmolCheckbox(myJmol,"vectors on", "vectors off", "vectors")
+        Jmol.jmolHtml(' ')
+        Jmol.jmolBr()
+        Jmol.jmolMenu(myJmol,[
+              """
+            for frequency in vibs.frequencies:
+                if abs(frequency) > 1.0:
+                    html += '["frame ' + str(firstvib) + '; vibration on", "' + str(frequency) + '"],'
+                firstvib += 1
+            html += """
+        ],10);
+        Jmol.jmolBr()
+        </script>
+        </td>
+                 """
 
         html += """
         </tr>
 <script>
-Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
+Jmol.jmolHtml("<p>")
+Jmol.jmolCommandInput(myJmol,'&rarr; Jmol',25,1,'title')
+Jmol.jmolHtml("</p>")
 </script>
 </td>
 </tr>
+</table>
 </body>
 </html>"""
         self.add_vod(html, **kwargs)
@@ -743,18 +749,26 @@ Jmol.getApplet("myJmol", Info);
 </script>
 </td>
 <td>
+<p>
 Click in the top left corner of the display pane for options.<br/>
+</p>
+<p>
 <script>
 Jmol.jmolButton(myJmol, 'write """
         filetype = os.path.splitext(file)[1][1:]
         html += filetype + ' "' + file
         html += """\"','Save structure')
+Jmol.jmolHtml("</p>")
+Jmol.jmolHtml("<p>")
 Jmol.jmolLink(myJmol,'menu','Jmol menu')
-Jmol.jmolBr()
-Jmol.jmolCommandInput(myJmol,'Type Jmol commands here',40,1,'title')
+Jmol.jmolHtml("</p>")
+Jmol.jmolHtml("<p>")
+Jmol.jmolCommandInput(myJmol,'&rarr; Jmol',25,1,'title')
+Jmol.jmolHtml("</p>")
 </script>
 </td>
 </tr>
+</table>
 </body>
 </html>"""
 
@@ -1320,9 +1334,9 @@ class GuidedPane(QWidget):
     #     self.refresh_input_from_specification()
     #     self.guided_orbitals_input.setChecked(parameter)
 
-    @property
-    def orbital_put_command(self):
-        return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
+    # @property
+    # def orbital_put_command(self):
+    #     return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
 
 
     def df_action(self, text):
