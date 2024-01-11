@@ -522,7 +522,9 @@ class ProjectWindow(QMainWindow):
         elif text == 'Output':
             self.visualise_output(external_path, 'xml')
         else:
-            self.visualise_output(external_path, '',  self.project.filename('', text.replace(' orbitals','.molden').replace(' ','_'), run=0))
+            for typ in molpro_input.orbital_types:
+                if text.replace(' orbitals', '') == molpro_input.orbital_types[typ]['text']:
+                    self.visualise_output(external_path, '',  self.project.filename('molden', typ, run=0))
 
     def rebuild_vod_selector(self):
         self.vod_selector.clear()
@@ -536,7 +538,8 @@ class ProjectWindow(QMainWindow):
                                                                  -9:] == '</molpro>'):
             self.vod_selector.addItem('Output')
             for t, f in self.putfiles():
-                self.vod_selector.addItem(f.replace('.molden',' orbitals').replace('_',' '))
+                if f.replace('.molden','') in molpro_input.orbital_types:
+                    self.vod_selector.addItem(molpro_input.orbital_types[f.replace('.molden','')]['text']+' orbitals')
 
     def putfiles(self):
         result = []

@@ -150,14 +150,11 @@ class InputSpecification(UserDict):
                 self['properties'] += [k for k, v in properties.items() if line.lower() == v]
             # elif any([line.lower() == v['command'].lower() for v in orbital_types.values()]):
             #     last_orbital_generator = [k for k, v in orbital_types.items() if command.lower() == v['command'].lower()]
-            elif any([re.match('put,molden,' + k + '.molden', line, flags=re.IGNORECASE) or re.match(
-                    'put,molden,' + orbital_types[k]['text'].replace(' ','_') + '.molden', line, flags=re.IGNORECASE) for k in
+            elif any([re.match('put,molden,' + k + '.molden', line, flags=re.IGNORECASE) for k in
                       orbital_types.keys()]):
                 if 'orbitals' not in self: self['orbitals'] = []
                 for k in orbital_types:
-                    if re.match('put,molden,' + k + '.molden', line, flags=re.IGNORECASE) or re.match(
-                            'put,molden,' + orbital_types[k]['text'].replace(' ', '_') + '.molden', line,
-                            flags=re.IGNORECASE):
+                    if re.match('put,molden,' + k + '.molden', line, flags=re.IGNORECASE):
                         self['orbitals'].append(k)
             elif re.match('^geometry *= *{', group, re.IGNORECASE):
                 # print('geometry matched')
@@ -341,7 +338,7 @@ class InputSpecification(UserDict):
         if 'orbitals' in self:
             for k in self['orbitals']:
                 _input += orbital_types[k]['command'] + '\n'
-                _input += 'put,molden,' + orbital_types[k]['text'].replace(' ','_') + '.molden' + '\n'
+                _input += 'put,molden,' + k +  '.molden' + '\n'
         if 'postscripts' in self:
             for m in self['postscripts']:
                 _input += m + '\n'
