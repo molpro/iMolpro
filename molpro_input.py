@@ -588,7 +588,7 @@ def canonicalise(input):
         line = line.replace('!', ',').strip() + '\n'  # unprotect
         line = line.replace('&&&&&', '!').strip() + '\n'  # unprotect
         # print('line before bracketing',line, in_group)
-        if line.strip() and line.strip()[0] != '{' and not re.match('^ *\w+ *=', line) and not in_group:
+        if line.strip() and line.strip()[0] != '{' and not re.match(r'^ *\w+ *=', line) and not in_group:
             comment_split = line.split('!')
             line = '{' + comment_split[0].strip() + '}'  # + (comment_split[1] if len(comment_split) > 1 else '')
         # print('line after bracketing',line)
