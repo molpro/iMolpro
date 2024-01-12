@@ -213,6 +213,8 @@ class ProjectWindow(QMainWindow):
         left_layout.addWidget(self.statusBar)
         self.input_tabs.addTab(self.input_pane, 'freehand')
         self.guided_pane = GuidedPane(self)
+        self.input_tabs.addTab(self.guided_pane, 'guided')
+        self.input_tabs.setTabVisible(self.input_tabs.indexOf(self.guided_pane), False)
         self.input_text_changed_consequence(0)
 
         top_layout = QHBoxLayout()
@@ -256,7 +258,7 @@ class ProjectWindow(QMainWindow):
                 self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
             self.input_specification = InputSpecification(self.input_pane.toPlainText())
 
-        self.input_tabs.setCurrentIndex(1)
+        self.input_tabs.setCurrentIndex(1 if self.guided_possible() else 0)
         self.guided_action.setChecked(self.input_tabs.currentIndex() == 1)
 
         container = QWidget(self)
@@ -451,12 +453,9 @@ class ProjectWindow(QMainWindow):
     def input_text_changed_consequence(self, index=0):
         if self.trace: print('input_text_changed_consequence, index=', index)
         guided = self.guided_possible()
-        if not guided and len(self.input_tabs) != 1:
-            self.input_tabs.removeTab(1)
-        if guided and len(self.input_tabs) < 2:
-            self.input_tabs.addTab(self.guided_pane, 'guided')
         if guided:
             self.input_specification = InputSpecification(self.input_pane.toPlainText())
+        self.input_tabs.setTabVisible(self.input_tabs.indexOf(self.guided_pane), guided)
 
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
