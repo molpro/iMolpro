@@ -116,6 +116,7 @@ class ProjectWindow(QMainWindow):
         super().__init__(None)
         self.window_manager = window_manager
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+        self.initialised_from_input = False
 
         assert filename is not None
         try:
@@ -259,6 +260,7 @@ class ProjectWindow(QMainWindow):
             self.input_specification = InputSpecification(self.input_pane.toPlainText())
 
         self.input_tabs.setCurrentIndex(1 if self.guided_possible() else 0)
+        self.initialised_from_input = True
         self.guided_action.setChecked(self.input_tabs.currentIndex() == 1)
 
         container = QWidget(self)
@@ -398,6 +400,7 @@ class ProjectWindow(QMainWindow):
             self.embedded_builder(filename)
 
     def refresh_output_tabs(self):
+        # print('refresh output tabs')
         self.old_output_menu.refresh()
         if len(self.output_tabs) != len(
                 [tab_name for tab_name, pane in self.output_panes.items() if
@@ -408,6 +411,7 @@ class ProjectWindow(QMainWindow):
                     self.output_tabs.addTab(pane, suffix)
             if self.vod:
                 self.output_tabs.addTab(self.vod, 'structure')
+        # print('end refresh output tabs')
 
     def add_output_tab(self, run: int, suffix='out', name=None):
         tab_name = os.path.basename(self.project.filename(suffix, run=run)) if name is None else name
@@ -1141,6 +1145,7 @@ class GuidedPane(QWidget):
         self.trace = self.parent.trace
         self.input_pane = self.parent.input_pane
         self.setContentsMargins(0, 0, 0, 0)
+        self.method_asserted = False
 
         self.guided_layout = QVBoxLayout()
         self.guided_layout.setContentsMargins(0, 0, 0, 0)
@@ -1314,24 +1319,29 @@ class GuidedPane(QWidget):
                 self.checkbox_df.setDisabled(True)
                 self.checkbox_df.setChecked(False)
                 self.input_specification['density_fitting'] = False
-                self.refresh_input_from_specification()
             elif mandatory:
                 # print('density fitting mandatory',bit_pattern[-4],bit_pattern[-2],bit_pattern[-1])
                 self.checkbox_df.setDisabled(True)
                 self.checkbox_df.setChecked(True)
                 self.input_specification['density_fitting'] = True
-                self.refresh_input_from_specification()
             else:
                 # print('density fitting possible')
                 self.checkbox_df.setDisabled(False)
+                if self.method_asserted:
+                    # print('asserted')
+                    self.input_specification['density_fitting'] = int(registry_df) > 0
+                    self.method_asserted = False
+                # print('df option','density_fitting' in self.input_specification and self.input_specification['density_fitting'])
                 self.checkbox_df.setChecked(
                     'density_fitting' in self.input_specification and self.input_specification['density_fitting'])
+            self.refresh_input_from_specification()
         except KeyError:
             self.checkbox_df.setDisabled(True)
 
         self.basis_and_hamiltonian_chooser.refresh()
 
         self.guided_orbitals_input.refresh()
+
 
     # def orbitals_input_action(self, parameter):
     #     if not 'postscripts' in self.input_specification: self.input_specification['postscripts'] = []
@@ -1347,15 +1357,14 @@ class GuidedPane(QWidget):
     #     return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
 
 
-    def df_action(self, text):
-        print(text)
-        self.parent.input_specification['density_fitting'] = text
     def input_specification_change(self, key, value):
         if value is None or (key in self.input_specification and str(self.input_specification[key]).lower() == str(value).lower()):
             return
         if key == 'method':
             self.input_specification.method=value
             self.method_changed_signal.emit(value)
+            if self.parent.initialised_from_input:
+                self.method_asserted = True
         elif key == 'job_type':
             self.input_specification.job_type = value
         elif key == 'density_functional':
