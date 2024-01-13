@@ -1198,9 +1198,8 @@ class GuidedPane(QWidget):
         self.guided_combo_core_correlation = QComboBox(self)
         self.guided_combo_core_correlation.addItems(['large', 'mixed', 'small'])
         self.guided_combo_core_correlation.hide()
-        # TODO complete implementation of core correlation
-        # self.guided_combo_core_correlation.currentTextChanged.connect(
-        #     lambda text: self.input_specification_change('core_correlation', text))
+        self.guided_combo_core_correlation.currentTextChanged.connect(
+            lambda text: self.input_specification_change('core_correlation', text))
 
         self.checkbox_df = QCheckBox()
         self.checkbox_df.clicked.connect(lambda text: self.input_specification_change('density_fitting',text))
@@ -1301,6 +1300,8 @@ class GuidedPane(QWidget):
                 self.method_row.ensure_not(['Functional'])
                 self.method_row.ensure({'Core Correlation': self.guided_combo_core_correlation, })
         self.guided_combo_job_type.setCurrentText(self.input_specification.job_type)
+        if 'core_correlation' in self.input_specification:
+            self.guided_combo_core_correlation.setCurrentText(self.input_specification['core_correlation'])
 
         self.step_options_combo.clear()
         self.step_options_combo.addItem('')

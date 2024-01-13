@@ -217,6 +217,8 @@ class InputSpecification(UserDict):
                         field.split('=')) > 1 else '' for field in fields[1:]}
                 if '' in self[spec_field]: del self[spec_field]['']
 
+            elif command == 'core':
+                self['core_correlation']=(line+',').split(',')[1].lower()
             elif any([re.fullmatch('{?' + df_prefix + re.escape(method), command,
                                    flags=re.IGNORECASE) for
                       df_prefix
@@ -318,6 +320,8 @@ class InputSpecification(UserDict):
                 for k, v in self[typ].items():
                     _input += ',' + k.lower() + ('=' + str(v) if str(v) != '' else '')
                 _input += '\n'
+        if 'core_correlation' in self:
+            _input += 'core,'+self['core_correlation'] + '\n'
         for step in (self['steps'] if 'steps' in self else []):
             _input += '{'
             if 'density_fitting' in self and self['density_fitting'] and not any([step_['command'] == step['command'] for step_ in job_type_steps[self.job_type]]) and step['command'].lower()[:4]!='pno-' and step['command'].lower()[:4]!='ldf-':
