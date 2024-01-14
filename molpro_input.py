@@ -31,7 +31,6 @@ parameter_commands = {
     'prints': 'gprint',
 }
 
-
 job_type_steps = {
     'Single point energy': [],
     'Geometry optimisation': [{'command': 'optg', 'options': ['savexyz=optimised.xyz']}],
@@ -218,7 +217,7 @@ class InputSpecification(UserDict):
                 if '' in self[spec_field]: del self[spec_field]['']
 
             elif command == 'core':
-                self['core_correlation']=(line+',').split(',')[1].lower()
+                self['core_correlation'] = (line + ',').split(',')[1].lower()
             elif any([re.fullmatch('{?' + df_prefix + re.escape(method), command,
                                    flags=re.IGNORECASE) for
                       df_prefix
@@ -228,15 +227,17 @@ class InputSpecification(UserDict):
                 method_ = command
                 if command[:3] == 'df-':
                     self['density_fitting'] = True
-                    method_=command[3:]
+                    method_ = command[3:]
                 elif command[:4] == 'pno-' or command[:4] == 'ldf-':
                     self['density_fitting'] = True
-                elif 'density_fitting' in self and self['density_fitting'] and not any([step_['command'] == command for job_type in job_type_steps for step_ in job_type_steps[job_type]]):
+                elif 'density_fitting' in self and self['density_fitting'] and not any(
+                        [step_['command'] == command for job_type in job_type_steps for step_ in
+                         job_type_steps[job_type]]):
                     return {}
                 method_options = (re.sub(';.*$', '', line.lower()).replace('}', '') + ',').split(',', 1)[1]
 
                 method_options_ = method_options.strip(', \n').split(',')
-                if method_options_ and method_options_[-1]=='': method_options_=method_options_[:-2]
+                if method_options_ and method_options_[-1] == '': method_options_ = method_options_[:-2]
                 # print('method_options_',method_options_)
                 step['command'] = method_
                 if method_options_:
@@ -254,7 +255,7 @@ class InputSpecification(UserDict):
                     if '' in opts: del opts['']
                     if 'directives' not in step: step['directives'] = []
                     opts = opt.rstrip(',').split(',')
-                    if opts and opts[-1]=='': opts=opts[:-2]
+                    if opts and opts[-1] == '': opts = opts[:-2]
                     d = {'command': cmd}
                     if opts: d['options'] = opts
                     step['directives'].append(d)
@@ -308,7 +309,7 @@ class InputSpecification(UserDict):
             del self['variables']['dkho']
         if 'variables' in self:
             for k, v in self['variables'].items():
-                if v != '':
+                if v != '' and (k != 'charge' or v != '0'):
                     _input += k + '=' + v + '\n'
         if len(self['variables']) == 0: del self['variables']
         if 'properties' in self:
@@ -321,10 +322,14 @@ class InputSpecification(UserDict):
                     _input += ',' + k.lower() + ('=' + str(v) if str(v) != '' else '')
                 _input += '\n'
         if 'core_correlation' in self:
-            _input += 'core,'+self['core_correlation'] + '\n'
+            _input += 'core,' + self['core_correlation'] + '\n'
         for step in (self['steps'] if 'steps' in self else []):
             _input += '{'
-            if 'density_fitting' in self and self['density_fitting'] and not any([step_['command'] == step['command'] for step_ in job_type_steps[self.job_type]]) and step['command'].lower()[:4]!='pno-' and step['command'].lower()[:4]!='ldf-':
+            if 'density_fitting' in self and self['density_fitting'] and not any(
+                    [step_['command'] == step['command'] for step_ in job_type_steps[self.job_type]]) and step[
+                                                                                                              'command'].lower()[
+                                                                                                          :4] != 'pno-' and \
+                    step['command'].lower()[:4] != 'ldf-':
                 _input += 'df-'
             _input += step['command']
             # if re.match('[ru]ks', step['command'], re.IGNORECASE) and 'density_functional' in step:
@@ -342,7 +347,7 @@ class InputSpecification(UserDict):
         if 'orbitals' in self:
             for k in self['orbitals']:
                 _input += orbital_types[k]['command'] + '\n'
-                _input += 'put,molden,' + k +  '.molden' + '\n'
+                _input += 'put,molden,' + k + '.molden' + '\n'
         if 'postscripts' in self:
             for m in self['postscripts']:
                 _input += m + '\n'
@@ -520,7 +525,7 @@ class InputSpecification(UserDict):
         if 'geometry' not in self: return 0
         if 'geometry_external' in self and self['geometry_external']:
             try:
-                with open(self['geometry'],'r') as f:
+                with open(self['geometry'], 'r') as f:
                     geometry = ''.join(f.readlines())
             except:
                 return 0
@@ -529,18 +534,20 @@ class InputSpecification(UserDict):
         line_number = 0
         start_line = 1
         total_nuclear_charge = 0
-        for line in geometry.replace(';','\n').split('\n'):
+        for line in geometry.replace(';', '\n').split('\n'):
             line_number += 1
-            if line.isdigit() and line_number==1: start_line = 3
+            if line.isdigit() and line_number == 1: start_line = 3
             if line_number >= start_line and line:
-                word = line.replace(' ',',').split(',')[0]
+                word = line.replace(' ', ',').split(',')[0]
                 word = word[0].upper() + word[1:].lower()
-                atomic_number = periodic_table.index(word)+1
+                atomic_number = periodic_table.index(word) + 1
                 total_nuclear_charge += atomic_number
-        electrons = total_nuclear_charge%2
+        charge = int(self['variables']['charge']) if 'variables' in self and 'charge' in self['variables'] else 0
+        total_electrons = total_nuclear_charge - charge
+        electrons = total_electrons % 2
         if atomic_number == total_nuclear_charge:
-            if word in ['C','O','Si','S','Ge','Se','Sn','Te','Pb','Po']: electrons = 2
-            if word in ['N','P','As','Sb','Bi']: electrons = 3
+            if total_electrons in [6, 8, 14, 16, 32, 34, 50, 52, 82, 84]: electrons = 2
+            if total_electrons in [7, 15, 33, 51, 83]: electrons = 3
         return electrons
 
 
@@ -597,8 +604,6 @@ def canonicalise(input):
         if line.strip('\n') != '':
             new_result += line.strip('\n ') + '\n'
     return new_result.strip('\n ') + '\n'
-
-
 
 
 def equivalent(input1, input2, debug=False):

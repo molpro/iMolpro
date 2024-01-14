@@ -1237,6 +1237,7 @@ class GuidedPane(QWidget):
             'Spin': self.spin_line,
             'Symmetry': self.guided_combo_wave_fct_symm,
         }, title='Wavefunction parameters'))
+        self.charge_line.setFixedWidth(20)
 
         self.guided_orbitals_input = OrbitalInput(self)
         self.guided_layout.addWidget(RowOfTitledWidgets({
@@ -1273,7 +1274,7 @@ class GuidedPane(QWidget):
         if 'variables' in self.input_specification and 'charge' in self.input_specification['variables']:
             self.charge_line.setText(self.input_specification['variables']['charge'])
         else:
-            self.charge_line.setText('')
+            self.charge_line.setText('0')
         if 'variables' in self.input_specification and 'spin' in self.input_specification['variables']:
             self.spin_line.setText(self.input_specification['variables']['spin'])
         else:
