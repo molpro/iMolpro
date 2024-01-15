@@ -55,7 +55,7 @@ class ViewProjectOutput(ViewFile):
         self.project = project
         self.suffix = suffix
         self.instance = -1 if suffix == 'inp' else instance
-        minimum_point_size = point_size-2
+        minimum_point_size = point_size - 2
         self.character_width = width
         super().__init__(self.project.filename(suffix, run=self.instance), latency=latency, point_size=point_size)
         target_width = self.fontMetrics().size(0, ''.join(['M' for k in range(width)])).width()
@@ -134,7 +134,7 @@ class ProjectWindow(QMainWindow):
         if 'PATH' in os.environ and 'SHELL' in os.environ:
             try:
                 os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
-                'PATH']  # make PATH just as if running from shell
+                    'PATH']  # make PATH just as if running from shell
             except Exception as e:
                 msg = QMessageBox()
                 msg.setText('Error in setting PATH')
@@ -153,22 +153,20 @@ class ProjectWindow(QMainWindow):
 
         self.discover_external_viewer_commands()
 
-
         self.input_pane = EditFile(self.project.filename('inp', run=-1), latency)
         self.setWindowTitle(filename)
 
-
-
         molpro_input.supported_methods = self.allowed_methods()
-        self.input_specification = InputSpecification(self.input_pane.toPlainText())
+        self.input_specification = InputSpecification(self.input_pane.toPlainText(), directory=self.project.filename())
 
         self.output_panes = {
-            suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 9, width=80 if suffix=='inp' else 132) for suffix in
+            suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 9,
+                                      width=80 if suffix == 'inp' else 132) for suffix in
             [
                 'out',
-                 'log',
-             'inp'
-             ]}
+                'log',
+                'inp'
+            ]}
 
         self.webengine_profiles = []
         self.setup_menubar()
@@ -248,7 +246,8 @@ class ProjectWindow(QMainWindow):
 
         if self.input_pane.toPlainText().strip('\n ') == '':
             self.input_pane.setPlainText(
-                'geometry={0}.xyz\nbasis=cc-pV(T+d)Z-PP\nrhf'.format(os.path.basename(self.project.name).replace(' ', '-')))
+                'geometry={0}.xyz\nbasis=cc-pV(T+d)Z-PP\nrhf'.format(
+                    os.path.basename(self.project.name).replace(' ', '-')))
             import_structure = ''
             if QMessageBox.question(self, '',
                                     'Would you like to import the molecular geometry from a file?',
@@ -257,7 +256,8 @@ class ProjectWindow(QMainWindow):
                     self.vod_selector.setCurrentText('Edit ' + os.path.basename(import_structure))
             if not import_structure and (database_import := self.database_import_structure()):
                 self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
-            self.input_specification = InputSpecification(self.input_pane.toPlainText())
+            self.input_specification = InputSpecification(self.input_pane.toPlainText(),
+                                                          directory=self.project.filename())
 
         self.input_tabs.setCurrentIndex(1 if self.guided_possible() else 0)
         self.initialised_from_input = True
@@ -266,7 +266,7 @@ class ProjectWindow(QMainWindow):
         container = QWidget(self)
         container.setLayout(self.layout)
         self.setCentralWidget(container)
-        splitter.setSizes([1,1])
+        splitter.setSizes([1, 1])
 
     def discover_external_viewer_commands(self):
         external_command_stems = [
@@ -316,9 +316,11 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Search external databases for structure', 'Files', self.database_import_structure,
                           'Ctrl+Shift+Alt+I',
                           tooltip='Search PubChem and ChemSpider for a molecule and use it as the source of molecular structure in the input for the project')
-        menubar.addAction('Adopt optimised structure from the most recent run','Files', lambda dum, self=self: self.database_import_optimised(run=0, file='Optimised.xyz'),
+        menubar.addAction('Adopt optimised structure from the most recent run', 'Files',
+                          lambda dum, self=self: self.database_import_optimised(run=0, file='Optimised.xyz'),
                           tooltip='Adopt structure from the most recent geometry optimisation')
-        menubar.addAction('Select a structure from a previous geometry optimisation...','Files', self.database_import_optimised,
+        menubar.addAction('Select a structure from a previous geometry optimisation...', 'Files',
+                          self.database_import_optimised,
                           tooltip='Select a structure from a previous geometry optimisation')
         menubar.addAction('Import file', 'Files', self.import_file, 'Ctrl+I',
                           tooltip='Import one or more files, eg geometry definition, into the project')
@@ -458,13 +460,14 @@ class ProjectWindow(QMainWindow):
         if self.trace: print('input_text_changed_consequence, index=', index)
         guided = self.guided_possible()
         if guided:
-            self.input_specification = InputSpecification(self.input_pane.toPlainText())
+            self.input_specification = InputSpecification(self.input_pane.toPlainText(),
+                                                          directory=self.project.filename())
         self.input_tabs.setTabVisible(self.input_tabs.indexOf(self.guided_pane), guided)
 
     def guided_possible(self):
         input_text = self.input_pane.toPlainText()
         if not input_text: input_text = ''
-        input_specification = InputSpecification(input_text)
+        input_specification = InputSpecification(input_text, directory=self.project.filename())
         guided = len(input_specification) and molpro_input.equivalent(input_text, input_specification)
         return guided
 
@@ -476,8 +479,8 @@ class ProjectWindow(QMainWindow):
     def available_functionals(self):
         project_registry = self.project.registry('dfunc')
         result = []
-        if project_registry != None :
-            for priority in range(5,-1,-1):
+        if project_registry != None:
+            for priority in range(5, -1, -1):
                 for keyfound in project_registry:
                     if project_registry[keyfound]['priority'] == priority:
                         result.append(keyfound)
@@ -485,7 +488,7 @@ class ProjectWindow(QMainWindow):
 
     def allowed_methods(self):
         result = []
-        if not hasattr(self,'procedures_registry'):
+        if not hasattr(self, 'procedures_registry'):
             try:
                 self.procedures_registry = self.project.procedures_registry()
                 if not self.procedures_registry:
@@ -533,7 +536,7 @@ class ProjectWindow(QMainWindow):
         else:
             for typ in molpro_input.orbital_types:
                 if text.replace(' orbitals', '') == molpro_input.orbital_types[typ]['text']:
-                    self.visualise_output(external_path, '',  self.project.filename('molden', typ, run=0))
+                    self.visualise_output(external_path, '', self.project.filename('molden', typ, run=0))
 
     def rebuild_vod_selector(self):
         self.vod_selector.clear()
@@ -547,8 +550,9 @@ class ProjectWindow(QMainWindow):
                                                                  -9:] == '</molpro>'):
             self.vod_selector.addItem('Output structure')
             for t, f in self.putfiles():
-                if f.replace('.molden','') in molpro_input.orbital_types:
-                    self.vod_selector.addItem(molpro_input.orbital_types[f.replace('.molden','')]['text']+' orbitals')
+                if f.replace('.molden', '') in molpro_input.orbital_types:
+                    self.vod_selector.addItem(
+                        molpro_input.orbital_types[f.replace('.molden', '')]['text'] + ' orbitals')
 
     def putfiles(self):
         result = []
@@ -915,8 +919,8 @@ Jmol.jmolHtml("</p>")
         run_ = 1 if len(run_directories) == 2 else run if run else None
         if run_ is None:
             selected_, ok = QInputDialog.getItem(self, 'Choose run from which to obtain optimised geometry',
-                                                   'Which run?',
-                                                   run_directories[-1:0:-1])
+                                                 'Which run?',
+                                                 run_directories[-1:0:-1])
             return self.database_import_optimised(run_directories[1:].index(selected_) + 1, file) if ok else None
         else:
             filename = ''
@@ -925,8 +929,8 @@ Jmol.jmolHtml("</p>")
             else:
                 files_ = self.optimised_structure_files(run_)
                 k, ok = QInputDialog.getItem(self, 'Choose geometry',
-                                               'Which geometry from run ' + run_directories[
-                                                   run_] + ' should be selected?', files_.keys())
+                                             'Which geometry from run ' + run_directories[
+                                                 run_] + ' should be selected?', files_.keys())
                 if ok:
                     filename = files_[k]
             if filename:
@@ -1016,7 +1020,6 @@ Jmol.jmolHtml("</p>")
         QMessageBox.information(self, 'Input specification', 'Input specification:\r\n' +
                                 re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                                                   ',\n  '))
-
 
 
 class BasisAndHamiltonianChooser(QWidget):
@@ -1138,6 +1141,7 @@ class BasisAndHamiltonianChooser(QWidget):
 
 class GuidedPane(QWidget):
     method_changed_signal = pyqtSignal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
@@ -1202,12 +1206,12 @@ class GuidedPane(QWidget):
             lambda text: self.input_specification_change('core_correlation', text))
 
         self.checkbox_df = QCheckBox()
-        self.checkbox_df.clicked.connect(lambda text: self.input_specification_change('density_fitting',text))
+        self.checkbox_df.clicked.connect(lambda text: self.input_specification_change('density_fitting', text))
 
         self.combo_properties = PropertyInput(self)
 
         self.method_row = RowOfTitledWidgets({'Type': self.guided_combo_job_type, 'Method': self.guided_combo_method,
-                                      'Functional': self.guided_combo_functional, }, title='Calculation')
+                                              'Functional': self.guided_combo_functional, }, title='Calculation')
         self.guided_layout.addWidget(self.method_row)
 
         self.desired_basis_quality = 0
@@ -1224,13 +1228,13 @@ class GuidedPane(QWidget):
         self.print_button.setToolTip('Specify global print levels')
         self.print_button.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
 
-        self.method_options_button = QPushButton('Options') #TODO delete when we are settled
+        self.method_options_button = QPushButton('Options')  # TODO delete when we are settled
         self.method_options_button.clicked.connect(self.method_options_edit)
         self.method_options_button.setToolTip('Specify options for the main method')
 
         self.step_options_combo = QComboBox(self)
         self.step_options_combo.currentIndexChanged.connect(
-            lambda text: self.step_options_edit(int(text-1)))
+            lambda text: self.step_options_edit(int(text - 1)))
 
         self.guided_layout.addWidget(RowOfTitledWidgets({
             'Charge': self.charge_line,
@@ -1275,10 +1279,17 @@ class GuidedPane(QWidget):
             self.charge_line.setText(self.input_specification['variables']['charge'])
         else:
             self.charge_line.setText('0')
-        if 'variables' in self.input_specification and 'spin' in self.input_specification['variables']:
-            self.spin_line.setText(self.input_specification['variables']['spin'])
-        else:
-            self.spin_line.setText('')
+
+        # spin_ = self.input_specification.open_shell_electrons
+        # print('initial spin_',spin_)
+        # if 'variables' in self.input_specification and 'spin' in self.input_specification['variables'] and int(self.input_specification['variables']['spin'])%2 == spin_%2:
+        #     spin_ = int(self.input_specification['variables']['spin'])
+        # if spin_ > 1 and ('variables' not in self.input_specification or 'spin' not in self.input_specification['variables'] or int(self.input_specification['variables']['spin']) != spin_):
+        #     if 'variables' not in self.input_specification: self.input_specification['variables']={}
+        #     print('force spin to',spin_)
+        #     self.input_specification['variables']['spin'] = str(spin_)
+        #     self.refresh_input_from_specification()
+        self.spin_line.setText(str(self.input_specification.spin))
 
         if self.input_specification is not None:
             base_method = re.sub('^df-', '', self.input_specification.method, flags=re.IGNORECASE)
@@ -1309,13 +1320,14 @@ class GuidedPane(QWidget):
         self.step_options_combo.addItems([step['command'].upper() for step in self.input_specification['steps']])
         self.step_options_combo.setCurrentIndex(0)
         try:
-            registry_df = self.parent.procedures_registry[self.input_specification.method.upper()]['DF'] # TODO do something about negative sign in registry
-            bit_pattern = '0000'+bin(abs(registry_df)).replace('b','0') if registry_df is not None else '0000'
+            registry_df = self.parent.procedures_registry[self.input_specification.method.upper()][
+                'DF']  # TODO do something about negative sign in registry
+            bit_pattern = '0000' + bin(abs(registry_df)).replace('b', '0') if registry_df is not None else '0000'
             # print(registry_df, bin(registry_df),bit_pattern)
-            closed_shell = bit_pattern[-1]=='1'
-            open_shell = bit_pattern[-2]=='1'
-            available = open_shell if self.input_specification.open_shell_electrons>0 else closed_shell
-            mandatory = bit_pattern[-4]=='1'
+            closed_shell = bit_pattern[-1] == '1'
+            open_shell = bit_pattern[-2] == '1'
+            available = open_shell if self.input_specification.open_shell_electrons > 0 else closed_shell
+            mandatory = bit_pattern[-4] == '1'
             if not available:
                 # print('density fitting not possible')
                 self.checkbox_df.setDisabled(True)
@@ -1344,7 +1356,6 @@ class GuidedPane(QWidget):
 
         self.guided_orbitals_input.refresh()
 
-
     # def orbitals_input_action(self, parameter):
     #     if not 'postscripts' in self.input_specification: self.input_specification['postscripts'] = []
     #     self.input_specification['postscripts'] = [ps for ps in self.input_specification['postscripts'] if
@@ -1358,12 +1369,12 @@ class GuidedPane(QWidget):
     # def orbital_put_command(self):
     #     return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
 
-
     def input_specification_change(self, key, value):
-        if value is None or (key in self.input_specification and str(self.input_specification[key]).lower() == str(value).lower()):
+        if value is None or (
+                key in self.input_specification and str(self.input_specification[key]).lower() == str(value).lower()):
             return
         if key == 'method':
-            self.input_specification.method=value
+            self.input_specification.method = value
             self.method_changed_signal.emit(value)
             if self.parent.initialised_from_input:
                 self.method_asserted = True
@@ -1377,10 +1388,22 @@ class GuidedPane(QWidget):
         self.refresh()
 
     def input_specification_variable_change(self, key, value):
+        value_ = value
         if 'variables' not in self.input_specification:
             self.input_specification['variables'] = {}
-        self.input_specification['variables'][key] = value
+        if key == 'charge':
+            old_charge = int(self.input_specification['variables']['charge']) if 'charge' in self.input_specification[
+                'variables'] and self.input_specification['variables']['charge'] else 0
+            value_ = str(int(value_) if value_.isdigit() else value_)
+        self.input_specification['variables'][key] = value_
+        if key == 'spin':
+            self.input_specification.spin = value_
         self.refresh_input_from_specification()
+        if key == 'charge':
+            if value_ and int(value_) != old_charge:
+                self.input_specification.spin = 0
+                # print('spin set to',self.input_specification.spin)
+            self.refresh()
 
     def refresh_input_from_specification(self):
         if self.trace: print('refresh_input_from_specification')
@@ -1389,11 +1412,14 @@ class GuidedPane(QWidget):
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
             self.input_pane.setPlainText(new_input)
 
-    def thresholds_edit(self,flag):
+    def thresholds_edit(self, flag):
         project_registry = self.project.registry('THRESH')
         available_options = [k.split(',')[0] for k in project_registry]
         title = 'Global thresholds'
-        box = OptionsDialog(self.parent.input_specification['thresholds'] if 'thresholds' in self.parent.input_specification else {}, available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?id=program_control&s[]=gthresh#global_thresholds_gthresh')
+        box = OptionsDialog(
+            self.parent.input_specification['thresholds'] if 'thresholds' in self.parent.input_specification else {},
+            available_options, title=title, parent=self,
+            help_uri='https://www.molpro.net/manual/doku.php?id=program_control&s[]=gthresh#global_thresholds_gthresh')
         result = box.exec()
         if result is not None:
             self.parent.input_specification['thresholds'] = result
@@ -1418,27 +1444,36 @@ class GuidedPane(QWidget):
             'VARIABLE',
         ]
         title = 'Global print levels'
-        box = OptionsDialog(self.parent.input_specification['prints'] if 'prints' in self.parent.input_specification else {}, available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?id=program_control#global_print_options_gprint_nogprint')
+        box = OptionsDialog(
+            self.parent.input_specification['prints'] if 'prints' in self.parent.input_specification else {},
+            available_options, title=title, parent=self,
+            help_uri='https://www.molpro.net/manual/doku.php?id=program_control#global_print_options_gprint_nogprint')
         result = box.exec()
         if result is not None:
             self.parent.input_specification['prints'] = result
             self.refresh_input_from_specification()
 
-    def step_options_edit(self,step:int):
+    def step_options_edit(self, step: int):
         if step < 0: return
         step_ = self.parent.input_specification['steps'][step]
         method_ = step_['command'].upper()
-        available_options = [re.sub('.*:','',option) for option in list(self.parent.procedures_registry[method_.replace('FREQUENCIES','FREQ')]['options'])]
-        title = 'Options for step ' + str(step+1) + ' (' + method_+')'
-        existing_options = {o.split('=')[0]:o.split('=')[1] if len(o.split('='))>1 else '' for o in (step_['options'] if 'options' in step_ else [])}
-        box = OptionsDialog(existing_options, available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?q='+method_+'&do=search')
+        available_options = [re.sub('.*:', '', option) for option in
+                             list(self.parent.procedures_registry[method_.replace('FREQUENCIES', 'FREQ')]['options'])]
+        title = 'Options for step ' + str(step + 1) + ' (' + method_ + ')'
+        existing_options = {o.split('=')[0]: o.split('=')[1] if len(o.split('=')) > 1 else '' for o in
+                            (step_['options'] if 'options' in step_ else [])}
+        box = OptionsDialog(existing_options, available_options, title=title, parent=self,
+                            help_uri='https://www.molpro.net/manual/doku.php?q=' + method_ + '&do=search')
         result = box.exec()
         if result is not None:
-            self.parent.input_specification['steps'][step]['options'] = [k+'='+v if v else k for k,v in result.items()]
+            self.parent.input_specification['steps'][step]['options'] = [k + '=' + v if v else k for k, v in
+                                                                         result.items()]
             self.refresh_input_from_specification()
         self.step_options_combo.setCurrentIndex(0)
-    def method_options_edit(self,flag):
-        return self.step_options_edit([s['command'] for s in self.parent.input_specification['steps']].index(self.parent.input_specification.method))
+
+    def method_options_edit(self, flag):
+        return self.step_options_edit([s['command'] for s in self.parent.input_specification['steps']].index(
+            self.parent.input_specification.method))
         # method_ = self.parent.input_specification.method
         # available_options = [re.sub('.*:','',option) for option in list(self.parent.procedures_registry[method_.upper()]['options'])]
         # title = 'Options for method ' + self.parent.input_specification.method
@@ -1448,7 +1483,6 @@ class GuidedPane(QWidget):
         # if result is not None:
         #     self.parent.input_specification.method_options = [k+'='+v if v else k for k,v in result.items()]
         #     self.refresh_input_from_specification()
-
 
 
 class RowOfTitledWidgets(QWidget):
@@ -1480,7 +1514,7 @@ class RowOfTitledWidgets(QWidget):
                 self.widget_captions[k] = QLabel(k)
                 self.layout2.addWidget(self.widget_captions[k], 0, len(self.widgets), alignment=Qt.AlignCenter)
                 self.layout2.addWidget(v, 1, len(self.widgets), alignment=Qt.AlignCenter)
-                self.widgets[k]=v
+                self.widgets[k] = v
                 self.widget_captions[k].show()
                 self.widgets[k].show()
 
@@ -1499,6 +1533,7 @@ class OrbitalInput(CheckableComboBox):
     r"""
     Helper for constructing input for producing various kinds of orbitals
     """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
@@ -1517,15 +1552,18 @@ class OrbitalInput(CheckableComboBox):
         self.updateText()
 
     def action(self, text):
-        self.parent.input_specification['orbitals'] = [k for k,v in molpro_input.orbital_types.items() for t in self.currentData() if t == v['text']]
-        if any([b in self.parent.input_specification['orbitals'] for b in ['nbo','ibo']]):
+        self.parent.input_specification['orbitals'] = [k for k, v in molpro_input.orbital_types.items() for t in
+                                                       self.currentData() if t == v['text']]
+        if any([b in self.parent.input_specification['orbitals'] for b in ['nbo', 'ibo']]):
             self.parent.input_specification_change('wave_fct_symm', 'No Symmetry')
         self.parent.refresh_input_from_specification()
+
 
 class PropertyInput(CheckableComboBox):
     r"""
     Helper for constructing input for properties
     """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
@@ -1538,7 +1576,6 @@ class PropertyInput(CheckableComboBox):
         self.model().dataChanged.connect(self.refresh)
 
     def refresh(self, text):
-        self.parent.input_specification['properties'] = [k for k,v in molpro_input.properties.items() for t in self.currentData() if t == k]
+        self.parent.input_specification['properties'] = [k for k, v in molpro_input.properties.items() for t in
+                                                         self.currentData() if t == k]
         self.parent.refresh_input_from_specification()
-
-

@@ -1,4 +1,5 @@
 import os
+import pathlib
 import re
 from collections import UserDict
 
@@ -65,9 +66,10 @@ supported_methods = []
 class InputSpecification(UserDict):
     hartree_fock_methods = ['RHF', 'RKS', 'UHF', 'UKS', 'LDF-RHF', 'LDF-UHF']
 
-    def __init__(self, input=None, allowed_methods=[], debug=False, specification=None):
+    def __init__(self, input=None, allowed_methods=[], debug=False, specification=None, directory=None):
         super(InputSpecification, self).__init__()
         self.allowed_methods = list(set(allowed_methods).union(set(supported_methods)))
+        self.directory = directory
         # print('self.allowed_methods',self.allowed_methods)
         self.debug = debug
         if specification is not None:
@@ -87,7 +89,9 @@ class InputSpecification(UserDict):
         :rtype: InputSpecification
         """
         if os.path.exists(input):
-            return self.parse(open(input, 'r').read())
+            with open(input, 'r') as f:
+                print(input)
+                return self.parse(f.read())
 
         # print('allowed_methods', self.allowed_methods)
         precursor_methods = ['LOCALI', 'CASSCF', 'OCC', 'CORE', 'CLOSED', 'FROZEN', 'WF',
@@ -272,6 +276,12 @@ class InputSpecification(UserDict):
             self['variables'] = variables
         if 'hamiltonian' not in self:
             self['hamiltonian'] = self.basis_hamiltonian
+        # spin_ = self.open_shell_electrons
+        # print('initial spin_',spin_)
+        # if 'variables' in self and 'spin' in self['variables'] and int(self['variables']['spin'])%2 == spin_%2:
+        #     spin_ = self['variables']['spin']
+        # if 'variables' not in self: self['variables'] = {}
+        # self['variables']['spin'] = spin_
         return self
 
     def input(self):
@@ -309,7 +319,7 @@ class InputSpecification(UserDict):
             del self['variables']['dkho']
         if 'variables' in self:
             for k, v in self['variables'].items():
-                if v != '' and (k != 'charge' or v != '0'):
+                if v != '' and (k != 'charge' or v != '0') and (k != 'spin' or int(v) > 1):
                     _input += k + '=' + v + '\n'
         if len(self['variables']) == 0: del self['variables']
         if 'properties' in self:
@@ -521,16 +531,23 @@ class InputSpecification(UserDict):
         :return:
         :rtype: int
         """
+        # TODO set up a cache if input has not changed and geometry file has not changed
         from defbas import periodic_table
         if 'geometry' not in self: return 0
+        # print('enter open_shell_electrons')
         if 'geometry_external' in self and self['geometry_external']:
+            # print('geometry',self['geometry'])
+            # print('directory',self.directory)
+            # print(pathlib.Path(self.directory if self.directory is not None else '.') / self['geometry'])
             try:
-                with open(self['geometry'], 'r') as f:
+                with open(pathlib.Path(self.directory if self.directory is not None else '.') / self['geometry'],
+                          'r') as f:
                     geometry = ''.join(f.readlines())
             except:
                 return 0
         else:
             geometry = self['geometry']
+        # print('geometry',geometry)
         line_number = 0
         start_line = 1
         total_nuclear_charge = 0
@@ -542,13 +559,40 @@ class InputSpecification(UserDict):
                 word = word[0].upper() + word[1:].lower()
                 atomic_number = periodic_table.index(word) + 1
                 total_nuclear_charge += atomic_number
-        charge = int(self['variables']['charge']) if 'variables' in self and 'charge' in self['variables'] else 0
+        charge = int(self['variables']['charge']) if 'variables' in self and 'charge' in self['variables'] and \
+                                                     self['variables']['charge'] != '' else 0
         total_electrons = total_nuclear_charge - charge
+        # print('total_nuclear_charge',total_nuclear_charge,'total_electrons',total_electrons)
         electrons = total_electrons % 2
-        if atomic_number == total_nuclear_charge:
-            if total_electrons in [6, 8, 14, 16, 32, 34, 50, 52, 82, 84]: electrons = 2
-            if total_electrons in [7, 15, 33, 51, 83]: electrons = 3
+        # implementing default spin > 1 is tricky because of handling of input files that do not contain spin specification
+        # if atomic_number == total_nuclear_charge:
+        #     if total_electrons in [6, 8, 14, 16, 32, 34, 50, 52, 82, 84]: electrons = 2
+        #     if total_electrons in [7, 15, 33, 51, 83]: electrons = 3
+        # print('Electrons: ' + str(electrons))
         return electrons
+
+    @property
+    def spin(self):
+        r"""
+        Evaluate 2*S
+        :return:
+        :rtype: int
+        """
+        spin = int(self['variables']['spin']) if 'variables' in self and 'spin' in self[
+            'variables'] else self.open_shell_electrons % 2
+        return spin
+
+    @spin.setter
+    def spin(self, value):
+        try:
+            value_ = int(value)
+            if value_%2 != self.open_shell_electrons%2: raise ValueError
+        except ValueError:
+            value_ = self.open_shell_electrons % 2
+        # print('in spin setter, value=', value,value_, 'electrons', self.open_shell_electrons)
+        if 'variables' not in self:
+            self['variables'] = {}
+        self['variables']['spin'] = str(value_)
 
 
 def canonicalise(input):
