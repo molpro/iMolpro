@@ -17,6 +17,7 @@ from PyQt5.QtGui import QIntValidator, QFont
 from pymolpro import Project
 
 import molpro_input
+from SpinComboBox import SpinComboBox
 from molpro_input import InputSpecification
 from CheckableComboBox import CheckableComboBox
 from MenuBar import MenuBar
@@ -1168,9 +1169,11 @@ class GuidedPane(QWidget):
         self.charge_line.setValidator(QIntValidator())
         self.charge_line.textChanged.connect(lambda text: self.input_specification_variable_change('charge', text))
 
-        self.spin_line = QLineEdit()
-        self.spin_line.setValidator(QIntValidator())
-        self.spin_line.textChanged.connect(lambda text: self.input_specification_variable_change('spin', text))
+        # self.spin_line = QLineEdit()
+        # self.spin_line.setValidator(QIntValidator())
+        # self.spin_line.textChanged.connect(lambda text: self.input_specification_variable_change('spin', text))
+        self.spin_line = SpinComboBox(self,0,14)
+        self.spin_line.spin_changed.connect(lambda text: self.input_specification_variable_change('spin', str(text)))
 
         self.guided_combo_wave_fct_symm = QComboBox(self)
         self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
@@ -1289,7 +1292,8 @@ class GuidedPane(QWidget):
         #     print('force spin to',spin_)
         #     self.input_specification['variables']['spin'] = str(spin_)
         #     self.refresh_input_from_specification()
-        self.spin_line.setText(str(self.input_specification.spin))
+        # self.spin_line.setText(str(self.input_specification.spin))
+        self.spin_line.refresh(self.input_specification.spin)
 
         if self.input_specification is not None:
             base_method = re.sub('^df-', '', self.input_specification.method, flags=re.IGNORECASE)
@@ -1388,6 +1392,7 @@ class GuidedPane(QWidget):
         self.refresh()
 
     def input_specification_variable_change(self, key, value):
+        # print('input_specification_variable_change',key,value)
         value_ = value
         if 'variables' not in self.input_specification:
             self.input_specification['variables'] = {}
