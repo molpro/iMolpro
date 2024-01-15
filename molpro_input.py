@@ -559,8 +559,7 @@ class InputSpecification(UserDict):
                 word = word[0].upper() + word[1:].lower()
                 atomic_number = periodic_table.index(word) + 1
                 total_nuclear_charge += atomic_number
-        charge = int(self['variables']['charge']) if 'variables' in self and 'charge' in self['variables'] and \
-                                                     self['variables']['charge'] != '' else 0
+        charge = int(self['variables']['charge']) if 'variables' in self and 'charge' in self['variables'] and  self['variables']['charge'] != '' and  self['variables']['charge'] != '-' else 0
         total_electrons = total_nuclear_charge - charge
         # print('total_nuclear_charge',total_nuclear_charge,'total_electrons',total_electrons)
         electrons = total_electrons % 2

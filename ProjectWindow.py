@@ -1392,8 +1392,11 @@ class GuidedPane(QWidget):
         if 'variables' not in self.input_specification:
             self.input_specification['variables'] = {}
         if key == 'charge':
-            old_charge = int(self.input_specification['variables']['charge']) if 'charge' in self.input_specification[
-                'variables'] and self.input_specification['variables']['charge'] else 0
+            if value == '-': return
+            try:
+                old_charge = int(self.input_specification['variables']['charge'])
+            except:
+                old_charge = 0
             value_ = str(int(value_) if value_.isdigit() else value_)
         self.input_specification['variables'][key] = value_
         if key == 'spin':
