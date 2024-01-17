@@ -2,7 +2,7 @@ import os
 import pathlib
 import platform
 
-from PyQt5.QtCore import QCoreApplication, Qt
+from PyQt5.QtCore import QCoreApplication, Qt, QUrl
 
 from MenuBar import MenuBar
 from RecentMenu import RecentMenu
@@ -11,13 +11,21 @@ from utilities import force_suffix
 
 import pymolpro
 from PyQt5 import QtCore
-from PyQt5.QtGui import QPixmap, QKeySequence
+from PyQt5.QtGui import QPixmap, QKeySequence, QDesktopServices, QIcon
 from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-    QMessageBox, QDesktopWidget, QAction, QShortcut
+    QDesktopWidget, QAction, QShortcut, QToolButton
 
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
 from settings import settings, settings_edit
+
+
+class PushButton(QPushButton):
+    def enterEvent(self, ev, QEnterEvent=None):
+        self.setCursor(Qt.PointingHandCursor)
+
+    def exitEvent(self, ev, QExitEvent=None):
+        self.setCursor(Qt.ArrowCursor)
 
 
 class Chooser(QMainWindow):
@@ -32,32 +40,56 @@ class Chooser(QMainWindow):
 
         lh_panel = QVBoxLayout()
         self.layout.addLayout(lh_panel)
-        new_button = QPushButton('&New project')
+        new_button = PushButton('&New project')
         new_button.clicked.connect(self.newProjectDialog)
-        hover_css = ':hover { border: none; background-color: #D0D0D0 }'
-        new_button.setStyleSheet(hover_css)
+        # hover_css = ':hover { border: none; background-color: #D0D0D0 }'
+        # new_button.setStyleSheet(hover_css)
         lh_panel.addWidget(new_button)
         self.recent_project_box = QWidget()
         self.populate_recent_project_box()
 
         lh_panel.addWidget(self.recent_project_box)
-        existing_button = QPushButton('&Open an existing project...')
-        existing_button.setStyleSheet(hover_css)
+        existing_button = PushButton('&Open an existing project...')
+        # existing_button.setStyleSheet(hover_css)
         existing_button.clicked.connect(self.openProjectDialog)
         lh_panel.addWidget(existing_button)
-        self.quitButton = QPushButton('&Quit')
-        self.quitButton.setStyleSheet(hover_css)
+        self.quitButton = PushButton('&Quit')
+        # self.quitButton.setStyleSheet(hover_css)
         lh_panel.addWidget(self.quitButton)
 
         rh_panel = QVBoxLayout()
         self.layout.addLayout(rh_panel)
         cwd = pathlib.Path(__file__).resolve().parent
+
+        class LinkImage(QLabel):
+            def __init__(self, image, url=None, width=250, height=250):
+                super().__init__()
+                self.setPixmap(QPixmap(image).scaled(width, height, Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
+                self.url = QUrl(url)
+
+            def mousePressEvent(self, event):
+                if self.url is not None:
+                    QDesktopServices.openUrl(self.url)
+
+            def enterEvent(self, ev, QEnterEvent=None):
+                self.setCursor(Qt.PointingHandCursor)
+
+            def exitEvent(self, ev, QExitEvent=None):
+                self.setCursor(Qt.ArrowCursor)
+
+        label = LinkImage(str(cwd / 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png'), 'https://www.molpro.net', 250,
+                          250)
         pixmap = QPixmap(str(cwd / 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png')).scaled(250, 250,
                                                                                                 QtCore.Qt.KeepAspectRatio,
                                                                                                 QtCore.Qt.SmoothTransformation)
-        label = QLabel('')
-        label.setPixmap(pixmap)
-        label.resize(pixmap.width(), pixmap.height())
+        # label = QLabel('')
+        # label.setPixmap(pixmap)
+        # label = QPushButton('')
+        # label.setStyleSheet('background-image: url({})'.format(pixmap))
+        # label.resize(pixmap.width(), pixmap.height())
+        # label = QToolButton()
+        # label.setIcon(QIcon(str(cwd / 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png')))
+        # label.clicked.connect(lambda: QDesktopServices.openUrl(QUrl('https://www.molpro.net')))
         rh_panel.addWidget(label)
         link_layout = QHBoxLayout()
         rh_panel.addLayout(link_layout)
@@ -66,21 +98,26 @@ class Chooser(QMainWindow):
             def __init__(self, text, url):
                 super().__init__()
                 self.setOpenExternalLinks(True)
-                self.setText('<A href="' + url + '">' + text + '</A>')
+                self.setText('<A style="text-decoration:none;color:black" href="' + url + '">' + text + '</A>')
+                self.setStyleSheet('color: black')
 
-        helpButton = QPushButton('Help', self)
+        helpButton = PushButton('Help', self)
         helpButton.clicked.connect(lambda: help_manager.show('Help', 'README'))
         self.shortcutHelp = QShortcut(QKeySequence.HelpContents, self)
         self.shortcutHelp.activated.connect(self.close)
-        helpButton.setStyleSheet(":hover {border: none ; background-color: #D0D0D0}  ")
+        # helpButton.setStyleSheet(":hover {border: none ; background-color: #D0D0D0}  ")
         link_layout.addWidget(helpButton)
-        link_layout.addWidget(LinkLabel('Molpro Manual', 'https://www.molpro.net/manual/doku.php'))
+        # manual_button = LinkLabel('Molpro Manual', 'https://www.molpro.net/manual/doku.php')
+        manual_button = PushButton('Molpro Manual', self)
+        # manual_button.setStyleSheet(":hover {border: none ; background-color: #D0D0D0}  ")
+        manual_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl('https://www.molpro.net/manual/doku.php')))
+        link_layout.addWidget(manual_button)
 
         # rh_panel.addWidget(QLabel("iMolpro version "+get_versions()['version']+'\n('+get_versions()['date']+')'))
         def version_():
             import subprocess
             import os
-            version=None
+            version = None
             if os.path.exists(pathlib.Path(__file__).resolve().parent / '.git'):
                 try:
                     version = subprocess.check_output(['git', 'describe', '--tags', '--dirty']).decode('ascii').strip()
@@ -95,7 +132,11 @@ class Chooser(QMainWindow):
                 return version
             else:
                 return 'unknown'
-        rh_panel.addWidget(QLabel("iMolpro version "+version_()))
+
+        version_label = LinkLabel("iMolpro version " + version_(), 'https://github.com/molpro/iMolpro')
+        version_label.setStyleSheet("font-size: 10px")
+        version_label.setAlignment(Qt.AlignCenter)
+        rh_panel.addWidget(version_label)
 
         self.setWindowFlag(Qt.FramelessWindowHint)
         self.showNormal()
@@ -130,26 +171,41 @@ class Chooser(QMainWindow):
 
     def populate_recent_project_box(self, max_items=10):
 
-        class RecentProjectButton(QPushButton):
+        class RecentProjectButton(QToolButton):
             def __init__(self, filename, index=None, parent=None):
                 self.parent = parent
                 import os
                 self.filename = os.path.expanduser(filename)
                 home_dir = os.path.expanduser('~')
                 reduced_filename = self.filename.replace(home_dir, '~')
-                super().__init__(('' if index is None or index > 9 else '&'+str(index)+': ')+reduced_filename)
+                super().__init__(parent)
+                max_length = 60
+                self.setText(('' if index is None or index > 9 else '&' + str(index) + ': ') + (
+                    reduced_filename if len(reduced_filename) <= max_length else ' ... ' + reduced_filename[
+                                                                                           -max_length + 5:]))
+                self.setContentsMargins(0, 0, 0, 0)
+
                 self.qaction = QAction(self)
-                if index <=9:
-                    self.setShortcut('Ctrl+'+str(index))
+                if index <= 9:
+                    self.setShortcut('Ctrl+' + str(index))
                 self.qaction.triggered.connect(self.action)
                 self.clicked.connect(self.qaction.triggered)
-                self.setStyleSheet("* {border: none } :hover { background-color: #D0D0D0}  ")
+                self.setStyleSheet("* {border: none } :hover { background-color: #F0F0F0}  ")
+                # self.setStyleSheet("* {border: none }")
+
+            def enterEvent(self, ev, QEnterEvent=None):
+                self.setCursor(Qt.PointingHandCursor)
+
+            def exitEvent(self, ev, QExitEvent=None):
+                self.setCursor(Qt.ArrowCursor)
 
             def action(self):
                 self.parent.window_manager.register(ProjectWindow(self.filename, self.parent.window_manager))
                 self.parent.hide()
 
         self.recent_project_box.setStyleSheet(" background-color: #F7F7F7 ")
+        self.recent_project_box.setMaximumWidth(400)
+        self.recent_project_box.setFixedWidth(400)
         if not self.recent_project_box.layout():
             QVBoxLayout(self.recent_project_box)
         layout = self.recent_project_box.layout()
