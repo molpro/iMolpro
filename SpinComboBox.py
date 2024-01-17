@@ -8,7 +8,7 @@ class SpinComboBox(QComboBox):
     labels = ['Singlet', 'Doublet', 'Triplet', 'Quartet', 'Quintet', 'Sextet', 'Septet', 'Octet']
     spin_changed = pyqtSignal('int')
 
-    def __init__(self, parent=None, initial_spin_2=None, maximum_spin_2=None, other_label='Other', auto_label='- auto -'):
+    def __init__(self, parent=None, initial_spin_2=None, maximum_spin_2=None, other_label='Other', auto_label='Automatic'):
         super().__init__(parent)
         self.other_label = other_label
         self.auto_label = auto_label
@@ -43,8 +43,7 @@ class SpinComboBox(QComboBox):
 
     def on_text_changed(self, text):
         if self.initialising: return
-        print('on_text_changed', text, self.labels)
-        self.spin_changed.emit(self.labels.index(text) if text in self.labels else -1)
+        self.spin_changed.emit(self.labels.index(text) if text in self.labels and text else -1)
 
 
 if __name__ == '__main__':

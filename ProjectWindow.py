@@ -1173,7 +1173,7 @@ class GuidedPane(QWidget):
         # self.spin_line.setValidator(QIntValidator())
         # self.spin_line.textChanged.connect(lambda text: self.input_specification_variable_change('spin', text))
         self.spin_line = SpinComboBox(self,0,14)
-        self.spin_line.spin_changed.connect(lambda ms2: self.input_specification_variable_change('spin', str(ms2) if ms2>0 else ''))
+        self.spin_line.spin_changed.connect(lambda ms2: self.input_specification_variable_change('spin', str(ms2) if ms2>=0 else ''))
 
         self.guided_combo_wave_fct_symm = QComboBox(self)
         self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
@@ -1269,9 +1269,6 @@ class GuidedPane(QWidget):
         return self.parent.input_specification
 
     def refresh(self):
-        # self.orbitals_input_action(
-        #     'postscripts' in self.input_specification and self.orbital_put_command in self.input_specification[
-        #         'postscripts'])
         self.guided_combo_orientation.setCurrentText(
             self.input_specification['orientation'] if 'orientation' in self.input_specification else
             list(molpro_input.orientation_options.keys())[0])
@@ -1283,23 +1280,10 @@ class GuidedPane(QWidget):
         else:
             self.charge_line.setText('0')
 
-        # spin_ = self.input_specification.open_shell_electrons
-        # print('initial spin_',spin_)
-        # if 'variables' in self.input_specification and 'spin' in self.input_specification['variables'] and int(self.input_specification['variables']['spin'])%2 == spin_%2:
-        #     spin_ = int(self.input_specification['variables']['spin'])
-        # if spin_ > 1 and ('variables' not in self.input_specification or 'spin' not in self.input_specification['variables'] or int(self.input_specification['variables']['spin']) != spin_):
-        #     if 'variables' not in self.input_specification: self.input_specification['variables']={}
-        #     print('force spin to',spin_)
-        #     self.input_specification['variables']['spin'] = str(spin_)
-        #     self.refresh_input_from_specification()
-        # self.spin_line.setText(str(self.input_specification.spin))
         self.spin_line.refresh(self.input_specification.spin)
 
         if self.input_specification is not None:
             base_method = re.sub('^df-', '', self.input_specification.method, flags=re.IGNORECASE)
-            # print('method',self.input_specification.method,'base_method',base_method)
-            # prefix = re.sub('-.*', '', self.input_specification['method']) if base_method != self.input_specification[
-            #     'method'] else None
             method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
             self.guided_combo_method.setCurrentIndex(method_index)
             if re.match('[ru]ks', self.input_specification.method, flags=re.IGNORECASE):
@@ -1402,16 +1386,18 @@ class GuidedPane(QWidget):
                 old_charge = int(self.input_specification['variables']['charge'])
             except:
                 old_charge = 0
-            value_ = str(int(value_) if value_.isdigit() else value_)
+            value_ = str(int(value_) if value_.isdigit() else value_ if value_ else '0')
+            if int(value_) != old_charge:
+                self.input_specification.spin = None
         self.input_specification['variables'][key] = value_
-        if key == 'spin':
-            self.input_specification.spin = value_
-        self.refresh_input_from_specification()
         if key == 'charge':
-            if value_ and int(value_) != old_charge:
-                self.input_specification.spin = 0
-                # print('spin set to',self.input_specification.spin)
             self.refresh()
+        if key == 'spin':
+            if value_:
+                self.input_specification.spin = value_
+            else:
+                self.input_specification.spin = None
+        self.refresh_input_from_specification()
 
     def refresh_input_from_specification(self):
         if self.trace: print('refresh_input_from_specification')

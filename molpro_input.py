@@ -578,8 +578,10 @@ class InputSpecification(UserDict):
         :return: 2*S, or if unspecified, minus the electron count %2
         :rtype: int
         """
+        # print('spin',self['variables'],self.open_shell_electrons)
         spin = int(self['variables']['spin']) if 'variables' in self and 'spin' in self[
-            'variables'] else -self.open_shell_electrons%2
+            'variables'] else (self.open_shell_electrons)%2-2
+        # print('calculated spin',spin)
         return spin
 
     @spin.setter
