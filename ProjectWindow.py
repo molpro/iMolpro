@@ -247,7 +247,7 @@ class ProjectWindow(QMainWindow):
 
         if self.input_pane.toPlainText().strip('\n ') == '':
             self.input_pane.setPlainText(
-                'geometry={0}.xyz\nbasis=cc-pV(T+d)Z-PP\nrhf'.format(
+                'geometry={0}.xyz\nbasis=cc-pV(T+d)Z-PP\ndf-rhf'.format(
                     os.path.basename(self.project.name).replace(' ', '-')))
             import_structure = ''
             if QMessageBox.question(self, '',
