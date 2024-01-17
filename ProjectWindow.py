@@ -1173,7 +1173,7 @@ class GuidedPane(QWidget):
         # self.spin_line.setValidator(QIntValidator())
         # self.spin_line.textChanged.connect(lambda text: self.input_specification_variable_change('spin', text))
         self.spin_line = SpinComboBox(self,0,14)
-        self.spin_line.spin_changed.connect(lambda text: self.input_specification_variable_change('spin', str(text)))
+        self.spin_line.spin_changed.connect(lambda ms2: self.input_specification_variable_change('spin', str(ms2) if ms2>0 else ''))
 
         self.guided_combo_wave_fct_symm = QComboBox(self)
         self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
