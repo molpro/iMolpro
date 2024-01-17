@@ -236,8 +236,8 @@ def test_open_shell_electrons(methods, tmpdir):
         'geometry={1;;Li 0 0 0}': 1,
         'geometry={2;;Li 0 0 0;H 1 0 0}': 0,
         'geometry={2;;Be 0 0 0;H 1 0 0}': 1,
-        'geometry={N}': 3,
-        'geometry={C}': 2,
+        'geometry={N}': 1,
+        'geometry={C}': 0,
         'geometry={C;He,C,1}': 0,
     }.items():
         specification = InputSpecification(test)

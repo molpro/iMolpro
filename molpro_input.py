@@ -77,7 +77,7 @@ class InputSpecification(UserDict):
                 self[k] = specification[k]
         if input is not None:
             self.parse(input)
-        if 'hamiltonian' not in self:
+        if 'hamiltonian' not in self and self.data:
             self['hamiltonian'] = 'PP'
 
     def parse(self, input: str, debug=False):
@@ -161,8 +161,8 @@ class InputSpecification(UserDict):
                         self['orbitals'].append(k)
             elif re.match('^geometry *= *{', group, re.IGNORECASE):
                 # print('geometry matched')
-                if 'steps' in self and self['steps']: self.data.clear(); return  # input too complex
-                if 'geometry' in self: self.data.clear(); return  # input too complex
+                if 'steps' in self and self['steps']: self.data.clear(); return self  # input too complex
+                if 'geometry' in self: self.data.clear(); return self  # input too complex
                 self['geometry'] = re.sub(';', '\n',
                                           re.sub('^geometry *= *{ *\n*', '', group + '\n', flags=re.IGNORECASE)).strip()
                 if '}' in self['geometry']:
@@ -176,8 +176,8 @@ class InputSpecification(UserDict):
                 self['geometry'] = self['geometry'].rstrip(' \n') + '\n'
                 geometry_active = not re.match('.*}.*', line)
             elif re.match('^geometry *=', line, re.IGNORECASE):
-                if 'steps' in self and self['steps']: self.data.clear(); return  # input too complex
-                if 'geometry' in self: self.data.clear(); return  # input too complex
+                if 'steps' in self and self['steps']: self.data.clear(); return self  # input too complex
+                if 'geometry' in self: self.data.clear(); return self  # input too complex
                 self['geometry'] = re.sub('geometry *= *', '', line, flags=re.IGNORECASE)
                 self['geometry'] = re.sub(' *!.*', '', self['geometry'])
                 self['geometry_external'] = True
@@ -185,7 +185,7 @@ class InputSpecification(UserDict):
                 raise ValueError('** warning should not happen basis', line)
                 self['basis'] = 'default=' + re.sub('^basis *, *', '', line, flags=re.IGNORECASE).rstrip('\n ')
             elif re.match('^basis *= *', line, re.IGNORECASE):
-                if 'steps' in self and self['steps']: self.data.clear(); return  # input too complex
+                if 'steps' in self and self['steps']: self.data.clear(); return self  # input too complex
                 self['basis'] = {'default': (re.sub(',.*', '', re.sub(' *basis *= *{*(default=)*', '',
                                                                       group.replace('{', '').replace('}', ''),
                                                                       flags=re.IGNORECASE)))}
@@ -196,7 +196,7 @@ class InputSpecification(UserDict):
                     self['basis']['elements'][ff[0][0].upper() + ff[0][1:].lower()] = ff[1].strip('\n ')
                 # print('made basis specification',self)
             elif re.match('^basis *=', line, re.IGNORECASE):
-                if 'steps' in self and self['steps']: self.data.clear(); return  # input too complex
+                if 'steps' in self and self['steps']: self.data.clear(); return self  # input too complex
                 basis = re.sub('basis *= *', '', line, flags=re.IGNORECASE)
                 basis = re.sub(' *!.*', '', basis)
                 self['basis'] = 'default=' + basis
@@ -237,7 +237,8 @@ class InputSpecification(UserDict):
                 elif 'density_fitting' in self and self['density_fitting'] and not any(
                         [step_['command'] == command for job_type in job_type_steps for step_ in
                          job_type_steps[job_type]]):
-                    return {}
+                    self.data.clear()
+                    return self
                 method_options = (re.sub(';.*$', '', line.lower()).replace('}', '') + ',').split(',', 1)[1]
 
                 method_options_ = method_options.strip(', \n').split(',')
@@ -319,7 +320,7 @@ class InputSpecification(UserDict):
             del self['variables']['dkho']
         if 'variables' in self:
             for k, v in self['variables'].items():
-                if v != '' and (k != 'charge' or v != '0') and (k != 'spin' or int(v) > 1):
+                if v != '' and (k != 'charge' or v != '0'):
                     _input += k + '=' + v + '\n'
         if len(self['variables']) == 0: del self['variables']
         if 'properties' in self:
@@ -574,15 +575,21 @@ class InputSpecification(UserDict):
     def spin(self):
         r"""
         Evaluate 2*S
-        :return:
+        :return: 2*S, or if unspecified, minus the electron count %2
         :rtype: int
         """
+        # print('spin',self['variables'],self.open_shell_electrons)
         spin = int(self['variables']['spin']) if 'variables' in self and 'spin' in self[
-            'variables'] else self.open_shell_electrons % 2
+            'variables'] else (self.open_shell_electrons)%2-2
+        # print('calculated spin',spin)
         return spin
 
     @spin.setter
     def spin(self, value):
+        if value is None:
+            if 'variables' in self and 'spin' in self['variables']:
+                del self['variables']['spin']
+            return
         try:
             value_ = int(value)
             if value_%2 != self.open_shell_electrons%2: raise ValueError
