@@ -111,8 +111,8 @@ class InputSpecification(UserDict):
         while (canonicalised_input_ != old_input_ and count):
             count -=1
             old_input_ = canonicalised_input_
-            canonicalised_input_= re.sub('basis={(.+[^,])\n(.+=.+)}',r'basis={\1,\2}',canonicalised_input_, flags=re.DOTALL|re.IGNORECASE)
-        canonicalised_input_=re.sub('basis={(.*)\n*}',r'basis, \1',canonicalised_input_, flags=re.DOTALL|re.IGNORECASE)
+            canonicalised_input_= re.sub('basis={([^}]+[^,}])\n([^}]+=[^}]+)}',r'basis={\1,\2}',canonicalised_input_, flags=re.DOTALL|re.IGNORECASE)
+        canonicalised_input_=re.sub('basis={([^}]*)\n*}',r'basis, \1',canonicalised_input_, flags=re.DOTALL|re.IGNORECASE)
 
         # parse and protect {....}
         line_end_protected_ = '±'

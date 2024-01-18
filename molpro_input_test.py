@@ -57,6 +57,7 @@ def test_create_input(methods):
         'geometry={H};ks,b3lyp',
         'geometry={H};ccsd,option1,option2=thing,,',
         'geometry={H};ks,b3lyp,option1,option2,,',
+        # 'geometry={F;H,F,1.7};basis\ndefault=cc-pvtz\nBe=svp\nend\nrhf;ccsd'
     ]:
         # print('new one---\n',input)
         specification = InputSpecification(input)
