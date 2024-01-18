@@ -26,6 +26,8 @@ PATH=/usr/bin:$PATH pyi-makespec \
 sed -i -e '$d' iMolpro.spec
 cat << 'EOF' >> iMolpro.spec
     info_plist={
+      'NSPrincipalClass' : 'NSApplication',
+      'NSHighResolutionCapable' : 'True',
       'CFBundleDocumentTypes': [
         {
           'CFBundleTypeExtensions': ['molpro'],
