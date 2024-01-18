@@ -104,7 +104,15 @@ class InputSpecification(UserDict):
         variables = {}
         geometry_active = False
         self['steps'] = []
-        canonicalised_input_ = input
+        canonicalised_input_ = re.sub('basis\n(.*)\n *end', r'basis={\1}', input,
+                                      flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
+        old_input_=''
+        count=100
+        while (canonicalised_input_ != old_input_ and count):
+            count -=1
+            old_input_ = canonicalised_input_
+            canonicalised_input_= re.sub('basis={(.+[^,])\n(.+=.+)}',r'basis={\1,\2}',canonicalised_input_, flags=re.DOTALL|re.IGNORECASE)
+        canonicalised_input_=re.sub('basis={(.*)\n*}',r'basis, \1',canonicalised_input_, flags=re.DOTALL|re.IGNORECASE)
 
         # parse and protect {....}
         line_end_protected_ = '±'
@@ -183,7 +191,6 @@ class InputSpecification(UserDict):
                 self['geometry_external'] = True
             elif command == 'basis':
                 raise ValueError('** warning should not happen basis', line)
-                self['basis'] = 'default=' + re.sub('^basis *, *', '', line, flags=re.IGNORECASE).rstrip('\n ')
             elif re.match('^basis *= *', line, re.IGNORECASE):
                 if 'steps' in self and self['steps']: self.data.clear(); return self  # input too complex
                 self['basis'] = {'default': (re.sub(',.*', '', re.sub(' *basis *= *{*(default=)*', '',
