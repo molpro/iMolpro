@@ -64,9 +64,12 @@ class Chooser(QMainWindow):
         class LinkImage(QLabel):
             def __init__(self, image, url=None, width=250, height=250):
                 super().__init__()
-                self.setPixmap(QPixmap(image).scaled(width, height, Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
+                ratio = QGuiApplication.primaryScreen().devicePixelRatio()
+                self.setPixmap(QPixmap(image).scaled(int(width * ratio), int(height * ratio), Qt.KeepAspectRatio,
+                                                     QtCore.Qt.SmoothTransformation))
+                self.pixmap().setDevicePixelRatio(ratio)
                 self.url = QUrl(url)
-                self.pixmap().setDevicePixelRatio(QGuiApplication.primaryScreen().devicePixelRatio())
+                self.setAlignment(Qt.AlignCenter)
 
             def mousePressEvent(self, event):
                 if self.url is not None:
@@ -78,8 +81,8 @@ class Chooser(QMainWindow):
             def exitEvent(self, ev, QExitEvent=None):
                 self.setCursor(Qt.ArrowCursor)
 
-        label = LinkImage(str(cwd / 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png'), 'https://www.molpro.net', 392,
-                          434)  # predicated on 3139 x 3475 image
+        label = LinkImage(str(cwd / 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png'), 'https://www.molpro.net', 186,
+                          217)  # predicated on 3139 x 3475 image
         label.setContentsMargins(0, 30, 0, 20)
         rh_panel.addWidget(label)
         link_layout = QHBoxLayout()
