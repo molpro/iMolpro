@@ -11,7 +11,7 @@ from utilities import force_suffix
 
 import pymolpro
 from PyQt5 import QtCore
-from PyQt5.QtGui import QPixmap, QKeySequence, QDesktopServices, QIcon
+from PyQt5.QtGui import QPixmap, QKeySequence, QDesktopServices, QGuiApplication
 from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
     QDesktopWidget, QAction, QShortcut, QToolButton
 
@@ -66,6 +66,7 @@ class Chooser(QMainWindow):
                 super().__init__()
                 self.setPixmap(QPixmap(image).scaled(width, height, Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
                 self.url = QUrl(url)
+                self.pixmap().setDevicePixelRatio(QGuiApplication.primaryScreen().devicePixelRatio())
 
             def mousePressEvent(self, event):
                 if self.url is not None:
@@ -77,19 +78,9 @@ class Chooser(QMainWindow):
             def exitEvent(self, ev, QExitEvent=None):
                 self.setCursor(Qt.ArrowCursor)
 
-        label = LinkImage(str(cwd / 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png'), 'https://www.molpro.net', 250,
-                          250)
-        pixmap = QPixmap(str(cwd / 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png')).scaled(250, 250,
-                                                                                                QtCore.Qt.KeepAspectRatio,
-                                                                                                QtCore.Qt.SmoothTransformation)
-        # label = QLabel('')
-        # label.setPixmap(pixmap)
-        # label = QPushButton('')
-        # label.setStyleSheet('background-image: url({})'.format(pixmap))
-        # label.resize(pixmap.width(), pixmap.height())
-        # label = QToolButton()
-        # label.setIcon(QIcon(str(cwd / 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png')))
-        # label.clicked.connect(lambda: QDesktopServices.openUrl(QUrl('https://www.molpro.net')))
+        label = LinkImage(str(cwd / 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png'), 'https://www.molpro.net', 392,
+                          434)  # predicated on 3139 x 3475 image
+        label.setContentsMargins(0, 30, 0, 20)
         rh_panel.addWidget(label)
         link_layout = QHBoxLayout()
         rh_panel.addLayout(link_layout)
