@@ -561,9 +561,9 @@ class InputSpecification(UserDict):
         total_nuclear_charge = 0
         for line in geometry.replace(';', '\n').split('\n'):
             line_number += 1
-            if line.isdigit() and line_number == 1: start_line = 3
+            if line.strip().isdigit() and line_number == 1: start_line = 3
             if line_number >= start_line and line:
-                word = line.replace(' ', ',').split(',')[0]
+                word = line.strip().replace(' ', ',').split(',')[0]
                 word = word[0].upper() + word[1:].lower()
                 atomic_number = periodic_table.index(word) + 1
                 total_nuclear_charge += atomic_number
