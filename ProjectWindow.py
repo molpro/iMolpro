@@ -1248,7 +1248,7 @@ class GuidedPane(QWidget):
 
         self.guided_orbitals_input = OrbitalInput(self)
         self.guided_layout.addWidget(RowOfTitledWidgets({
-            'Export orbitals': self.guided_orbitals_input,
+            'Express orbitals': self.guided_orbitals_input,
             'Expectation values': self.combo_properties,
         }, title='Properties'))
         misc_layout = QHBoxLayout()
@@ -1528,8 +1528,8 @@ class OrbitalInput(CheckableComboBox):
     Helper for constructing input for producing various kinds of orbitals
     """
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent=None, null_text='None'):
+        super().__init__(null_text=null_text)
         self.parent = parent
         self.refresh()
         self.model().dataChanged.connect(self.action)
@@ -1559,7 +1559,7 @@ class PropertyInput(CheckableComboBox):
     """
 
     def __init__(self, parent=None):
-        super().__init__(parent)
+        super().__init__(parent, null_text='Dipole only')
         self.parent = parent
         self.addItems(molpro_input.properties.keys())
         if 'properties' in self.parent.input_specification:

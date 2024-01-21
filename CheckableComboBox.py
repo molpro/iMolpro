@@ -15,12 +15,15 @@ class CheckableComboBox(QComboBox):
             size.setHeight(20)
             return size
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, null_text=None, padding=5, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Make the combo editable to set a custom text, but readonly
+        self.null_text = null_text
         self.setEditable(True)
+        self.padding = padding
         self.lineEdit().setReadOnly(True)
+        self.lineEdit().setStyleSheet('padding-left: ' + str(padding) + 'px')
         # Make the lineedit the same color as QPushButton
         palette = qApp.palette()
         palette.setBrush(QPalette.Base, palette.button())
@@ -93,7 +96,9 @@ class CheckableComboBox(QComboBox):
 
         # Compute elided text (with "...")
         metrics = QFontMetrics(self.lineEdit().font())
-        elidedText = metrics.elidedText(text, Qt.ElideRight, self.lineEdit().width())
+        elidedText = metrics.elidedText(text, Qt.ElideRight, self.lineEdit().width() - 2 * self.padding)
+        if not text and self.null_text is not None:
+            elidedText = self.null_text
         self.lineEdit().setText(elidedText)
 
     def addItem(self, text, data=None):
