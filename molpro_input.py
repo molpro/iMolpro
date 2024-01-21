@@ -50,6 +50,7 @@ orientation_options = {
 }
 
 properties = {
+    'Dipole moment': 'gexpec,dm',
     'Quadrupole moment': 'gexpec,qm',
     'Second moment': 'gexpec,sm',
     'Kinetic energy': 'gexpec,ekin',
