@@ -4,12 +4,13 @@ import re
 from molpro_input import equivalent, canonicalise, InputSpecification, supported_methods
 import pytest
 
+
 @pytest.fixture
 def methods():
     import molpro_input
-    molpro_input.supported_methods = ['RHF', 'CCSD', 'RKS', 'CASSCF', 'MRCI','UHF','UKS','OCC','OPTG','FREQUENCIES','THERMO']
+    molpro_input.supported_methods = ['RHF', 'CCSD', 'RKS', 'CASSCF', 'MRCI', 'UHF', 'UKS', 'OCC', 'OPTG',
+                                      'FREQUENCIES', 'THERMO']
     yield supported_methods
-
 
 
 def test_file(methods, tmpdir):
@@ -25,7 +26,7 @@ def test_create_input(methods):
         {'geometry': 'F\nH,F,1.7',
          'basis': {'default': 'cc-pVTZ', 'elements': {}},
          'steps': [{'command': 'rks', 'options': ['b3lyp']}, {'command': 'ccsd'}],
-            'hamiltonian':'AE',
+         'hamiltonian': 'AE',
          },
     ]:
         specification = InputSpecification(specification=spec)
@@ -64,7 +65,7 @@ def test_create_input(methods):
         regenerated_input = specification.input()
         regenerated_specification = InputSpecification(regenerated_input)
         assert regenerated_specification == specification
-        if not equivalent(regenerated_input , input):
+        if not equivalent(regenerated_input, input):
             print('input', input)
             print('specification', specification)
             print('regenerated_specification', regenerated_specification)
@@ -72,7 +73,8 @@ def test_create_input(methods):
             canonicalised_input = canonicalise(input)
             print('canonicalised input', canonicalised_input, type(canonicalised_input))
             canonicalised_regenerated_input = canonicalise(regenerated_input)
-            print('canonicalised regenerated_input', canonicalised_regenerated_input,type(canonicalised_regenerated_input))
+            print('canonicalised regenerated_input', canonicalised_regenerated_input,
+                  type(canonicalised_regenerated_input))
             assert canonicalised_input == canonicalised_regenerated_input
 
 
@@ -89,6 +91,7 @@ def test_recreate_input(methods):
         'geometry=wed.xyz\nbasis=cc-pVTZ-PP\nset,charge=1,spin=1,thing=whatsit\nxx=yy,p=q\nrhf',
         'geometry={Ne};{rhf};ccsd;{frequencies;thermo,temp=298;another}',
         'symmetry,nosym;geometry=ChemSpider-937.xyz;basis=cc-pV(T+d)Z-PP;gexpec,qm;gthresh,energy=1e-14;{df-rhf}',
+        'geometry={Ne};basis=cc-pV(T+d)Z-PP;gprint,basis;{df-rhf}',
     ]:
         specification = InputSpecification(input)
         regenerated_input = specification.input()
@@ -178,11 +181,13 @@ def test_method(methods):
         for method in ['rhf', 'ccsd', 'ks']:
             specification.method = method
             assert specification.method == method
+
+
 def test_method_options(methods):
     for test, outcome in {
-        '':None,
-        'rhf':'rhf',
-        'rhf;ccsd':'ccsd',
+        '': None,
+        'rhf': 'rhf',
+        'rhf;ccsd': 'ccsd',
         'rhf;ccsd;optg;frequencies': 'ccsd',
         'rhf;ccsd;{optg};frequencies': 'ccsd',
         'rhf;ccsd;mrci;{optg};frequencies': None,
@@ -193,6 +198,8 @@ def test_method_options(methods):
             options = {'option1': 'value1', 'option2': 'value2'}
             specification.method_options = options
             assert specification.method_options == options
+
+
 def test_job_type(methods):
     for test, outcome in {
         '': 'Single point energy',
@@ -216,6 +223,7 @@ def test_job_type(methods):
             # print('after',specification, specification.job_type)
             assert specification.job_type == jt
 
+
 def test_density_functional(methods):
     for test, outcome in {
         '': None,
@@ -230,6 +238,7 @@ def test_density_functional(methods):
         if specification.density_functional:
             specification.density_functional = 'PBE'
             assert specification.density_functional == 'PBE'
+
 
 def test_open_shell_electrons(methods, tmpdir):
     for test, outcome in {
@@ -248,6 +257,6 @@ def test_open_shell_electrons(methods, tmpdir):
         open_shell_xyz_file = tmpdir / 'open_shell_electrons.xyz'
         with open(open_shell_xyz_file, 'w') as f:
             f.write(re.sub('.*{(.*)}.*', r'\1', test))
-        specification = InputSpecification(re.sub('{.*}',str(open_shell_xyz_file), test))
+        specification = InputSpecification(re.sub('{.*}', str(open_shell_xyz_file), test))
         assert specification.open_shell_electrons == outcome
         os.remove(open_shell_xyz_file)

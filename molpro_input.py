@@ -107,13 +107,15 @@ class InputSpecification(UserDict):
         self['steps'] = []
         canonicalised_input_ = re.sub('basis\n(.*)\n *end', r'basis={\1}', input,
                                       flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
-        old_input_=''
-        count=100
+        old_input_ = ''
+        count = 100
         while (canonicalised_input_ != old_input_ and count):
-            count -=1
+            count -= 1
             old_input_ = canonicalised_input_
-            canonicalised_input_= re.sub('basis={([^}]+[^,}])\n([^}]+=[^}]+)}',r'basis={\1,\2}',canonicalised_input_, flags=re.DOTALL|re.IGNORECASE)
-        canonicalised_input_=re.sub('basis={([^}]*)\n*}',r'basis, \1',canonicalised_input_, flags=re.DOTALL|re.IGNORECASE)
+            canonicalised_input_ = re.sub('basis={([^}]+[^,}])\n([^}]+=[^}]+)}', r'basis={\1,\2}', canonicalised_input_,
+                                          flags=re.DOTALL | re.IGNORECASE)
+        canonicalised_input_ = re.sub('basis={([^}]*)\n*}', r'basis, \1', canonicalised_input_,
+                                      flags=re.DOTALL | re.IGNORECASE)
 
         # parse and protect {....}
         line_end_protected_ = '±'
@@ -222,7 +224,8 @@ class InputSpecification(UserDict):
                     variables[key] = value.replace('!', ',')  # unprotect
             elif command in parameter_commands.values():
                 spec_field = [k for k, v in parameter_commands.items() if v == command][0]
-                fields = re.sub('^ *gthresh *,*', '', line.strip().lower(), flags=re.IGNORECASE).split(',')
+                fields = re.sub('^ *' + command.lower() + ' *,*', '', line.strip().lower(), flags=re.IGNORECASE).split(
+                    ',')
                 self[spec_field] = {
                     field.split('=')[0].strip().lower(): field.split('=')[1].strip().lower() if len(
                         field.split('=')) > 1 else '' for field in fields}
@@ -568,7 +571,9 @@ class InputSpecification(UserDict):
                 word = word[0].upper() + word[1:].lower()
                 atomic_number = periodic_table.index(word) + 1
                 total_nuclear_charge += atomic_number
-        charge = int(self['variables']['charge']) if 'variables' in self and 'charge' in self['variables'] and  self['variables']['charge'] != '' and  self['variables']['charge'] != '-' else 0
+        charge = int(self['variables']['charge']) if 'variables' in self and 'charge' in self['variables'] and \
+                                                     self['variables']['charge'] != '' and self['variables'][
+                                                         'charge'] != '-' else 0
         total_electrons = total_nuclear_charge - charge
         # print('total_nuclear_charge',total_nuclear_charge,'total_electrons',total_electrons)
         electrons = total_electrons % 2
@@ -588,7 +593,7 @@ class InputSpecification(UserDict):
         """
         # print('spin',self['variables'],self.open_shell_electrons)
         spin = int(self['variables']['spin']) if 'variables' in self and 'spin' in self[
-            'variables'] else (self.open_shell_electrons)%2-2
+            'variables'] else (self.open_shell_electrons) % 2 - 2
         # print('calculated spin',spin)
         return spin
 
@@ -600,7 +605,7 @@ class InputSpecification(UserDict):
             return
         try:
             value_ = int(value)
-            if value_%2 != self.open_shell_electrons%2: raise ValueError
+            if value_ % 2 != self.open_shell_electrons % 2: raise ValueError
         except ValueError:
             value_ = self.open_shell_electrons % 2
         # print('in spin setter, value=', value,value_, 'electrons', self.open_shell_electrons)
