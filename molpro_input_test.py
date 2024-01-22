@@ -88,6 +88,7 @@ def test_recreate_input(methods):
         'geometry=newnewnew.xyz\nbasis=cc-pVTZ-PP\nrhf',
         'geometry=wed.xyz\nbasis=cc-pVTZ-PP\nset,charge=1,spin=1,thing=whatsit\nxx=yy,p=q\nrhf',
         'geometry={Ne};{rhf};ccsd;{frequencies;thermo,temp=298;another}',
+        'symmetry,nosym;geometry=ChemSpider-937.xyz;basis=cc-pV(T+d)Z-PP;gexpec,qm;gthresh,energy=1e-14;{df-rhf}',
     ]:
         specification = InputSpecification(input)
         regenerated_input = specification.input()
