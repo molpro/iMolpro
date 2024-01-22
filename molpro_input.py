@@ -222,11 +222,14 @@ class InputSpecification(UserDict):
                     variables[key] = value.replace('!', ',')  # unprotect
             elif command in parameter_commands.values():
                 spec_field = [k for k, v in parameter_commands.items() if v == command][0]
+                print('found parameter command',command,spec_field)
                 fields = re.sub('^ *gthresh *,*', '', line.strip().lower(), flags=re.IGNORECASE).split(',')
+                print('fields',fields)
                 self[spec_field] = {
                     field.split('=')[0].strip().lower(): field.split('=')[1].strip().lower() if len(
                         field.split('=')) > 1 else '' for field in fields[1:]}
                 if '' in self[spec_field]: del self[spec_field]['']
+                print('after processing parameter command',self)
 
             elif command == 'core':
                 self['core_correlation'] = (line + ',').split(',')[1].lower()
