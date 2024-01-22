@@ -608,6 +608,29 @@ class InputSpecification(UserDict):
             self['variables'] = {}
         self['variables']['spin'] = str(value_)
 
+    def polish(self):
+        self.clean_coupled_cluster_property_input()
+
+    def clean_coupled_cluster_property_input(self):
+        for step in self['steps']:
+            if step['command'].lower()[:4] in ['ccsd', 'bccd', 'qcisd']:
+                if 'directives' in step:
+                    for directive in step['directives']:
+                        if directive['command'].lower() == 'expec':
+                            operator = directive['options'][0].lower().replace('expec,', '')
+                            property = [k for k, v in properties.items() if v == 'gexpec,' + operator][0]
+                            if 'properties' in self and property not in \
+                                    self['properties']:
+                                step['directives'].remove(directive)
+                for property in self['properties']:
+                    cmd = properties[property]
+                    operator = cmd.lower().replace('gexpec,', '').strip()
+                    directive = {'command': 'expec', 'options': [operator]}
+                    if 'directives' not in step or directive not in step['directives']:
+                        if 'directives' not in step:
+                            step['directives'] = []
+                        step['directives'].append(directive)
+
 
 def canonicalise(input):
     result = re.sub('\n}', '}',

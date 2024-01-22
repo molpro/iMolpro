@@ -1366,6 +1366,7 @@ class GuidedPane(QWidget):
             self.method_changed_signal.emit(value)
             if self.parent.initialised_from_input:
                 self.method_asserted = True
+            self.input_specification.polish()
         elif key == 'job_type':
             self.input_specification.job_type = value
         elif key == 'density_functional':
@@ -1572,21 +1573,5 @@ class PropertyInput(CheckableComboBox):
     def refresh(self, text):
         self.parent.input_specification['properties'] = [k for k, v in molpro_input.properties.items() for t in
                                                          self.currentData() if t == k]
-        for step in self.parent.input_specification['steps']:
-            if step['command'].lower()[:4] in ['ccsd','bccd','qcisd']:
-                if 'directives' in step:
-                    for directive in step['directives']:
-                        if directive['command'].lower() == 'expec':
-                            operator = directive['options'][0].lower().replace('expec,','')
-                            property = [k for k, v in molpro_input.properties.items() if v == 'gexpec,'+operator][0]
-                            if 'properties' in self.parent.input_specification and property not in self.parent.input_specification['properties']:
-                                step['directives'].remove(directive)
-                for property in self.parent.input_specification['properties']:
-                    cmd = molpro_input.properties[property]
-                    operator = cmd.lower().replace('gexpec,','').strip()
-                    directive = {'command':'expec', 'options':[operator]}
-                    if 'directives' not in step or directive not in step['directives']:
-                        if 'directives' not in step:
-                            step['directives'] = []
-                        step['directives'].append(directive)
+        self.parent.input_specification.polish()
         self.parent.refresh_input_from_specification()
