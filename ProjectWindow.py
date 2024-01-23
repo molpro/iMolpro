@@ -887,6 +887,7 @@ Jmol.jmolHtml("</p>")
                 self.project.filename(run=-1)))
         filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project',
                                                      str(pathlib.Path(_dir) / '*'),
+                                                     "Geometry (*.xyz)",
                                                      options=QFileDialog.DontResolveSymlinks)
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
