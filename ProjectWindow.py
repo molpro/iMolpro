@@ -12,7 +12,7 @@ from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
-    QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox
+    QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication
 from PyQt5.QtGui import QIntValidator, QFont
 from pymolpro import Project
 from openbabel import pybel
@@ -333,7 +333,7 @@ class ProjectWindow(QMainWindow):
         menubar.addSeparator('Edit')
         menubar.addAction('Structure', 'Edit', self.edit_input_structure, 'Ctrl+D', 'Edit molecular geometry')
         menubar.addAction('Cut', 'Edit', self.input_pane.cut, 'Ctrl+X', 'Cut')
-        menubar.addAction('Copy', 'Edit', self.input_pane.copy, 'Ctrl+C', 'Copy')
+        menubar.addAction('Copy', 'Edit', lambda: QApplication.focusWidget().copy(), 'Ctrl+C', 'Copy')
         menubar.addAction('Paste', 'Edit', self.input_pane.paste, 'Ctrl+V', 'Paste')
         menubar.addAction('Undo', 'Edit', self.input_pane.undo, 'Ctrl+Z', 'Undo')
         menubar.addAction('Redo', 'Edit', self.input_pane.redo, 'Shift+Ctrl+Z', 'Redo')
