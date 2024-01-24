@@ -365,7 +365,7 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Next output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
             (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+]')
         menubar.addAction('Previous output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
-            (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+[')
+            (self.output_tabs.currentIndex() - 1) % len(self.output_tabs)), 'Alt+[')
         self.old_output_menu = OldOutputMenu(self)
         menubar.addSubmenu(self.old_output_menu, 'View')
         menubar.addSeparator('View')
