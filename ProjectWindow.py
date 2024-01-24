@@ -16,7 +16,6 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBo
     QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication
 from PyQt5.QtGui import QIntValidator, QFont
 from pymolpro import Project
-from openbabel import pybel
 
 import molpro_input
 from SpinComboBox import SpinComboBox
@@ -899,21 +898,9 @@ Jmol.jmolHtml("</p>")
         _dir = settings['geometry_directory'] if 'geometry_directory' in settings else (
             settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
                 self.project.filename(run=-1)))
-        babel_suffixes = ['abinit', 'acesout', 'acr', 'adfband', 'adfdftb', 'adfout', 'alc', 'aoforce', 'arc', 'axsf',
-                          'bgf', 'box', 'bs', 'c09out', 'c3d1', 'c3d2', 'caccrt', 'car', 'castep', 'cif', 'cml',
-                          'CONFIG', 'CONTCAR', 'CONTFF', 'crk3d', 'cub', 'cube', 'dallog', 'dalmol', 'dmol', 'dx',
-                          'ent', 'exyz', 'fa', 'fasta', 'fch', 'fchk', 'fck', 'fhiaims', 'fsa', 'g03', 'g09', 'g16',
-                          'g92', 'g94', 'g98', 'gal', 'gam', 'gamess', 'gamin', 'gamout', 'got', 'gpr', 'gro', 'gukin',
-                          'gukout', 'gzmat', 'hin', 'HISTORY', 'inp', 'ins', 'jin', 'jout', 'log', 'lpmd', 'mcdl',
-                          'mcif', 'MDFF', 'mdl', 'ml2', 'mmcif', 'mmd', 'mmod', 'mol', 'mol2', 'mold', 'molden', 'molf',
-                          'moo', 'mop', 'mopcrt', 'mopin', 'mopout', 'mpc', 'mpo', 'mpqc', 'mrv', 'msi', 'nwo', 'orca',
-                          'outmol', 'output', 'pc', 'pcjson', 'pcm', 'pdb', 'pdbqt', 'pos', 'POSCAR', 'POSFF', 'pqr',
-                          'pqs', 'prep', 'pwscf', 'qcout', 'res', 'rsmi', 'rxn', 'sd', 'sdf', 'siesta', 'smi', 'smiles',
-                          'smy', 'sy2', 't41', 'tdd', 'text', 'therm', 'tmol', 'txyz', 'unixyz', 'VASP', 'vmol', 'xsf',
-                          'xyz', 'yob', ]
         filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project',
                                                      str(pathlib.Path(_dir) / '*'),
-                                                     'Geometry (' + ' *.'.join(babel_suffixes) + ')',
+                                                     "Geometry (*.xyz)",
                                                      options=QFileDialog.DontResolveSymlinks)
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
@@ -921,24 +908,15 @@ Jmol.jmolHtml("</p>")
             return filename
 
     def adopt_structure_file(self, filename):
-        filename_ = filename
-        split = os.path.splitext(filename)
-        self.project.import_file(filename)
-        basename = os.path.basename(filename)
-        if len(split) > 1:
-            ext = split[1][1:]
-            if ext != 'xyz':
-                mol = next(pybel.readfile(ext, filename))
-                basename = os.path.basename(split[0] + '.xyz')
-                with open(pathlib.Path(self.project.filename(run=-1)) / basename, 'w') as f:
-                    f.write(mol.write('xyz'))
-        text = self.input_pane.toPlainText()
-        if re.search(r'geometry *= *[-_./\w]+ *[;\n]', text, flags=re.IGNORECASE):
-            self.input_pane.setPlainText(
-                re.sub('geometry *=.*[\n;]', 'geometry=' + basename + '\n', text))
-            self.rebuild_vod_selector()
-        else:
-            self.input_pane.setPlainText('geometry=' + basename + '\n' + text)
+        if os.path.exists(filename):
+            self.project.import_file(filename)
+            text = self.input_pane.toPlainText()
+            if re.search(r'geometry *= *[-_./\w]+ *[;\n]', text, flags=re.IGNORECASE):
+                self.input_pane.setPlainText(
+                    re.sub('geometry *=.*[\n;]', 'geometry=' + os.path.basename(filename) + '\n', text))
+                self.rebuild_vod_selector()
+            else:
+                self.input_pane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
 
     def database_import_structure(self):
         if filename := database_choose_structure():
@@ -1208,9 +1186,8 @@ class GuidedPane(QWidget):
         # self.spin_line = QLineEdit()
         # self.spin_line.setValidator(QIntValidator())
         # self.spin_line.textChanged.connect(lambda text: self.input_specification_variable_change('spin', text))
-        self.spin_line = SpinComboBox(self, 0, 14)
-        self.spin_line.spin_changed.connect(
-            lambda ms2: self.input_specification_variable_change('spin', str(ms2) if ms2 >= 0 else ''))
+        self.spin_line = SpinComboBox(self,0,14)
+        self.spin_line.spin_changed.connect(lambda ms2: self.input_specification_variable_change('spin', str(ms2) if ms2>=0 else ''))
 
         self.guided_combo_wave_fct_symm = QComboBox(self)
         self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
