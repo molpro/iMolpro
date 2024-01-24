@@ -211,6 +211,7 @@ class ProjectWindow(QMainWindow):
         button_layout_2.addWidget(self.backend_selector)
         button_layout_2.addWidget(self.backend_parameter_button)
         left_layout.addLayout(button_layout_2)
+        left_layout.addStretch()
         left_layout.addWidget(self.statusBar)
         self.input_tabs.addTab(self.input_pane, 'freehand')
         self.guided_pane = GuidedPane(self)
