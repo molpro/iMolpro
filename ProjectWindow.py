@@ -195,11 +195,6 @@ class ProjectWindow(QMainWindow):
         self.statusBar.setMaximumWidth(400)
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.run_button)
-        # button_layout.addWidget(self.killButton)
-        self.vod_selector = QComboBox(self)
-        vod_select_layout = QFormLayout()
-        button_layout.addLayout(vod_select_layout)
-        vod_select_layout.addRow('Display:', self.vod_selector)
         left_layout.addLayout(button_layout)
         button_layout_2 = QHBoxLayout()
         self.backend_selector = QComboBox(self)
@@ -244,7 +239,6 @@ class ProjectWindow(QMainWindow):
         self.layout.addLayout(top_layout)
 
         self.output_panes['out'].textChanged.connect(self.rebuild_vod_selector)
-        self.vod_selector.currentTextChanged.connect(self.vod_selector_action)
         # self.minimum_window_size = self.window().size()
 
         if self.input_pane.toPlainText().strip('\n ') == '':
@@ -255,12 +249,9 @@ class ProjectWindow(QMainWindow):
             if QMessageBox.question(self, '',
                                     'Would you like to import the molecular geometry from a file?',
                                     defaultButton=QMessageBox.Yes) == QMessageBox.Yes:
-                if import_structure := self.import_structure():
-                    self.vod_selector.setCurrentText('Edit ' + os.path.basename(import_structure))
-            if not import_structure and (database_import := self.database_import_structure()):
-                self.vod_selector.setCurrentText('Edit ' + os.path.basename(str(database_import)))
-            self.input_specification = InputSpecification(self.input_pane.toPlainText(),
-                                                          directory=self.project.filename())
+                import_structure = self.import_structure()
+            if not import_structure:
+                import_structure = self.database_import_structure()
 
         self.input_tabs.setCurrentIndex(1 if self.guided_possible() else 0)
         self.initialised_from_input = True
@@ -523,10 +514,6 @@ class ProjectWindow(QMainWindow):
             return
         elif text == 'None':
             pass
-        #     if self.vod:
-        #         index = self.output_tabs.indexOf(self.vod)
-        #         if index >= 0: self.output_tabs.removeTab(index)
-        #         self.vod = None
         elif text[:5] == 'Edit ':
             filename = self.project.filename('', text[5:], run=-1)
             if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
@@ -546,22 +533,16 @@ class ProjectWindow(QMainWindow):
                     self.visualise_output(external_path, '', self.project.filename('molden', typ, run=0))
 
     def rebuild_vod_selector(self):
-        self.vod_selector.clear()
-        self.vod_selector.addItem('None')
         for t, f in self.geometry_files():
-            self.vod_selector.addItem('Edit ' + f)
-        self.vod_selector.addItem('Initial structure')
+            self.vod_selector_action('Edit ' + f)
         self.vod_selector_action('Initial structure')
         if self.project.status == 'completed' or (
                 os.path.isfile(self.project.filename('xml')) and open(self.project.filename('xml'),
                                                                       'r').read().rstrip()[
                                                                  -9:] == '</molpro>'):
-            self.vod_selector.addItem('Final structure')
             self.vod_selector_action('Final structure')
             for t, f in self.putfiles():
                 if f.replace('.molden', '') in molpro_input.orbital_types:
-                    self.vod_selector.addItem(
-                        molpro_input.orbital_types[f.replace('.molden', '')]['text'] + ' orbitals')
                     self.vod_selector_action(
                         molpro_input.orbital_types[f.replace('.molden', '')]['text'] + ' orbitals')
 
