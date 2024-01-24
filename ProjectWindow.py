@@ -415,7 +415,7 @@ class ProjectWindow(QMainWindow):
                 if os.path.exists(self.project.filename(suffix)):
                     self.output_tabs.addTab(pane, suffix)
             for title, vod in self.vods.items():
-                self.output_tabs.addTab(vod[0], title)
+                self.output_tabs.addTab(vod.webview, title)
         # print('end refresh output tabs')
 
     def add_output_tab(self, run: int, suffix='out', name=None):
@@ -612,7 +612,7 @@ class ProjectWindow(QMainWindow):
             if title in molpro_input.orbital_types.keys():
                 title = molpro_input.orbital_types[title]['text']
             elif title == os.path.splitext(os.path.basename(self.project.filename()))[0]:
-                title='final structure'
+                title = 'final structure'
             self.embedded_vod(filename, command='mo HOMO', title=title)
 
     def embedded_vod(self, file, command='', title='structure', **kwargs):
@@ -797,37 +797,46 @@ Jmol.jmolHtml("</p>")
 </body>
 </html>"""
 
-        self.add_vod(html,title=title, **kwargs)
+        self.add_vod(html, title=title, **kwargs)
 
-    def add_vod(self, html, width=800, height=420, verbosity=0, title='structure'):
-        if verbosity:
-            print(html)
-            open('test.html', 'w').write(html)
-        webview = WebEngineView()
-        profile = QWebEngineProfile()
+    class VOD:
+        def __init__(self, html, width=800, height=420, verbosity=0, title='structure'):
+            if verbosity:
+                print(html)
+                open('test.html', 'w').write(html)
+            self.profile = QWebEngineProfile()
+            self.webview = WebEngineView()
+            self.title = title
+            self.profile.downloadRequested.connect(self._download_requested)
+            self.page = QWebEnginePage(self.profile, self.webview)
+            self.page.setHtml(html, QUrl.fromLocalFile(str(pathlib.Path(__file__).resolve())))
+            self.webview.setPage(self.page)
+
+            self.webview.setMinimumSize(width, height)
+            self.webview.show()
+
+        # def __del__(self):
+        #     print('VOD.__del__', self.title)
+        #     del self.webview
+        #     del self.profile
+
+        def _download_requested(self, item):
+            import re
+            if item.downloadFileName():
+                item.setDownloadFileName(re.sub(r' \(\d+\)\.', r'.', item.downloadFileName()))
+                item.setDownloadDirectory(self.project.filename(run=-1))
+                item.accept()
+
+    def add_vod(self, *args, **kwargs):
+        vod = self.VOD(*args, **kwargs)
         self.webengine_profiles.append(
-            profile)  # FIXME This to avoid premature garbage collection. A resource leak. Need to find a way to delete the previous QWebEnginePage instead
-        profile.downloadRequested.connect(self._download_requested)
-        page = QWebEnginePage(profile, webview)
-        page.setHtml(html, QUrl.fromLocalFile(str(pathlib.Path(__file__).resolve())))
-        webview.setPage(page)
-
-        webview.setMinimumSize(width, height)
-        if title not in self.vods.keys():
-            self.output_tabs.addTab(webview, title)
-        else:
-            self.output_tabs.removeTab(self.output_tabs.indexOf(self.vods[title][0]))
-            self.output_tabs.addTab(webview, title)
-        self.vods[title] = [webview, profile]
-        webview.show()
-        self.output_tabs.setCurrentIndex(self.output_tabs.indexOf(webview))
-
-    def _download_requested(self, item):
-        import re
-        if item.downloadFileName():
-            item.setDownloadFileName(re.sub(r' \(\d+\)\.', r'.', item.downloadFileName()))
-            item.setDownloadDirectory(self.project.filename(run=-1))
-            item.accept()
+            vod.profile)  # FIXME This to avoid premature garbage collection. A resource leak. Need to find a way to delete the previous QWebEnginePage instead
+        if vod.title in self.vods.keys():
+            self.output_tabs.removeTab(self.output_tabs.indexOf(self.vods[vod.title].webview))
+        self.output_tabs.addTab(vod.webview, vod.title)
+        self.vods[vod.title] = vod
+        vod.webview.show()
+        self.output_tabs.setCurrentIndex(self.output_tabs.indexOf(vod.webview))
 
     def visualise_input(self, external_path=None):
         import tempfile
