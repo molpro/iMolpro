@@ -171,6 +171,7 @@ class ProjectWindow(QMainWindow):
             ]}
 
         self.webengine_profiles = []
+        self.vods = {}
         self.setup_menubar()
 
         self.run_button = QPushButton('Run')
@@ -240,7 +241,6 @@ class ProjectWindow(QMainWindow):
 
         self.layout = QVBoxLayout()
         self.layout.addLayout(top_layout)
-        self.vod = None
 
         self.rebuild_vod_selector()
         self.output_panes['out'].textChanged.connect(self.rebuild_vod_selector)
@@ -409,13 +409,13 @@ class ProjectWindow(QMainWindow):
         self.old_output_menu.refresh()
         if len(self.output_tabs) != len(
                 [tab_name for tab_name, pane in self.output_panes.items() if
-                 os.path.exists(self.project.filename(re.sub(r'.*\.', '', tab_name)))]) + (1 if self.vod else 0):
+                 os.path.exists(self.project.filename(re.sub(r'.*\.', '', tab_name)))]) + len(self.vods):
             self.output_tabs.clear()
             for suffix, pane in self.output_panes.items():
                 if os.path.exists(self.project.filename(suffix)):
                     self.output_tabs.addTab(pane, suffix)
-            if self.vod:
-                self.output_tabs.addTab(self.vod, 'structure')
+            for title, vod in self.vods.items():
+                self.output_tabs.addTab(vod[0], title)
         # print('end refresh output tabs')
 
     def add_output_tab(self, run: int, suffix='out', name=None):
@@ -589,6 +589,7 @@ class ProjectWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, 'Job submission failed', 'Cannot submit job:\n' + str(e))
             return False
+        self.vods.clear()
         for i in range(len(self.output_tabs)):
             if self.output_tabs.tabText(i) == 'out':
                 self.output_tabs.setCurrentIndex(i)
@@ -812,16 +813,14 @@ Jmol.jmolHtml("</p>")
         webview.setPage(page)
 
         webview.setMinimumSize(width, height)
-        if not self.vod:
-            # self.layout.addWidget(webview)
+        if title not in self.vods.keys():
             self.output_tabs.addTab(webview, title)
         else:
-            # self.layout.replaceWidget(self.vod, webview)
-            self.output_tabs.removeTab(self.output_tabs.indexOf(self.vod))
+            self.output_tabs.removeTab(self.output_tabs.indexOf(self.vods[title][0]))
             self.output_tabs.addTab(webview, title)
-        self.vod = webview
-        self.vod.show()
-        self.output_tabs.setCurrentIndex(self.output_tabs.indexOf(self.vod))
+        self.vods[title] = [webview, profile]
+        webview.show()
+        self.output_tabs.setCurrentIndex(self.output_tabs.indexOf(webview))
 
     def _download_requested(self, item):
         import re
