@@ -354,9 +354,9 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Zoom Out', 'View', lambda: [p.zoomOut() for p in self.output_panes.values()], 'Alt+-',
                           'Decrease font size')
         menubar.addSeparator('View')
-        menubar.addAction('Input structure', 'View', self.visualise_input,
+        menubar.addAction('Initial structure', 'View', self.visualise_input,
                           tooltip='View the molecular structure in the job input')
-        menubar.addAction('Output structure', 'View', self.visualise_output, 'Alt+D',
+        menubar.addAction('Final structure', 'View', self.visualise_output, 'Alt+D',
                           tooltip='View the molecular structure at the end of the job')
         if self.external_viewer_commands:
             self.external_menu = QMenu('View molecule in external program...')
@@ -513,7 +513,7 @@ class ProjectWindow(QMainWindow):
 
     def vod_selector_action(self, text1, external_path=None, force=False):
         if force and self.vod_selector.currentText().strip() == 'None':
-            self.vod_selector.setCurrentText('Output structure')
+            self.vod_selector.setCurrentText('Final structure')
         text = self.vod_selector.currentText().strip()
         if text == '': text = text1
         if text == '':
@@ -532,9 +532,9 @@ class ProjectWindow(QMainWindow):
                 subprocess.Popen([external_path, filename])
             else:
                 self.embedded_builder(filename)
-        elif text == 'Input structure':
+        elif text == 'Initial structure':
             self.visualise_input(external_path=external_path)
-        elif text == 'Output structure':
+        elif text == 'Final structure':
             self.visualise_output(external_path, 'xml')
         else:
             for typ in molpro_input.orbital_types:
@@ -546,12 +546,12 @@ class ProjectWindow(QMainWindow):
         self.vod_selector.addItem('None')
         for t, f in self.geometry_files():
             self.vod_selector.addItem('Edit ' + f)
-        self.vod_selector.addItem('Input structure')
+        self.vod_selector.addItem('Initial structure')
         if self.project.status == 'completed' or (
                 os.path.isfile(self.project.filename('xml')) and open(self.project.filename('xml'),
                                                                       'r').read().rstrip()[
                                                                  -9:] == '</molpro>'):
-            self.vod_selector.addItem('Output structure')
+            self.vod_selector.addItem('Final structure')
             for t, f in self.putfiles():
                 if f.replace('.molden', '') in molpro_input.orbital_types:
                     self.vod_selector.addItem(
@@ -607,9 +607,14 @@ class ProjectWindow(QMainWindow):
         if external_path:
             subprocess.Popen([external_path, filename])
         else:
-            self.embedded_vod(filename, command='mo HOMO')
+            title = os.path.splitext(os.path.basename(filename))[0]
+            if title in molpro_input.orbital_types.keys():
+                title = molpro_input.orbital_types[title]['text']
+            elif title == os.path.splitext(os.path.basename(self.project.filename()))[0]:
+                title='final structure'
+            self.embedded_vod(filename, command='mo HOMO', title=title)
 
-    def embedded_vod(self, file, command='', **kwargs):
+    def embedded_vod(self, file, command='', title='structure', **kwargs):
         width = self.output_tabs.geometry().width() - 310
         height = self.output_tabs.geometry().height() - 40
         firstmodel = 1
@@ -736,9 +741,9 @@ Jmol.jmolHtml("</p>")
 </table>
 </body>
 </html>"""
-        self.add_vod(html, **kwargs)
+        self.add_vod(html, title=title, **kwargs)
 
-    def embedded_builder(self, file, **kwargs):
+    def embedded_builder(self, file, title='builder', **kwargs):
         width = max(400, self.output_tabs.geometry().width() - 310)
         height = max(400, self.output_tabs.geometry().height() - 40)
 
@@ -791,9 +796,9 @@ Jmol.jmolHtml("</p>")
 </body>
 </html>"""
 
-        self.add_vod(html, **kwargs)
+        self.add_vod(html,title=title, **kwargs)
 
-    def add_vod(self, html, width=800, height=420, verbosity=0):
+    def add_vod(self, html, width=800, height=420, verbosity=0, title='structure'):
         if verbosity:
             print(html)
             open('test.html', 'w').write(html)
@@ -809,11 +814,11 @@ Jmol.jmolHtml("</p>")
         webview.setMinimumSize(width, height)
         if not self.vod:
             # self.layout.addWidget(webview)
-            self.output_tabs.addTab(webview, 'structure')
+            self.output_tabs.addTab(webview, title)
         else:
             # self.layout.replaceWidget(self.vod, webview)
             self.output_tabs.removeTab(self.output_tabs.indexOf(self.vod))
-            self.output_tabs.addTab(webview, 'structure')
+            self.output_tabs.addTab(webview, title)
         self.vod = webview
         self.vod.show()
         self.output_tabs.setCurrentIndex(self.output_tabs.indexOf(self.vod))
@@ -861,7 +866,7 @@ Jmol.jmolHtml("</p>")
         if external_path:
             subprocess.Popen([external_path, xyz_file])
         else:
-            self.embedded_vod(xyz_file, command='')
+            self.embedded_vod(xyz_file, command='', title='initial structure')
 
     def closeEvent(self, a0, QCloseEvent=None):
         self.close_signal.emit(self)
