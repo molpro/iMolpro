@@ -82,6 +82,7 @@ PATH=/usr/bin:$PATH pyi-makespec \
   --add-data src/iMolpro/data/README.md:. \
   --add-data src/iMolpro/data/doc:./doc \
   --add-data "${versionfile}":. \
+  --add-data "${CONDA_PREFIX}"/share/openbabel:./share \
   --add-data $builddir/molpro:./molpro \
   --add-data $CONDA_PREFIX/lib/python$(python --version|sed -e 's/.* //' -e 's/\.[0-9]*$//')/site-packages/pymolpro/molpro_input.json:./pymolpro \
   $pyinstaller_opt \
