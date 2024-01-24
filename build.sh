@@ -21,6 +21,7 @@ PATH=/usr/bin:$PATH pyi-makespec \
   --add-data README.md:. \
   --add-data doc:./doc \
   --add-data "${versionfile}":. \
+  --add-data "${CONDA_PREFIX}"/share/openbabel:./share \
   $pyinstaller_opt \
   iMolpro.py || exit 1
 sed -i -e '$d' iMolpro.spec
