@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import re
+from time import sleep
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
@@ -242,7 +243,6 @@ class ProjectWindow(QMainWindow):
         self.layout = QVBoxLayout()
         self.layout.addLayout(top_layout)
 
-        self.rebuild_vod_selector()
         self.output_panes['out'].textChanged.connect(self.rebuild_vod_selector)
         self.vod_selector.currentTextChanged.connect(self.vod_selector_action)
         # self.minimum_window_size = self.window().size()
@@ -511,18 +511,22 @@ class ProjectWindow(QMainWindow):
         if command and command != 'embedded':
             self.vod_selector_action(external_path=self.external_viewer_commands[command], force=True)
 
-    def vod_selector_action(self, text1, external_path=None, force=False):
+    def vod_selector_action(self, text, external_path=None, force=False):
+        # print('vod_selector_action', text, external_path, force)
         if force and self.vod_selector.currentText().strip() == 'None':
             self.vod_selector.setCurrentText('Final structure')
-        text = self.vod_selector.currentText().strip()
-        if text == '': text = text1
+        # text = self.vod_selector.currentText().strip()
+        # text = ''
+        # print('text', text)
+        # if text == '': text = text1
         if text == '':
             return
         elif text == 'None':
-            if self.vod:
-                index = self.output_tabs.indexOf(self.vod)
-                if index >= 0: self.output_tabs.removeTab(index)
-                self.vod = None
+            pass
+        #     if self.vod:
+        #         index = self.output_tabs.indexOf(self.vod)
+        #         if index >= 0: self.output_tabs.removeTab(index)
+        #         self.vod = None
         elif text[:5] == 'Edit ':
             filename = self.project.filename('', text[5:], run=-1)
             if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
@@ -547,14 +551,18 @@ class ProjectWindow(QMainWindow):
         for t, f in self.geometry_files():
             self.vod_selector.addItem('Edit ' + f)
         self.vod_selector.addItem('Initial structure')
+        self.vod_selector_action('Initial structure')
         if self.project.status == 'completed' or (
                 os.path.isfile(self.project.filename('xml')) and open(self.project.filename('xml'),
                                                                       'r').read().rstrip()[
                                                                  -9:] == '</molpro>'):
             self.vod_selector.addItem('Final structure')
+            self.vod_selector_action('Final structure')
             for t, f in self.putfiles():
                 if f.replace('.molden', '') in molpro_input.orbital_types:
                     self.vod_selector.addItem(
+                        molpro_input.orbital_types[f.replace('.molden', '')]['text'] + ' orbitals')
+                    self.vod_selector_action(
                         molpro_input.orbital_types[f.replace('.molden', '')]['text'] + ' orbitals')
 
     def putfiles(self):
@@ -813,7 +821,6 @@ Jmol.jmolHtml("</p>")
             self.webview.setPage(self.page)
 
             self.webview.setMinimumSize(width, height)
-            self.webview.show()
 
         # def __del__(self):
         #     print('VOD.__del__', self.title)
@@ -827,15 +834,21 @@ Jmol.jmolHtml("</p>")
                 item.setDownloadDirectory(self.project.filename(run=-1))
                 item.accept()
 
-    def add_vod(self, *args, **kwargs):
-        vod = self.VOD(*args, **kwargs)
+    def add_vod(self, *args, title='structure',  **kwargs):
+        # print('add_vod', title)
+        self.output_tabs.show()
+        if title in self.vods.keys():
+            return
+            self.output_tabs.removeTab(self.output_tabs.indexOf(self.vods[title].webview))
+        vod = self.VOD(*args, title=title, **kwargs)
+        vod.webview.hide()
         self.webengine_profiles.append(
             vod.profile)  # FIXME This to avoid premature garbage collection. A resource leak. Need to find a way to delete the previous QWebEnginePage instead
-        if vod.title in self.vods.keys():
-            self.output_tabs.removeTab(self.output_tabs.indexOf(self.vods[vod.title].webview))
-        self.output_tabs.addTab(vod.webview, vod.title)
+        # self.output_tabs.addTab(vod.webview, vod.title)
         self.vods[vod.title] = vod
-        vod.webview.show()
+        # print('self.vods',self.vods)
+        # print('self.output_tabs',[self.output_tabs.tabText(i) for i in range(self.output_tabs.count())])
+        # vod.webview.show()
         self.output_tabs.setCurrentIndex(self.output_tabs.indexOf(vod.webview))
 
     def visualise_input(self, external_path=None):
