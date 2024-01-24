@@ -627,14 +627,15 @@ class InputSpecification(UserDict):
                             if 'properties' in self and property not in \
                                     self['properties']:
                                 step['directives'].remove(directive)
-                for property in self['properties']:
-                    cmd = properties[property]
-                    operator = cmd.lower().replace('gexpec,', '').strip()
-                    directive = {'command': 'expec', 'options': [operator]}
-                    if 'directives' not in step or directive not in step['directives']:
-                        if 'directives' not in step:
-                            step['directives'] = []
-                        step['directives'].append(directive)
+                if 'properties' in self:
+                    for property in self['properties']:
+                        cmd = properties[property]
+                        operator = cmd.lower().replace('gexpec,', '').strip()
+                        directive = {'command': 'expec', 'options': [operator]}
+                        if 'directives' not in step or directive not in step['directives']:
+                            if 'directives' not in step:
+                                step['directives'] = []
+                            step['directives'].append(directive)
 
 
 def canonicalise(input):
