@@ -212,7 +212,6 @@ class ProjectWindow(QMainWindow):
         self.backend_parameter_button.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
         button_layout.addWidget(self.run_button)
         self.run_button.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() + 2) + 'pt;')
-        left_layout.addStretch()
         left_layout.addWidget(self.statusBar)
         self.input_tabs.addTab(self.input_pane, 'freehand')
         self.guided_pane = GuidedPane(self)
@@ -1277,6 +1276,7 @@ class GuidedPane(QWidget):
         options_layout.addWidget(self.print_button, 1, 0)
         # options_layout.addWidget(self.method_options_button,0,0)
         misc_layout.addLayout(options_layout)
+        self.guided_layout.addStretch()
 
     @property
     def input_specification(self):
