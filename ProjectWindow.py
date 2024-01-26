@@ -384,7 +384,20 @@ class ProjectWindow(QMainWindow):
             if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
                 with open(filename, 'w') as f:
                     f.write('1\n\nC 0.0 0.0 0.0\n')
+            self.destroy_vod('initial structure')
+            self.destroy_vod('builder')
             self.embedded_builder(filename)
+            self.refresh_output_tabs()
+            for i in range(len(self.output_tabs)):
+                if self.output_tabs.tabText(i) == 'builder':
+                    self.output_tabs.setCurrentIndex(i)
+
+    def destroy_vod(self, title):
+        if title in self.vods:
+            del self.vods[title]
+        for i in range(len(self.output_tabs)):
+            if self.output_tabs.tabText(i) == title:
+                self.output_tabs.removeTab(i)
 
     def refresh_output_tabs(self):
         # print('refresh output tabs')
@@ -513,7 +526,8 @@ class ProjectWindow(QMainWindow):
             if external_path:
                 subprocess.Popen([external_path, filename])
             else:
-                self.embedded_builder(filename)
+                # self.embedded_builder(filename)
+                pass
         elif text == 'Initial structure':
             self.visualise_input(external_path=external_path)
         elif text == 'Final structure':
@@ -569,7 +583,9 @@ class ProjectWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, 'Job submission failed', 'Cannot submit job:\n' + str(e))
             return False
-        self.vods.clear()
+        for vod in list(self.vods.keys()):
+            if vod not in ['builder', 'initial structure', 'inp']:
+                del self.vods[vod]
         for i in range(len(self.output_tabs)):
             if self.output_tabs.tabText(i) == 'out':
                 self.output_tabs.setCurrentIndex(i)
@@ -593,7 +609,8 @@ class ProjectWindow(QMainWindow):
                 title = molpro_input.orbital_types[title]['text']
             elif title == os.path.splitext(os.path.basename(self.project.filename()))[0]:
                 title = 'final structure'
-            self.embedded_vod(filename, command='mo HOMO', title=title)
+            if title not in self.vods:
+                self.embedded_vod(filename, command='mo HOMO', title=title)
 
     def embedded_vod(self, file, command='', title='structure', **kwargs):
         width = self.output_tabs.geometry().width() - 310
@@ -783,6 +800,7 @@ Jmol.jmolHtml("</p>")
     def add_vod(self, *args, title='structure',  **kwargs):
         # print('add_vod', title)
         if title in self.vods.keys():
+            # print('duplicate vod',title)
             return
         vod = VOD(*args, directory=self.project.filename(run=-1),title=title, **kwargs)
         vod.hide()
@@ -823,7 +841,7 @@ Jmol.jmolHtml("</p>")
                         f.write('\n')
         if external_path:
             subprocess.Popen([external_path, xyz_file])
-        else:
+        elif 'builder' not in self.vods and 'initial structure' not in self.vods:
             self.embedded_vod(xyz_file, command='', title='initial structure')
 
     def closeEvent(self, a0, QCloseEvent=None):
@@ -857,6 +875,7 @@ Jmol.jmolHtml("</p>")
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
             self.adopt_structure_file(filename)
+            self.edit_input_structure()
             return filename
 
     def adopt_structure_file(self, filename):
