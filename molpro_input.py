@@ -109,16 +109,19 @@ class InputSpecification(UserDict):
                                       flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
         old_input_ = ''
         count = 100
+        print('minus first canonicalised_input_', canonicalised_input_)
         while (canonicalised_input_ != old_input_ and count):
             count -= 1
             old_input_ = canonicalised_input_
             canonicalised_input_ = re.sub('basis={([^}]+[^,}])\n([^}]+=[^}]+)}', r'basis={\1,\2}', canonicalised_input_,
                                           flags=re.DOTALL | re.IGNORECASE)
+        print('zeroth canonicalised_input_', canonicalised_input_)
         canonicalised_input_ = re.sub('basis={([^}]*)\n*}', r'basis, \1', canonicalised_input_,
                                       flags=re.DOTALL | re.IGNORECASE)
 
         # parse and protect {....}
         line_end_protected_ = '±'
+        print('first canonicalised_input_', canonicalised_input_)
         for i in range(len(canonicalised_input_)):
             if canonicalised_input_[i] == '{':
                 for j in range(i + 1, len(canonicalised_input_)):
@@ -127,8 +130,10 @@ class InputSpecification(UserDict):
                         break
                     elif canonicalised_input_[j] in ';\n':
                         canonicalised_input_ = canonicalised_input_[:j] + line_end_protected_ + canonicalised_input_[
-                                                                                                j + 1:];
+                                                                                                j + 1:]
+        print('second canonicalised_input_', canonicalised_input_)
         canonicalised_input_ = canonicalised_input_.replace(';', '\n').replace(line_end_protected_, ';')
+        print('third canonicalised_input_', canonicalised_input_)
         for line in canonicalised_input_.split('\n'):
             line = re.sub('basis *,', 'basis=', line, flags=re.IGNORECASE)
             group = line.strip()

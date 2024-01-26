@@ -80,6 +80,7 @@ def test_create_input(methods):
 
 def test_recreate_input(methods):
     for input in [
+        'geometry={Ne};basis={sp,ne,cc-pvdz;c};{df-rhf}',
         'geometry={\nHe\n}\nhf',
         'geometry={\nHe\n}\nhf\nccsd',
         'geometry={\nHe\n}\nhf\nccsd\n\n',
