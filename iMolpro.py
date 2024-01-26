@@ -1,5 +1,6 @@
 import pathlib
 import shutil
+from contextlib import redirect_stdout, redirect_stderr
 
 from PyQt5.QtCore import QEvent
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
@@ -24,6 +25,7 @@ if __name__ == '__main__':
 
     if hasattr(sys, '_MEIPASS'):
         sys.stdout = open('/tmp/iMolpro.stdout', 'w')
+        sys.stderr = open('/tmp/iMolpro.stderr', 'w')
     app = App(sys.argv)
 
     if 'Trash' not in settings:

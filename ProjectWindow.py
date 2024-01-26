@@ -87,7 +87,6 @@ class ViewProjectOutput(ViewFile):
                 break
 
 
-
 class ProjectWindow(QMainWindow):
     close_signal = pyqtSignal(QWidget, name='closeSignal')
     new_signal = pyqtSignal(QWidget, name='newSignal')
@@ -796,13 +795,12 @@ Jmol.jmolHtml("</p>")
 
         self.add_vod(html, title=title, **kwargs)
 
-
-    def add_vod(self, *args, title='structure',  **kwargs):
+    def add_vod(self, *args, title='structure', **kwargs):
         # print('add_vod', title)
         if title in self.vods.keys():
             # print('duplicate vod',title)
             return
-        vod = VOD(*args, directory=self.project.filename(run=-1),title=title, **kwargs)
+        vod = VOD(*args, directory=self.project.filename(run=-1), title=title, **kwargs)
         vod.hide()
         self.vods[vod.title] = vod
 
@@ -1006,6 +1004,14 @@ Jmol.jmolHtml("</p>")
         QMessageBox.information(self, 'Input specification', 'Input specification:\r\n' +
                                 re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                                                   ',\n  '))
+
+
+class WebEnginePage(QWebEnginePage):
+    def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
+        if level > 0 and 'Synchronous XMLHttpRequest' not in message:
+            print('javaScriptConsoleMessage', level, message, lineNumber, sourceID, file=sys.stderr)
+
+
 class VOD(QWebEngineView):
     def __init__(self, html, directory=None, width=800, height=420, verbosity=0, title='structure'):
         if verbosity:
@@ -1014,6 +1020,8 @@ class VOD(QWebEngineView):
         super().__init__()
         self.directory_ = directory
         self.title = title
+        self.page_ = WebEnginePage()
+        self.setPage(self.page_)
         if self.directory_ is not None:
             self.page().profile().downloadRequested.connect(self._download_requested)
         self.setHtml(html, QUrl.fromLocalFile(str(pathlib.Path(__file__).resolve())))
@@ -1177,8 +1185,9 @@ class GuidedPane(QWidget):
         # self.spin_line = QLineEdit()
         # self.spin_line.setValidator(QIntValidator())
         # self.spin_line.textChanged.connect(lambda text: self.input_specification_variable_change('spin', text))
-        self.spin_line = SpinComboBox(self,0,14)
-        self.spin_line.spin_changed.connect(lambda ms2: self.input_specification_variable_change('spin', str(ms2) if ms2>=0 else ''))
+        self.spin_line = SpinComboBox(self, 0, 14)
+        self.spin_line.spin_changed.connect(
+            lambda ms2: self.input_specification_variable_change('spin', str(ms2) if ms2 >= 0 else ''))
 
         self.guided_combo_wave_fct_symm = QComboBox(self)
         self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
