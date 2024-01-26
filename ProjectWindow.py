@@ -343,7 +343,8 @@ class ProjectWindow(QMainWindow):
             self.external_menu = QMenu('View molecule in external program...')
             for command in self.external_viewer_commands.keys():
                 action = self.external_menu.addAction(command)
-                action.triggered.connect(lambda dum, command=command: self.vod_external_launch(command))
+                action.triggered.connect(lambda dum, command=command: self.visualise_input(
+                    external_path=self.external_viewer_commands[command]))
 
             menubar.addSubmenu(self.external_menu, 'View')
         menubar.addSeparator('View')
@@ -501,10 +502,6 @@ class ProjectWindow(QMainWindow):
                 result.append(self.procedures_registry[keyfound]['name'])
         return result
 
-    def vod_external_launch(self, command=''):
-        if command and command != 'embedded':
-            self.vod_selector_action(external_path=self.external_viewer_commands[command], force=True)
-
     def vod_selector_action(self, text, external_path=None, force=False):
         # print('vod_selector_action', text, external_path, force)
         if force and self.vod_selector.currentText().strip() == 'None':
@@ -600,6 +597,7 @@ class ProjectWindow(QMainWindow):
 
     def visualise_output(self, external_path=None, typ='xml', name=None):
         filename = self.project.filename(typ, name) if name else self.project.filename(typ)
+        if not os.path.exists(filename): return
         if external_path:
             subprocess.Popen([external_path, filename])
         else:
