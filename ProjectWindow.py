@@ -87,22 +87,11 @@ class ViewProjectOutput(ViewFile):
                 break
 
 
-class WebEngineView(QWebEngineView):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-    #     self.installEventFilter(self)
-    #
-    # def eventFilter(self, obj, event):
-    #     if (event.type() == QEvent.Resize):
-    #         print('webEngineView resize event received', self.geometry(), self.geometry().width(), self.geometry().height())
-    #     return super().eventFilter(obj, event)
-
 
 class ProjectWindow(QMainWindow):
     close_signal = pyqtSignal(QWidget, name='closeSignal')
     new_signal = pyqtSignal(QWidget, name='newSignal')
     chooser_signal = pyqtSignal(QWidget, name='chooserSignal')
-    vod = None
     trace = settings['ProjectWindow_debug'] if 'ProjectWindow_debug' in settings else 0
     null_prompt = '- Select -'
     all_qualities = 'All Qualities'
@@ -170,7 +159,6 @@ class ProjectWindow(QMainWindow):
                 'inp'
             ]}
 
-        self.webengine_profiles = []
         self.vods = {}
         self.setup_menubar()
 
@@ -409,7 +397,7 @@ class ProjectWindow(QMainWindow):
                 if os.path.exists(self.project.filename(suffix)):
                     self.output_tabs.addTab(pane, suffix)
             for title, vod in self.vods.items():
-                self.output_tabs.addTab(vod.webview, title)
+                self.output_tabs.addTab(vod, title)
         # print('end refresh output tabs')
 
     def add_output_tab(self, run: int, suffix='out', name=None):
@@ -791,49 +779,14 @@ Jmol.jmolHtml("</p>")
 
         self.add_vod(html, title=title, **kwargs)
 
-    class VOD:
-        def __init__(self, html, width=800, height=420, verbosity=0, title='structure'):
-            if verbosity:
-                print(html)
-                open('test.html', 'w').write(html)
-            self.profile = QWebEngineProfile()
-            self.webview = WebEngineView()
-            self.title = title
-            self.profile.downloadRequested.connect(self._download_requested)
-            self.page = QWebEnginePage(self.profile, self.webview)
-            self.page.setHtml(html, QUrl.fromLocalFile(str(pathlib.Path(__file__).resolve())))
-            self.webview.setPage(self.page)
-
-            self.webview.setMinimumSize(width, height)
-
-        # def __del__(self):
-        #     print('VOD.__del__', self.title)
-        #     del self.webview
-        #     del self.profile
-
-        def _download_requested(self, item):
-            import re
-            if item.downloadFileName():
-                item.setDownloadFileName(re.sub(r' \(\d+\)\.', r'.', item.downloadFileName()))
-                item.setDownloadDirectory(self.project.filename(run=-1))
-                item.accept()
 
     def add_vod(self, *args, title='structure',  **kwargs):
         # print('add_vod', title)
-        self.output_tabs.show()
         if title in self.vods.keys():
             return
-            self.output_tabs.removeTab(self.output_tabs.indexOf(self.vods[title].webview))
-        vod = self.VOD(*args, title=title, **kwargs)
-        vod.webview.hide()
-        self.webengine_profiles.append(
-            vod.profile)  # FIXME This to avoid premature garbage collection. A resource leak. Need to find a way to delete the previous QWebEnginePage instead
-        # self.output_tabs.addTab(vod.webview, vod.title)
+        vod = VOD(*args, directory=self.project.filename(run=-1),title=title, **kwargs)
+        vod.hide()
         self.vods[vod.title] = vod
-        # print('self.vods',self.vods)
-        # print('self.output_tabs',[self.output_tabs.tabText(i) for i in range(self.output_tabs.count())])
-        # vod.webview.show()
-        self.output_tabs.setCurrentIndex(self.output_tabs.indexOf(vod.webview))
 
     def visualise_input(self, external_path=None):
         import tempfile
@@ -1034,6 +987,26 @@ Jmol.jmolHtml("</p>")
         QMessageBox.information(self, 'Input specification', 'Input specification:\r\n' +
                                 re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                                                   ',\n  '))
+class VOD(QWebEngineView):
+    def __init__(self, html, directory=None, width=800, height=420, verbosity=0, title='structure'):
+        if verbosity:
+            print(html)
+            open('test.html', 'w').write(html)
+        super().__init__()
+        self.directory_ = directory
+        self.title = title
+        if self.directory_ is not None:
+            self.page().profile().downloadRequested.connect(self._download_requested)
+        self.setHtml(html, QUrl.fromLocalFile(str(pathlib.Path(__file__).resolve())))
+
+        self.setMinimumSize(width, height)
+
+    def _download_requested(self, item):
+        import re
+        if item.downloadFileName():
+            item.setDownloadFileName(re.sub(r' \(\d+\)\.', r'.', item.downloadFileName()))
+            item.setDownloadDirectory(self.directory_)
+            item.accept()
 
 
 class BasisAndHamiltonianChooser(QWidget):
