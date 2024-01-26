@@ -53,7 +53,7 @@ class StatusBar(QLabel):
 
 
 class ViewProjectOutput(ViewFile):
-    def __init__(self, project, suffix='out', width=132, latency=100, filename_latency=2000, point_size=8, instance=0):
+    def __init__(self, project, suffix='out', width=132, latency=100, filename_latency=500, point_size=8, instance=0):
         self.project = project
         self.suffix = suffix
         self.instance = -1 if suffix == 'inp' else instance
