@@ -1,4 +1,4 @@
-name: "My workflow"
+name: "Tag latest"
 
 on: [push]
 
@@ -8,6 +8,7 @@ jobs:
     
     steps:
       - name: Get current date
+        permissions: write-all
         id: date
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
       - name: Tag commit
