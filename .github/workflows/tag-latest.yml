@@ -3,7 +3,7 @@ name: Tag latest
 on:
   push:
     branches:
-      - 'CI'
+      - 'master'
 
 jobs:
   tag:
