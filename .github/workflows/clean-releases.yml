@@ -10,13 +10,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Delete old releases
+      - name: Delete old test releases
+        uses: dev-drprasad/delete-older-releases@v0.3.2
+        with:
+          #          repo: <owner>/<repoName> # defaults to current repo
+          keep_latest: 1
+          #          keep_min_download_counts: 1 # Optional parameters
+          #          delete_expired_data: 10 # Optional parameters
+          delete_tag_pattern: '.*test*' # defaults to ""
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Delete old pre-releases
         uses: dev-drprasad/delete-older-releases@v0.3.2
         with:
 #          repo: <owner>/<repoName> # defaults to current repo
-          keep_latest: 1
+          keep_latest: 5
 #          keep_min_download_counts: 1 # Optional parameters
-#          delete_expired_data: 10 # Optional parameters
-          delete_tag_pattern: '.*test*' # defaults to ""
+          delete_expired_data: 10 # Optional parameters
+          delete_tag_pattern: '^0\.[0-9].*' # defaults to ""
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
