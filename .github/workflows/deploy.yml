@@ -5,11 +5,11 @@ on:
   push:
     tags:
       - '*'
-  workflow_run:
-    workflows:
-      - Tag latest
-    types:
-      - completed
+#  workflow_run:
+#    workflows:
+#      - Tag latest
+#    types:
+#      - completed
 
 jobs:
   deploy:
