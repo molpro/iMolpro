@@ -27,7 +27,7 @@ jobs:
         run: |
           if [ -z "${CONDA_EXE}" ]; then export CONDA_EXE=$(readlink -f $(which conda)) ; fi
           git fetch --tags
-          git log -n1
+          git log -n2 --decorate
           git tag
           git describe --tags
           echo github.ref ${{ github.ref }}
