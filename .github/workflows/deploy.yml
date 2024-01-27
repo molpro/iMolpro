@@ -33,6 +33,7 @@ jobs:
           conda activate iMolpro-github
           bash build.sh
           git log -n1
+          git tag
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
