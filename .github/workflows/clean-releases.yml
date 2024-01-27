@@ -26,7 +26,7 @@ jobs:
 #          repo: <owner>/<repoName> # defaults to current repo
           keep_latest: 5
 #          keep_min_download_counts: 1 # Optional parameters
-          delete_expired_data: 10 # Optional parameters
+          delete_expired_data: 2 # Optional parameters
           delete_tag_pattern: '^0\.[0-9].*' # defaults to ""
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
