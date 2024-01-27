@@ -5,10 +5,10 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+    permissions: write-all
+
     steps:
       - name: Get current date
-        permissions: write-all
         id: date
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
       - name: Tag commit
