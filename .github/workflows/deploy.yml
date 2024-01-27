@@ -2,9 +2,9 @@ permissions:
   contents: write
 name: Deploy
 on:
-#  push:
-#    tags:
-#      - '*'
+  push:
+    tags:
+      - '*'
   workflow_run:
     workflows:
       - Tag latest
