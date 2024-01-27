@@ -31,8 +31,8 @@ jobs:
         with:
           tag_name: latest-${{ steps.date.outputs.date }}
           release_name: latest-${{ steps.date.outputs.date }}
-#          draft: false
-#          prerelease: false
+          draft: false
+          prerelease: false
   clean:
     name: Clean previous latest
     runs-on: ubuntu-latest
