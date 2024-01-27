@@ -1,4 +1,4 @@
-name: "Tag latest"
+name: Tag latest
 
 on:
   push:
