@@ -7,8 +7,8 @@ on:
       - 'none'
 
 jobs:
-  deploy:
-    name: Deploy
+  clean:
+    name: Clean
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
