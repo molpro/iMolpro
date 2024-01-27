@@ -6,7 +6,7 @@ on:
 #    tags:
 #      - '*'
   workflow_run:
-    workflows: ["Tag latest"]
+    workflows: ["Tag latest", "tag-latest"]
 #    types:
 #      - completed
 
