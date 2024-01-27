@@ -3,7 +3,7 @@ name: "Tag latest"
 on: [push]
 
 jobs:
-  build:
+  tag:
     runs-on: ubuntu-latest
     permissions: write-all
 
