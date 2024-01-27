@@ -3,6 +3,8 @@ permissions:
 name: Clean releases
 on:
   push:
+    branches:
+      - 'none'
 
 jobs:
   deploy:
