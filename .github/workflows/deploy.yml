@@ -7,8 +7,8 @@ on:
 #      - '*'
   workflow_run:
     workflows: ["Tag latest"]
-    types:
-      - completed
+#    types:
+#      - completed
 
 jobs:
   deploy:
