@@ -18,6 +18,7 @@ jobs:
           #          keep_min_download_counts: 1 # Optional parameters
           #          delete_expired_data: 10 # Optional parameters
           delete_tag_pattern: '.*test*' # defaults to ""
+          delete_tags: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Delete old pre-releases
