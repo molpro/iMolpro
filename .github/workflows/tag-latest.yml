@@ -33,8 +33,11 @@ jobs:
           release_name: latest-${{ steps.date.outputs.date }}
           draft: false
           prerelease: false
+    outputs:
+      tag_name: latest-${{ steps.date.outputs.date }}
   clean:
     name: Clean previous latest
+    needs: deploy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -52,7 +55,7 @@ jobs:
   deploy:
     name: Deploy
     needs: tag
-    runs-on: ${{ matrix.os }}
+    runs-on: [${{ matrix.os }} "${{ tag.outputs.tag }}"]
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, [macOS, ARM64]]
@@ -63,6 +66,7 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' }}
       - name: Build
         run: |
+          echo tag = ${{ tag.outputs.tag }}
           if [ -z "${CONDA_EXE}" ]; then export CONDA_EXE=$(readlink -f $(which conda)) ; fi
           git fetch --tags
           git log -n2 --decorate
