@@ -59,7 +59,7 @@ jobs:
 #      matrix:
 #        os: [ubuntu-latest, macos-latest, [macOS, ARM64]]
     needs: tag
-    runs-on: [ubuntu-latest,  "${{ tag.outputs.tag }}"]
+    runs-on: [ubuntu-latest,  "${{ needs.tag.outputs.tag }}"]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -67,7 +67,7 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' }}
       - name: Build
         run: |
-          echo tag = ${{ tag.outputs.tag }}
+          echo tag = ${{ needs.tag.outputs.tag }}
           if [ -z "${CONDA_EXE}" ]; then export CONDA_EXE=$(readlink -f $(which conda)) ; fi
           git fetch --tags
           git log -n2 --decorate
