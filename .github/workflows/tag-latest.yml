@@ -54,12 +54,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   deploy:
     name: Deploy
-    runs-on: ${{ matrix.os }}
-    #    runs-on: [${{ matrix.os }} "${{ tag.outputs.tag }}"]
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, [macOS, ARM64]]
+#    runs-on: ${{ matrix.os }}
+#    strategy:
+#      matrix:
+#        os: [ubuntu-latest, macos-latest, [macOS, ARM64]]
     needs: tag
+    runs-on: [ubuntu-latest,  "${{ tag.outputs.tag }}"]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
