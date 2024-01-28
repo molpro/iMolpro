@@ -23,6 +23,9 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: 'master'
+      - name: tag
+        run: |
+          git tag latest-${{ steps.date.outputs.date }}
       - name: Push release
         uses: softprops/action-gh-release@v1
         with:
