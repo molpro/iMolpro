@@ -23,22 +23,23 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: 'master'
-#      - name: Release snapshot
-#        id: release-snapshot
-#        uses: actions/create-release@latest
-#        env:
+      - name: Release snapshot
+        id: release-snapshot
+        uses: actions/create-release@latest
+        env:
 #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          tag_name: latest-${{ steps.date.outputs.date }}
-#          release_name: latest-${{ steps.date.outputs.date }}
-#          draft: false
-#          prerelease: false
-      - name: tag and push
-        run: |
-          git tag latest-${{ steps.date.outputs.date }}
-          git push --tags
+          GITHUB_TOKEN: ${{ secrets.PAT }}
         with:
-          repo_token: ${{ secrets.PAT }}
+          tag_name: latest-${{ steps.date.outputs.date }}
+          release_name: latest-${{ steps.date.outputs.date }}
+          draft: false
+          prerelease: false
+#      - name: tag and push
+#        run: |
+#          git tag latest-${{ steps.date.outputs.date }}
+#          git push --tags
+#        with:
+#          repo_token: ${{ secrets.PAT }}
 
     outputs:
       tag_name: latest-${{ steps.date.outputs.date }}
