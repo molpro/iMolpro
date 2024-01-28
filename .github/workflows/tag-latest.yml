@@ -14,26 +14,27 @@ jobs:
       - name: Get current date
         id: date
         run: echo "::set-output name=date::$(date +'%Y-%m-%d-%H-%M-%S')"
-#      - name: Tag commit
-#        uses: tvdias/github-tagger@v0.0.1
-#        with:
+      - name: Tag commit
+        uses: tvdias/github-tagger@v0.0.1
+        with:
 #          repo-token: "${{ secrets.GITHUB_TOKEN }}"
-#          tag: "latest-${{ steps.date.outputs.date }}"
-      - name: Checkout branch "master"
-        uses: actions/checkout@v2
-        with:
-          ref: 'master'
-      - name: Release snapshot
-        id: release-snapshot
-        uses: actions/create-release@latest
-        env:
+          token: "${{ secrets.PAT }}"
+          tag: "latest-${{ steps.date.outputs.date }}"
+#      - name: Checkout branch "master"
+#        uses: actions/checkout@v2
+#        with:
+#          ref: 'master'
+#      - name: Release snapshot
+#        id: release-snapshot
+#        uses: actions/create-release@latest
+#        env:
 #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO_TOKEN: ${{ secrets.PAT }}
-        with:
-          tag_name: latest-${{ steps.date.outputs.date }}
-          release_name: latest-${{ steps.date.outputs.date }}
-          draft: false
-          prerelease: false
+#          REPO_TOKEN: ${{ secrets.PAT }}
+#        with:
+#          tag_name: latest-${{ steps.date.outputs.date }}
+#          release_name: latest-${{ steps.date.outputs.date }}
+#          draft: false
+#          prerelease: false
 #      - name: tag and push
 #        run: |
 #          git tag latest-${{ steps.date.outputs.date }}
