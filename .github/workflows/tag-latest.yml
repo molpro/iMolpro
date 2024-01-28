@@ -23,17 +23,21 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: 'master'
-      - name: Release snapshot
-        id: release-snapshot
-        uses: actions/create-release@latest
+      - name: Push release
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{ secrets.PAT }}
+#      - name: Release snapshot
+#        id: release-snapshot
+#        uses: actions/create-release@latest
 #        env:
 #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: latest-${{ steps.date.outputs.date }}
-          release_name: latest-${{ steps.date.outputs.date }}
-          draft: false
-          prerelease: false
-          token: ${{ secrets.PAT }}
+#        with:
+#          tag_name: latest-${{ steps.date.outputs.date }}
+#          release_name: latest-${{ steps.date.outputs.date }}
+#          draft: false
+#          prerelease: false
+#          token: ${{ secrets.PAT }}
 #      - name: tag and push
 #        run: |
 #          git tag latest-${{ steps.date.outputs.date }}
