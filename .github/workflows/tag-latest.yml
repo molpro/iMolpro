@@ -28,7 +28,7 @@ jobs:
         uses: actions/create-release@latest
         env:
 #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.PAT }}
+          REPO_TOKEN: ${{ secrets.PAT }}
         with:
           tag_name: latest-${{ steps.date.outputs.date }}
           release_name: latest-${{ steps.date.outputs.date }}
