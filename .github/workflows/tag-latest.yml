@@ -27,6 +27,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           token: ${{ secrets.PAT }}
+          tag_name: latest-${{ steps.date.outputs.date }}
 #      - name: Release snapshot
 #        id: release-snapshot
 #        uses: actions/create-release@latest
