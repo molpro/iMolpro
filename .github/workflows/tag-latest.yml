@@ -55,7 +55,7 @@ jobs:
   deploy:
     name: Deploy
     needs: tag
-    runs-on: [${{ matrix.os }} "${{ tag.outputs.tag }}"]
+    runs-on: [${{ matrix.os }} ] # "${{ tag.outputs.tag }}"]
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, [macOS, ARM64]]
