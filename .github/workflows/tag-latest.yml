@@ -54,7 +54,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   deploy:
     name: Deploy
-    runs-on: [${{ matrix.os }} "${{ tag.outputs.tag }}"]
+#    runs-on: [${{ matrix.os }} "${{ tag.outputs.tag }}"]
+    runs-on: [${{ matrix.os }}]
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, [macOS, ARM64]]
