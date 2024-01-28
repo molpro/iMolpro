@@ -37,6 +37,9 @@ jobs:
         run: |
           git tag latest-${{ steps.date.outputs.date }}
           git push --tags
+        with:
+          repo_token: ${{ secrets.PAT }}
+
     outputs:
       tag_name: latest-${{ steps.date.outputs.date }}
 #  clean:
