@@ -9,11 +9,11 @@ import sys
 import re
 from time import sleep
 
-from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
+from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt, QSize
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
-    QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication
+    QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, QToolButton
 from PyQt5.QtGui import QIntValidator, QFont
 from pymolpro import Project
 
@@ -1172,17 +1172,9 @@ class GuidedPane(QWidget):
         self.guided_combo_orientation.currentTextChanged.connect(
             lambda text: self.input_specification_change('orientation', text))
 
-        # textLabel_wave_fct_char = QLabel()
-        # textLabel_wave_fct_char.setText("Wave Function Characteristics:")
-        # self.guided_layout.addWidget(textLabel_wave_fct_char)
-
-        self.charge_line = QLineEdit()
-        self.charge_line.setValidator(QIntValidator())
+        self.charge_line = ChargeSelector()
         self.charge_line.textChanged.connect(lambda text: self.input_specification_variable_change('charge', text))
 
-        # self.spin_line = QLineEdit()
-        # self.spin_line.setValidator(QIntValidator())
-        # self.spin_line.textChanged.connect(lambda text: self.input_specification_variable_change('spin', text))
         self.spin_line = SpinComboBox(self, 0, 14)
         self.spin_line.spin_changed.connect(
             lambda ms2: self.input_specification_variable_change('spin', str(ms2) if ms2 >= 0 else ''))
@@ -1191,10 +1183,6 @@ class GuidedPane(QWidget):
         self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
         self.guided_combo_wave_fct_symm.currentTextChanged.connect(
             lambda text: self.input_specification_change('wave_fct_symm', text))
-
-        # textLabel_calculation = QLabel()
-        # textLabel_calculation.setText("Calculation:")
-        # self.guided_layout.addWidget(textLabel_calculation)
 
         self.guided_combo_job_type = QComboBox(self)
         self.guided_combo_job_type.setMaximumWidth(180)
@@ -1256,7 +1244,6 @@ class GuidedPane(QWidget):
             'Spin': self.spin_line,
             'Symmetry': self.guided_combo_wave_fct_symm,
         }, title='Wavefunction parameters'))
-        self.charge_line.setFixedWidth(20)
 
         self.guided_orbitals_input = OrbitalInput(self)
         self.guided_layout.addWidget(RowOfTitledWidgets({
@@ -1588,3 +1575,37 @@ class PropertyInput(CheckableComboBox):
                                                          self.currentData() if t == k]
         self.parent.input_specification.polish()
         self.parent.refresh_input_from_specification()
+
+
+class ChargeSelector(QWidget):
+    textChanged = pyqtSignal(str, name='textChanged')
+
+    def __init__(self):
+        super().__init__()
+        self.layout = QHBoxLayout(self)
+        self.label = QLabel('0')
+        self.plus_button = QToolButton()
+        self.plus_button.setArrowType(Qt.UpArrow)
+        self.minus_button = QToolButton()
+        self.minus_button.setArrowType(Qt.DownArrow)
+        fontsize = self.fontInfo().pointSize()
+        self.minus_button.setIconSize(QSize(fontsize // 2, fontsize * 2 // 3))
+        self.plus_button.setIconSize(QSize(fontsize // 2, fontsize * 2 // 3))
+        self.layout.addWidget(self.minus_button)
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.plus_button)
+        self.plus_button.setContentsMargins(0, 0, 0, 0)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.minus_button.clicked.connect(lambda: self.change(-1))
+        self.plus_button.clicked.connect(lambda: self.change(1))
+
+    def setText(self, value):
+        self.label.setText(str(value))
+
+    def text(self):
+        return self.label.text()
+
+    def change(self, amount=1):
+        self.label.setText(str(int(self.label.text()) + amount))
+        self.textChanged.emit(self.label.text())
