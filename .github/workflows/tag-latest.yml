@@ -8,7 +8,6 @@ on:
 jobs:
   tag:
     runs-on: ubuntu-latest
-#    permissions: write-all
     permissions:
       contents: write
 
@@ -16,99 +15,29 @@ jobs:
       - name: Get current date
         id: date
         run: echo "::set-output name=date::$(date +'%Y-%m-%d-%H-%M-%S')"
-#      - name: Tag commit
-#        uses: tvdias/github-tagger@v0.0.1
-#        with:
-#          repo-token: "${{ secrets.GITHUB_TOKEN }}"
-#          tag: "latest-${{ steps.date.outputs.date }}"
       - name: Checkout branch "master"
         uses: actions/checkout@v4
         with:
           ref: 'master'
           token: ${{ secrets.CLASSIC_PAT }}
       - name: tag
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.CLASSIC_PAT }}
         run: |
           git tag latest-${{ steps.date.outputs.date }}
           git push --tags
-#      - name: Push release
-#        uses: softprops/action-gh-release@v1
-#        with:
-#          token: ${{ secrets.PAT }}
-#          tag_name: latest-${{ steps.date.outputs.date }}
-#          files: |
-#            README.md
-#            dist/*bz2
-#            dist/*dmg
-#      - name: Release snapshot
-#        id: release-snapshot
-#        uses: actions/create-release@latest
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.PAT }}
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          tag_name: latest-${{ steps.date.outputs.date }}
-#          release_name: latest-${{ steps.date.outputs.date }}
-#          draft: false
-#          prerelease: false
-#      - name: tag and push
-#        run: |
-#          git tag latest-${{ steps.date.outputs.date }}
-#          git push --tags
-#        with:
-#          repo_token: ${{ secrets.PAT }}
 
     outputs:
       tag_name: latest-${{ steps.date.outputs.date }}
-#  clean:
-#    name: Clean previous latest
-##    needs: deploy
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v3
-#      - name: Delete old latest releases
-#        uses: dev-drprasad/delete-older-releases@v0.3.2
-#        with:
-#          #          repo: <owner>/<repoName> # defaults to current repo
-#          keep_latest: 1
-#          #          keep_min_download_counts: 1 # Optional parameters
-#          #          delete_expired_data: 10 # Optional parameters
-#          delete_tag_pattern: '.*latest*' # defaults to ""
-#          delete_tags: true
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#  deploy:
-#    name: Deploy
-#    runs-on: ${{ matrix.os }}
-#    strategy:
-#      matrix:
-#        os: [ubuntu-latest, macos-latest, [macOS, ARM64]]
-#    needs: tag
-##    runs-on: [ubuntu-latest,  "${{ needs.tag.outputs.tag }}"]
-#    steps:
-#      - uses: actions/checkout@v3
-#      - uses: actions/setup-python@v4
-#      - uses: s-weigand/setup-conda@v1
-#        if: ${{ matrix.os == 'ubuntu-latest' }}
-#      - name: Build
-#        run: |
-#          echo tag = ${{ needs.tag.outputs.tag }}
-#          if [ -z "${CONDA_EXE}" ]; then export CONDA_EXE=$(readlink -f $(which conda)) ; fi
-#          git fetch --tags
-#          git log -n2 --decorate
-#          git tag
-#          git describe --tags
-#          echo github.ref ${{ github.ref }}
-#          conda config --set solver libmamba
-#          . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
-#          conda create -n iMolpro-github
-#          conda activate iMolpro-github
-#          bash build.sh
-#      - name: Release
-#        uses: softprops/action-gh-release@v1
-#        if: startsWith(github.ref, 'refs/tags/')
-#        with:
-#          files: |
-#            dist/*bz2
-#            dist/*dmg
+
+  clean:
+    name: Clean previous latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Delete old latest releases
+        uses: dev-drprasad/delete-older-releases@v0.3.2
+        with:
+          keep_latest: 1
+          delete_tag_pattern: '.*latest*'
+          delete_tags: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

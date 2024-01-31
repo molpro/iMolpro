@@ -5,12 +5,6 @@ on:
   push:
     tags:
       - '*'
-#  workflow_run:
-#    workflows:
-#      - Tag latest
-#    types:
-#      - completed
-
 jobs:
   deploy:
     name: Deploy
@@ -38,9 +32,6 @@ jobs:
           bash build.sh
           ls -l dist
       - name: Release
-#        uses: ncipollo/release-action@v1
-#        with:
-#          artifacts: "dist/*bz2,dist/*dmg"
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
