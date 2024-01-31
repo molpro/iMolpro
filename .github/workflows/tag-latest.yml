@@ -26,22 +26,26 @@ jobs:
 #      - name: tag
 #        run: |
 #          git tag latest-${{ steps.date.outputs.date }}
-#      - name: Push release
-#        uses: softprops/action-gh-release@v1
-#        with:
-#          token: ${{ secrets.PAT }}
-#          tag_name: latest-${{ steps.date.outputs.date }}
-      - name: Release snapshot
-        id: release-snapshot
-        uses: actions/create-release@latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push release
+        uses: softprops/action-gh-release@v1
         with:
+          token: ${{ secrets.PAT }}
           tag_name: latest-${{ steps.date.outputs.date }}
-          release_name: latest-${{ steps.date.outputs.date }}
-          draft: false
-          prerelease: false
+          files: |
+            README.md
+            dist/*bz2
+            dist/*dmg
+#      - name: Release snapshot
+#        id: release-snapshot
+#        uses: actions/create-release@latest
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.PAT }}
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          tag_name: latest-${{ steps.date.outputs.date }}
+#          release_name: latest-${{ steps.date.outputs.date }}
+#          draft: false
+#          prerelease: false
 #      - name: tag and push
 #        run: |
 #          git tag latest-${{ steps.date.outputs.date }}
