@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: 'master'
-#          token: ${{ secrets.PAT }}
+#          token: ${{ secrets.CLASSIC_PAT }}
       - name: tag
         run: |
           git tag latest-${{ steps.date.outputs.date }}
