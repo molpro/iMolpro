@@ -9,11 +9,11 @@ import sys
 import re
 from time import sleep
 
-from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt
+from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt, QSize
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
-    QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication
+    QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, QToolButton
 from PyQt5.QtGui import QIntValidator, QFont
 from pymolpro import Project
 
@@ -400,7 +400,6 @@ class ProjectWindow(QMainWindow):
                 self.output_tabs.removeTab(i)
 
     def refresh_output_tabs(self):
-        # print('refresh output tabs')
         self.old_output_menu.refresh()
         if len(self.output_tabs) != len(
                 [tab_name for tab_name, pane in self.output_panes.items() if
@@ -411,6 +410,8 @@ class ProjectWindow(QMainWindow):
                     self.output_tabs.addTab(pane, suffix)
             for title, vod in self.vods.items():
                 self.output_tabs.addTab(vod, title)
+        if os.path.basename(self.project.filename('stderr')) not in self.output_panes.keys() and self.project.status == 'completed' and not (os.path.exists(self.project.filename('out')) and self.project.out):
+            self.add_output_tab(0, suffix='stderr')
         # print('end refresh output tabs')
 
     def add_output_tab(self, run: int, suffix='out', name=None):
@@ -812,23 +813,36 @@ Jmol.jmolHtml("</p>")
             [os.path.getmtime(xyz_file) < os.path.getmtime(self.project.filename('', gfile[1], run=-1)) for gfile in
              self.geometry_files()]):
             with tempfile.TemporaryDirectory() as tmpdirname:
-                self.project.copy(pathlib.Path(self.project.filename(run=-1)).name, location=tmpdirname)
-                project_path = pathlib.Path(tmpdirname) / pathlib.Path(self.project.filename(run=-1)).name
+                path = pathlib.Path(tmpdirname) / 'input_geometries'
+                os.makedirs(str(path),exist_ok=True)
+                self.project.copy(pathlib.Path(self.project.filename(run=-1)).name, location=path)
+                project_path = path / pathlib.Path(self.project.filename(run=-1)).name
                 project = Project(str(project_path))
                 project.clean(0)
                 open(project.filename('inp', run=-1), 'a').write('\nhf\n---')
                 with open(pathlib.Path(project.filename(run=-1)) / 'molpro.rc', 'a') as f:
                     f.write(' --geometry')
+
                 project.run(wait=True, force=True, backend='local')
                 if not project.xpath_search('//*/cml:atomArray'):
-                    print(project.out)
+                    detail = ''
+                    for suffix in ['stdout', 'stderr', 'out']:
+                        try:
+                            with open(project.filename(suffix, run=0), 'r') as ff:
+                                detail += ''.join(ff.readlines())
+                        except:
+                            pass
                     msg = QMessageBox()
                     msg.setIcon(QMessageBox.Critical)
                     msg.setWindowTitle("Error")
                     msg.setText('Error in calculating input geometry')
+                    msg.setDetailedText(detail)
                     msg.exec_()
                     return
                 geometry = project.geometry()
+                current_dir = os.path.dirname(self.project.filename(run=-1))
+                trash_project(project)
+                settings['project_directory'] = current_dir
                 with open(xyz_file, 'w') as f:
                     f.write(str(len(geometry)) + '\n\n')
                     for atom in geometry:
@@ -991,10 +1005,8 @@ Jmol.jmolHtml("</p>")
         result = QMessageBox.question(self, 'Erase project',
                                       'Are you sure you want to erase project ' + self.project.filename(run=-1))
         if result == QMessageBox.Yes:
-            trash = pathlib.Path(settings['Trash'])
-            trash.mkdir(parents=True, exist_ok=True)
             current_dir = os.path.dirname(self.project.filename(run=-1))
-            self.project.move(str(trash / os.path.basename(self.project.filename(run=-1))))
+            trash_project(self.project)
             settings['project_directory'] = current_dir
             self.close()
 
@@ -1003,6 +1015,10 @@ Jmol.jmolHtml("</p>")
                                 re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                                                   ',\n  '))
 
+def trash_project(project):
+    trash = pathlib.Path(settings['Trash'])
+    trash.mkdir(parents=True, exist_ok=True)
+    project.move(str(trash / os.path.basename(project.filename(run=-1))))
 
 class WebEnginePage(QWebEnginePage):
     def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
@@ -1172,17 +1188,9 @@ class GuidedPane(QWidget):
         self.guided_combo_orientation.currentTextChanged.connect(
             lambda text: self.input_specification_change('orientation', text))
 
-        # textLabel_wave_fct_char = QLabel()
-        # textLabel_wave_fct_char.setText("Wave Function Characteristics:")
-        # self.guided_layout.addWidget(textLabel_wave_fct_char)
-
-        self.charge_line = QLineEdit()
-        self.charge_line.setValidator(QIntValidator())
+        self.charge_line = ChargeSelector()
         self.charge_line.textChanged.connect(lambda text: self.input_specification_variable_change('charge', text))
 
-        # self.spin_line = QLineEdit()
-        # self.spin_line.setValidator(QIntValidator())
-        # self.spin_line.textChanged.connect(lambda text: self.input_specification_variable_change('spin', text))
         self.spin_line = SpinComboBox(self, 0, 14)
         self.spin_line.spin_changed.connect(
             lambda ms2: self.input_specification_variable_change('spin', str(ms2) if ms2 >= 0 else ''))
@@ -1191,10 +1199,6 @@ class GuidedPane(QWidget):
         self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
         self.guided_combo_wave_fct_symm.currentTextChanged.connect(
             lambda text: self.input_specification_change('wave_fct_symm', text))
-
-        # textLabel_calculation = QLabel()
-        # textLabel_calculation.setText("Calculation:")
-        # self.guided_layout.addWidget(textLabel_calculation)
 
         self.guided_combo_job_type = QComboBox(self)
         self.guided_combo_job_type.setMaximumWidth(180)
@@ -1256,7 +1260,6 @@ class GuidedPane(QWidget):
             'Spin': self.spin_line,
             'Symmetry': self.guided_combo_wave_fct_symm,
         }, title='Wavefunction parameters'))
-        self.charge_line.setFixedWidth(20)
 
         self.guided_orbitals_input = OrbitalInput(self)
         self.guided_layout.addWidget(RowOfTitledWidgets({
@@ -1588,3 +1591,37 @@ class PropertyInput(CheckableComboBox):
                                                          self.currentData() if t == k]
         self.parent.input_specification.polish()
         self.parent.refresh_input_from_specification()
+
+
+class ChargeSelector(QWidget):
+    textChanged = pyqtSignal(str, name='textChanged')
+
+    def __init__(self):
+        super().__init__()
+        self.layout = QHBoxLayout(self)
+        self.label = QLabel('0')
+        self.plus_button = QToolButton()
+        self.plus_button.setArrowType(Qt.UpArrow)
+        self.minus_button = QToolButton()
+        self.minus_button.setArrowType(Qt.DownArrow)
+        fontsize = self.fontInfo().pointSize()
+        self.minus_button.setIconSize(QSize(fontsize // 2, fontsize * 2 // 3))
+        self.plus_button.setIconSize(QSize(fontsize // 2, fontsize * 2 // 3))
+        self.layout.addWidget(self.minus_button)
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.plus_button)
+        self.plus_button.setContentsMargins(0, 0, 0, 0)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.minus_button.clicked.connect(lambda: self.change(-1))
+        self.plus_button.clicked.connect(lambda: self.change(1))
+
+    def setText(self, value):
+        self.label.setText(str(value))
+
+    def text(self):
+        return self.label.text()
+
+    def change(self, amount=1):
+        self.label.setText(str(int(self.label.text()) + amount))
+        self.textChanged.emit(self.label.text())
