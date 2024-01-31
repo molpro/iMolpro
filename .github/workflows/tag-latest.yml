@@ -1,0 +1,43 @@
+name: Tag latest
+
+on:
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d-%H-%M-%S')"
+      - name: Checkout branch "master"
+        uses: actions/checkout@v4
+        with:
+          ref: 'master'
+          token: ${{ secrets.PAT }}
+      - name: tag
+        run: |
+          git tag latest-${{ steps.date.outputs.date }}
+          git push --tags
+
+    outputs:
+      tag_name: latest-${{ steps.date.outputs.date }}
+
+  clean:
+    name: Clean obsolete latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Delete old latest releases
+        uses: dev-drprasad/delete-older-releases@v0.3.2
+        with:
+          keep_latest: 1
+          delete_tag_pattern: 'latest*'
+          delete_tags: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
