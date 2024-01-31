@@ -39,3 +39,5 @@ jobs:
           keep_latest: 1
           delete_tag_pattern: '.*latest*'
           delete_tags: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
