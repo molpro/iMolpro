@@ -19,7 +19,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: 'master'
-#          token: ${{ secrets.CLASSIC_PAT }}
           token: ${{ secrets.PAT }}
       - name: tag
         run: |
