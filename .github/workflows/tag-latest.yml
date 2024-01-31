@@ -25,14 +25,13 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: 'master'
+          token: ${{ secrets.PAT }}
       - name: tag
         run: |
           git tag latest-${{ steps.date.outputs.date }}
           git push --tags
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
-        with:
-          token: ${{ secrets.PAT }}
 #      - name: Push release
 #        uses: softprops/action-gh-release@v1
 #        with:
