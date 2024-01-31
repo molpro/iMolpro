@@ -25,18 +25,19 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: 'master'
-#      - name: tag
-#        run: |
-#          git tag latest-${{ steps.date.outputs.date }}
-      - name: Push release
-        uses: softprops/action-gh-release@v1
-        with:
-          token: ${{ secrets.PAT }}
-          tag_name: latest-${{ steps.date.outputs.date }}
-          files: |
-            README.md
-            dist/*bz2
-            dist/*dmg
+      - name: tag
+        run: |
+          git tag latest-${{ steps.date.outputs.date }}
+          git push --tags
+#      - name: Push release
+#        uses: softprops/action-gh-release@v1
+#        with:
+#          token: ${{ secrets.PAT }}
+#          tag_name: latest-${{ steps.date.outputs.date }}
+#          files: |
+#            README.md
+#            dist/*bz2
+#            dist/*dmg
 #      - name: Release snapshot
 #        id: release-snapshot
 #        uses: actions/create-release@latest
