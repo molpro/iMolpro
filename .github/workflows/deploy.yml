@@ -5,11 +5,11 @@ on:
   push:
     tags:
       - '*'
-  workflow_run:
-    workflows:
-      - Tag latest
-    types:
-      - completed
+#  workflow_run:
+#    workflows:
+#      - Tag latest
+#    types:
+#      - completed
 
 jobs:
   deploy:
@@ -36,6 +36,7 @@ jobs:
           conda create -n iMolpro-github
           conda activate iMolpro-github
           bash build.sh
+          ls -l dist
       - name: Release
         uses: ncipollo/release-action@v1
         with:
