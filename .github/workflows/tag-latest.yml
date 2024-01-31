@@ -31,8 +31,8 @@ jobs:
           git push --tags
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
-#        with:
-#          token: ${{ secrets.PAT }}
+        with:
+          token: ${{ secrets.PAT }}
 #      - name: Push release
 #        uses: softprops/action-gh-release@v1
 #        with:
