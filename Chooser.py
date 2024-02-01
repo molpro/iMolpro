@@ -127,7 +127,7 @@ class Chooser(QMainWindow):
             else:
                 return 'unknown'
 
-        version_label = LinkLabel("iMolpro version " + version_(), 'https://github.com/molpro/iMolpro')
+        version_label = LinkLabel("iMolpro version " + version_(), 'https://github.com/molpro/iMolpro/tree/'+version_())
         version_label.setStyleSheet("font-size: 10px")
         version_label.setAlignment(Qt.AlignCenter)
         rh_panel.addWidget(version_label)
