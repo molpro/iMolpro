@@ -26,6 +26,14 @@ if __name__ == '__main__':
     if hasattr(sys, '_MEIPASS'):
         sys.stdout = open('/tmp/iMolpro.stdout', 'w')
         sys.stderr = open('/tmp/iMolpro.stderr', 'w')
+
+    uname = os.uname()
+    if 'sysname' in uname and uname['sysname'] == 'Linux':
+        if 'FONTCONFIG_PATH' not in os.environ:
+            os.environ['FONTCONFIG_PATH']= '/etc/fonts'
+        if 'FONTCONFIG_FILE' not in os.environ:
+            os.environ['FONTCONFIG_FILE']= '/etc/fonts/fonts.conf'
+
     app = App(sys.argv)
 
     if 'Trash' not in settings:
