@@ -29,10 +29,11 @@ if __name__ == '__main__':
         
     uname = os.uname()
     if 'sysname' in uname and uname['sysname'] == 'Linux':
+        print(os.environ)
         if 'FONTCONFIG_PATH' not in os.environ:
-            os.environ['FONTCONFIG_PATH']= '/etc/fonts'
+            os.environ['FONTCONFIG_PATH'] = '/etc/fonts'
         if 'FONTCONFIG_FILE' not in os.environ:
-            os.environ['FONTCONFIG_FILE']= '/etc/fonts/fonts.conf'
+            os.environ['FONTCONFIG_FILE'] = '/etc/fonts/fonts.conf'
             
     app = App(sys.argv)
 
