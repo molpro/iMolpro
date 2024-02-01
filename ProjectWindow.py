@@ -410,8 +410,9 @@ class ProjectWindow(QMainWindow):
                     self.output_tabs.addTab(pane, suffix)
             for title, vod in self.vods.items():
                 self.output_tabs.addTab(vod, title)
-        if os.path.basename(self.project.filename('stderr')) not in self.output_panes.keys() and self.project.status == 'completed' and not (os.path.exists(self.project.filename('out')) and self.project.out):
-            self.add_output_tab(0, suffix='stderr')
+        if 'stderr' not in self.output_panes.keys() and self.project.status == 'completed' and not (
+                os.path.exists(self.project.filename('out')) and self.project.out):
+            self.add_output_tab(0, suffix='stderr', name='stderr')
         # print('end refresh output tabs')
 
     def add_output_tab(self, run: int, suffix='out', name=None):
@@ -575,6 +576,10 @@ class ProjectWindow(QMainWindow):
             self.project.filename('', self.input_specification['geometry'], run=-1)))):
             QMessageBox.critical(self, 'Geometry missing', 'Cannot submit job because no geometry is defined')
             return False
+        if 'stderr' in self.output_panes:
+            self.output_tabs.removeTab(self.output_tabs.indexOf(self.output_panes['stderr']))
+            del self.output_panes['stderr']
+            self.refresh_output_tabs()
         try:
             self.project.run(force=force)
         except Exception as e:
@@ -814,7 +819,7 @@ Jmol.jmolHtml("</p>")
              self.geometry_files()]):
             with tempfile.TemporaryDirectory() as tmpdirname:
                 path = pathlib.Path(tmpdirname) / 'input_geometries'
-                os.makedirs(str(path),exist_ok=True)
+                os.makedirs(str(path), exist_ok=True)
                 self.project.copy(pathlib.Path(self.project.filename(run=-1)).name, location=path)
                 project_path = path / pathlib.Path(self.project.filename(run=-1)).name
                 project = Project(str(project_path))
@@ -1015,10 +1020,12 @@ Jmol.jmolHtml("</p>")
                                 re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                                                   ',\n  '))
 
+
 def trash_project(project):
     trash = pathlib.Path(settings['Trash'])
     trash.mkdir(parents=True, exist_ok=True)
     project.move(str(trash / os.path.basename(project.filename(run=-1))))
+
 
 class WebEnginePage(QWebEnginePage):
     def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
