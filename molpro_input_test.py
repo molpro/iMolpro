@@ -81,6 +81,11 @@ def test_create_input(methods):
 def test_recreate_input(methods):
     for input in [
         'geometry={Ne};basis={sp,ne,cc-pvdz;c};{df-rhf}',
+        ]:
+        specification = InputSpecification(input)
+        assert 'basis' not in specification
+        assert 'variables' not in specification
+    for input in [
         'geometry={\nHe\n}\nhf',
         'geometry={\nHe\n}\nhf\nccsd',
         'geometry={\nHe\n}\nhf\nccsd\n\n',

@@ -109,19 +109,17 @@ class InputSpecification(UserDict):
                                       flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
         old_input_ = ''
         count = 100
-        print('minus first canonicalised_input_', canonicalised_input_)
         while (canonicalised_input_ != old_input_ and count):
             count -= 1
             old_input_ = canonicalised_input_
             canonicalised_input_ = re.sub('basis={([^}]+[^,}])\n([^}]+=[^}]+)}', r'basis={\1,\2}', canonicalised_input_,
                                           flags=re.DOTALL | re.IGNORECASE)
-        print('zeroth canonicalised_input_', canonicalised_input_)
-        canonicalised_input_ = re.sub('basis={([^}]*)\n*}', r'basis, \1', canonicalised_input_,
+        if not re.match('.*basis={ *s[pdfghi]* *[,}].*', canonicalised_input_, flags=re.DOTALL | re.IGNORECASE):
+            canonicalised_input_ = re.sub('basis={ *([^}]*)\n*}', r'basis, \1', canonicalised_input_,
                                       flags=re.DOTALL | re.IGNORECASE)
 
         # parse and protect {....}
         line_end_protected_ = '±'
-        print('first canonicalised_input_', canonicalised_input_)
         for i in range(len(canonicalised_input_)):
             if canonicalised_input_[i] == '{':
                 for j in range(i + 1, len(canonicalised_input_)):
@@ -131,13 +129,12 @@ class InputSpecification(UserDict):
                     elif canonicalised_input_[j] in ';\n':
                         canonicalised_input_ = canonicalised_input_[:j] + line_end_protected_ + canonicalised_input_[
                                                                                                 j + 1:]
-        print('second canonicalised_input_', canonicalised_input_)
         canonicalised_input_ = canonicalised_input_.replace(';', '\n').replace(line_end_protected_, ';')
-        print('third canonicalised_input_', canonicalised_input_)
         for line in canonicalised_input_.split('\n'):
             line = re.sub('basis *,', 'basis=', line, flags=re.IGNORECASE)
             group = line.strip()
-            line = group.split(line_end_protected_)[0].replace('{', '').strip()
+            if not re.match('.*basis={ *s[pdfghi]* *[,}].*', line, flags=re.DOTALL | re.IGNORECASE):
+                line = group.split(line_end_protected_)[0].replace('{', '').strip()
             command = re.sub('[;, !].*$', '', line, flags=re.IGNORECASE).replace('}', '').lower()
             for df_prefix in df_prefixes:
                 if command == df_prefix.lower() + 'hf': command = df_prefix.lower() + 'rhf'
@@ -199,7 +196,7 @@ class InputSpecification(UserDict):
                 self['geometry_external'] = True
             elif command == 'basis':
                 raise ValueError('** warning should not happen basis', line)
-            elif re.match('^basis *= *', line, re.IGNORECASE):
+            elif re.match('^basis *= *[^{]', line, re.IGNORECASE):
                 if 'steps' in self and self['steps']: self.data.clear(); return self  # input too complex
                 self['basis'] = {'default': (re.sub(',.*', '', re.sub(' *basis *= *{*(default=)*', '',
                                                                       group.replace('{', '').replace('}', ''),
@@ -211,10 +208,7 @@ class InputSpecification(UserDict):
                     self['basis']['elements'][ff[0][0].upper() + ff[0][1:].lower()] = ff[1].strip('\n ')
                 # print('made basis specification',self)
             elif re.match('^basis *=', line, re.IGNORECASE):
-                if 'steps' in self and self['steps']: self.data.clear(); return self  # input too complex
-                basis = re.sub('basis *= *', '', line, flags=re.IGNORECASE)
-                basis = re.sub(' *!.*', '', basis)
-                self['basis'] = 'default=' + basis
+                pass
             elif re.match('(set,)?[a-z][a-z0-9_]* *=.*$', line, flags=re.IGNORECASE):
                 if debug: print('variable')
                 line = re.sub(' *!.*$', '', re.sub('set *,', '', line, flags=re.IGNORECASE)).strip()
@@ -573,7 +567,7 @@ class InputSpecification(UserDict):
             if line.strip().isdigit() and line_number == 1: start_line = 3
             if line_number >= start_line and line:
                 word = line.strip().replace(' ', ',').split(',')[0]
-                word = word[0].upper() + word[1:].lower()
+                word = re.sub('\d.*$', '', word[0].upper() + word[1:].lower())
                 atomic_number = periodic_table.index(word) + 1
                 total_nuclear_charge += atomic_number
         charge = int(self['variables']['charge']) if 'variables' in self and 'charge' in self['variables'] and \
