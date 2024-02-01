@@ -5,14 +5,13 @@ on:
   push:
     tags:
       - '*'
-
 jobs:
   deploy:
     name: Deploy
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, [macOS, ARM64]]
+        os: [ ubuntu-latest, macos-latest, [ macOS, ARM64 ] ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -21,7 +20,7 @@ jobs:
       - name: Build
         run: |
           if [ -z "${CONDA_EXE}" ]; then export CONDA_EXE=$(readlink -f $(which conda)) ; fi
-          git fetch --tags
+          echo github.ref ${{ github.ref }}
           conda config --set solver libmamba
           . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
           conda create -n iMolpro-github
