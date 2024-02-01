@@ -14,19 +14,23 @@ jobs:
     steps:
       - name: Get current date
         id: date
-        run: echo "::set-output name=date::$(date +'%Y-%m-%d-%H-%M-%S')"
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
       - name: Checkout branch "master"
         uses: actions/checkout@v4
         with:
           ref: 'master'
           token: ${{ secrets.PAT }}
       - name: tag
+        id: tag
         run: |
-          git tag latest-${{ steps.date.outputs.date }}
+          sha_short=$(git rev-parse --short HEAD)
+          tag=latest-${{ steps.date.outputs.date }}-${sha_short}
+          echo "tag=${tag}" >> $GITHUB_OUTPUT
+          git tag {tag}
           git push --tags
 
     outputs:
-      tag_name: latest-${{ steps.date.outputs.date }}
+      tag_name: ${{ steps.tag.outputs.tag }}
 
   clean:
     name: Clean obsolete latest
