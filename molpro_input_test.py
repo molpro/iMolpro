@@ -86,6 +86,7 @@ def test_recreate_input(methods):
         assert 'basis' not in specification
         assert 'variables' not in specification
     for input in [
+        'geomtyp=xyz;geometry={Ne};basis={default=cc-pV(T+d)Z-PP};gprint,basis;{df-rhf}',
         'geometry={\nHe\n}\nhf',
         'geometry={\nHe\n}\nhf\nccsd',
         'geometry={\nHe\n}\nhf\nccsd\n\n',

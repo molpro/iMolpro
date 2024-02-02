@@ -107,6 +107,8 @@ class InputSpecification(UserDict):
         self['steps'] = []
         canonicalised_input_ = re.sub('basis\n(.*)\n *end', r'basis={\1}', input,
                                       flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
+        canonicalised_input_ = re.sub('basis={\n', r'basis={', canonicalised_input_,
+                                      flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
         old_input_ = ''
         count = 100
         while (canonicalised_input_ != old_input_ and count):
@@ -117,6 +119,7 @@ class InputSpecification(UserDict):
         if not re.match('.*basis={ *s[pdfghi]* *[,}].*', canonicalised_input_, flags=re.DOTALL | re.IGNORECASE):
             canonicalised_input_ = re.sub('basis={ *([^}]*)\n*}', r'basis, \1', canonicalised_input_,
                                           flags=re.DOTALL | re.IGNORECASE)
+        canonicalised_input_ = canonicalised_input_.replace('{FREQ}', '{frequencies\nthermo}')  # hack for gmolpro
 
         # parse and protect {....}
         line_end_protected_ = '±'
@@ -208,6 +211,7 @@ class InputSpecification(UserDict):
                     self['basis']['elements'][ff[0][0].upper() + ff[0][1:].lower()] = ff[1].strip('\n ')
                 # print('made basis specification',self)
             elif re.match('^basis *=', line, re.IGNORECASE):
+                print('** warning should not happen')
                 pass
             elif re.match('(set,)?[a-z][a-z0-9_]* *=.*$', line, flags=re.IGNORECASE):
                 if debug: print('variable')
@@ -647,6 +651,33 @@ def canonicalise(input):
                                                               '\n')))))).rstrip(
         '\n ').lstrip(
         '\n ') + '\n'
+    # push variable assignments below geometry=file.xyz to hack compatibility with gmolpro guided
+    # print('before hack', result)
+    # hack for gmolpro geomtyp:
+    old_result = ''
+    while (old_result != result):
+        old_result = result
+        result = re.sub('(\\w+=\\w+)\n(orient,mass)', '\\2\n\\1', result, flags=re.MULTILINE | re.IGNORECASE)
+    old_result = ''
+    while (old_result != result):
+        old_result = result
+        result = re.sub('(\\w+=\\w+)\n(nosym)', '\\2\n\\1', result, flags=re.MULTILINE | re.IGNORECASE)
+    old_result = ''
+    while (old_result != result):
+        old_result = result
+        result = re.sub('(\\w+=\\w+)\n(geometry=[\\w.{}]*)', '\\2\n\\1', result, flags=re.MULTILINE | re.IGNORECASE)
+    old_result = ''
+    while (old_result != result):
+        old_result = result
+        result = re.sub('(\\w+=\\w+)\n(basis={[^\n]*})', '\\2\n\\1', result,
+                        flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
+    # print('after 1st hack', result)
+    result = re.sub('(dkho=\d)\n(geomtyp=xyz)', '\\2\n\\1', result, flags=re.MULTILINE|re.IGNORECASE)
+    # hack for gmolpro-style frequencies:
+    # print('after 2nd hack', result)
+    result = result.replace('{FREQ}', '{frequencies\nthermo}')
+    result = re.sub('basis={\n', 'basis={', result, flags=re.IGNORECASE | re.DOTALL)
+    # print('after 3rd hack', result)
     new_result = ''
     in_group = False
     for line in re.sub('set[, ]', '', result.strip(), flags=re.IGNORECASE).split('\n'):
@@ -682,7 +713,8 @@ def canonicalise(input):
         line = line.replace('!', ',').strip() + '\n'  # unprotect
         line = line.replace('&&&&&', '!').strip() + '\n'  # unprotect
         # print('line before bracketing',line, in_group)
-        if line.strip() and line.strip()[0] != '{' and not re.match(r'^ *\w+ *=', line) and not in_group:
+        if line.strip() and line.strip()[0] != '{' and not re.match(r'^ *\w+ *=', line) and not in_group and not any(
+                [v in line for v in parameter_commands.values()]):
             comment_split = line.split('!')
             line = '{' + comment_split[0].strip() + '}'  # + (comment_split[1] if len(comment_split) > 1 else '')
         # print('line after bracketing',line)
