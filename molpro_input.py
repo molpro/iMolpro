@@ -116,7 +116,7 @@ class InputSpecification(UserDict):
                                           flags=re.DOTALL | re.IGNORECASE)
         if not re.match('.*basis={ *s[pdfghi]* *[,}].*', canonicalised_input_, flags=re.DOTALL | re.IGNORECASE):
             canonicalised_input_ = re.sub('basis={ *([^}]*)\n*}', r'basis, \1', canonicalised_input_,
-                                      flags=re.DOTALL | re.IGNORECASE)
+                                          flags=re.DOTALL | re.IGNORECASE)
 
         # parse and protect {....}
         line_end_protected_ = '±'

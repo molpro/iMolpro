@@ -1306,6 +1306,8 @@ class GuidedPane(QWidget):
         self.spin_line.refresh(self.input_specification.spin)
 
         if self.input_specification is not None:
+            if self.input_specification.method is None:
+                self.input_specification.method = 'rhf'
             base_method = re.sub('^df-', '', self.input_specification.method, flags=re.IGNORECASE)
             method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
             self.guided_combo_method.setCurrentIndex(method_index)
