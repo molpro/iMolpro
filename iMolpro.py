@@ -11,6 +11,7 @@ from Chooser import Chooser
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
 import os
+import platform
 
 if __name__ == '__main__':
 
@@ -27,7 +28,7 @@ if __name__ == '__main__':
         sys.stdout = open('/tmp/iMolpro.stdout', 'w')
         sys.stderr = open('/tmp/iMolpro.stderr', 'w')
 
-    if os.uname().sysname == 'Linux':
+    if platform.uname().system == 'Linux':
         if 'FONTCONFIG_PATH' not in os.environ:
             os.environ['FONTCONFIG_PATH'] = '/etc/fonts'
         if 'FONTCONFIG_FILE' not in os.environ:
