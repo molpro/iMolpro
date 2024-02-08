@@ -5,3 +5,5 @@ pysjef >= 1.37.7
 pymolpro >=1.4.17
 pubchempy >=1
 chemspipy >=2
+git
+m2-base

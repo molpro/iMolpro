@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 import re
-from time import sleep
+import platform
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt, QSize
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
@@ -131,8 +131,8 @@ class ProjectWindow(QMainWindow):
                 msg.setDetailedText(str(e))
                 msg.exec()
         self.jsmol_min_js = str(pathlib.Path(__file__).parent / "JSmol.min.js")
-        if hasattr(sys, '_MEIPASS'):
-            os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
+        if hasattr(sys, '_MEIPASS') and platform.uname().system != 'Windows':
+                os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
                 sys._MEIPASS, 'PyQt5', 'Qt', 'libexec', 'QtWebEngineProcess'
             ))
         os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--no-sandbox'

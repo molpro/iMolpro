@@ -24,7 +24,7 @@ if __name__ == '__main__':
             return True
 
 
-    if hasattr(sys, '_MEIPASS'):
+    if hasattr(sys, '_MEIPASS') and platform.uname().system != 'Windows':
         sys.stdout = open('/tmp/iMolpro.stdout', 'w')
         sys.stderr = open('/tmp/iMolpro.stderr', 'w')
 
