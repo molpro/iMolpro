@@ -1,4 +1,4 @@
-cmd.exe /c conda install -c conda-forge -y --file=requirements.txt
+cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base
 
 
 $versionfile = ( $env:TMP, "\VERSION" ) -join ""
@@ -16,4 +16,5 @@ pyinstaller --noconfirm `
             --add-data="$versionfile":. `
               $pyinstaller_opt iMolpro.py
 
-# $descriptor = ($version, '.', $(uname), '.', $(uname -m)
+$descriptor = ($version,  'Windows', $(uname -m) ) - join "."
+echo descriptor $descriptor
