@@ -1,0 +1,7 @@
+name: iMolpro
+version: "1.0.0"
+license_file: LICENSE
+welcome_image: Molpro_Logo_Molpro_Quantum_Chemistry_Software.png
+channels:
+  - "http://repo.continuum.io/pkgs/main/"
+  - "https://repo.anaconda.com/pkgs/msys2"

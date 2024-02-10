@@ -16,5 +16,5 @@ pyinstaller --noconfirm `
             --add-data="$versionfile":. `
               $pyinstaller_opt iMolpro.py
 
-$descriptor = ($version,  'Windows', $(uname -m) ) - join "."
+$descriptor = ($version,  'Windows', $(uname -m) ) -join "."
 echo descriptor $descriptor
