@@ -121,7 +121,7 @@ class ProjectWindow(QMainWindow):
 
         settings['project_directory'] = os.path.dirname(self.project.filename(run=-1))
 
-        if 'PATH' in os.environ and 'SHELL' in os.environ:
+        if 'PATH' in os.environ and 'SHELL' in os.environ and platform.uname().system != 'Windows':
             try:
                 os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
                     'PATH']  # make PATH just as if running from shell
@@ -573,7 +573,8 @@ class ProjectWindow(QMainWindow):
     def run(self, force=False):
         if self.guided_possible() and ('geometry' not in self.input_specification or (
                 self.input_specification['geometry'][-4:] == '.xyz' and not os.path.exists(
-            self.project.filename('', self.input_specification['geometry'], run=-1)))):
+            self.project.filename('', self.input_specification['geometry'], run=
+            -1)))):
             QMessageBox.critical(self, 'Geometry missing', 'Cannot submit job because no geometry is defined')
             return False
         if 'stderr' in self.output_panes:
