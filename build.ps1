@@ -12,7 +12,6 @@ If (Test-Path -path dist)
     rm dist -r -fo
 }
 $cp = $env:CONDA_PREFIX
-#pyinstaller --noconfirm --noconsole `
 pyinstaller --noconfirm `
   --add-data=JSmol.min.js:. `
     --add-data=j2s:./j2s `
@@ -23,6 +22,7 @@ pyinstaller --noconfirm `
             --add-data=$cp\Library\usr\bin\nohup.exe:. `
             --add-data=$cp\Library\usr\bin\bash.exe:. `
             --add-data=$cp\Library\usr\bin\ps.exe:. `
+            --upx-exclude qwindows.dll `
               $pyinstaller_opt iMolpro.py
 
 
