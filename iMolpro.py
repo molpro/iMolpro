@@ -33,6 +33,19 @@ if __name__ == '__main__':
             os.environ['FONTCONFIG_PATH'] = '/etc/fonts'
         if 'FONTCONFIG_FILE' not in os.environ:
             os.environ['FONTCONFIG_FILE'] = '/etc/fonts/fonts.conf'
+
+    if platform.uname().system == 'Windows':
+        import ctypes
+        import ctypes.wintypes
+        console_window = ctypes.windll.kernel32.GetConsoleWindow()
+        if console_window:
+            process_id = ctypes.windll.kernel32.GetCurrentProcessId()
+            console_process_id = ctypes.wintypes.DWORD()
+            ctypes.windll.user32.GetWindowThreadProcessId(console_window, ctypes.byref(console_process_id))
+            console_process_id = console_process_id.value
+            if process_id == console_process_id:
+                ctypes.windll.user32.ShowWindow(console_window,2)
+
             
     app = App(sys.argv)
 

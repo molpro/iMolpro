@@ -21,7 +21,7 @@ Section
     CreateShortcut "$SMPROGRAMS\Uninstall iMolpro.lnk" "$INSTDIR\uninstall.exe"
     CreateShortcut "$SMPROGRAMS\iMolpro.lnk" "$INSTDIR\iMolpro.lnk"
 
-    File dist\iMolpro\iMolpro.lnk
+    # File dist\iMolpro\iMolpro.lnk
     File dist\iMolpro\iMolpro.exe
     File /r dist\iMolpro\_internal
 SectionEnd

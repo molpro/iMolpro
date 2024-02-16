@@ -20,19 +20,11 @@ pyinstaller --noconfirm `
         --add-data=README.md:. `
           --add-data=doc:.\doc `
             --add-data="$versionfile":. `
-            --add-data=$cp\Library\usr\bin\mintty.exe:. `
             --add-data=$cp\Library\usr\bin\nohup.exe:. `
             --add-data=$cp\Library\usr\bin\bash.exe:. `
             --add-data=$cp\Library\usr\bin\ps.exe:. `
               $pyinstaller_opt iMolpro.py
 
-
-$WshShell = New-Object -comObject WScript.Shell
-$dir = Split-Path $MyInvocation.MyCommand.Path -Parent
-$Shortcut = $WshShell.CreateShortcut( ($dir + ".\dist\iMolpro\iMolpro.lnk"))
-$Shortcut.TargetPath = ".\_internal\mintty.exe"
-$Shortcut.Arguments = "-w hide .\iMolpro.exe"
-$Shortcut.Save()
 
 $descriptor = ($version, 'Windows', $( uname -m )) -join "."
 echo descriptor $descriptor
