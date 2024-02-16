@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 import re
-from time import sleep
+import platform
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt, QSize
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
@@ -121,18 +121,24 @@ class ProjectWindow(QMainWindow):
 
         settings['project_directory'] = os.path.dirname(self.project.filename(run=-1))
 
-        if 'PATH' in os.environ and 'SHELL' in os.environ:
-            try:
-                os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
-                    'PATH']  # make PATH just as if running from shell
-            except Exception as e:
-                msg = QMessageBox()
-                msg.setText('Error in setting PATH')
-                msg.setDetailedText(str(e))
-                msg.exec()
+        # print('platform',platform.uname().system)
+        # print('PATH', os.environ['PATH'])
+        try:
+            if platform.uname().system == 'Windows':
+                os.environ['PATH'] = os.path.dirname(os.path.abspath(__file__))+ ';' + os.environ['PATH']
+                # print('PATH',os.environ['PATH'])
+            elif 'PATH' in os.environ and 'SHELL' in os.environ:
+                    os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
+                'PATH']  # make PATH just as if running from shell
+        except Exception as e:
+            msg = QMessageBox()
+            msg.setText('Error in setting PATH')
+            msg.setDetailedText(str(e))
+            msg.exec()
+        # print('PATH', os.environ['PATH'])
         self.jsmol_min_js = str(pathlib.Path(__file__).parent / "JSmol.min.js")
-        if hasattr(sys, '_MEIPASS'):
-            os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
+        if hasattr(sys, '_MEIPASS') and platform.uname().system != 'Windows':
+                os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
                 sys._MEIPASS, 'PyQt5', 'Qt', 'libexec', 'QtWebEngineProcess'
             ))
         os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--no-sandbox'
@@ -573,7 +579,8 @@ class ProjectWindow(QMainWindow):
     def run(self, force=False):
         if self.guided_possible() and ('geometry' not in self.input_specification or (
                 self.input_specification['geometry'][-4:] == '.xyz' and not os.path.exists(
-            self.project.filename('', self.input_specification['geometry'], run=-1)))):
+            self.project.filename('', self.input_specification['geometry'], run=
+            -1)))):
             QMessageBox.critical(self, 'Geometry missing', 'Cannot submit job because no geometry is defined')
             return False
         if 'stderr' in self.output_panes:

@@ -33,6 +33,22 @@ jobs:
           files: |
             dist/*bz2
             dist/*dmg
+  deploy-windows:
+    name:  Deploy on Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+      - uses: s-weigand/setup-conda@v1
+      - name: Build
+        run: |
+          .\build.ps1
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist
 
 #      - name: Delete old latest releases
 #        uses: dev-drprasad/delete-older-releases@v0.3.2

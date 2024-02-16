@@ -11,6 +11,7 @@ from Chooser import Chooser
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
 import os
+import platform
 
 if __name__ == '__main__':
 
@@ -23,15 +24,28 @@ if __name__ == '__main__':
             return True
 
 
-    if hasattr(sys, '_MEIPASS'):
+    if hasattr(sys, '_MEIPASS') and platform.uname().system != 'Windows':
         sys.stdout = open('/tmp/iMolpro.stdout', 'w')
         sys.stderr = open('/tmp/iMolpro.stderr', 'w')
 
-    if os.uname().sysname == 'Linux':
+    if platform.uname().system == 'Linux':
         if 'FONTCONFIG_PATH' not in os.environ:
             os.environ['FONTCONFIG_PATH'] = '/etc/fonts'
         if 'FONTCONFIG_FILE' not in os.environ:
             os.environ['FONTCONFIG_FILE'] = '/etc/fonts/fonts.conf'
+
+    if platform.uname().system == 'Windows':
+        import ctypes
+        import ctypes.wintypes
+        console_window = ctypes.windll.kernel32.GetConsoleWindow()
+        if console_window:
+            process_id = ctypes.windll.kernel32.GetCurrentProcessId()
+            console_process_id = ctypes.wintypes.DWORD()
+            ctypes.windll.user32.GetWindowThreadProcessId(console_window, ctypes.byref(console_process_id))
+            console_process_id = console_process_id.value
+            if process_id == console_process_id:
+                ctypes.windll.user32.ShowWindow(console_window,2)
+
             
     app = App(sys.argv)
 
