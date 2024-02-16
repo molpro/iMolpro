@@ -672,7 +672,7 @@ def canonicalise(input):
         result = re.sub('(\\w+=\\w+)\n(basis={[^\n]*})', '\\2\n\\1', result,
                         flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
     # print('after 1st hack', result)
-    result = re.sub('(dkho=\d)\n(geomtyp=xyz)', '\\2\n\\1', result, flags=re.MULTILINE|re.IGNORECASE)
+    result = re.sub('(dkho=\\d)\n(geomtyp=xyz)', '\\2\n\\1', result, flags=re.MULTILINE|re.IGNORECASE)
     # hack for gmolpro-style frequencies:
     # print('after 2nd hack', result)
     result = result.replace('{FREQ}', '{frequencies\nthermo}')
