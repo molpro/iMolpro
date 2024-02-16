@@ -29,7 +29,6 @@ jobs:
 
     outputs:
       tag_name: ${{ steps.tag.outputs.tag }}
-
   clean:
     name: Clean obsolete latest
     runs-on: ubuntu-latest
