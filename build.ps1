@@ -20,6 +20,7 @@ pyinstaller --noconfirm `
         --add-data=README.md:. `
           --add-data=doc:.\doc `
             --add-data="$versionfile":. `
+            --add-data=$cp\Library\usr\bin\mintty.exe:. `
             --add-data=$cp\Library\usr\bin\nohup.exe:. `
             --add-data=$cp\Library\usr\bin\bash.exe:. `
             --add-data=$cp\Library\usr\bin\ps.exe:. `
