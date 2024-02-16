@@ -44,7 +44,7 @@ jobs:
       - uses: s-weigand/setup-conda@v1
       - name: Build
         run: |
-          build.ps1
+          .\build.ps1
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
