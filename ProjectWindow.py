@@ -121,15 +121,21 @@ class ProjectWindow(QMainWindow):
 
         settings['project_directory'] = os.path.dirname(self.project.filename(run=-1))
 
-        if 'PATH' in os.environ and 'SHELL' in os.environ and platform.uname().system != 'Windows':
-            try:
-                os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
-                    'PATH']  # make PATH just as if running from shell
-            except Exception as e:
-                msg = QMessageBox()
-                msg.setText('Error in setting PATH')
-                msg.setDetailedText(str(e))
-                msg.exec()
+        # print('platform',platform.uname().system)
+        # print('PATH', os.environ['PATH'])
+        try:
+            if platform.uname().system == 'Windows':
+                os.environ['PATH'] = os.path.dirname(os.path.abspath(__file__))+ ';' + os.environ['PATH']
+                # print('PATH',os.environ['PATH'])
+            elif 'PATH' in os.environ and 'SHELL' in os.environ:
+                    os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
+                'PATH']  # make PATH just as if running from shell
+        except Exception as e:
+            msg = QMessageBox()
+            msg.setText('Error in setting PATH')
+            msg.setDetailedText(str(e))
+            msg.exec()
+        # print('PATH', os.environ['PATH'])
         self.jsmol_min_js = str(pathlib.Path(__file__).parent / "JSmol.min.js")
         if hasattr(sys, '_MEIPASS') and platform.uname().system != 'Windows':
                 os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
