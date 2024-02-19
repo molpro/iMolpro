@@ -22,7 +22,6 @@ pyinstaller --noconfirm `
             --add-data=$cp\Library\usr\bin\nohup.exe:. `
             --add-data=$cp\Library\usr\bin\bash.exe:. `
             --add-data=$cp\Library\usr\bin\ps.exe:. `
-            --upx-exclude qwindows.dll `
               $pyinstaller_opt iMolpro.py
 
 
