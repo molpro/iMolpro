@@ -751,7 +751,8 @@ Jmol.jmolHtml("</p>")
 </html>"""
         self.add_vod(html, title=title, **kwargs)
 
-    def embedded_builder(self, file, title='builder', **kwargs):
+    def embedded_builder(self, rawfile, title='builder', **kwargs):
+        file = pathlib.Path(rawfile).as_posix()
         width = max(400, self.output_tabs.geometry().width() - 310)
         height = max(400, self.output_tabs.geometry().height() - 40)
 
