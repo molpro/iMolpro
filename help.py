@@ -46,7 +46,7 @@ class HelpManager:
             self.menubar.win = HelpMainWindow(content)
         else:
             self.menubar.win = HelpMainWindow()
-            self.menubar.win.setSource(QUrl(_file))
+            self.menubar.win.setSource(QUrl.fromLocalFile(_file))
         self.menubar.win.setWindowTitle(name)
         self.menubar.win.show()
 
