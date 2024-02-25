@@ -35,6 +35,7 @@ if __name__ == '__main__':
             os.environ['FONTCONFIG_FILE'] = '/etc/fonts/fonts.conf'
 
     if platform.uname().system == 'Windows':
+        os.environ['PATH'] = str(pathlib.Path(os.environ['CONDA_PREFIX'])/ 'bin' ) + ';' + os.environ['PATH']
         import ctypes
         import ctypes.wintypes
         console_window = ctypes.windll.kernel32.GetConsoleWindow()
