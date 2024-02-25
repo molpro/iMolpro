@@ -183,7 +183,7 @@ class ProjectWindow(QMainWindow):
         self.input_tabs.currentChanged.connect(self.input_tab_changed_consequence)
         left_layout.addWidget(self.input_tabs)
         self.input_tabs.setMinimumHeight(300)
-        self.input_tabs.setMinimumWidth(400)
+        self.input_tabs.setMinimumWidth(450)
         self.statusBar.setMaximumWidth(400)
         button_layout = QHBoxLayout()
         # left_layout.addWidget(QLabel('Execution:'))
