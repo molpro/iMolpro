@@ -1,8 +1,8 @@
 pyqt >=5.15
 pyqtwebengine >=5.15
 pyinstaller >=6
-pysjef >= 1.38.8
-pymolpro >=1.4.20
+pysjef >= 1.38.17
+pymolpro >=1.4.21
 pubchempy >=1
 chemspipy >=2
 git
