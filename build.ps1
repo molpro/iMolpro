@@ -21,7 +21,10 @@ pyinstaller --noconfirm `
             --add-data="$versionfile":. `
             --add-data=$cp\Library\usr\bin\nohup.exe:. `
             --add-data=$cp\Library\usr\bin\bash.exe:. `
+            --add-data=$cp\Library\usr\bin\dirname.exe:. `
             --add-data=$cp\Library\usr\bin\ps.exe:. `
+            --add-data=$cp\bin\rsync:. `
+            --add-data=$cp\etc\cwrsync:.\etc\cwrsync `
               $pyinstaller_opt iMolpro.py
 
 
