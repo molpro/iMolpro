@@ -135,6 +135,7 @@ class InputSpecification(UserDict):
         canonicalised_input_ = canonicalised_input_.replace(';', '\n').replace(line_end_protected_, ';')
         for line in canonicalised_input_.split('\n'):
             line = re.sub('basis *,', 'basis=', line, flags=re.IGNORECASE)
+            line = re.sub('basis=$,', 'basis=cc-pVDZ-PP', line, flags=re.IGNORECASE)
             group = line.strip()
             if not re.match('.*basis={ *s[pdfghi]* *[,}].*', line, flags=re.DOTALL | re.IGNORECASE):
                 line = group.split(line_end_protected_)[0].replace('{', '').strip()
@@ -208,7 +209,9 @@ class InputSpecification(UserDict):
                 self['basis']['elements'] = {}
                 for field in fields[1:]:
                     ff = field.split('=')
-                    self['basis']['elements'][ff[0][0].upper() + ff[0][1:].lower()] = ff[1].strip('\n ')
+                    if ff[0].strip(' ')[0] != '!':
+                        if len(ff) < 2: self.data.clear(); return self
+                        self['basis']['elements'][ff[0][0].upper() + ff[0][1:].lower()] = ff[1].strip('\n ')
                 # print('made basis specification',self)
             elif re.match('^basis *=', line, re.IGNORECASE):
                 print('** warning should not happen')
