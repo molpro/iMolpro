@@ -24,8 +24,7 @@ pyinstaller --noconfirm `
             --add-data=$cp\Library\usr\bin\mkdir.exe:. `
             --add-data=$cp\Library\usr\bin\dirname.exe:. `
             --add-data=$cp\Library\usr\bin\ps.exe:. `
-            --add-data=$cp\rsync:. `
-            --add-data=$cp\etc\cwrsync:.\etc\cwrsync `
+            --add-data=$cp\rsync:.\rsync `
               $pyinstaller_opt iMolpro.py
 
 
