@@ -50,6 +50,10 @@ if __name__ == '__main__':
 
             
     app = App(sys.argv)
+    if platform.uname().system == 'Windows':
+        font = app.font()
+        font.setPointSize(7)
+        app.setFont(font)
 
     if 'Trash' not in settings:
         settings['Trash'] = str(pathlib.Path(os.path.expanduser('~')) / pathlib.Path('.molpro') / 'iMolpro.trash')
