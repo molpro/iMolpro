@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: 'master'
-          token: ${{ secrets.PAT-repo }}
+          token: ${{ secrets.PAT }}
       - name: tag
         id: tag
         run: |
