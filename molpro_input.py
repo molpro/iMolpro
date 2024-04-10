@@ -654,6 +654,7 @@ def canonicalise(input):
                                                               '\n')))))).rstrip(
         '\n ').lstrip(
         '\n ') + '\n'
+    result = re.sub(',+}','}', result)
     # push variable assignments below geometry=file.xyz to hack compatibility with gmolpro guided
     # print('before hack', result)
     # hack for gmolpro geomtyp:
