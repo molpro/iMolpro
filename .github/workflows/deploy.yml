@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: '3.11'
       - uses: s-weigand/setup-conda@v1
-        # if: ${{ matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
       - name: Build
         run: |
           if [ -z "${CONDA_EXE}" ]; then export CONDA_EXE=$(readlink -f $(which conda)) ; fi
