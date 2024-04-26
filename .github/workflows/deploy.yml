@@ -23,7 +23,6 @@ jobs:
           echo github.ref ${{ github.ref }}
           conda config --set solver libmamba
           . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
-          conda env remove -y -n iMolpro-github
           conda create -y -n iMolpro-github
           conda activate iMolpro-github
           bash build.sh
