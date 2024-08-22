@@ -55,10 +55,6 @@ if __name__ == '__main__':
         font.setPointSize(7)
         app.setFont(font)
 
-    if 'Trash' not in settings:
-        settings['Trash'] = str(pathlib.Path(os.path.expanduser('~')) / pathlib.Path('.molpro') / 'iMolpro.trash')
-    shutil.rmtree(settings['Trash'], ignore_errors=True)
-
     window_manager = WindowManager()
     chooser = Chooser(window_manager)
     chooser.quitButton.clicked.connect(app.quit)

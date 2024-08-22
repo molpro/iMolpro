@@ -10,11 +10,10 @@ import re
 import platform
 
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt, QSize
-from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineProfile
+from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QTabWidget, QFileDialog, QFormLayout, QLineEdit, \
-    QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, QToolButton
-from PyQt5.QtGui import QIntValidator, QFont
+    QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, QToolButton
+from PyQt5.QtGui import QFont
 from pymolpro import Project
 
 import molpro_input
@@ -853,7 +852,7 @@ Jmol.jmolHtml("</p>")
                     return
                 geometry = project.geometry()
                 current_dir = os.path.dirname(self.project.filename(run=-1))
-                trash_project(project)
+                project.trash()
                 settings['project_directory'] = current_dir
                 with open(xyz_file, 'w') as f:
                     f.write(str(len(geometry)) + '\n\n')
@@ -1018,7 +1017,7 @@ Jmol.jmolHtml("</p>")
                                       'Are you sure you want to erase project ' + self.project.filename(run=-1))
         if result == QMessageBox.Yes:
             current_dir = os.path.dirname(self.project.filename(run=-1))
-            trash_project(self.project)
+            self.project.trash()
             settings['project_directory'] = current_dir
             self.close()
 
@@ -1026,12 +1025,6 @@ Jmol.jmolHtml("</p>")
         QMessageBox.information(self, 'Input specification', 'Input specification:\r\n' +
                                 re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
                                                                                                                   ',\n  '))
-
-
-def trash_project(project):
-    trash = pathlib.Path(settings['Trash'])
-    trash.mkdir(parents=True, exist_ok=True)
-    project.move(str(trash / os.path.basename(project.filename(run=-1))))
 
 
 class WebEnginePage(QWebEnginePage):
