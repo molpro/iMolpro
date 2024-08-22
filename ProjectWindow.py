@@ -575,6 +575,14 @@ class ProjectWindow(QMainWindow):
         return result
 
     def run(self, force=False):
+        molprorc = ''
+        with open(pathlib.Path(self.project.filename(run=-1)) / 'molpro.rc', 'r') as f:
+            molprorc = f.read()
+        molprorc = molprorc.replace(' --xml-orbdump', '')
+        if 'orbitals' in self.input_specification:
+            molprorc += ' --xml-orbdump'
+        with open(pathlib.Path(self.project.filename(run=-1)) / 'molpro.rc', 'w') as f:
+            f.write(molprorc)
         if self.guided_possible() and ('geometry' not in self.input_specification or (
                 self.input_specification['geometry'][-4:] == '.xyz' and not os.path.exists(
             self.project.filename('', self.input_specification['geometry'], run=
