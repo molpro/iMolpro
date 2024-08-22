@@ -717,7 +717,6 @@ Jmol.jmolCheckbox(myJmol,'mo TITLEFORMAT "Model %M, MO %I/%N|Energy = %E %U|?Lab
 
 Jmol.jmolBr()
 </script>
-</td>
              """
         elif vibs and vibs.frequencies:
             html += """
@@ -740,10 +739,13 @@ Jmol.jmolBr()
         ],10);
         Jmol.jmolBr()
         </script>
-        </td>
                  """
 
         html += """
+        <script>
+          Jmol.jmolCheckbox(myJmol,'label on; color labels black', "label off","atom labels")
+        </script>
+        </td>
         </tr>
 <script>
 Jmol.jmolHtml("<p>")
