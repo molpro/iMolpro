@@ -15,7 +15,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
     QToolButton, QAction
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QDesktopServices
 from pymolpro import Project
 
 import molpro_input
@@ -380,6 +380,7 @@ class ProjectWindow(QMainWindow):
         help_manager.register('Example', 'doc/example.md')
         help_manager.register('Backends', 'doc/backends.md')
         help_manager.register('Display', 'doc/display.md')
+        menubar.addAction('Jmol reference', 'Help', lambda: QDesktopServices.openUrl(QUrl('https://jmol.sourceforge.net/docs')))
         menubar.show()
 
     def edit_backend_configuration(self):
