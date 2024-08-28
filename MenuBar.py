@@ -18,6 +18,7 @@ class MenuBar(QMenuBar):
         if shortcut: action.setShortcut(shortcut)
         if tooltip: action.setToolTip(tooltip)
 
+        action.setObjectName(name)
         return action
 
     def addSubmenu(self, submenu:QMenu, menu_name: str):

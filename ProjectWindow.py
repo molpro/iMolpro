@@ -9,10 +9,12 @@ import sys
 import re
 import platform
 
+import pymolpro
 from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt, QSize
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, QToolButton
+    QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
+    QToolButton, QAction
 from PyQt5.QtGui import QFont
 from pymolpro import Project
 
@@ -109,7 +111,7 @@ class ProjectWindow(QMainWindow):
 
         try:
             if platform.uname().system == 'Windows':
-                os.environ['PATH'] = os.path.dirname(os.path.abspath(__file__))+ ';' + os.environ['PATH']
+                os.environ['PATH'] = os.path.dirname(os.path.abspath(__file__)) + ';' + os.environ['PATH']
                 if 'CONDA_PREFIX' not in os.environ:
                     os.environ['CONDA_PREFIX'] = os.path.dirname(os.path.abspath(__file__))
             elif 'PATH' in os.environ and 'SHELL' in os.environ:
@@ -136,7 +138,7 @@ class ProjectWindow(QMainWindow):
 
         self.jsmol_min_js = str(pathlib.Path(__file__).parent / "JSmol.min.js")
         if hasattr(sys, '_MEIPASS') and platform.uname().system != 'Windows':
-                os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
+            os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
                 sys._MEIPASS, 'PyQt5', 'Qt', 'libexec', 'QtWebEngineProcess'
             ))
         os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--no-sandbox'
@@ -310,6 +312,10 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Select a structure from a previous geometry optimisation...', 'Files',
                           self.database_import_optimised,
                           tooltip='Select a structure from a previous geometry optimisation')
+        menubar.addAction('Convert xyz geometry to Z-matrix', 'Files',
+                          self.convert_xyz_to_zmat,
+                          tooltip='Convert xyz geometry to Z-matrix')
+        self.xyz_to_zmat_activate_or_not(self.input_uses_xyz_file() is not None)
         menubar.addAction('Import file', 'Files', self.import_file, 'Ctrl+I',
                           tooltip='Import one or more files, eg geometry definition, into the project')
         menubar.addAction('Export file', 'Files', self.export_file, 'Ctrl+E',
@@ -919,6 +925,7 @@ Jmol.jmolHtml("</p>")
                 self.rebuild_vod_selector()
             else:
                 self.input_pane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
+            self.xyz_to_zmat_activate_or_not(True)
 
     def database_import_structure(self):
         if filename := database_choose_structure():
@@ -954,6 +961,27 @@ Jmol.jmolHtml("</p>")
                 self.adopt_structure_file(pathlib.Path(self.run_directories[run_]) / filename)
                 self.edit_input_structure()
                 return filename
+
+    def input_uses_xyz_file(self):
+        if match := re.search(r'^ *geometry=(.*\.xyz)', self.input_pane.toPlainText(), re.MULTILINE):
+            return match.group(1)
+        else:
+            return None
+
+    def convert_xyz_to_zmat(self):
+        if xyzfile := self.input_uses_xyz_file():
+            zmat = pymolpro.xyz_to_zmat(xyzfile)
+            self.input_pane.setPlainText(
+                self.input_pane.toPlainText().replace('geometry=' + xyzfile,
+                                                      '!geometry=' + xyzfile + '\nangstrom\ngeometry={\n' + zmat + '}')
+                )
+        self.xyz_to_zmat_activate_or_not(False)
+
+    def xyz_to_zmat_activate_or_not(self, activate: bool):
+        for action in self.menuBar().actions():
+            if action.text() == 'Files':
+                for action2 in self.menuBar().findChildren(QAction, 'Convert xyz geometry to Z-matrix'):
+                    action2.setEnabled(activate)
 
     def optimised_structure_files(self, run=0):
         run_directory_ = self.project.filename('', '', run)
