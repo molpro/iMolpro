@@ -257,7 +257,6 @@ class ProjectWindow(QMainWindow):
         container.setLayout(self.layout)
         self.setCentralWidget(container)
         splitter.setSizes([1, 1])
-        print(self.project.filename('xml'))
         if not pathlib.Path(self.project.filename('xml')).exists():
             self.edit_input_structure()
 
