@@ -156,6 +156,8 @@ class InputSpecification(UserDict):
                     if (line.lower() == orientation_options[orientation_option].lower()):
                         self['orientation'] = orientation_option
                         break
+            elif command.lower() == 'angstrom':
+                self['angstrom'] = True
             elif ((command.lower() == 'nosym') or (re.match('^symmetry *, *', line, re.IGNORECASE))):
                 line = re.sub('^symmetry *, *', '', line, flags=re.IGNORECASE)
                 line = "symmetry," + line
@@ -315,6 +317,9 @@ class InputSpecification(UserDict):
 
         if 'wave_fct_symm' in self:
             _input += wave_fct_symm_commands[self['wave_fct_symm']] + '\n'
+
+        if 'angstrom' in self and self['angstrom']:
+            _input += 'angstrom' + '\n'
 
         if 'geometry' in self:
             _input += ('geometry=' + self[
