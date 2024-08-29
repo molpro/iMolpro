@@ -772,6 +772,9 @@ Jmol.jmolHtml("</p>")
         file = pathlib.Path(rawfile).as_posix()
         width = max(400, self.output_tabs.geometry().width() - 310)
         height = max(400, self.output_tabs.geometry().height() - 40)
+        for i in range(len(self.output_tabs)):
+            width = max(width, self.output_tabs.widget(i).geometry().width())
+            height = max(height, self.output_tabs.widget(i).geometry().height() - 40)
 
         html = """<!DOCTYPE html>
 <html>
