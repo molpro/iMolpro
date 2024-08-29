@@ -970,8 +970,8 @@ Jmol.jmolHtml("</p>")
             return None
 
     def convert_xyz_to_zmat(self):
-        if xyzfile := self.input_uses_xyz_file():
-            zmat = pymolpro.xyz_to_zmat(xyzfile)
+        if xyzfile := self.input_uses_xyz_file() is not None:
+            zmat = pymolpro.xyz_to_zmat(self.project.filename('', xyzfile, -1))
             self.input_pane.setPlainText(
                 self.input_pane.toPlainText().replace('geometry=' + xyzfile,
                                                       '!geometry=' + xyzfile + '\nangstrom\ngeometry={\n' + zmat + '}')
