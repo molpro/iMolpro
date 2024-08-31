@@ -640,6 +640,8 @@ class ProjectWindow(QMainWindow):
     def embedded_vod(self, file, command='', title='structure', **kwargs):
         width = self.output_tabs.geometry().width() - 310
         height = self.output_tabs.geometry().height() - 40
+        width = min(width,height)
+        height = min(width,height)
         firstmodel = 1
         firstvib = 1
         firstorb = 1
@@ -775,6 +777,8 @@ Jmol.jmolHtml("</p>")
         for i in range(len(self.output_tabs)):
             width = max(width, self.output_tabs.widget(i).geometry().width())
             height = max(height, self.output_tabs.widget(i).geometry().height() - 40)
+        width = min(width,height)
+        height = min(width,height)
 
         html = """<!DOCTYPE html>
 <html>
