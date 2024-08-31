@@ -333,7 +333,7 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Redo', 'Edit', self.input_pane.redo, 'Shift+Ctrl+Z', 'Redo')
         menubar.addAction('Select All', 'Edit', self.input_pane.selectAll, 'Ctrl+A', 'Redo')
         menubar.addSeparator('Edit')
-        menubar.addAction('Zoom In', 'Edit', self.input_pane.zoomIn, 'Shift+Ctrl+=', 'Increase font size')
+        menubar.addAction('Zoom In', 'Edit', self.input_pane.zoomIn, 'Ctrl++', 'Increase font size')
         menubar.addAction('Zoom Out', 'Edit', self.input_pane.zoomOut, 'Ctrl+-', 'Decrease font size')
         menubar.addSeparator('Edit')
         self.guided_action = menubar.addAction('Guided mode', 'Edit', self.guided_toggle, 'Ctrl+G', checkable=True)
@@ -342,7 +342,7 @@ class ProjectWindow(QMainWindow):
         menubar.addSeparator('Files')
         menubar.addAction('Browse project folder', 'Files', self.browse_project, 'Ctrl+Alt+F',
                           tooltip='Look at the contents of the project folder.  With care, files can be edited or renamed, but note that this may break the integrity of the project.')
-        menubar.addAction('Zoom In', 'View', lambda: [p.zoomIn() for p in self.output_panes.values()], 'Alt+Shift+=',
+        menubar.addAction('Zoom In', 'View', lambda: [p.zoomIn() for p in self.output_panes.values()], 'Alt++',
                           'Increase font size')
         menubar.addAction('Zoom Out', 'View', lambda: [p.zoomOut() for p in self.output_panes.values()], 'Alt+-',
                           'Decrease font size')
