@@ -77,7 +77,12 @@ class InputSpecification(UserDict):
             for k in specification:
                 self[k] = specification[k]
         if input is not None:
-            self.parse(input)
+            try:
+                self.parse(input)
+            except Exception as e:
+                print('Warning: InputSpecification.parse() has thrown an exception', e,
+                      '\nPlease report, with a copy of the input, at https://github.com/molpro/iMolpro/issues/new')
+                self.clear()
         if 'hamiltonian' not in self and self.data:
             self['hamiltonian'] = 'PP'
 
@@ -659,7 +664,7 @@ def canonicalise(input):
                                                               '\n')))))).rstrip(
         '\n ').lstrip(
         '\n ') + '\n'
-    result = re.sub(',+}','}', result)
+    result = re.sub(',+}', '}', result)
     # push variable assignments below geometry=file.xyz to hack compatibility with gmolpro guided
     # print('before hack', result)
     # hack for gmolpro geomtyp:
@@ -681,7 +686,7 @@ def canonicalise(input):
         result = re.sub('(\\w+=\\w+)\n(basis={[^\n]*})', '\\2\n\\1', result,
                         flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
     # print('after 1st hack', result)
-    result = re.sub('(dkho=\\d)\n(geomtyp=xyz)', '\\2\n\\1', result, flags=re.MULTILINE|re.IGNORECASE)
+    result = re.sub('(dkho=\\d)\n(geomtyp=xyz)', '\\2\n\\1', result, flags=re.MULTILINE | re.IGNORECASE)
     # hack for gmolpro-style frequencies:
     # print('after 2nd hack', result)
     result = result.replace('{FREQ}', '{frequencies\nthermo}')
