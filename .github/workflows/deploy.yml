@@ -31,7 +31,7 @@ jobs:
           . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
           # conda env remove -y -n iMolpro-github
           # conda create -y -n iMolpro-github
-          # conda activate iMolpro-github
+          conda activate iMolpro-github
           # export -f conda __conda_activate __conda_reactivate __conda_hashr __add_sys_prefix_to_path
           # export PATH=$(dirname $CONDA_EXE):$PATH
           # echo $PATH
