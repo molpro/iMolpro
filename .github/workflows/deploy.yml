@@ -18,8 +18,11 @@ jobs:
       - uses: actions/setup-python@v5
         # with:
           # python-version: '3.11'
-      - uses: s-weigand/setup-conda@v1.2.2
+#      - uses: s-weigand/setup-conda@v1.2.2
 #        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: iMolpro
       - name: Build
         run: |
           if [ -z "${CONDA_EXE}" ]; then export CONDA_EXE=$(readlink -f $(which conda)) ; fi
