@@ -1,10 +1,10 @@
 #!/bin/sh
 
-conda install -c conda-forge -y --file=requirements.txt  || exit 1
+conda install -c conda-forge -y --file=requirements.txt python=3.11 scipy=1.11  || exit 1
 
-if [ "$(uname)" = Darwin -a $(uname -m) = x86_64 ]; then
-  conda install -c conda-forge -y scipy==1.11
-fi
+#if [ "$(uname)" = Darwin -a $(uname -m) = x86_64 ]; then
+#  conda install -c conda-forge -y scipy==1.11
+#fi
 
 if [ "$(uname)" = Darwin ]; then
   pyinstaller_opt="--windowed --osx-bundle-identifier=net.molpro.iMolpro --icon=molpro.icns"
