@@ -7,3 +7,4 @@ chemspipy >=2
 scipy < 1.13
 git
 libboost == 1.84.0
+pysjef >= 1.39.3
