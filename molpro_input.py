@@ -335,6 +335,7 @@ class InputSpecification(UserDict):
                 ' \n') + '\n' + ('' if 'geometry_external' in self else '}\n')
 
         if 'basis' in self:
+            print('writing basis input',self['basis'])
             _input += 'basis=' + self['basis']['default']
             if 'elements' in self['basis']:
                 for e, b in self['basis']['elements'].items():
