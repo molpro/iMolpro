@@ -1142,7 +1142,7 @@ class BasisAndHamiltonianChooser(QWidget):
         self.guided_combo_basis_quality.addItems(self.basis_qualities)
         self.guided_combo_basis_quality.currentTextChanged.connect(self.changed_basis_quality)
 
-        self.basis_selector = BasisSelector(self.changed_default_basis)
+        self.basis_selector = BasisSelector(self.changed_default_basis, self.null_prompt)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1169,8 +1169,7 @@ class BasisAndHamiltonianChooser(QWidget):
                                            self.hamiltonian_type(k) == self.input_specification[
                                                'hamiltonian']
                                    )]
-            self.basis_selector.reload(possible_basis_sets, self.null_prompt,
-                                       self.null_prompt if self.input_specification['basis']['elements'] or not self.input_specification['basis'][ 'default'] in possible_basis_sets else self.input_specification['basis']['default'])
+            self.basis_selector.reload(self.input_specification['basis'], possible_basis_sets)
             self.basis_selector.show()
 
             self.guided_combo_basis_quality.setCurrentText(self.basis_qualities[self.desired_basis_quality])
