@@ -221,7 +221,8 @@ class InputSpecification(UserDict):
                         self['basis']['elements'][ff[0][0].upper() + ff[0][1:].lower()] = ff[1].strip('\n ')
                 # print('made basis specification',self)
             elif re.match('^basis *=', line, re.IGNORECASE):
-                print('** warning should not happen')
+                # raise ValueError('unparseable basis', line)
+                self.data.clear(); return self
                 pass
             elif re.match('(set,)?[a-z][a-z0-9_]* *=.*$', line, flags=re.IGNORECASE):
                 if debug: print('variable')
