@@ -21,8 +21,8 @@ jobs:
         id: tag
         run: |
           sha_short=$(git rev-parse --short HEAD)
-          date=$(date +'%Y-%m-%d')
-          tag=latest-${date}-${sha_short}
+          date=$(date +'%Y_%m_%d')
+          tag=latest_${date}_${sha_short}
           echo "tag=${tag}" >> $GITHUB_OUTPUT
           git tag ${tag}
           git push --tags
