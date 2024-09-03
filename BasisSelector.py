@@ -1,21 +1,20 @@
-from PyQt5.QtWidgets import QComboBox
+from PyQt5.QtWidgets import QComboBox, QWidget, QVBoxLayout
 
 
-class BasisSelector(QComboBox):
+class BasisSelector(QWidget):
     def __init__(self, changed_action):
         super().__init__()
         self.changed_action = changed_action
-        self.currentTextChanged.connect(self.changed)
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        self.combo = QComboBox(self)
+        layout.addWidget(self.combo)
+        self.combo.currentTextChanged.connect(self.changed)
 
-    def clear(self):
-        super().clear()
-
-    def addItems(self, items):
-        super().addItems(items)
-    def reload(self,possible_basis_sets, null_prompt,select):
-        self.clear()
-        self.addItems([null_prompt] + possible_basis_sets)
-        self.setCurrentText(select)
+    def reload(self, possible_basis_sets, null_prompt, select):
+        self.combo.clear()
+        self.combo.addItems([null_prompt] + possible_basis_sets)
+        self.combo.setCurrentText(select)
 
     def changed(self):
-       self.changed_action({'default':self.currentText(), 'elements':{}})
+        self.changed_action({'default': self.combo.currentText(), 'elements': {}})
