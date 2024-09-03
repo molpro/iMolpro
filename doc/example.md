@@ -4,7 +4,9 @@ On opening the program, in the chooser window
 <img src="chooser.png" alt="Chooser" width="300"/>  
 select `New project` and place it in the filesystem using the dialog that is presented. You will then be presented with an opportunity to import a molecular geometry; decline the opportunity, and in response to the next dialog, search for a molecule in PubChem or ChemSpider (for the latter, you need first to get an API key from https://developer.rsc.org/get-started). We are then presented with the main project window:  
 <img src="ProjectWindow.png" alt="Project Window" width="600"/>  
-The left part of the project window is all about specifying the input for a Molpro job, and the right part displays usually aspects of a completed calculation, but, as here, can also be filled with the initial structure. The structure displayed at this point is editable using the embedded Jmol builder, for which options can be found be clicking near the top left corner.
+The left part of the project window is all about specifying the input for a Molpro job, and the right part displays usually aspects of a completed calculation, but, as here, can also be filled with the initial structure.
+The structure is displayed, and if desired can be edited using the embedded Jmol builder (menu Edit/Structure), for which options can be found be clicking near the top left corner.
+For all but the simplest structure edits, it is typically more convenient to use instead an external program; support is provided (menu View/View molecule in external program...) to launch [Avogadro](https://avogadro.cc) directly.
 
 We now proceed to specify an MP2 geometry optimisation and frequency calculation using the 'guided mode' controls in the left region, also opting for the canonical orbitals to be exported for later plotting. The raw molpro input that is generated  can be seen and edited by selecting the `freehand` tab. On toggling back to `guided`, the right hand pane gives a read-only view of the input, which now looks like this:  
 <img src="ProjectWindow2.png" alt="Project Window" width="600"/>  
