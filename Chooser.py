@@ -1,6 +1,7 @@
 import os
 import pathlib
 import platform
+import re
 
 from PyQt5.QtCore import QCoreApplication, Qt, QUrl
 
@@ -127,7 +128,7 @@ class Chooser(QMainWindow):
             else:
                 return 'unknown'
 
-        version_label = LinkLabel("iMolpro version " + version_(), 'https://github.com/molpro/iMolpro/tree/'+version_())
+        version_label = LinkLabel("iMolpro version " + version_(), 'https://github.com/molpro/iMolpro/tree/'+re.sub('-.*','',version_())+'/README.md')
         version_label.setStyleSheet("font-size: 10px")
         version_label.setAlignment(Qt.AlignCenter)
         rh_panel.addWidget(version_label)

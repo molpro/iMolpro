@@ -106,6 +106,8 @@ class ProjectWindow(QMainWindow):
     def __init__(self, filename, window_manager, latency=1000):
         super().__init__(None)
         self.window_manager = window_manager
+        if 'project_window_width' in settings and 'project_window_height' in settings:
+            self.resize(settings['project_window_width'], settings['project_window_height'])
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
         self.initialised_from_input = False
 
@@ -258,7 +260,7 @@ class ProjectWindow(QMainWindow):
         self.setCentralWidget(container)
         splitter.setSizes([1, 1])
         if not pathlib.Path(self.project.filename('xml')).exists():
-            self.edit_input_structure()
+            self.show_initial_structure()
 
     def discover_external_viewer_commands(self):
         external_command_stems = [
@@ -638,10 +640,7 @@ class ProjectWindow(QMainWindow):
                 self.embedded_vod(filename, command='mo HOMO', title=title)
 
     def embedded_vod(self, file, command='', title='structure', **kwargs):
-        width = self.output_tabs.geometry().width() - 310
-        height = self.output_tabs.geometry().height() - 40
-        width = min(width,height)
-        height = min(width,height)
+        height, width = self.embedded_geometry(280)
         firstmodel = 1
         firstvib = 1
         firstorb = 1
@@ -770,15 +769,17 @@ Jmol.jmolHtml("</p>")
 </html>"""
         self.add_vod(html, title=title, **kwargs)
 
+    def embedded_geometry(self, right_margin=280):
+        self.show()
+        width = self.geometry().width() - self.input_tabs.geometry().width() - right_margin
+        height = self.output_tabs.geometry().height() - 40
+        width = min(width, height)
+        height = min(width, height)
+        return height, width
+
     def embedded_builder(self, rawfile, title='builder', **kwargs):
         file = pathlib.Path(rawfile).as_posix()
-        width = max(400, self.output_tabs.geometry().width() - 310)
-        height = max(400, self.output_tabs.geometry().height() - 40)
-        for i in range(len(self.output_tabs)):
-            width = max(width, self.output_tabs.widget(i).geometry().width())
-            height = max(height, self.output_tabs.widget(i).geometry().height() - 40)
-        width = min(width,height)
-        height = min(width,height)
+        height, width = self.embedded_geometry(280)
 
         html = """<!DOCTYPE html>
 <html>
@@ -922,7 +923,7 @@ Jmol.jmolHtml("</p>")
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
             self.adopt_structure_file(filename)
-            self.edit_input_structure()
+            self.show_initial_structure()
             return filename
 
     def adopt_structure_file(self, filename):
@@ -937,12 +938,22 @@ Jmol.jmolHtml("</p>")
                 self.input_pane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
             self.xyz_to_zmat_activate_or_not(True)
 
+    def show_initial_structure(self):
+        self.destroy_vod('initial structure')
+        self.visualise_input()
+        self.refresh_output_tabs()
+        # self.vod_selector_action('initial structure')
+        for i in range(len(self.output_tabs)):
+            if self.output_tabs.tabText(i) == 'initial structure':
+                self.output_tabs.setCurrentIndex(i)
+
     def database_import_structure(self):
         if filename := database_choose_structure():
             self.adopt_structure_file(filename)
             os.remove(filename)
             os.rmdir(os.path.dirname(filename))
-            self.edit_input_structure()
+            self.show_initial_structure()
+
             return filename
 
     def database_import_optimised(self, run=None, file=None):
@@ -969,7 +980,7 @@ Jmol.jmolHtml("</p>")
                     filename = files_[k]
             if filename:
                 self.adopt_structure_file(pathlib.Path(self.run_directories[run_]) / filename)
-                self.edit_input_structure()
+                self.show_initial_structure()
                 return filename
 
     def input_uses_xyz_file(self):

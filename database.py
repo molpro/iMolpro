@@ -26,7 +26,7 @@ class DatabaseSearchDialog(QDialog):
 
         self.pubchem_checkbox = QCheckBox(self)
         self.pubchem_checkbox.setText('PubChem')
-        self.pubchem_checkbox.setChecked(False) #TODO restore this to True when we know how to make it reliable
+        self.pubchem_checkbox.setChecked(True) #TODO sort out problem that pubchem sometimes unreliable
         self.chemspider_checkbox = QCheckBox(self)
         self.chemspider_checkbox.setText('ChemSpider')
         self.chemspider_checkbox.setChecked('CHEMSPIDER_API_KEY' in settings)
