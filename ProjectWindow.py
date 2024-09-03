@@ -940,12 +940,13 @@ Jmol.jmolHtml("</p>")
 
     def show_initial_structure(self):
         self.destroy_vod('initial structure')
-        self.visualise_input()
-        self.refresh_output_tabs()
-        # self.vod_selector_action('initial structure')
-        for i in range(len(self.output_tabs)):
-            if self.output_tabs.tabText(i) == 'initial structure':
-                self.output_tabs.setCurrentIndex(i)
+        if len(self.geometry_files()) != 0 and pathlib.Path(self.project.filename('',self.geometry_files()[0][1])).is_file():
+            self.visualise_input()
+            self.refresh_output_tabs()
+            # self.vod_selector_action('initial structure')
+            for i in range(len(self.output_tabs)):
+                if self.output_tabs.tabText(i) == 'initial structure':
+                    self.output_tabs.setCurrentIndex(i)
 
     def database_import_structure(self):
         if filename := database_choose_structure():
