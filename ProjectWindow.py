@@ -1150,7 +1150,7 @@ class BasisAndHamiltonianChooser(QWidget):
             'Hamiltonian': self.combo_hamiltonian,
             'Quality': self.guided_combo_basis_quality,
             'Basis': self.basis_selector,
-        }, title='Hamiltonian and basis'))
+        }, title='Hamiltonian and basis', alignment=Qt.AlignCenter|Qt.AlignTop))
 
     def refresh(self):
         while True:
@@ -1559,8 +1559,9 @@ class GuidedPane(QWidget):
 
 
 class RowOfTitledWidgets(QWidget):
-    def __init__(self, widgets, title=None, parent=None):
+    def __init__(self, widgets, title=None, parent=None, alignment=Qt.AlignCenter):
         super().__init__(parent)
+        self.alignment = alignment
         self.setContentsMargins(0, 0, 0, 0)
         # self.setStyleSheet('background-color: lightblue;')
         layout = QVBoxLayout(self)
@@ -1585,8 +1586,8 @@ class RowOfTitledWidgets(QWidget):
         for k, v in widgets.items():
             if k not in self.widgets.keys():
                 self.widget_captions[k] = QLabel(k)
-                self.layout2.addWidget(self.widget_captions[k], 0, len(self.widgets), alignment=Qt.AlignCenter)
-                self.layout2.addWidget(v, 1, len(self.widgets), alignment=Qt.AlignCenter)
+                self.layout2.addWidget(self.widget_captions[k], 0, len(self.widgets), alignment=self.alignment)
+                self.layout2.addWidget(v, 1, len(self.widgets), alignment=self.alignment)
                 self.widgets[k] = v
                 self.widget_captions[k].show()
                 self.widgets[k].show()

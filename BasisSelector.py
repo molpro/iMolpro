@@ -13,6 +13,9 @@ class BasisSelector(QWidget):
         self.null_prompt = null_prompt
         layout = QVBoxLayout()
         self.setLayout(layout)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
         self.element_selector = QComboBox(self)
         layout.addWidget(self.element_selector)
