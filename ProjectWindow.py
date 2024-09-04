@@ -1199,16 +1199,13 @@ class BasisAndHamiltonianChooser(QWidget):
                 'elements': {}, 'quality': quality}
 
     def changed_default_basis(self, spec):
-        print('changed_default_basis', spec, self.input_specification['basis'])
         if (spec and
                 'default' in spec and
                 spec['default'] != self.null_prompt and
                 spec['default'] != '' and
                 spec != self.input_specification['basis']):
             self.input_specification['basis'] = copy.deepcopy(spec)
-            print('copied', self.input_specification['basis'])
             self.input_specification['basis']['quality'] = self.input_specification.basis_quality
-            print('writing', self.input_specification['basis'])
             self.write()
 
     def write(self):
