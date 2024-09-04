@@ -1,4 +1,5 @@
 import concurrent.futures
+import copy
 import difflib
 import glob
 import os
@@ -19,6 +20,7 @@ from PyQt5.QtGui import QFont, QDesktopServices
 from pymolpro import Project
 
 import molpro_input
+from BasisSelector import BasisSelector
 from SpinComboBox import SpinComboBox
 from molpro_input import InputSpecification
 from CheckableComboBox import CheckableComboBox
@@ -1140,21 +1142,15 @@ class BasisAndHamiltonianChooser(QWidget):
         self.guided_combo_basis_quality.addItems(self.basis_qualities)
         self.guided_combo_basis_quality.currentTextChanged.connect(self.changed_basis_quality)
 
-        self.guided_combo_basis_default = QComboBox(self)
-        self.guided_combo_basis_default.currentTextChanged.connect(self.changed_default_basis)
-
-        # layout = QFormLayout(self)
-        # layout.addRow('Hamiltonian', self.combo_hamiltonian)
-        # layout.addRow('Basis set quality', self.guided_combo_basis_quality)
-        # layout.addRow('Default Basis Set', self.guided_combo_basis_default)
+        self.basis_selector = BasisSelector(self.changed_default_basis, self.null_prompt)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(RowOfTitledWidgets({
             'Hamiltonian': self.combo_hamiltonian,
             'Quality': self.guided_combo_basis_quality,
-            'Basis': self.guided_combo_basis_default,
-        }, title='Hamiltonian and basis'))
+            'Basis': self.basis_selector,
+        }, title='Hamiltonian and basis', alignment=Qt.AlignCenter|Qt.AlignTop))
 
     def refresh(self):
         while True:
@@ -1173,14 +1169,8 @@ class BasisAndHamiltonianChooser(QWidget):
                                            self.hamiltonian_type(k) == self.input_specification[
                                                'hamiltonian']
                                    )]
-            self.guided_combo_basis_default.clear()
-            self.guided_combo_basis_default.addItems([self.null_prompt] + possible_basis_sets)
-            if self.input_specification['basis']['elements'] or not self.input_specification['basis'][
-                                                                        'default'] in possible_basis_sets:
-                self.guided_combo_basis_default.setCurrentText(self.null_prompt)
-            else:
-                self.guided_combo_basis_default.setCurrentText(self.input_specification['basis']['default'])
-            self.guided_combo_basis_default.show()
+            self.basis_selector.reload(self.input_specification['basis'], possible_basis_sets)
+            self.basis_selector.show()
 
             self.guided_combo_basis_quality.setCurrentText(self.basis_qualities[self.desired_basis_quality])
             self.combo_hamiltonian.setCurrentText(
@@ -1208,12 +1198,15 @@ class BasisAndHamiltonianChooser(QWidget):
                            molpro_input.hamiltonians[self.input_specification['hamiltonian']]['basis_string'],
                 'elements': {}, 'quality': quality}
 
-    def changed_default_basis(self, text):
-        if not text or text == self.null_prompt or text == self.input_specification['basis']['default']: return
-        self.input_specification['basis']['default'] = text
-        self.input_specification['basis']['elements'] = {}
-        self.input_specification['basis']['quality'] = self.input_specification.basis_quality
-        self.write()
+    def changed_default_basis(self, spec):
+        if (spec and
+                'default' in spec and
+                spec['default'] != self.null_prompt and
+                spec['default'] != '' and
+                spec != self.input_specification['basis']):
+            self.input_specification['basis'] = copy.deepcopy(spec)
+            self.input_specification['basis']['quality'] = self.input_specification.basis_quality
+            self.write()
 
     def write(self):
         self.parent.refresh_input_from_specification()
@@ -1566,8 +1559,9 @@ class GuidedPane(QWidget):
 
 
 class RowOfTitledWidgets(QWidget):
-    def __init__(self, widgets, title=None, parent=None):
+    def __init__(self, widgets, title=None, parent=None, alignment=Qt.AlignCenter):
         super().__init__(parent)
+        self.alignment = alignment
         self.setContentsMargins(0, 0, 0, 0)
         # self.setStyleSheet('background-color: lightblue;')
         layout = QVBoxLayout(self)
@@ -1592,8 +1586,8 @@ class RowOfTitledWidgets(QWidget):
         for k, v in widgets.items():
             if k not in self.widgets.keys():
                 self.widget_captions[k] = QLabel(k)
-                self.layout2.addWidget(self.widget_captions[k], 0, len(self.widgets), alignment=Qt.AlignCenter)
-                self.layout2.addWidget(v, 1, len(self.widgets), alignment=Qt.AlignCenter)
+                self.layout2.addWidget(self.widget_captions[k], 0, len(self.widgets), alignment=self.alignment)
+                self.layout2.addWidget(v, 1, len(self.widgets), alignment=self.alignment)
                 self.widgets[k] = v
                 self.widget_captions[k].show()
                 self.widgets[k].show()
