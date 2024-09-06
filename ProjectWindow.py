@@ -1160,7 +1160,7 @@ class BasisAndHamiltonianChooser(QWidget):
                     self.desired_basis_quality if self.desired_basis_quality > 0 else 3)
                 continue
 
-            core_correlation = self.input_specification['core_correlation'] if 'core_correlation' in self.input_specification else 'small'
+            core_correlation = self.input_specification['core_correlation'] if 'core_correlation' in self.input_specification else 'large'
             possible_basis_sets = [k for k in self.basis_registry.keys() if (  # True or
                     self.desired_basis_quality == 0 or self.basis_registry[k][
                 'quality'] == self.basis_qualities[self.desired_basis_quality]
@@ -1172,8 +1172,8 @@ class BasisAndHamiltonianChooser(QWidget):
                                    )
                                    and (
                                 core_correlation == 'mixed'
-                                or (core_correlation =='small' and 'CV' not in k)
-                                or (core_correlation =='large' and 'CV' in k)
+                                or (core_correlation =='small' and 'CV' in k)
+                                or (core_correlation =='large' and 'CV' not in k)
                                    )
                                    ]
             self.basis_selector.reload(self.input_specification['basis'], possible_basis_sets)
