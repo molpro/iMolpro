@@ -1174,7 +1174,7 @@ class BasisAndHamiltonianChooser(QWidget):
                                    and (
                                            core_correlation == 'mixed'
                                            or (core_correlation == 'small' and 'CV' in k)
-                                           or (core_correlation == 'large' and 'CV' not in k)
+                                           or core_correlation == 'large'
                                    )
                                    ]
             self.basis_selector.reload(self.input_specification['basis'], possible_basis_sets)
