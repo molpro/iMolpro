@@ -57,7 +57,7 @@ class DatabaseFetchDialog(QDialog):
             else:
                 os.environ.pop(self.pythonhttpsverify)
 
-        debug = False
+        debug = True
         super().__init__()
         self.setWindowTitle('Select from database search results')
         self.layout = QVBoxLayout()
