@@ -3,8 +3,8 @@ permissions:
 name: Deploy
 on:
   push:
-    branches:
-      - 'fix-140'
+    tags:
+      - '*'
 jobs:
   deploy:
     name: Deploy
