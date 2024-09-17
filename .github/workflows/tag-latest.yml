@@ -15,7 +15,7 @@ jobs:
       - name: Checkout branch "master"
         uses: actions/checkout@v4
         with:
-          ref: 'master'
+          ref: 'fix-140'
           token: ${{ secrets.PAT }}
       - name: tag
         id: tag
