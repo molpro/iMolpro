@@ -112,7 +112,8 @@ class DatabaseFetchDialog(QDialog):
                     if debug: print(pubchempy.log)
                 except Exception as e:
                     if debug: print('exception', e)
-                    self.layout.addWidget(QLabel('Network or other error during PubChem search'))
+                    if debug: print(pubchempy.log)
+                    self.layout.addWidget(QLabel('Network or other error during PubChem search:'+str(e)+str(pubchempy.log)))
                     self.buttonbox = QDialogButtonBox(QDialogButtonBox.Cancel)
                     self.buttonbox.rejected.connect(self.reject)
                     self.layout.addWidget(self.buttonbox)
