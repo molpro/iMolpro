@@ -1,6 +1,6 @@
 #!/bin/sh
 
-conda install -c conda-forge -y --file=requirements.txt python=3.11 scipy=1.11  || exit 1
+conda install -c conda-forge -y --file=requirements.txt python=3.10 scipy=1.11  || exit 1
 conda list
 
 #if [ "$(uname)" = Darwin -a $(uname -m) = x86_64 ]; then
