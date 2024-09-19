@@ -104,9 +104,11 @@ class DatabaseFetchDialog(QDialog):
                 from urllib.error import HTTPError
                 from urllib.parse import quote, urlencode
                 from urllib.request import urlopen
+                print('using urllib')
             except ImportError:
                 from urllib import urlencode
                 from urllib2 import quote, urlopen, HTTPError
+                print('using urllib2')
 
             try:
                 import certifi
