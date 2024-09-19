@@ -101,11 +101,13 @@ class DatabaseFetchDialog(QDialog):
         if use_pubchem:
 
             try:
+                print('find urllib')
                 from urllib.error import HTTPError
                 from urllib.parse import quote, urlencode
                 from urllib.request import urlopen
                 print('using urllib')
             except ImportError:
+                print('ImportError')
                 from urllib import urlencode
                 from urllib2 import quote, urlopen, HTTPError
                 print('using urllib2')
