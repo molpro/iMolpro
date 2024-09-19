@@ -29,7 +29,7 @@ class DatabaseSearchDialog(QDialog):
         self.pubchem_checkbox.setChecked(True) #TODO sort out problem that pubchem sometimes unreliable
         self.chemspider_checkbox = QCheckBox(self)
         self.chemspider_checkbox.setText('ChemSpider')
-        self.chemspider_checkbox.setChecked('CHEMSPIDER_API_KEY' in settings)
+        self.chemspider_checkbox.setChecked(False and 'CHEMSPIDER_API_KEY' in settings)
         checkbox_layout = QHBoxLayout()
         checkbox_layout.addWidget(QLabel('Databases: '))
         checkbox_layout.addWidget(self.chemspider_checkbox)
@@ -109,7 +109,10 @@ class DatabaseFetchDialog(QDialog):
                 from urllib2 import quote, urlopen, HTTPError
 
             try:
-                print(urlopen('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/JSON?record_type=3d'),urlencode([('name', query)]).encode('utf8'))
+                import certifi
+                import ssl
+                context = ssl.create_default_context(cafile=certifi.where())
+                print(urlopen('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/JSON?record_type=3d'),urlencode([('name', query)]).encode('utf8'),context=context)
             except HTTPError as e:
                 print(e.read())
             self.database = 'PubChem'
