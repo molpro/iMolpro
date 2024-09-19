@@ -1,6 +1,9 @@
 #!/bin/sh
 
-conda install -c conda-forge -y --file=requirements.txt python=3.11 scipy=1.11  || exit 1
+conda install -c conda-forge -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
+conda remove -y pubchempy
+pip install --force-reinstall https://github.com/molpro/PubChemPy/archive/refs/heads/master.zip
+conda list
 
 #if [ "$(uname)" = Darwin -a $(uname -m) = x86_64 ]; then
 #  conda install -c conda-forge -y scipy==1.11
