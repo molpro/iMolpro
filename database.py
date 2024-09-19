@@ -117,6 +117,7 @@ class DatabaseFetchDialog(QDialog):
                 import ssl
                 print('using certifi',certifi.where())
                 context = ssl.create_default_context(cafile=certifi.where())
+                print(urlopen('https://www.molpro.net',context=context))
                 print(urlopen('https://pubchem.ncbi.nlm.nih.gov',context=context))
                 print(urlopen('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/JSON?record_type=3d',urlencode([('name', query)]).encode('utf8'),context=context))
             except HTTPError as e:
