@@ -1,7 +1,7 @@
 #!/bin/sh
 
 conda install -c conda-forge -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
-pip install https://github.com/molpro/PubChemPy/archive/refs/heads/master.zip
+pip install --force-reinstall https://github.com/molpro/PubChemPy/archive/refs/heads/master.zip
 conda list
 
 #if [ "$(uname)" = Darwin -a $(uname -m) = x86_64 ]; then
