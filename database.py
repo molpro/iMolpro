@@ -29,7 +29,7 @@ class DatabaseSearchDialog(QDialog):
         self.pubchem_checkbox.setChecked(True) #TODO sort out problem that pubchem sometimes unreliable
         self.chemspider_checkbox = QCheckBox(self)
         self.chemspider_checkbox.setText('ChemSpider')
-        self.chemspider_checkbox.setChecked(False and 'CHEMSPIDER_API_KEY' in settings)
+        self.chemspider_checkbox.setChecked('CHEMSPIDER_API_KEY' in settings)
         checkbox_layout = QHBoxLayout()
         checkbox_layout.addWidget(QLabel('Databases: '))
         checkbox_layout.addWidget(self.chemspider_checkbox)
@@ -57,7 +57,7 @@ class DatabaseFetchDialog(QDialog):
             else:
                 os.environ.pop(self.pythonhttpsverify)
 
-        debug = True
+        debug = False
         super().__init__()
         self.setWindowTitle('Select from database search results')
         self.layout = QVBoxLayout()
@@ -99,29 +99,6 @@ class DatabaseFetchDialog(QDialog):
                     return
 
         if use_pubchem:
-
-            try:
-                print('find urllib')
-                from urllib.error import HTTPError
-                from urllib.parse import quote, urlencode
-                from urllib.request import urlopen
-                print('using urllib')
-            except ImportError:
-                print('ImportError')
-                from urllib import urlencode
-                from urllib2 import quote, urlopen, HTTPError
-                print('using urllib2')
-
-            try:
-                import certifi
-                import ssl
-                print('using certifi',certifi.where())
-                context = ssl.create_default_context(cafile=certifi.where())
-                print(urlopen('https://www.molpro.net',context=context))
-                print(urlopen('https://pubchem.ncbi.nlm.nih.gov',context=context))
-                print(urlopen('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/JSON?record_type=3d',urlencode([('name', query)]).encode('utf8'),context=context))
-            except HTTPError as e:
-                print(e.read())
             self.database = 'PubChem'
             for field in ['name', 'cid', 'inchi', 'inchikey',
                           # 'sdf', 'smiles', 'formula', # these seem to throw exceptions sometimes. Why?
@@ -135,7 +112,6 @@ class DatabaseFetchDialog(QDialog):
                     if debug: print(pubchempy.log)
                 except Exception as e:
                     if debug: print('exception', e)
-                    if debug: print(pubchempy.log)
                     self.layout.addWidget(QLabel('Network or other error during PubChem search:\n'+str(e)))
                     self.buttonbox = QDialogButtonBox(QDialogButtonBox.Cancel)
                     self.buttonbox.rejected.connect(self.reject)
