@@ -112,7 +112,8 @@ class DatabaseFetchDialog(QDialog):
                 import certifi
                 import ssl
                 context = ssl.create_default_context(cafile=certifi.where())
-                print(urlopen('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/JSON?record_type=3d'),urlencode([('name', query)]).encode('utf8'),context=context)
+                print(urlopen('https://pubchem.ncbi.nlm.nih.gov',context=context))
+                print(urlopen('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/JSON?record_type=3d',urlencode([('name', query)]).encode('utf8'),context=context))
             except HTTPError as e:
                 print(e.read())
             self.database = 'PubChem'
@@ -129,7 +130,7 @@ class DatabaseFetchDialog(QDialog):
                 except Exception as e:
                     if debug: print('exception', e)
                     if debug: print(pubchempy.log)
-                    self.layout.addWidget(QLabel('Network or other error during PubChem search:'+str(e)+str(pubchempy.log)))
+                    self.layout.addWidget(QLabel('Network or other error during PubChem search:\n'+str(e)))
                     self.buttonbox = QDialogButtonBox(QDialogButtonBox.Cancel)
                     self.buttonbox.rejected.connect(self.reject)
                     self.layout.addWidget(self.buttonbox)
