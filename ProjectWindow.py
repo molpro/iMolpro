@@ -759,7 +759,7 @@ Jmol.jmolBr()
         <script>
         Jmol.jmolHtml('<td>Vibrations: ')
         Jmol.jmolHtml(' ')
-        Jmol.jmolCheckbox(myJmol,"vibration on", "vibration off", "animate", 1)
+        Jmol.jmolCheckbox(myJmol,"vibration on", "vibration off", "animate", 0)
         Jmol.jmolHtml(' ')
         Jmol.script(myJmol, 'color vectors yellow')
         Jmol.jmolCheckbox(myJmol,"vectors on", "vectors off", "vectors")
@@ -769,7 +769,7 @@ Jmol.jmolBr()
               """
             for frequency in vibs.frequencies:
                 if abs(frequency) > 1.0:
-                    html += '["frame ' + str(firstvib) + '; vibration on", "' + str(frequency) + '"],'
+                    html += '["frame ' + str(firstvib) + '", "' + str(frequency) + '"],'
                 firstvib += 1
             html += """
         ],10);
