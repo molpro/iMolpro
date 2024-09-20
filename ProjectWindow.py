@@ -34,6 +34,9 @@ from backend import configure_backend, BackendConfigurationEditor
 from settings import settings, settings_edit
 from OptionsDialog import OptionsDialog
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class StatusBar(QLabel):
     def __init__(self, project: Project, run_actions: list, kill_actions: list, latency=1000):
@@ -351,10 +354,14 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Zoom Out', 'View', lambda: [p.zoomOut() for p in self.output_panes.values()], 'Alt+-',
                           'Decrease font size')
         menubar.addSeparator('View')
-        menubar.addAction('Initial structure', 'View', self.visualise_input,
+        menubar.addAction('Initial structure 3D', 'View', self.visualise_input,
                           tooltip='View the molecular structure in the job input')
-        menubar.addAction('Final structure', 'View', self.visualise_output, 'Alt+D',
+        menubar.addAction('Final structure 3D', 'View', self.visualise_output, 'Alt+D',
                           tooltip='View the molecular structure at the end of the job')
+        menubar.addAction('Initial structure xyz', 'View', self.show_xyz_input,
+                          tooltip='View the xyz file for the molecular structure in the job input')
+        menubar.addAction('Final structure xyz', 'View', self.show_xyz_output,
+                          tooltip='View the xyz file for the molecular structure at the end of the job')
         if self.external_viewer_commands:
             self.external_menu = QMenu('View molecule in external program...')
             for command in self.external_viewer_commands.keys():
@@ -842,6 +849,22 @@ Jmol.jmolHtml("</p>")
         vod = VOD(*args, directory=self.project.filename(run=-1), title=title, **kwargs)
         vod.hide()
         self.vods[vod.title] = vod
+
+    def show_xyz(self, instance=-1):
+        for file in self.geometry_files():
+            full_file = self.project.filename('', file[1], instance)
+            logger.debug('xyz file ' + full_file)
+            with open(full_file, 'r') as f:
+                contents = ''.join(f.readlines())
+            logger.debug('xyz file ' + contents)
+            QMessageBox.information(self, 'xyz', contents)
+
+    def show_xyz_input(self):
+        self.show_xyz(-1)
+
+    def show_xyz_output(self):
+        self.show_xyz(0)
+        pass
 
     def visualise_input(self, external_path=None):
         import tempfile
