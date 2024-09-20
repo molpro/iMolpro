@@ -34,16 +34,21 @@ if __name__ == '__main__':
     if 'LOGGING_LEVEL' in os.environ and os.environ['LOGGING_LEVEL'] == 'WARNING': log_level = logging.WARNING
     if 'LOGGING_LEVEL' in os.environ and os.environ['LOGGING_LEVEL'] == 'ERROR': log_level = logging.ERROR
     if 'LOGGING_LEVEL' in os.environ and os.environ['LOGGING_LEVEL'] == 'CRITICAL': log_level = logging.CRITICAL
-    for env in ['TMPDIR', 'TMP', 'TEMP', 'SCRATCH']:
-        if env in os.environ and os.access(os.environ[env], os.W_OK):
-            filename = str(pathlib.Path(os.environ[env]) / 'iMolpro.log')
-            if os.path.exists(filename):
-                os.remove(filename)
-            logging.basicConfig(filename=filename,
-                                level=log_level,
-                                format='%(asctime)s %(levelname)-8s %(message)s',
-                                datefmt='%Y-%m-%d %H:%M:%S')
-            break
+    if hasattr(sys, '_MEIPASS'):
+        for env in ['TMPDIR', 'TMP', 'TEMP', 'SCRATCH']:
+            if env in os.environ and os.access(os.environ[env], os.W_OK):
+                filename = str(pathlib.Path(os.environ[env]) / 'iMolpro.log')
+                if os.path.exists(filename):
+                    os.remove(filename)
+                logging.basicConfig(filename=filename,
+                                    level=log_level,
+                                    format='%(asctime)s %(levelname)-8s %(message)s',
+                                    datefmt='%Y-%m-%d %H:%M:%S')
+                break
+    else:
+        logging.basicConfig(level=log_level,
+                            format='%(asctime)s %(levelname)-8s %(message)s',
+                            datefmt='%Y-%m-%d %H:%M:%S')
     logger.info('iMolpro starting...')
 
     if hasattr(sys, '_MEIPASS') and platform.uname().system != 'Windows':
