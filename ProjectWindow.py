@@ -35,6 +35,7 @@ from settings import settings, settings_edit
 from OptionsDialog import OptionsDialog
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -104,7 +105,13 @@ class ProjectWindow(QMainWindow):
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
-        # print('ProjectWindow.resizeEvent', self.size())
+        logger.debug('ProjectWindow.resizeEvent: ' + str(self.size()))
+        for vod in list(self.vods.keys()):
+            # if vod not in ['builder', 'initial structure', 'inp']:
+            if vod in self.vods:
+                del self.vods[vod]
+            self.rebuild_vod_selector()
+        self.refresh_output_tabs(force=True)
         settings['project_window_width'] = self.size().width()
         settings['project_window_height'] = self.size().height()
 
@@ -393,7 +400,8 @@ class ProjectWindow(QMainWindow):
         help_manager.register('Example', 'doc/example.md')
         help_manager.register('Backends', 'doc/backends.md')
         help_manager.register('Display', 'doc/display.md')
-        menubar.addAction('Jmol reference', 'Help', lambda: QDesktopServices.openUrl(QUrl('https://jmol.sourceforge.net/docs')))
+        menubar.addAction('Jmol reference', 'Help',
+                          lambda: QDesktopServices.openUrl(QUrl('https://jmol.sourceforge.net/docs')))
         menubar.show()
 
     def edit_backend_configuration(self):
@@ -423,12 +431,15 @@ class ProjectWindow(QMainWindow):
             if self.output_tabs.tabText(i) == title:
                 self.output_tabs.removeTab(i)
 
-    def refresh_output_tabs(self):
+    def refresh_output_tabs(self, force=False):
+        index = self.output_tabs.currentIndex()
+        logger.debug('refresh output tabs')
         self.old_output_menu.refresh()
-        if len(self.output_tabs) != len(
+        if force or len(self.output_tabs) != len(
                 [tab_name for tab_name, pane in self.output_panes.items() if
                  os.path.exists(self.project.filename(re.sub(r'.*\.', '', tab_name)))]) + len(self.vods):
             self.output_tabs.clear()
+            logger.debug('rebuilding output tabs')
             for suffix, pane in self.output_panes.items():
                 if os.path.exists(self.project.filename(suffix)):
                     self.output_tabs.addTab(pane, suffix)
@@ -437,6 +448,7 @@ class ProjectWindow(QMainWindow):
         if 'stderr' not in self.output_panes.keys() and self.project.status == 'completed' and not (
                 os.path.exists(self.project.filename('out')) and self.project.out):
             self.add_output_tab(0, suffix='stderr', name='stderr')
+        self.output_tabs.setCurrentIndex(index)
         # print('end refresh output tabs')
 
     def add_output_tab(self, run: int, suffix='out', name=None):
@@ -529,6 +541,8 @@ class ProjectWindow(QMainWindow):
         return result
 
     def vod_selector_action(self, text, external_path=None, force=False):
+        logger.debug('vod_selector_action '+text+' '+str(external_path))
+        logger.debug('self.vods '+str(self.vods))
         # print('vod_selector_action', text, external_path, force)
         if force and self.vod_selector.currentText().strip() == 'None':
             self.vod_selector.setCurrentText('Final structure')
@@ -560,6 +574,8 @@ class ProjectWindow(QMainWindow):
                     self.visualise_output(external_path, '', self.project.filename('molden', typ, run=0))
 
     def rebuild_vod_selector(self):
+        logger.debug('rebuild_vod_selector')
+        self.vods.clear()
         for t, f in self.geometry_files():
             self.vod_selector_action('Edit ' + f)
         self.vod_selector_action('Initial structure')
@@ -650,6 +666,7 @@ class ProjectWindow(QMainWindow):
 
     def embedded_vod(self, file, command='', title='structure', **kwargs):
         height, width = self.embedded_geometry(280)
+        logger.debug('embedded_vod '+file+', '+command+', '+title+', '+str(height)+', '+str(width))
         firstmodel = 1
         firstvib = 1
         firstorb = 1
@@ -867,6 +884,7 @@ Jmol.jmolHtml("</p>")
         pass
 
     def visualise_input(self, external_path=None):
+        logger.debug('visualise_input'+str(self.vods.keys()))
         import tempfile
         geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
         geometry_directory.mkdir(exist_ok=True)
@@ -965,7 +983,8 @@ Jmol.jmolHtml("</p>")
 
     def show_initial_structure(self):
         self.destroy_vod('initial structure')
-        if len(self.geometry_files()) != 0 and pathlib.Path(self.project.filename('',self.geometry_files()[0][1])).is_file():
+        if len(self.geometry_files()) != 0 and pathlib.Path(
+                self.project.filename('', self.geometry_files()[0][1])).is_file():
             self.visualise_input()
             self.refresh_output_tabs()
             # self.vod_selector_action('initial structure')
@@ -1021,7 +1040,7 @@ Jmol.jmolHtml("</p>")
             self.input_pane.setPlainText(
                 self.input_pane.toPlainText().replace('geometry=' + xyzfile,
                                                       '!geometry=' + xyzfile + '\nangstrom\ngeometry={\n' + zmat + '}')
-                )
+            )
         self.xyz_to_zmat_activate_or_not(False)
 
     def xyz_to_zmat_activate_or_not(self, activate: bool):
@@ -1173,7 +1192,7 @@ class BasisAndHamiltonianChooser(QWidget):
             'Hamiltonian': self.combo_hamiltonian,
             'Quality': self.guided_combo_basis_quality,
             'Basis': self.basis_selector,
-        }, title='Hamiltonian and basis', alignment=Qt.AlignCenter|Qt.AlignTop))
+        }, title='Hamiltonian and basis', alignment=Qt.AlignCenter | Qt.AlignTop))
 
     def refresh(self):
         while True:

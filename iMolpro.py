@@ -1,19 +1,15 @@
 import pathlib
-import shutil
-from contextlib import redirect_stdout, redirect_stderr
 
 from PyQt5.QtCore import QEvent
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
 import sys
 
-from settings import settings
 from Chooser import Chooser
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
 import os
 import platform
 import logging
-import datetime
 
 if __name__ == '__main__':
 
@@ -42,12 +38,12 @@ if __name__ == '__main__':
                     os.remove(filename)
                 logging.basicConfig(filename=filename,
                                     level=log_level,
-                                    format='%(asctime)s %(levelname)-8s %(message)s',
+                                    format='%(asctime)s %(levelname)-8s %(name) %(message)s',
                                     datefmt='%Y-%m-%d %H:%M:%S')
                 break
     else:
         logging.basicConfig(level=log_level,
-                            format='%(asctime)s %(levelname)-8s %(message)s',
+                            format='%(asctime)s %(levelname)-8s %(name)s %(pathname)s:%(lineno)d %(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S')
     logger.info('iMolpro starting...')
 
