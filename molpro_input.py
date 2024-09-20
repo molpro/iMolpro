@@ -1,8 +1,10 @@
+import logging
 import os
 import pathlib
 import re
 from collections import UserDict
 
+logger = logging.getLogger(__name__)
 wave_fct_symm_commands = {
     'Automatic': '',
     'No Symmetry': 'symmetry,nosym'
@@ -72,7 +74,6 @@ class InputSpecification(UserDict):
         self.allowed_methods = list(set(allowed_methods).union(set(supported_methods)))
         self.directory = directory
         # print('self.allowed_methods',self.allowed_methods)
-        self.debug = debug
         if specification is not None:
             for k in specification:
                 self[k] = specification[k]
@@ -225,7 +226,6 @@ class InputSpecification(UserDict):
                 self.data.clear(); return self
                 pass
             elif re.match('(set,)?[a-z][a-z0-9_]* *=.*$', line, flags=re.IGNORECASE):
-                if debug: print('variable')
                 line = re.sub(' *!.*$', '', re.sub('set *,', '', line, flags=re.IGNORECASE)).strip()
                 while (
                         newline := re.sub(r'(\[[0-9!]+),', r'\1!',
@@ -743,9 +743,9 @@ def equivalent(input1, input2, debug=False):
     if isinstance(input1, InputSpecification): return equivalent(input1.input(), input2, debug)
     if isinstance(input2, InputSpecification): return equivalent(input1, input2.input(), debug)
     if debug:
-        print('equivalent: input1=', input1)
-        print('equivalent: input2=', input2)
-        print('equivalent: canonicalise(input1)=', canonicalise(input1))
-        print('equivalent: canonicalise(input2)=', canonicalise(input2))
-        print('will return this', canonicalise(input1).lower() == canonicalise(input2).lower())
+        logger.debug('equivalent: input1=', input1)
+        logger.debug('equivalent: input2=', input2)
+        logger.debug('equivalent: canonicalise(input1)=', canonicalise(input1))
+        logger.debug('equivalent: canonicalise(input2)=', canonicalise(input2))
+        logger.debug('will return this', canonicalise(input1).lower() == canonicalise(input2).lower())
     return canonicalise(input1).lower() == canonicalise(input2).lower()

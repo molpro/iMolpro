@@ -12,6 +12,8 @@ from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
 import os
 import platform
+import logging
+import datetime
 
 if __name__ == '__main__':
 
@@ -23,6 +25,26 @@ if __name__ == '__main__':
                 return super().event(e)
             return True
 
+
+    logger = logging.getLogger(__name__)
+    log_level = logging.INFO
+    if 'LOGGING_LEVEL' in os.environ and os.environ['LOGGING_LEVEL'] == 'NOTSET': log_level = logging.NOTSET
+    if 'LOGGING_LEVEL' in os.environ and os.environ['LOGGING_LEVEL'] == 'DEBUG': log_level = logging.DEBUG
+    if 'LOGGING_LEVEL' in os.environ and os.environ['LOGGING_LEVEL'] == 'INFO': log_level = logging.INFO
+    if 'LOGGING_LEVEL' in os.environ and os.environ['LOGGING_LEVEL'] == 'WARNING': log_level = logging.WARNING
+    if 'LOGGING_LEVEL' in os.environ and os.environ['LOGGING_LEVEL'] == 'ERROR': log_level = logging.ERROR
+    if 'LOGGING_LEVEL' in os.environ and os.environ['LOGGING_LEVEL'] == 'CRITICAL': log_level = logging.CRITICAL
+    for env in ['TMPDIR', 'TMP', 'TEMP', 'SCRATCH']:
+        if env in os.environ and os.access(os.environ[env], os.W_OK):
+            filename = str(pathlib.Path(os.environ[env]) / 'iMolpro.log')
+            if os.path.exists(filename):
+                os.remove(filename)
+            logging.basicConfig(filename=filename,
+                                level=log_level,
+                                format='%(asctime)s %(levelname)-8s %(message)s',
+                                datefmt='%Y-%m-%d %H:%M:%S')
+            break
+    logger.info('iMolpro starting...')
 
     if hasattr(sys, '_MEIPASS') and platform.uname().system != 'Windows':
         sys.stdout = open('/tmp/iMolpro.stdout', 'w')
@@ -36,9 +58,10 @@ if __name__ == '__main__':
 
     if platform.uname().system == 'Windows':
         if 'CONDA_PREFIX' in os.environ:
-            os.environ['PATH'] = str(pathlib.Path(os.environ['CONDA_PREFIX'])/ 'bin' ) + ';' + os.environ['PATH']
+            os.environ['PATH'] = str(pathlib.Path(os.environ['CONDA_PREFIX']) / 'bin') + ';' + os.environ['PATH']
         import ctypes
         import ctypes.wintypes
+
         console_window = ctypes.windll.kernel32.GetConsoleWindow()
         if console_window:
             process_id = ctypes.windll.kernel32.GetCurrentProcessId()
@@ -46,9 +69,8 @@ if __name__ == '__main__':
             ctypes.windll.user32.GetWindowThreadProcessId(console_window, ctypes.byref(console_process_id))
             console_process_id = console_process_id.value
             if process_id == console_process_id:
-                ctypes.windll.user32.ShowWindow(console_window,2)
+                ctypes.windll.user32.ShowWindow(console_window, 2)
 
-            
     app = App(sys.argv)
     if platform.uname().system == 'Windows':
         font = app.font()
@@ -65,3 +87,4 @@ if __name__ == '__main__':
         window_manager.register(ProjectWindow(arg, window_manager))
 
     app.exec()
+    logger.info('... iMolpro stopping')
