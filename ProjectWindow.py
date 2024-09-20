@@ -779,7 +779,7 @@ Jmol.jmolBr()
 
         html += """
         <script>
-          Jmol.jmolCheckbox(myJmol,'label "%i: %e"; color labels black', "label off","atom labels")
+          Jmol.jmolCheckbox(myJmol,'label "%e%i"; color labels black', "label off","atom labels")
         </script>
         </td>
         </tr>
