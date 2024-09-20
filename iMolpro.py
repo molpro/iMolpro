@@ -38,7 +38,7 @@ if __name__ == '__main__':
                     os.remove(filename)
                 logging.basicConfig(filename=filename,
                                     level=log_level,
-                                    format='%(asctime)s %(levelname)-8s %(name) %(message)s',
+                                    format='%(asctime)s %(levelname)-8s %(name)s %(pathname)s:%(lineno)d %(message)s',
                                     datefmt='%Y-%m-%d %H:%M:%S')
                 break
     else:
