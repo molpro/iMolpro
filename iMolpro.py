@@ -38,12 +38,12 @@ if __name__ == '__main__':
                     os.remove(filename)
                 logging.basicConfig(filename=filename,
                                     level=log_level,
-                                    format='%(asctime)s %(levelname)-8s %(name)s %(pathname)s:%(lineno)d %(message)s',
+                                    format='%(asctime)s %(levelname)-8s %(name)s %(funcName)s() %(pathname)s:%(lineno)d %(message)s',
                                     datefmt='%Y-%m-%d %H:%M:%S')
                 break
     else:
         logging.basicConfig(level=log_level,
-                            format='%(asctime)s %(levelname)-8s %(name)s %(pathname)s:%(lineno)d %(message)s',
+                            format='%(asctime)s %(levelname)-8s %(name)s %(funcName)s() %(pathname)s:%(lineno)d %(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S')
     logger.info('iMolpro starting...')
 

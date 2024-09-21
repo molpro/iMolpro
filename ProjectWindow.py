@@ -11,7 +11,7 @@ import re
 import platform
 
 import pymolpro
-from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt, QSize
+from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt, QSize, QEvent
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
@@ -112,8 +112,18 @@ class ProjectWindow(QMainWindow):
                 del self.vods[vod]
             self.rebuild_vod_selector()
         self.refresh_output_tabs(force=True)
-        settings['project_window_width'] = self.size().width()
-        settings['project_window_height'] = self.size().height()
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        logger.debug('event.type() '+str(event.type))
+        if True or event.type() == QEvent.WindowStateChange:
+            logger.debug('windowStateChange')
+            logger.debug('full screen ? ' + str(self.isFullScreen()))
+            if not self.isFullScreen():
+                self.normal_geometry = self.normalGeometry()
+            logger.debug('normal_geometry '+str(self.normal_geometry))
+            settings['project_window_width'] = self.normal_geometry.width()
+            settings['project_window_height'] = self.normal_geometry.height()
 
     def __init__(self, filename, window_manager, latency=1000):
         super().__init__(None)
@@ -122,6 +132,8 @@ class ProjectWindow(QMainWindow):
             self.resize(settings['project_window_width'], settings['project_window_height'])
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
         self.initialised_from_input = False
+
+        self.normal_geometry = self.normalGeometry()
 
         try:
             if platform.uname().system == 'Windows':
