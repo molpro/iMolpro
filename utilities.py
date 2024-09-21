@@ -300,7 +300,7 @@ class OrbitalSet:
 
 def factory_orbital_set(input: str, file_type=None, instance=-1):
     implementors = {
-        'xml': OrbitalSetXML,
+        # 'xml': OrbitalSetXML, # this needs a fix in jmol to work properly
         'molden': OrbitalSetMolden,
     }
     if not file_type:
