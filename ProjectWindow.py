@@ -98,7 +98,6 @@ class ProjectWindow(QMainWindow):
     close_signal = pyqtSignal(QWidget, name='closeSignal')
     new_signal = pyqtSignal(QWidget, name='newSignal')
     chooser_signal = pyqtSignal(QWidget, name='chooserSignal')
-    trace = settings['ProjectWindow_debug'] if 'ProjectWindow_debug' in settings else 0
     null_prompt = '- Select -'
     all_qualities = 'All Qualities'
     basis_qualities = [all_qualities, 'SZ', 'DZ', 'TZ', 'QZ', '5Z', '6Z']
@@ -115,13 +114,13 @@ class ProjectWindow(QMainWindow):
 
     def changeEvent(self, event):
         super().changeEvent(event)
-        logger.debug('event.type() '+str(event.type))
+        logger.debug('event.type() ' + str(event.type))
         if True or event.type() == QEvent.WindowStateChange:
             logger.debug('windowStateChange')
             logger.debug('full screen ? ' + str(self.isFullScreen()))
             if not self.isFullScreen():
                 self.normal_geometry = self.normalGeometry()
-            logger.debug('normal_geometry '+str(self.normal_geometry))
+            logger.debug('normal_geometry ' + str(self.normal_geometry))
             settings['project_window_width'] = self.normal_geometry.width()
             settings['project_window_height'] = self.normal_geometry.height()
 
@@ -472,7 +471,7 @@ class ProjectWindow(QMainWindow):
                 self.output_tabs.setCurrentIndex(i)
 
     def guided_toggle(self):
-        if self.trace: print('guided_toggle')
+        logger.debug('guided_toggle')
         index = 1 if self.guided_action.isChecked() else 0
         if 'inp' in self.output_panes:
             if index == 0:
@@ -505,7 +504,7 @@ class ProjectWindow(QMainWindow):
             self.input_tabs.setCurrentIndex(index)
 
     def input_text_changed_consequence(self, index=0):
-        if self.trace: print('input_text_changed_consequence, index=', index)
+        logger.debug('input_text_changed_consequence, index=' + str(index))
         guided = self.guided_possible()
         if guided:
             self.input_specification = InputSpecification(self.input_pane.toPlainText(),
@@ -520,7 +519,7 @@ class ProjectWindow(QMainWindow):
         return guided
 
     def input_tab_changed_consequence(self, index=0):
-        if self.trace: print('input_tab_changed_consequence, index=', index, self.input_tabs.currentIndex())
+        logger.debug('index=' + str(index) + ' ' + str(self.input_tabs.currentIndex()))
         if self.input_tabs.currentIndex() == 1:
             self.guided_pane.refresh()
 
@@ -553,8 +552,8 @@ class ProjectWindow(QMainWindow):
         return result
 
     def vod_selector_action(self, text, external_path=None, force=False):
-        logger.debug('vod_selector_action '+text+' '+str(external_path))
-        logger.debug('self.vods '+str(self.vods))
+        logger.debug('vod_selector_action ' + text + ' ' + str(external_path))
+        logger.debug('self.vods ' + str(self.vods))
         # print('vod_selector_action', text, external_path, force)
         if force and self.vod_selector.currentText().strip() == 'None':
             self.vod_selector.setCurrentText('Final structure')
@@ -678,7 +677,7 @@ class ProjectWindow(QMainWindow):
 
     def embedded_vod(self, file, command='', title='structure', **kwargs):
         height, width = self.embedded_geometry(280)
-        logger.debug('embedded_vod '+file+', '+command+', '+title+', '+str(height)+', '+str(width))
+        logger.debug('embedded_vod ' + file + ', ' + command + ', ' + title + ', ' + str(height) + ', ' + str(width))
         firstmodel = 1
         firstvib = 1
         firstorb = 1
@@ -896,7 +895,7 @@ Jmol.jmolHtml("</p>")
         pass
 
     def visualise_input(self, external_path=None):
-        logger.debug('visualise_input'+str(self.vods.keys()))
+        logger.debug('visualise_input' + str(self.vods.keys()))
         import tempfile
         geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
         geometry_directory.mkdir(exist_ok=True)
@@ -1296,7 +1295,6 @@ class GuidedPane(QWidget):
         super().__init__(parent)
         self.parent = parent
         self.project = self.parent.project
-        self.trace = self.parent.trace
         self.input_pane = self.parent.input_pane
         self.setContentsMargins(0, 0, 0, 0)
         self.method_asserted = False
@@ -1541,7 +1539,7 @@ class GuidedPane(QWidget):
         self.refresh_input_from_specification()
 
     def refresh_input_from_specification(self):
-        if self.trace: print('refresh_input_from_specification')
+        logger.debug('refresh_input_from_specification')
         if not self.parent.guided_possible(): return
         new_input = self.input_specification.input()
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
