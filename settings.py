@@ -13,9 +13,10 @@ settings = FileBackedDictionary(
         os.environ['APPDATA' if platform.system() == 'Windows' else 'HOME']) / '.molpro' / 'iMolpro.settings.json'))
 
 
-def settings_edit(parent=None, callbacks={}, hide=[]):
+def settings_edit(parent=None, callbacks={}):
+    hide=['project_window_width','project_window_height']
     box = OptionsDialog({k: settings[k] for k in settings if k not in hide},
-                        ['CHEMSPIDER_API_KEY', 'mo_translucent', 'expertise'], title='Settings',
+                        ['CHEMSPIDER_API_KEY', 'orbital_transparency'], title='Settings',
                         parent=parent)
     result = box.exec()
     if result is not None:

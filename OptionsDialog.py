@@ -22,12 +22,15 @@ class OptionsDialog(QDialog):
             self.add(k, v)
         layout.addWidget(self.current)
 
-        self.available = QComboBox(self)
-        self.available.addItem('')
-        self.available.addItems(available_options)
-        self.available.currentTextChanged.connect(self.add_from_registry)
-        layout.addWidget(QLabel('Add entry:'))
-        layout.addWidget(self.available)
+        available_options_ = [available_option for available_option in available_options if
+                              available_option not in current_options]
+        if available_options_:
+            self.available = QComboBox(self)
+            self.available.addItem('')
+            self.available.addItems(available_options_)
+            self.available.currentTextChanged.connect(self.add_from_registry)
+            layout.addWidget(QLabel('Add entry:'))
+            layout.addWidget(self.available)
 
         buttonbox = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel)  # | QDialogButtonBox.Help if help_uri is not None else 0)
