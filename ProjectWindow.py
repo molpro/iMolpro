@@ -754,15 +754,29 @@ Jmol.jmolBr()
 
 
  var r = [
-    ["mo resolution 4","Very coarse",true],
-    ["mo resolution 7","Coarse",true],
-    ["mo resolution 10","Medium"],
-    ["mo resolution 13","Fine"],
-    ["mo resolution 16","Very fine"]
+    ["mo resolution 4","--"],
+    ["mo resolution 7","-",true],
+    ["mo resolution 10","10"],
+    ["mo resolution 13","+"],
+    ["mo resolution 16","++"]
  ];
- Jmol.jmolHtml("Resolution:<br>")
- Jmol.jmolRadioGroup(myJmol, r, "<br>", "Resolution");
 Jmol.jmolBr()
+ Jmol.jmolHtml("Orbital resolution:<br>")
+ Jmol.jmolRadioGroup(myJmol, r, " ", "Resolution");
+Jmol.jmolBr()
+
+ var t = [
+    ['mo translucent  """ + str(float(settings['orbital_transparency'])-0.2) + """',"--"],
+    ['mo translucent  """ + str(float(settings['orbital_transparency'])-0.1) + """',"-"],
+    ['mo translucent  """ + str(float(settings['orbital_transparency'])) + """','""" + str(float(settings['orbital_transparency'])) + """',true],
+    ['mo translucent  """ + str(float(settings['orbital_transparency'])+0.1) + """',"+"],
+    ['mo translucent  """ + str(float(settings['orbital_transparency'])+0.2) + """',"++"],
+ ];
+Jmol.jmolBr()
+ Jmol.jmolHtml("Orbital transparency:<br>")
+ Jmol.jmolRadioGroup(myJmol, t, " ", "Orbital transparency");
+Jmol.jmolBr()
+
 Jmol.jmolBr()
 Jmol.jmolCheckbox(myJmol,'mo TITLEFORMAT "Model %M, MO %I/%N|Energy = %E %U|?Label = %S|?Occupancy = %O"', "mo TITLEFORMAT ' '","orbital info")
 
