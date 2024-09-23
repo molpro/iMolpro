@@ -1367,10 +1367,6 @@ class GuidedPane(QWidget):
         self.print_button.setToolTip('Specify global print levels')
         self.print_button.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
 
-        self.method_options_button = QPushButton('Options')  # TODO delete when we are settled
-        self.method_options_button.clicked.connect(self.method_options_edit)
-        self.method_options_button.setToolTip('Specify options for the main method')
-
         self.step_options_combo = QComboBox(self)
         self.step_options_combo.currentIndexChanged.connect(
             lambda text: self.step_options_edit(int(text - 1)))
@@ -1603,19 +1599,6 @@ class GuidedPane(QWidget):
                                                                          result.items()]
             self.refresh_input_from_specification()
         self.step_options_combo.setCurrentIndex(0)
-
-    def method_options_edit(self, flag):
-        return self.step_options_edit([s['command'] for s in self.parent.input_specification['steps']].index(
-            self.parent.input_specification.method))
-        # method_ = self.parent.input_specification.method
-        # available_options = [re.sub('.*:','',option) for option in list(self.parent.procedures_registry[method_.upper()]['options'])]
-        # title = 'Options for method ' + self.parent.input_specification.method
-        # existing_options = {o.split('=')[0]:o.split('=')[1] if len(o.split('='))>1 else '' for o in self.parent.input_specification.method_options}
-        # box = OptionsDialog(existing_options, available_options, title=title, parent=self, help_uri='https://www.molpro.net/manual/doku.php?q='+method_+'&do=search')
-        # result = box.exec()
-        # if result is not None:
-        #     self.parent.input_specification.method_options = [k+'='+v if v else k for k,v in result.items()]
-        #     self.refresh_input_from_specification()
 
 
 class RowOfTitledWidgets(QWidget):
