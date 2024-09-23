@@ -643,15 +643,15 @@ class ProjectWindow(QMainWindow):
         if 'stderr' in self.output_panes:
             self.output_tabs.removeTab(self.output_tabs.indexOf(self.output_panes['stderr']))
             del self.output_panes['stderr']
-            self.refresh_output_tabs()
+        for vod in list(self.vods.keys()):
+            if vod not in ['builder', 'initial structure', 'inp']:
+                del self.vods[vod]
+        self.refresh_output_tabs()
         try:
             self.project.run(force=force)
         except Exception as e:
             QMessageBox.critical(self, 'Job submission failed', 'Cannot submit job:\n' + str(e))
             return False
-        for vod in list(self.vods.keys()):
-            if vod not in ['builder', 'initial structure', 'inp']:
-                del self.vods[vod]
         for i in range(len(self.output_tabs)):
             if self.output_tabs.tabText(i) == 'out':
                 self.output_tabs.setCurrentIndex(i)
