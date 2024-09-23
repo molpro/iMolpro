@@ -105,6 +105,10 @@ class ProjectWindow(QMainWindow):
     def resizeEvent(self, e):
         super().resizeEvent(e)
         logger.debug('ProjectWindow.resizeEvent: ' + str(self.size()))
+        self.restart_vods()
+
+    def restart_vods(self):
+        logger.debug('Restarting vods')
         for vod in list(self.vods.keys()):
             # if vod not in ['builder', 'initial structure', 'inp']:
             if vod in self.vods:
@@ -348,7 +352,7 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Export file', 'Files', self.export_file, 'Ctrl+E',
                           tooltip='Export one or more files from the project')
         menubar.addAction('Clean', 'Files', self.clean, tooltip='Remove old runs from the project')
-        menubar.addAction('Settings', 'Edit', lambda arg, parent=self: settings_edit(parent), tooltip='Edit settings')
+        menubar.addAction('Settings', 'Edit', lambda arg, parent=self: settings_edit(parent, {'mo_translucent': self.restart_vods}, hide=['project_window_width','project_window_height']), tooltip='Edit settings')
         menubar.addSeparator('Edit')
         menubar.addAction('Structure', 'Edit', self.edit_input_structure, 'Ctrl+D', 'Edit molecular geometry')
         menubar.addAction('Cut', 'Edit', self.input_pane.cut, 'Ctrl+X', 'Cut')
