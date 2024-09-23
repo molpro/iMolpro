@@ -352,7 +352,7 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Export file', 'Files', self.export_file, 'Ctrl+E',
                           tooltip='Export one or more files from the project')
         menubar.addAction('Clean', 'Files', self.clean, tooltip='Remove old runs from the project')
-        menubar.addAction('Settings', 'Edit', lambda arg, parent=self: settings_edit(parent, {'mo_translucent': self.restart_vods}, hide=['project_window_width','project_window_height']), tooltip='Edit settings')
+        menubar.addAction('Settings', 'Edit', lambda arg, parent=self: settings_edit(parent, {'orbital_transparency': self.restart_vods}), tooltip='Edit settings')
         menubar.addSeparator('Edit')
         menubar.addAction('Structure', 'Edit', self.edit_input_structure, 'Ctrl+D', 'Edit molecular geometry')
         menubar.addAction('Cut', 'Edit', self.input_pane.cut, 'Ctrl+X', 'Cut')
@@ -695,7 +695,7 @@ class ProjectWindow(QMainWindow):
             firstmodel = firstorb = orbs.coordinateSet
         except (IndexError, KeyError):
             orbs = None
-        if not 'mo_translucent' in settings: settings['mo_translucent'] = 0.3
+        if not 'orbital_transparency' in settings: settings['orbital_transparency'] = 0.3
         html = """<!DOCTYPE html>
 <html>
 <head>
@@ -712,7 +712,7 @@ var Info = {
   width: """ + str(width) + """,
   script: "load '""" + re.sub('\\\\', '\\\\\\\\',
                               file) + """'; set antialiasDisplay ON; set showFrank OFF; model """ + str(
-            firstmodel) + """; """ + command + """; mo nomesh fill translucent """ + str(settings['mo_translucent']) + """; mo resolution 7; mo titleFormat ' '",
+            firstmodel) + """; """ + command + """; mo nomesh fill translucent """ + str(settings['orbital_transparency']) + """; mo resolution 7; mo titleFormat ' '",
   use: "HTML5",
   j2sPath: "j2s",
   serverURL: "php/jsmol.php",
