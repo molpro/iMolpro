@@ -9,3 +9,5 @@ the molecule, which are embedded instances of the  [Jmol](http://www.jmol.org/) 
 
 
 The full Jmol menu is available, together with an box that accepts any [Jmol scripting command](https://chemapps.stolaf.edu/jmol/docs), and together these allow finer control of the display, as well as the export of images.
+
+Some of the Jmol settings - presently the degree of transparency orbitals - are initialised with values from iMolpro's settings. Use the `Settings` or `Preferences` menu to edit these.
