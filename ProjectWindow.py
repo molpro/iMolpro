@@ -138,20 +138,6 @@ class ProjectWindow(QMainWindow):
 
         self.normal_geometry = self.normalGeometry()
 
-        try:
-            if platform.uname().system == 'Windows':
-                os.environ['PATH'] = os.path.dirname(os.path.abspath(__file__)) + ';' + os.environ['PATH']
-                if 'CONDA_PREFIX' not in os.environ:
-                    os.environ['CONDA_PREFIX'] = os.path.dirname(os.path.abspath(__file__))
-            elif 'PATH' in os.environ and 'SHELL' in os.environ:
-                os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
-                    'PATH']  # make PATH just as if running from shell
-        except Exception as e:
-            msg = QMessageBox()
-            msg.setText('Error in setting PATH')
-            msg.setDetailedText(str(e))
-            msg.exec()
-
         assert filename is not None
         try:
             self.project = Project(filename)
@@ -352,7 +338,9 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Export file', 'Files', self.export_file, 'Ctrl+E',
                           tooltip='Export one or more files from the project')
         menubar.addAction('Clean', 'Files', self.clean, tooltip='Remove old runs from the project')
-        menubar.addAction('Settings', 'Edit', lambda arg, parent=self: settings_edit(parent, {'orbital_transparency': self.restart_vods}), tooltip='Edit settings')
+        menubar.addAction('Settings', 'Edit',
+                          lambda arg, parent=self: settings_edit(parent, {'orbital_transparency': self.restart_vods}),
+                          tooltip='Edit settings')
         menubar.addSeparator('Edit')
         menubar.addAction('Structure', 'Edit', self.edit_input_structure, 'Ctrl+D', 'Edit molecular geometry')
         menubar.addAction('Cut', 'Edit', self.input_pane.cut, 'Ctrl+X', 'Cut')
@@ -712,7 +700,8 @@ var Info = {
   width: """ + str(width) + """,
   script: "load '""" + re.sub('\\\\', '\\\\\\\\',
                               file) + """'; set antialiasDisplay ON; set showFrank OFF; model """ + str(
-            firstmodel) + """; """ + command + """; mo nomesh fill translucent """ + str(settings['orbital_transparency']) + """; mo resolution 7; mo titleFormat ' '",
+            firstmodel) + """; """ + command + """; mo nomesh fill translucent """ + str(
+            settings['orbital_transparency']) + """; mo resolution 7; mo titleFormat ' '",
   use: "HTML5",
   j2sPath: "j2s",
   serverURL: "php/jsmol.php",
@@ -766,11 +755,12 @@ Jmol.jmolBr()
 Jmol.jmolBr()
 
  var t = [
-    ['mo translucent  """ + str(float(settings['orbital_transparency'])-0.2) + """',"--"],
-    ['mo translucent  """ + str(float(settings['orbital_transparency'])-0.1) + """',"-"],
-    ['mo translucent  """ + str(float(settings['orbital_transparency'])) + """','""" + str(float(settings['orbital_transparency'])) + """',true],
-    ['mo translucent  """ + str(float(settings['orbital_transparency'])+0.1) + """',"+"],
-    ['mo translucent  """ + str(float(settings['orbital_transparency'])+0.2) + """',"++"],
+    ['mo translucent  """ + str(float(settings['orbital_transparency']) - 0.2) + """',"--"],
+    ['mo translucent  """ + str(float(settings['orbital_transparency']) - 0.1) + """',"-"],
+    ['mo translucent  """ + str(float(settings['orbital_transparency'])) + """','""" + str(
+                float(settings['orbital_transparency'])) + """',true],
+    ['mo translucent  """ + str(float(settings['orbital_transparency']) + 0.1) + """',"+"],
+    ['mo translucent  """ + str(float(settings['orbital_transparency']) + 0.2) + """',"++"],
  ];
 Jmol.jmolBr()
  Jmol.jmolHtml("Orbital transparency:<br>")

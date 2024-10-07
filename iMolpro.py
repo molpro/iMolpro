@@ -57,6 +57,20 @@ if __name__ == '__main__':
         if 'FONTCONFIG_FILE' not in os.environ:
             os.environ['FONTCONFIG_FILE'] = '/etc/fonts/fonts.conf'
 
+    try:
+        if platform.uname().system == 'Windows':
+            os.environ['PATH'] = os.path.dirname(os.path.abspath(__file__)) + ';' + os.environ['PATH']
+            if 'CONDA_PREFIX' not in os.environ:
+                os.environ['CONDA_PREFIX'] = os.path.dirname(os.path.abspath(__file__))
+        elif 'PATH' in os.environ and 'SHELL' in os.environ:
+            os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
+                'PATH']  # make PATH just as if running from shell
+    except Exception as e:
+        msg = QMessageBox()
+        msg.setText('Error in setting PATH')
+        msg.setDetailedText(str(e))
+        msg.exec()
+
     if platform.uname().system == 'Windows':
         if 'CONDA_PREFIX' in os.environ:
             os.environ['PATH'] = str(pathlib.Path(os.environ['CONDA_PREFIX']) / 'bin') + ';' + os.environ['PATH']
