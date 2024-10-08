@@ -12,7 +12,6 @@ from help import help_dialog
 
 def sanitise_backends(parent):
     dot_molpro= pathlib.Path(settings.settings.filename).parent
-    print('dot_molpro', dot_molpro)
     teaching_molpro_path = dot_molpro / 'teach' / 'bin' / 'molpro'
     teaching_molpro = teaching_molpro_path.exists()
     regular_molpro = False
