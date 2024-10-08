@@ -30,7 +30,7 @@ from RecentMenu import RecentMenu
 from database import database_choose_structure
 from help import HelpManager
 from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set
-from backend import configure_backend, BackendConfigurationEditor
+from backend import configure_backend, BackendConfigurationEditor, sanitise_backends
 from settings import settings, settings_edit
 from OptionsDialog import OptionsDialog
 
@@ -148,6 +148,8 @@ class ProjectWindow(QMainWindow):
             msg.exec()
             self.invalid = True
             return
+
+        sanitise_backends(self)
 
         settings['project_directory'] = os.path.dirname(self.project.filename(run=-1))
 

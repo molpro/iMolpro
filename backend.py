@@ -1,9 +1,28 @@
+import os
+import pathlib
+
 from lxml import etree
 from PyQt5.QtWidgets import QDialog, QComboBox, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
-    QGridLayout, QWidget, QFormLayout, QMessageBox
+    QGridLayout, QFormLayout, QMessageBox
+from pysjef import Project
 
-from help import HelpManager, help_dialog
-from utilities import MainEditFile
+import settings
+from help import help_dialog
+
+
+def sanitise_backends(parent):
+    dot_molpro= pathlib.Path(settings.settings.filename).parent
+    print('dot_molpro', dot_molpro)
+    teaching_molpro_path = dot_molpro / 'teach' / 'bin' / 'molpro'
+    teaching_molpro = teaching_molpro_path.exists()
+    regular_molpro = False
+    for path in os.environ['PATH'].split(os.pathsep):
+        regular_molpro = regular_molpro or (pathlib.Path(path) / 'molpro').exists()
+    if teaching_molpro:
+        name = 'teach' if regular_molpro else 'local'
+        if name not in parent.project.backend_names():
+            new_backend(name, name=name, molpro_path=str(teaching_molpro_path))
+            parent.project.refresh_backends()
 
 
 def configure_backend(parent):
@@ -112,27 +131,10 @@ class BackendConfigurationEditor(QDialog):
 
     def new(self, text):
         if not text or text == self.choose: return
-        root = etree.parse(self.file)
-        n = etree.SubElement(root.getroot(), 'backend')
-        sequence = 1
-        while text.replace(' ', '_') + '_' + str(sequence) in self.backends:
-            sequence += 1
-        name = text.replace(' ', '_') + '_' + str(sequence)
-        n.set('name', name)
-        n.set('run_command', 'molpro {-n %n!MPI size} {-M %M!Total memory} {-m %m!Process memory} {-G %G!GA memory}')
-        if text == 'remote linux' or text == 'Slurm':
-            n.set('host', 'someone@some.computer.somewhere')
-        if text == 'Slurm':
-            n.set('run_command', 'your_job_submission_script')
-            n.set('run_jobnumber', 'Submitted batch job *([0-9]+)')
-            n.set('kill_command', 'scancel')
-            n.set('status_command', 'squeue -j')
-            n.set('status_running', ' (CF|CG|R|ST|S) *[0-9]')
-            n.set('status_waiting', ' (PD|SE) *[0-9]')
-        if text != 'local':
-            n.set('cache', '.cache/sjef')
-        root.write(self.file, pretty_print=True, xml_declaration=True, encoding='utf-8')
+        name = new_backend(text, self.file)
+        self.parent.project.refresh_backends()
         self.reset(name)
+
 
     def reset(self, name):
         self.edit_combo.clear()
@@ -144,6 +146,40 @@ class BackendConfigurationEditor(QDialog):
     def clicked(self, button):
         if button == self.buttons.button(QDialogButtonBox.Help):
             help_dialog('doc/backends.md', self)
+
+def delete_backend(name, file=None):
+    if file is None:
+        file = str(pathlib.Path.home() / '.sjef/molpro/backends.xml')
+    root = etree.parse(file)
+    node = root.xpath('//backend[@name="' + name + '"]')[0]
+    node.getparent().remove(node)
+    root.write(file, pretty_print=True, xml_declaration=True, encoding='utf-8')
+
+def new_backend(text='local', file=None, name=None, molpro_path='molpro'):
+    if file is None:
+        file = str(pathlib.Path.home() / '.sjef/molpro/backends.xml')
+    root = etree.parse(file)
+    n = etree.SubElement(root.getroot(), 'backend')
+    sequence = 1
+    backends_ = [backend.get('name') for backend in (etree.parse(file).xpath('//backend'))]
+    while text.replace(' ', '_') + '_' + str(sequence) in backends_:
+        sequence += 1
+    name_ = text.replace(' ', '_') + '_' + str(sequence) if name is None else name
+    n.set('name', name_)
+    n.set('run_command', molpro_path + ' {-n %n!MPI size} {-M %M!Total memory} {-m %m!Process memory} {-G %G!GA memory}')
+    if text == 'remote linux' or text == 'Slurm':
+        n.set('host', 'someone@some.computer.somewhere')
+    if text == 'Slurm':
+        n.set('run_command', 'your_job_submission_script')
+        n.set('run_jobnumber', 'Submitted batch job *([0-9]+)')
+        n.set('kill_command', 'scancel')
+        n.set('status_command', 'squeue -j')
+        n.set('status_running', ' (CF|CG|R|ST|S) *[0-9]')
+        n.set('status_waiting', ' (PD|SE) *[0-9]')
+    if text != 'local' and text != 'teach':
+        n.set('cache', '.cache/sjef')
+    root.write(file, pretty_print=True, xml_declaration=True, encoding='utf-8')
+    return name_
 
 
 class BackendEditor(QDialog):
