@@ -20,13 +20,13 @@ def sanitise_backends(parent):
     if teaching_molpro:
         name = 'teach' if regular_molpro else 'local'
         if name not in parent.project.backend_names():
-            new_backend(name, name=name, molpro_path=str(teaching_molpro_path))
+            new_backend(name, name=name, molpro_path=str(teaching_molpro_path), molpro_options='{-m %m!Process memory}')
             parent.project.refresh_backends()
         else:
             run_command = parent.project.backend_get(name, 'run_command')
             if str(teaching_molpro_path) not in run_command:
                 delete_backend(name)
-                new_backend(name, name=name, molpro_path=str(teaching_molpro_path))
+                new_backend(name, name=name, molpro_path=str(teaching_molpro_path), molpro_options='{-m %m!Process memory}')
                 parent.project.refresh_backends()
 
 
@@ -160,7 +160,7 @@ def delete_backend(name, file=None):
     node.getparent().remove(node)
     root.write(file, pretty_print=True, xml_declaration=True, encoding='utf-8')
 
-def new_backend(text='local', file=None, name=None, molpro_path='molpro'):
+def new_backend(text='local', file=None, name=None, molpro_path='molpro', molpro_options=' {-n %n!MPI size} {-M %M!Total memory} {-m %m!Process memory} {-G %G!GA memory}'):
     if file is None:
         file = str(pathlib.Path.home() / '.sjef/molpro/backends.xml')
     root = etree.parse(file)
@@ -171,7 +171,7 @@ def new_backend(text='local', file=None, name=None, molpro_path='molpro'):
         sequence += 1
     name_ = text.replace(' ', '_') + '_' + str(sequence) if name is None else name
     n.set('name', name_)
-    n.set('run_command', molpro_path + ' {-n %n!MPI size} {-M %M!Total memory} {-m %m!Process memory} {-G %G!GA memory}')
+    n.set('run_command', molpro_path + ' ' + molpro_options)
     if text == 'remote linux' or text == 'Slurm':
         n.set('host', 'someone@some.computer.somewhere')
     if text == 'Slurm':
