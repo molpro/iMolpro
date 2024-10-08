@@ -22,6 +22,12 @@ def sanitise_backends(parent):
         if name not in parent.project.backend_names():
             new_backend(name, name=name, molpro_path=str(teaching_molpro_path))
             parent.project.refresh_backends()
+        else:
+            run_command = parent.project.backend_get(name, 'run_command')
+            if str(teaching_molpro_path) not in run_command:
+                delete_backend(name)
+                new_backend(name, name=name, molpro_path=str(teaching_molpro_path))
+                parent.project.refresh_backends()
 
 
 def configure_backend(parent):
