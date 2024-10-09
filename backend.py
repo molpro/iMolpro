@@ -1,6 +1,7 @@
 import os
 import pathlib
 import sys
+import platform
 
 from lxml import etree
 from PyQt5.QtWidgets import QDialog, QComboBox, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
