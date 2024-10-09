@@ -1,5 +1,6 @@
 import os
 import pathlib
+import sys
 
 from lxml import etree
 from PyQt5.QtWidgets import QDialog, QComboBox, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
@@ -25,7 +26,7 @@ def sanitise_backends(parent):
         name = 'teach' if regular_molpro else 'local'
         if name not in parent.project.backend_names():
             new_backend(name, name=name, molpro_path=str(teaching_molpro_path), molpro_options='{-m %m!Process memory}')
-            parent.project.refresh_backends()
+            par1ent.project.refresh_backends()
         else:
             run_command = parent.project.backend_get(name, 'run_command')
             if str(teaching_molpro_path) not in run_command:
