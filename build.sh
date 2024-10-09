@@ -24,6 +24,7 @@ echo "$version" > "${versionfile}"
 
 echo molpro_version=$molpro_version
 molpro_script_gz=molpro-mpp-$molpro_version.$(uname|tr '[:upper:]' '[:lower:]')_$(uname -m|sed -e 's/arm64/aarch64/').sh.gz
+molpro_script_gz=$(echo $molpro_script_gz | sed -e 's/linux_x86_64.sh/linux_x86_64_sockets.sh/')
 echo molpro_script_gz=$molpro_script_gz
 if [ ! -r $molpro_script_gz ]; then
   wget https://www.molpro.net/80f2bfc0f63c9eb3f37d95d26e29477a8916a04d/$molpro_script_gz
