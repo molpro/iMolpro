@@ -13,6 +13,10 @@ from help import help_dialog
 def sanitise_backends(parent):
     dot_molpro= pathlib.Path(settings.settings.filename).parent
     teaching_molpro_path = dot_molpro / 'teach' / 'bin' / 'molpro'
+    if hasattr(sys, '_MEIPASS') and platform.uname().system != 'Windows':
+        teaching_molpro_path = os.path.normpath(os.path.join(
+            sys._MEIPASS, 'molpro', 'bin', 'molpro'
+        ))
     teaching_molpro = teaching_molpro_path.exists()
     regular_molpro = False
     for path in os.environ['PATH'].split(os.pathsep):

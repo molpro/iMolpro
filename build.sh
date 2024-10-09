@@ -9,6 +9,8 @@ conda list
 #  conda install -c conda-forge -y scipy==1.11
 #fi
 
+. ./ENV
+
 if [ "$(uname)" = Darwin ]; then
   pyinstaller_opt="--windowed --osx-bundle-identifier=net.molpro.iMolpro --icon=molpro.icns"
 fi
@@ -20,6 +22,19 @@ git config --global --add safe.directory "$PWD"
 version=$(git describe --tags --dirty --always)
 echo "$version" > "${versionfile}"
 
+echo molpro_version=$molpro_version
+molpro_script_gz=molpro-mpp-$molpro_version.$(uname|tr '[:upper:]' '[:lower:]')_$(uname -m|sed -e 's/arm64/aarch64/').sh.gz
+echo molpro_script_gz=$molpro_script_gz
+if [ ! -r $molpro_script_gz ]; then
+  wget https://www.molpro.net/80f2bfc0f63c9eb3f37d95d26e29477a8916a04d/$molpro_script_gz
+fi
+gunzip -k -f $molpro_script_gz
+molpro_script=$(basename $molpro_script_gz .gz)
+sh $molpro_script -batch -prefix $builddir/molpro
+rm $molpro_script
+sed -i '' -e 's@MOLPRO_PREFIX=.*$@me=$(realpath $0 2>/dev/null) || me=$0; MOLPRO_PREFIX=$(dirname $(dirname $me))@' $builddir/molpro/bin/molpro
+
+
 PATH=/usr/bin:$PATH pyi-makespec \
   --add-data JSmol.min.js:. \
   --add-data j2s:./j2s \
@@ -27,6 +42,7 @@ PATH=/usr/bin:$PATH pyi-makespec \
   --add-data README.md:. \
   --add-data doc:./doc \
   --add-data "${versionfile}":. \
+  --add-data $builddir/molpro:./molpro \
   $pyinstaller_opt \
   iMolpro.py || exit 1
 sed -i -e '$d' iMolpro.spec
