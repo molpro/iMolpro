@@ -39,6 +39,7 @@ jobs:
           files: |
             dist/*bz2
             dist/*dmg
+            dist/*pkg
 #  deploy-windows:
 #    name:  Deploy on Windows
 #    runs-on: windows-latest
