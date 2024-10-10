@@ -12,7 +12,8 @@ jobs:
     strategy:
       matrix:
 #        os: [ ubuntu-latest, [ macOS, X64], [ macOS, ARM64 ] ]
-        os: [ ubuntu-20.04, macos-12, macos-14 ]
+#        os: [ ubuntu-20.04, macos-12, macos-14 ]
+        os: [  macos-14 ]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,6 +23,8 @@ jobs:
         with:
           activate-environment: iMolpro-github
       - name: Build
+        env:
+          MOLPRO_TEACH_URL: ${{ secrets.MOLPRO_TEACH_URL }}
         run: |
           if [ -z "${CONDA_EXE}" ]; then export CONDA_EXE=$(readlink -f $(which conda)) ; fi
           echo github.ref ${{ github.ref }}

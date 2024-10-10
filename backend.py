@@ -15,7 +15,7 @@ from help import help_dialog
 def sanitise_backends(parent):
     dot_molpro= pathlib.Path(settings.settings.filename).parent
     teaching_molpro_path = dot_molpro / 'teach' / 'bin' / 'molpro'
-    if hasattr(sys, '_MEIPASS') and platform.uname().system != 'Windows':
+    if hasattr(sys, '_MEIPASS'): # and platform.uname().system != 'Windows': # TODO figure this out for Windows
         teaching_molpro_path = pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin' / 'molpro'
     teaching_molpro = teaching_molpro_path.exists()
     regular_molpro = False
@@ -25,7 +25,7 @@ def sanitise_backends(parent):
         name = 'teach' if regular_molpro else 'local'
         if name not in parent.project.backend_names():
             new_backend(name, name=name, molpro_path=str(teaching_molpro_path), molpro_options='{-m %m!Process memory}')
-            par1ent.project.refresh_backends()
+            parent.project.refresh_backends()
         else:
             run_command = parent.project.backend_get(name, 'run_command')
             if str(teaching_molpro_path) not in run_command:

@@ -1,8 +1,11 @@
 #!/bin/sh
 
+pkgbuild=1
+#dmg=1
+
 conda install -c conda-forge -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
 conda remove -y pubchempy
-pip install --force-reinstall https://github.com/molpro/PubChemPy/archive/refs/heads/master.zip
+pip install -I https://github.com/molpro/PubChemPy/archive/refs/heads/master.zip
 conda list
 
 #if [ "$(uname)" = Darwin -a $(uname -m) = x86_64 ]; then
@@ -23,11 +26,11 @@ version=$(git describe --tags --dirty --always)
 echo "$version" > "${versionfile}"
 
 echo molpro_version=$molpro_version
-molpro_script_gz=molpro-mpp-$molpro_version.$(uname|tr '[:upper:]' '[:lower:]')_$(uname -m|sed -e 's/arm64/aarch64/').sh.gz
+molpro_script_gz=molpro-teach-$molpro_version.$(uname|tr '[:upper:]' '[:lower:]')_$(uname -m|sed -e 's/arm64/aarch64/').sh.gz
 molpro_script_gz=$(echo $molpro_script_gz | sed -e 's/linux_x86_64.sh/linux_x86_64_sockets.sh/')
 echo molpro_script_gz=$molpro_script_gz
 if [ ! -r $molpro_script_gz ]; then
-  wget https://www.molpro.net/80f2bfc0f63c9eb3f37d95d26e29477a8916a04d/$molpro_script_gz
+  wget ${MOLPRO_TEACH_URL}/$molpro_script_gz
 fi
 gunzip -k -f $molpro_script_gz
 molpro_script=$(basename $molpro_script_gz .gz)
@@ -79,6 +82,37 @@ if [ "$(uname)" = Darwin ]; then
   rm -rf dist
   mkdir -p dist
   ls -lR dist
+
+  if [ ! -z "$pkgbuild" ]; then
+    pip install macos_pkg_builder
+  pkgbuild --install-location /Applications --component ${builddir}/dist/iMolpro.app dist/iMolpro-"${descriptor}".pkg
+  python <<EOF
+from macos_pkg_builder import Packages
+def contents(file):
+    with open(file,'r') as f:
+       return f.read()
+
+pkg_obj = Packages(
+    pkg_output="dist/iMolpro-${descriptor}.pkg",
+    pkg_bundle_id="net.molpro.iMolpro",
+    # pkg_preinstall_script="Samples/MyApp/MyPreinstall.sh",
+    # pkg_postinstall_script="Samples/MyApp/MyPostinstall.sh",
+    pkg_file_structure={
+        "${builddir}/dist/iMolpro.app": "/Applications/iMolpro.app",
+    },
+    pkg_as_distribution=True,
+    pkg_welcome="# Welcome\n\nThis is probably not needed, and can be omitted.",
+    pkg_readme=contents('Package-README.md'),
+    pkg_license="# License\n"+contents('Package-License.md'),
+    pkg_title="iMolpro App",
+    # pkg_background="Molpro_Logo_Molpro_Quantum_Chemistry_Software.png",
+)
+
+assert pkg_obj.build() is True
+EOF
+  fi
+
+  if [ ! -z "$dmg" ]; then
 #  create-dmg --app-drop-link 25 35 --volname iMolpro-"${descriptor}"  --volicon 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png' dist/iMolpro-"${descriptor}".dmg "${builddir}"/dist
   hdiutil create ./iMolpro.dmg -ov -fs HFS+ -srcfolder "${builddir}"/dist
   echo after first hdiutil
@@ -88,6 +122,7 @@ if [ "$(uname)" = Darwin ]; then
   Rez -append "${builddir}"/tmp.rsrc -o dist/iMolpro-"${descriptor}".dmg
   SetFile -a C dist/iMolpro-"${descriptor}".dmg
   rm ./iMolpro.dmg
+  fi
 else
   rm -rf dist build
   mv "${builddir}"/dist .
