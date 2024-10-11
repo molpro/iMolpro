@@ -101,10 +101,10 @@ pkg_obj = Packages(
         "${builddir}/dist/iMolpro.app": "/Applications/iMolpro.app",
     },
     pkg_as_distribution=True,
-    pkg_welcome="# Welcome\n\nThis is probably not needed, and can be omitted.",
-    pkg_readme=contents('Package-README.md'),
-    pkg_license="# License\n"+contents('Package-License.md'),
-    pkg_title="iMolpro App",
+    pkg_welcome=contents('Package-README.md'),
+#    pkg_readme=contents('Package-README.md'),
+    pkg_license=contents('Package-License.md'),
+    pkg_title="iMolpro",
     # pkg_background="Molpro_Logo_Molpro_Quantum_Chemistry_Software.png",
 )
 
