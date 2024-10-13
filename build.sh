@@ -2,11 +2,13 @@
 
 pkgbuild=1
 #dmg=1
+#tar=1
+sh=1
 
-conda install -c conda-forge -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
-conda remove -y pubchempy
-pip install -I https://github.com/molpro/PubChemPy/archive/refs/heads/master.zip
-conda list
+#conda install -c conda-forge -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
+#conda remove -y pubchempy
+#pip install -I https://github.com/molpro/PubChemPy/archive/refs/heads/master.zip
+#conda list
 
 #if [ "$(uname)" = Darwin -a $(uname -m) = x86_64 ]; then
 #  conda install -c conda-forge -y scipy==1.11
@@ -126,5 +128,16 @@ EOF
 else
   rm -rf dist build
   mv "${builddir}"/dist .
+  if [ ! -z "$tar" ]; then
   tar cjf dist/iMolpro-"${descriptor}".tar.bz2 -C dist iMolpro
+  fi
+  if [ ! -z "$sh" ]; then
+    echo '#!/bin/sh' > ${builddir}/preinstall
+    echo "more <<'EOF'" >> ${builddir}/preinstall
+    cat ./Package-README.md ./Package-license.md | sed -e 's/^##* *//' -e 's/\[//g' -e 's/\] *(/, /g' -e 's/))/@@/g' -e 's/)//g' -e 's/@@/)/g' -e 's/\*//g' >> ${builddir}/preinstall
+    echo "'EOF'" >> ${builddir}/preinstall
+    echo "echo 'Accept license[yN]?'" >> ${builddir}/preinstall
+    gem install fpm
+    fpm -s dist/iMolpro -t sh iMolpro.sh
+  fi
 fi
