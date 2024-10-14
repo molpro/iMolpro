@@ -41,6 +41,8 @@ jobs:
             dist/*bz2
             dist/*dmg
             dist/*pkg
+            dist/*.deb
+            dist/*.rpm
 #  deploy-windows:
 #    name:  Deploy on Windows
 #    runs-on: windows-latest
