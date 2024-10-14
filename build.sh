@@ -148,7 +148,7 @@ else
       rm -f dist/iMolpro-"${descriptor}".${type}
       dash='-'; if [ $type = rpm ]; then dash='_'; fi
       version=$(echo $descriptor | sed -e "s/[-_]/$dash/g")
-      fpm -s dir -C dist -t ${type} -p dist/iMolpro-"${descriptor}".${type} -v "${descriptor}" -n iMolpro --before-install ${builddir}/preinstall --after-install ${builddir}/postinstall iMolpro
+      fpm -s dir -C dist -t ${type} -p dist/iMolpro-"${descriptor}".${type} -v "${version}" -n iMolpro --before-install ${builddir}/preinstall --after-install ${builddir}/postinstall iMolpro
     done
   fi
 fi
