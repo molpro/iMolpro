@@ -2,7 +2,7 @@
 
 pkgbuild=1
 #dmg=1
-#tar=1
+tar=1
 sh=1
 
 if [ -z "$NOCONDA" ]; then
