@@ -148,10 +148,10 @@ else
     echo "ln -sf ${prefix}/libexec/iMolpro/iMolpro ${prefix}/bin/iMolpro" >> ${builddir}/postinstall
 #    gem install fpm
     if [[ "$version" =~ "[0-9]*\.[0-9]*\.[0-9]*" ]] ; then true ; else version="0.0.0" ; fi
+    echo version=$version
     for type in deb rpm ; do
       rm -f dist/iMolpro-"${descriptor}".${type}
       dash='-'; if [ $type = rpm ]; then dash='_'; fi
-      version=$(echo $descriptor | sed -e "s/[-_]/$dash/g")
       fpm -s dir -C dist -t ${type} -p dist/iMolpro-"${descriptor}".${type} -v "${version}" -n iMolpro --prefix=${prefix}/libexec --before-install ${builddir}/preinstall --after-install ${builddir}/postinstall iMolpro
     done
   fi
