@@ -142,8 +142,11 @@ else
     echo "echo 'Accept license[yN]?'" >> ${builddir}/preinstall
     echo '#!/bin/sh' > ${builddir}/postinstall
     echo 'env' >> ${builddir}/postinstall
-    echo 'ln -sf /usr/local/share/current/iMolpro /usr/local/bin/iMolpro' >> ${builddir}/postinstall
+#    echo 'ln -sf /usr/local/share/current/iMolpro /usr/local/bin/iMolpro' >> ${builddir}/postinstall
     gem install fpm
-    fpm -s dir -C dist -t sh -p iMolpro.sh -n iMolpro -i /usr/local/share --before-install ${builddir}/preinstall --after-install ${builddir}/postinstall -c iMolpro
+    for type in deb rpm ; do
+      rm -f dist/iMolpro-"${descriptor}".${type}
+      fpm -s dir -C dist -t ${type} -p dist/iMolpro-"${descriptor}".${type} -v "${descriptor}" -n iMolpro --before-install ${builddir}/preinstall --after-install ${builddir}/postinstall iMolpro
+    done
   fi
 fi

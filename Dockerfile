@@ -11,7 +11,7 @@ RUN conda install --solver=classic conda-forge::conda-libmamba-solver conda-forg
 RUN conda install -y -c conda-forge --file=/root/requirements.txt pytest-qt git python=3.12 scipy=1.11
 RUN conda remove -y pubchempy
 RUN pip install -I https://github.com/molpro/PubChemPy/archive/refs/heads/master.zip
-RUN apt-get update && apt-get install libgl1-mesa-glx  -y ruby binutils
+RUN apt-get update && apt-get install libgl1-mesa-glx  -y ruby binutils librpmbuild9 rpm
 RUN gem install fpm
 #RUN conda init bash
 #RUN conda config --add channels defaults
