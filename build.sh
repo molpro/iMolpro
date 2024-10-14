@@ -5,10 +5,12 @@ pkgbuild=1
 #tar=1
 sh=1
 
-#conda install -c conda-forge -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
-#conda remove -y pubchempy
-#pip install -I https://github.com/molpro/PubChemPy/archive/refs/heads/master.zip
+if [ -z "$NOCONDA" ]; then
+conda install -c conda-forge -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
+conda remove -y pubchempy
+pip install -I https://github.com/molpro/PubChemPy/archive/refs/heads/master.zip
 #conda list
+fi
 
 #if [ "$(uname)" = Darwin -a $(uname -m) = x86_64 ]; then
 #  conda install -c conda-forge -y scipy==1.11
@@ -37,8 +39,9 @@ fi
 gunzip -k -f $molpro_script_gz
 molpro_script=$(basename $molpro_script_gz .gz)
 sh $molpro_script -batch -prefix $builddir/molpro
+ls -lR $builddir/molpro/bin
 rm $molpro_script
-sed -i '' -e 's@MOLPRO_PREFIX=.*$@me=$(realpath $0 2>/dev/null) || me=$0; MOLPRO_PREFIX=$(dirname $(dirname $me))@' $builddir/molpro/bin/molpro
+sed -i -e 's@MOLPRO_PREFIX=.*$@me=$(realpath $0 2>/dev/null) || me=$0; MOLPRO_PREFIX=$(dirname $(dirname $me))@' $builddir/molpro/bin/molpro
 
 
 PATH=/usr/bin:$PATH pyi-makespec \
@@ -137,7 +140,10 @@ else
     cat ./Package-README.md ./Package-license.md | sed -e 's/^##* *//' -e 's/\[//g' -e 's/\] *(/, /g' -e 's/))/@@/g' -e 's/)//g' -e 's/@@/)/g' -e 's/\*//g' >> ${builddir}/preinstall
     echo "'EOF'" >> ${builddir}/preinstall
     echo "echo 'Accept license[yN]?'" >> ${builddir}/preinstall
+    echo '#!/bin/sh' > ${builddir}/postinstall
+    echo 'env' >> ${builddir}/postinstall
+    echo 'ln -sf /usr/local/share/current/iMolpro /usr/local/bin/iMolpro' >> ${builddir}/postinstall
     gem install fpm
-    fpm -s dist/iMolpro -t sh iMolpro.sh
+    fpm -s dir -C dist -t sh -p iMolpro.sh -n iMolpro -i /usr/local/share --before-install ${builddir}/preinstall --after-install ${builddir}/postinstall -c iMolpro
   fi
 fi
