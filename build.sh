@@ -135,20 +135,23 @@ else
   tar cjf dist/iMolpro-"${descriptor}".tar.bz2 -C dist iMolpro
   fi
   if [ ! -z "$sh" ]; then
+    prefix='/usr'
     echo '#!/bin/sh' > ${builddir}/preinstall
     echo "more <<'EOF'" >> ${builddir}/preinstall
     cat ./Package-README.md ./Package-license.md | sed -e 's/^##* *//' -e 's/\[//g' -e 's/\] *(/, /g' -e 's/))/@@/g' -e 's/)//g' -e 's/@@/)/g' -e 's/\*//g' >> ${builddir}/preinstall
     echo "'EOF'" >> ${builddir}/preinstall
     echo "echo 'Accept license[yN]?'" >> ${builddir}/preinstall
+    echo "read response" >> ${builddir}/preinstall
+    echo 'if [ x"$response" != xy -a x"$response" != xY ]; then kill $$ ; fi' >> ${builddir}/preinstall
     echo '#!/bin/sh' > ${builddir}/postinstall
     echo 'env' >> ${builddir}/postinstall
-    echo 'ln -sf /usr/libexec/iMolpro/iMolpro /usr/local/bin/iMolpro' >> ${builddir}/postinstall
-    gem install fpm
+    echo "ln -sf ${prefix}/libexec/iMolpro/iMolpro ${prefix}/bin/iMolpro" >> ${builddir}/postinstall
+#    gem install fpm
     for type in deb rpm ; do
       rm -f dist/iMolpro-"${descriptor}".${type}
       dash='-'; if [ $type = rpm ]; then dash='_'; fi
       version=$(echo $descriptor | sed -e "s/[-_]/$dash/g")
-      fpm -s dir -C dist -t ${type} -p dist/iMolpro-"${descriptor}".${type} -v "${version}" -n iMolpro --prefix=/usr/libexec --before-install ${builddir}/preinstall --after-install ${builddir}/postinstall iMolpro
+      fpm -s dir -C dist -t ${type} -p dist/iMolpro-"${descriptor}".${type} -v "${version}" -n iMolpro --prefix=${prefix}/libexec --before-install ${builddir}/preinstall --after-install ${builddir}/postinstall iMolpro
     done
   fi
 fi
