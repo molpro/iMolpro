@@ -139,12 +139,12 @@ else
     echo '#!/bin/sh' > ${builddir}/preinstall
     echo "more <<'EOF'" >> ${builddir}/preinstall
     cat ./Package-README.md ./Package-license.md | sed -e 's/^##* *//' -e 's/\[//g' -e 's/\] *(/, /g' -e 's/))/@@/g' -e 's/)//g' -e 's/@@/)/g' -e 's/\*//g' >> ${builddir}/preinstall
-    echo "'EOF'" >> ${builddir}/preinstall
+    echo "EOF" >> ${builddir}/preinstall
     echo "echo 'Accept license[yN]?'" >> ${builddir}/preinstall
     echo "read response" >> ${builddir}/preinstall
     echo 'if [ x"$response" != xy -a x"$response" != xY ]; then kill $$ ; fi' >> ${builddir}/preinstall
     echo '#!/bin/sh' > ${builddir}/postinstall
-    echo 'env' >> ${builddir}/postinstall
+#    echo 'env' >> ${builddir}/postinstall
     echo "ln -sf ${prefix}/libexec/iMolpro/iMolpro ${prefix}/bin/iMolpro" >> ${builddir}/postinstall
 #    gem install fpm
     if [[ "$version" =~ "[0-9]*\.[0-9]*\.[0-9]*" ]] ; then true ; else version="0.0.0" ; fi
