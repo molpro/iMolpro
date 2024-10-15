@@ -52,6 +52,7 @@ jobs:
             dist/*pkg
             dist/*.deb
             dist/*.rpm
+          make_latest: false
   deploy-windows:
     name:  Deploy on Windows
     runs-on: windows-latest
