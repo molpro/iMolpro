@@ -13,6 +13,11 @@ jobs:
       matrix:
 #        os: [ ubuntu-latest, [ macOS, X64], [ macOS, ARM64 ] ]
         os: [ ubuntu-20.04, macos-12, macos-14 ]
+        include:
+          - os: macos-12
+            mac: 1
+          - os: macos-14
+            mac: 1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -23,6 +28,7 @@ jobs:
           activate-environment: iMolpro-github
       - name: Setup temporary installer signing keychain
         uses: apple-actions/import-codesign-certs@v1
+        if: ${{ matrix.mac }}
         with:
           p12-file-base64: ${{ secrets.CERTIFICATES_P12 }}
           p12-password: ${{ secrets.CERTIFICATES_P12_PW }}
