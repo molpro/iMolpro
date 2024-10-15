@@ -92,8 +92,7 @@ if [ "$(uname)" = Darwin ]; then
 
   if [ ! -z "$pkgbuild" ]; then
     pip install macos_pkg_builder
-  pkgbuild --install-location /Applications --component ${builddir}/dist/iMolpro.app dist/iMolpro-"${descriptor}".pkg
-  python <<EOF
+    python <<EOF
 from macos_pkg_builder import Packages
 def contents(file):
     with open(file,'r') as f:
@@ -113,6 +112,7 @@ pkg_obj = Packages(
     pkg_license=contents('Package-License.md'),
     pkg_title="iMolpro",
     # pkg_background="Molpro_Logo_Molpro_Quantum_Chemistry_Software.png",
+    pkg_signing_identity="Developer ID Installer: Peter Knowles (LMLY9RHMA3)",
 )
 
 assert pkg_obj.build() is True
