@@ -74,6 +74,7 @@ jobs:
         with:
           files: |
             iMolpro*.exe
+          make_latest: false
 
       - name: Delete old latest releases
         uses: dev-drprasad/delete-older-releases@v0.3.2
