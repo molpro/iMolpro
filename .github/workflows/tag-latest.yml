@@ -3,7 +3,7 @@ name: Tag latest
 on:
   push:
     branches:
-      - 'master'
+      - 'fix-262'
 
 jobs:
   tag:
@@ -12,10 +12,10 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout branch "master"
+      - name: Checkout branch "fix-262"
         uses: actions/checkout@v4
         with:
-          ref: 'master'
+          ref: 'fix-262'
           token: ${{ secrets.PAT }}
       - name: tag
         id: tag

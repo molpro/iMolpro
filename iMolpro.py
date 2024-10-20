@@ -40,16 +40,14 @@ if __name__ == '__main__':
                                     level=log_level,
                                     format='%(asctime)s %(levelname)-8s %(name)s %(funcName)s() %(pathname)s:%(lineno)d %(message)s',
                                     datefmt='%Y-%m-%d %H:%M:%S')
+                sys.stdout = open(str(pathlib.Path(os.environ[env]) / 'iMolpro.stdout'), 'w')
+                sys.stderr = open(str(pathlib.Path(os.environ[env]) / 'iMolpro.stderr'), 'w')
                 break
     else:
         logging.basicConfig(level=log_level,
                             format='%(asctime)s %(levelname)-8s %(name)s %(funcName)s() %(pathname)s:%(lineno)d %(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S')
     logger.info('iMolpro starting...')
-
-    if hasattr(sys, '_MEIPASS') and platform.uname().system != 'Windows':
-        sys.stdout = open('/tmp/iMolpro.stdout', 'w')
-        sys.stderr = open('/tmp/iMolpro.stderr', 'w')
 
     if platform.uname().system == 'Linux':
         if 'FONTCONFIG_PATH' not in os.environ:
