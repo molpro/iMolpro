@@ -7,12 +7,16 @@ on:
       - '*'
 jobs:
   deploy:
-    name: Deploy
+    name: Deploy on Unix
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-#        os: [ ubuntu-latest, [ macOS, X64], [ macOS, ARM64 ] ]
-        os: [ ubuntu-20.04, macos-12, macos-14 ]
+        os: [ ubuntu-22.04, macos-13, macos-14 ]
+        include:
+          - os: macos-13
+            mac: 1
+          - os: macos-14
+            mac: 1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,7 +25,15 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: iMolpro-github
+      - name: Setup temporary installer signing keychain
+        uses: apple-actions/import-codesign-certs@v1
+        if: ${{ matrix.mac }}
+        with:
+          p12-file-base64: ${{ secrets.CERTIFICATES_P12 }}
+          p12-password: ${{ secrets.CERTIFICATES_P12_PW }}
       - name: Build
+        env:
+          MOLPRO_TEACH_URL: ${{ secrets.MOLPRO_TEACH_URL }}
         run: |
           if [ -z "${CONDA_EXE}" ]; then export CONDA_EXE=$(readlink -f $(which conda)) ; fi
           echo github.ref ${{ github.ref }}
@@ -36,6 +48,9 @@ jobs:
           files: |
             dist/*bz2
             dist/*dmg
+            dist/*pkg
+            dist/*.deb
+            dist/*.rpm
           make_latest: false
   deploy-windows:
     name:  Deploy on Windows
@@ -50,8 +65,24 @@ jobs:
           activate-environment: iMolpro-github
           auto-activate-base: false
       - name: Build
+        env:
+          MOLPRO_TEACH_URL: ${{ secrets.MOLPRO_TEACH_URL }}
         shell: pwsh
         run: .\build.ps1
+      - name: Azure Trusted Signing
+        uses: azure/trusted-signing-action@v0.4.0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
+          certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
+          files-folder: ${{ github.workspace }}
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')

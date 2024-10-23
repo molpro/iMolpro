@@ -1,5 +1,7 @@
 import os
 import pathlib
+import sys
+import platform
 
 from lxml import etree
 from PyQt5.QtWidgets import QDialog, QComboBox, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
@@ -13,6 +15,8 @@ from help import help_dialog
 def sanitise_backends(parent):
     dot_molpro= pathlib.Path(settings.settings.filename).parent
     teaching_molpro_path = dot_molpro / 'teach' / 'bin' / 'molpro'
+    if hasattr(sys, '_MEIPASS'): # and platform.uname().system != 'Windows': # TODO figure this out for Windows
+        teaching_molpro_path = pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin' / 'molpro'
     teaching_molpro = teaching_molpro_path.exists()
     regular_molpro = False
     for path in os.environ['PATH'].split(os.pathsep):

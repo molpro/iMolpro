@@ -1,11 +1,31 @@
-cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis python=3.9
+get-content ENV | foreach {
+  $name, $value = $_.split('=')
+  set-content env:\$name $value
+}
 
+#$molpro_installer='molpro-teach-' + $env:molpro_version + '.windows_x64.exe'
+#$full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_installer
+#curl -O $full_url
+#$env:PATH = '.;' + $env:PATH
+#$curDir = Get-Location
+#$dest = "${curDir}\Molpro"
+#& "$molpro_installer" /S "/D=$dest"
+
+$molpro_zip='molpro-teach-' + $env:molpro_version + '.windows_x64.zip'
+$full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_zip
+curl -O $full_url
+Expand-Archive -Path "${molpro_zip}" -DestinationPath .
+
+
+cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis python=3.9
 
 $versionfile = ( $env:TMP, "\VERSION") -join ""
 $PWD = (Get-Item .).FullName
 git config --global --add safe.directory "$PWD"
 $version = $( git describe --tags --dirty --always )
 echo "$version" > "$versionfile"
+
+
 
 If (Test-Path -path dist)
 {
@@ -19,6 +39,7 @@ pyinstaller --noconfirm `
         --add-data=README.md:. `
           --add-data=doc:.\doc `
             --add-data="$versionfile":. `
+            --add-data molpro:./molpro `
             --add-data=$cp\Library\usr\bin\nohup.exe:. `
             --add-data=$cp\Library\usr\bin\bash.exe:. `
             --add-data=$cp\Library\usr\bin\mkdir.exe:. `
