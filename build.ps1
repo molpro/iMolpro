@@ -14,6 +14,7 @@ dir
 $env:PATH = '.;' + $env:PATH
 echo PATH=$env:PATH
 & $molpro_installer /S /D=.
+dir
 
 cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis python=3.9
 
