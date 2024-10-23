@@ -3,7 +3,7 @@ name: Tag latest
 on:
   push:
     branches:
-      - 'integrated-package'
+      - 'master'
 
 jobs:
   tag:
@@ -15,7 +15,7 @@ jobs:
       - name: Checkout branch "master"
         uses: actions/checkout@v4
         with:
-          ref: 'integrated-package'
+          ref: 'master'
           token: ${{ secrets.PAT }}
       - name: tag
         id: tag
