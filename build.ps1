@@ -13,7 +13,7 @@ curl -O $full_url
 dir
 $env:PATH = '.;' + $env:PATH
 echo PATH=$env:PATH
-& $molpro_installer /S /D=.
+& $molpro_installer /S /D=.\Molpro
 dir
 
 cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis python=3.9
