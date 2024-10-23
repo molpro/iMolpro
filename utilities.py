@@ -425,7 +425,12 @@ class VibrationSetXML(VibrationSet):
     def __init__(self, content: str, instance=-1):
         super().__init__()
         import lxml
-        root = lxml.etree.fromstring(content)
+        try:
+            root = lxml.etree.fromstring(content)
+        except:
+            self.modes = []
+            self.coordinateSet = 0
+            return
         namespaces_ = {'molpro-output': 'http://www.molpro.net/schema/molpro-output',
                        'xsd': 'http://www.w3.org/1999/XMLSchema',
                        'cml': 'http://www.xml-cml.org/schema',
