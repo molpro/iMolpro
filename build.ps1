@@ -1,16 +1,7 @@
-cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis python=3.9
-
 get-content ENV | foreach {
   $name, $value = $_.split('=')
   set-content env:\$name $value
 }
-
-$versionfile = ( $env:TMP, "\VERSION") -join ""
-$PWD = (Get-Item .).FullName
-git config --global --add safe.directory "$PWD"
-$version = $( git describe --tags --dirty --always )
-echo "$version" > "$versionfile"
-
 
 echo molpro_version=$env:molpro_version
 $molpro_installer='molpro-teach-' + $env:molpro_version + '.windows_x64.exe'
@@ -20,6 +11,16 @@ $full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_installer
 echo full_url=$full_url
 wget $full_url
 & $molpro_installer /S /D=.
+
+cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis python=3.9
+
+$versionfile = ( $env:TMP, "\VERSION") -join ""
+$PWD = (Get-Item .).FullName
+git config --global --add safe.directory "$PWD"
+$version = $( git describe --tags --dirty --always )
+echo "$version" > "$versionfile"
+
+
 
 If (Test-Path -path dist)
 {

@@ -66,6 +66,8 @@ jobs:
           activate-environment: iMolpro-github
           auto-activate-base: false
       - name: Build
+        env:
+          MOLPRO_TEACH_URL: ${{ secrets.MOLPRO_TEACH_URL }}
         shell: pwsh
         run: .\build.ps1
       - name: Azure Trusted Signing
