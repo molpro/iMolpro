@@ -42,7 +42,7 @@ jobs:
           conda activate iMolpro-github
           bash build.sh
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
@@ -52,6 +52,7 @@ jobs:
             dist/*.deb
             dist/*.rpm
           make_latest: false
+          prelease: true
   deploy-windows:
     name:  Deploy on Windows
     runs-on: windows-latest
@@ -84,12 +85,13 @@ jobs:
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             iMolpro*.exe
           make_latest: false
+          prelease: true
 
       - name: Delete old latest releases
         uses: dev-drprasad/delete-older-releases@v0.3.2
