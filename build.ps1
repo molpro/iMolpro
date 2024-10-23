@@ -14,16 +14,16 @@ dir
 $env:PATH = '.;' + $env:PATH
 echo PATH=$env:PATH
 $curDir = Get-Location
-$dest = "$curdir\Molpro"
-$drive = (get-location).Drive.Name
-$dest = "${drive}:\Molpro"
+$dest = "${curDir}\Molpro"
+#$drive = (get-location).Drive.Name
+#$dest = "${drive}:\Molpro"
 echo dest=$dest
 Get-Location
 & "$molpro_installer" /S "/D=$dest"
 dir
 dir $dest
-Move-Item -Path $dest -Destination "${curDir}\molpro"
-dir
+#Move-Item -Path $dest -Destination "${curDir}\molpro"
+#dir
 
 cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis python=3.9
 
