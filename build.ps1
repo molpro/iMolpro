@@ -15,6 +15,8 @@ $env:PATH = '.;' + $env:PATH
 echo PATH=$env:PATH
 $curDir = Get-Location
 $dest = "$curdir\Molpro"
+echo dest=$dest
+Get-Location
 & $molpro_installer /S /D=$dest
 dir
 dir $dest
