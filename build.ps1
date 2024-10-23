@@ -32,9 +32,8 @@ $full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_zip
 echo full_url=$full_url
 curl -O $full_url
 dir
-#echo Expand-Archive -Path $molpro_zip -DestinationPath .
-#Expand-Archive -Path "${molpro_zip}" -DestinationPath .
-7z x "${molpro_zip}"
+echo Expand-Archive -Path $molpro_zip -DestinationPath .
+Expand-Archive -Path "${molpro_zip}" -DestinationPath .
 dir
 
 
