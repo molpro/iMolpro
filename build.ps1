@@ -9,8 +9,10 @@ echo molpro_installer=$molpro_installer
 echo MOLPRO_TEACH_URL=$env:MOLPRO_TEACH_URL
 $full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_installer
 echo full_url=$full_url
-curl -v -O $full_url
+curl -O $full_url
 dir
+$env:PATH = '.;' + $env:PATH
+echo PATH=$env:PATH
 & $molpro_installer /S /D=.
 
 cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis python=3.9
