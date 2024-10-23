@@ -3,27 +3,38 @@ get-content ENV | foreach {
   set-content env:\$name $value
 }
 
-echo molpro_version=$env:molpro_version
-$molpro_installer='molpro-teach-' + $env:molpro_version + '.windows_x64.exe'
-echo molpro_installer=$molpro_installer
+#echo molpro_version=$env:molpro_version
+#$molpro_installer='molpro-teach-' + $env:molpro_version + '.windows_x64.exe'
+#echo molpro_installer=$molpro_installer
+#echo MOLPRO_TEACH_URL=$env:MOLPRO_TEACH_URL
+#$full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_installer
+#echo full_url=$full_url
+#curl -O $full_url
+#dir
+#$env:PATH = '.;' + $env:PATH
+#echo PATH=$env:PATH
+#$curDir = Get-Location
+#$dest = "${curDir}\Molpro"
+##$drive = (get-location).Drive.Name
+##$dest = "${drive}:\Molpro"
+#echo dest=$dest
+#Get-Location
+#& "$molpro_installer" /S "/D=$dest"
+#dir
+#dir $dest
+##Move-Item -Path $dest -Destination "${curDir}\molpro"
+##dir
+
+$molpro_zip='molpro-teach-' + $env:molpro_version + '.windows_x64.zip'
+echo molpro_zip=$molpro_zip
 echo MOLPRO_TEACH_URL=$env:MOLPRO_TEACH_URL
-$full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_installer
+$full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_zip
 echo full_url=$full_url
 curl -O $full_url
 dir
-$env:PATH = '.;' + $env:PATH
-echo PATH=$env:PATH
-$curDir = Get-Location
-$dest = "${curDir}\Molpro"
-#$drive = (get-location).Drive.Name
-#$dest = "${drive}:\Molpro"
-echo dest=$dest
-Get-Location
-& "$molpro_installer" /S "/D=$dest"
+Expand-Archive -Path $molpro_zip -DestinationPath .
 dir
-dir $dest
-#Move-Item -Path $dest -Destination "${curDir}\molpro"
-#dir
+
 
 cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis python=3.9
 
