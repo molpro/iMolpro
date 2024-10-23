@@ -15,7 +15,10 @@ echo "$version" > "$versionfile"
 echo molpro_version=$env:molpro_version
 $molpro_installer='molpro-teach-' + $env:molpro_version + '.windows_x64.exe'
 echo molpro_installer=$molpro_installer
-wget $env:MOLPRO_TEACH_URL + '/$molpro_installer'
+echo MOLPRO_TEACH_URL=$env:MOLPRO_TEACH_URL
+$full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_installer
+echo full_url=$full_url
+wget $full_url
 & $molpro_installer /S /D=.
 
 If (Test-Path -path dist)
