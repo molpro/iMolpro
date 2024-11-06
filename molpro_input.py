@@ -584,7 +584,7 @@ class InputSpecification(UserDict):
             line_number += 1
             if line.strip().isdigit() and line_number == 1: start_line = 3
             if line_number >= start_line and line.strip():
-                word = line.strip().replace(' ', ',').split(',')[0]
+                word = re.sub('\s+',',',line.strip()).split(',')[0]
                 word = re.sub(r'\d.*$', '', word[0].upper() + word[1:].lower())
                 atomic_number = periodic_table.index(word) + 1
                 total_nuclear_charge += atomic_number
