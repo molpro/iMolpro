@@ -15,7 +15,7 @@ from help import help_dialog
 def sanitise_backends(parent):
     dot_molpro= pathlib.Path(settings.settings.filename).parent
     teaching_molpro_path = dot_molpro / 'teach' / 'bin' / 'molpro'
-    if hasattr(sys, '_MEIPASS'): # and platform.uname().system != 'Windows': # TODO figure this out for Windows
+    if hasattr(sys, '_MEIPASS'):
         teaching_molpro_path = pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin' / 'molpro'
     teaching_molpro = teaching_molpro_path.exists()
     regular_molpro = False
@@ -32,7 +32,13 @@ def sanitise_backends(parent):
                 delete_backend(name)
                 new_backend(name, name=name, molpro_path=str(teaching_molpro_path), molpro_options='{-m %m!Process memory}')
                 parent.project.refresh_backends()
-
+    if regular_molpro:
+        name = 'local'
+        run_command = parent.project.backend_get(name, 'run_command')
+        if str(teaching_molpro_path) in run_command:
+            delete_backend(name)
+            new_backend(name)
+            parent.project.refresh_backends()
 
 def configure_backend(parent):
     class BackendDialog(QDialog):
