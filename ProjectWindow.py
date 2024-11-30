@@ -917,11 +917,14 @@ Jmol.jmolHtml("</p>")
             with tempfile.TemporaryDirectory() as tmpdirname:
                 path = pathlib.Path(tmpdirname) / 'input_geometries'
                 os.makedirs(str(path), exist_ok=True)
+                logger.debug('visualise_input makes project at ' + str(path))
                 self.project.copy(pathlib.Path(self.project.filename(run=-1)).name, location=path)
                 project_path = path / pathlib.Path(self.project.filename(run=-1)).name
                 project = Project(str(project_path))
                 project.clean(0)
                 open(project.filename('inp', run=-1), 'a').write('\nhf\n---')
+                logger.debug('visualise_input project input filename' + project.filename('inp', run=-1))
+                logger.debug('visualise_input project input file contents\n' + open(project.filename('inp', run=-1),'r').read())
                 with open(pathlib.Path(project.filename(run=-1)) / 'molpro.rc', 'a') as f:
                     f.write(' --geometry')
 
@@ -934,6 +937,11 @@ Jmol.jmolHtml("</p>")
                                 detail += ''.join(ff.readlines())
                         except:
                             pass
+                    try:
+                        logger.debug('visualise_input project input file contents\n' + open(project.filename('inp'),'r').read())
+                        logger.debug('visualise_input project output file contents\n' + open(project.filename('out'),'r').read())
+                    except:
+                        pass
                     msg = QMessageBox()
                     msg.setIcon(QMessageBox.Critical)
                     msg.setWindowTitle("Error")
