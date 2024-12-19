@@ -11,7 +11,7 @@ get-content ENV | foreach {
 #$dest = "${curDir}\Molpro"
 #& "$molpro_installer" /S "/D=$dest"
 
-$molpro_zip='molpro-teach-' + $env:molpro_version + '.windows_x64.zip'
+$molpro_zip='molpro-teach-' + $env:molpro_version + '.windows_x64.tar.gz'
 $full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_zip
 curl -O $full_url
 Expand-Archive -Path "${molpro_zip}" -DestinationPath .
