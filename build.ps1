@@ -11,11 +11,14 @@ get-content ENV | foreach {
 #$dest = "${curDir}\Molpro"
 #& "$molpro_installer" /S "/D=$dest"
 
-$molpro_zip='molpro-teach-' + $env:molpro_version + '.windows_x64.tar.gz'
+$molpro_root='molpro-teach-' + $env:molpro_version + '.windows_x64'
+$molpro_zip=${molpro_root} + '.tar.gz'
 $full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_zip
 curl -O $full_url
 #Expand-Archive -Path "${molpro_zip}" -DestinationPath .
-tar -xzf ${molpro_zip}
+dir ${molpro_zip}
+tar -xzvf ${molpro_zip}
+dir
 
 
 cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis python=3.9
@@ -40,7 +43,7 @@ pyinstaller --noconfirm `
         --add-data=README.md:. `
           --add-data=doc:.\doc `
             --add-data="$versionfile":. `
-            --add-data molpro:./molpro `
+            --add-data ${molpro_root}:.\molpro `
             --add-data=$cp\Library\usr\bin\nohup.exe:. `
             --add-data=$cp\Library\usr\bin\bash.exe:. `
             --add-data=$cp\Library\usr\bin\mkdir.exe:. `
