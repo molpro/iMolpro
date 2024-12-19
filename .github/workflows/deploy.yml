@@ -52,7 +52,7 @@ jobs:
             dist/*.deb
             dist/*.rpm
           make_latest: false
-          prelease: true
+          prerelease: true
   deploy-windows:
     name:  Deploy on Windows
     runs-on: windows-latest
