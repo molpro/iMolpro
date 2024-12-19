@@ -15,7 +15,6 @@ $molpro_root='molpro-teach-' + $env:molpro_version + '.windows_x64'
 $molpro_zip=${molpro_root} + '.tar.gz'
 $full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_zip
 curl -O $full_url
-#Expand-Archive -Path "${molpro_zip}" -DestinationPath .
 dir ${molpro_zip}
 tar -xzvf ${molpro_zip}
 dir
