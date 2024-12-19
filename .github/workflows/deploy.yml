@@ -5,6 +5,8 @@ on:
   push:
     tags:
       - '*'
+    branches:
+      - 'windows-molpro-binary'
 jobs:
   deploy:
     name: Deploy on Unix
