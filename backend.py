@@ -1,3 +1,4 @@
+import logging
 import os
 import pathlib
 import sys
@@ -13,17 +14,22 @@ from help import help_dialog
 
 
 def sanitise_backends(parent):
+    logger = logging.getLogger(__name__)
     dot_molpro= pathlib.Path(settings.settings.filename).parent
     teaching_molpro_path = dot_molpro / 'teach' / 'bin' / 'molpro'
     if hasattr(sys, '_MEIPASS'):
         teaching_molpro_path = pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin' / 'molpro'
+    logger.debug(f'Teaching Molpro path: {teaching_molpro_path}')
     teaching_molpro = teaching_molpro_path.exists()
     regular_molpro = False
     for path in os.environ['PATH'].split(os.pathsep):
         regular_molpro = regular_molpro or (pathlib.Path(path) / 'molpro').exists()
+    logger.debug(f'Regular Molpro : {regular_molpro}')
     if teaching_molpro:
         name = 'teach' if regular_molpro else 'local'
+        logger.debug(f'teaching molpro name {name}')
         if name not in parent.project.backend_names():
+            logger.debug('creating new backend for {name}')
             new_backend(name, name=name, molpro_path=str(teaching_molpro_path), molpro_options='{-m %m!Process memory}')
             parent.project.refresh_backends()
         else:
@@ -36,6 +42,7 @@ def sanitise_backends(parent):
         name = 'local'
         run_command = parent.project.backend_get(name, 'run_command')
         if str(teaching_molpro_path) in run_command:
+            logger.debug('Removing existing local backend with teaching path')
             delete_backend(name)
             new_backend(name)
             parent.project.refresh_backends()
