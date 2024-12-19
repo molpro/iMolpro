@@ -24,7 +24,7 @@ def sanitise_backends(parent):
     regular_molpro = False
     for path in os.environ['PATH'].split(os.pathsep):
         path_ = str(pathlib.Path(path) / 'molpro')
-        regular_molpro = regular_molpro or (pathlib.Path(path) / 'molpro').exists()
+        regular_molpro = regular_molpro or ((pathlib.Path(path) / 'molpro').exists() and path_ != teaching_molpro_path)
         logger.debug(f'Regular Molpro path: {path_} {(pathlib.Path(path_)).exists()} ')
     logger.debug(f'Regular Molpro : {regular_molpro}')
     if teaching_molpro:
