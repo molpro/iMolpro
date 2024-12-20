@@ -1,3 +1,4 @@
+import logging
 import os
 import pathlib
 import sys
@@ -13,32 +14,13 @@ from help import help_dialog
 
 
 def sanitise_backends(parent):
-    dot_molpro= pathlib.Path(settings.settings.filename).parent
-    teaching_molpro_path = dot_molpro / 'teach' / 'bin' / 'molpro'
+    logger = logging.getLogger(__name__)
     if hasattr(sys, '_MEIPASS'):
-        teaching_molpro_path = pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin' / 'molpro'
-    teaching_molpro = teaching_molpro_path.exists()
-    regular_molpro = False
-    for path in os.environ['PATH'].split(os.pathsep):
-        regular_molpro = regular_molpro or (pathlib.Path(path) / 'molpro').exists()
-    if teaching_molpro:
-        name = 'teach' if regular_molpro else 'local'
-        if name not in parent.project.backend_names():
-            new_backend(name, name=name, molpro_path=str(teaching_molpro_path), molpro_options='{-m %m!Process memory}')
-            parent.project.refresh_backends()
-        else:
-            run_command = parent.project.backend_get(name, 'run_command')
-            if str(teaching_molpro_path) not in run_command:
-                delete_backend(name)
-                new_backend(name, name=name, molpro_path=str(teaching_molpro_path), molpro_options='{-m %m!Process memory}')
-                parent.project.refresh_backends()
-    if regular_molpro:
-        name = 'local'
-        run_command = parent.project.backend_get(name, 'run_command')
-        if str(teaching_molpro_path) in run_command:
-            delete_backend(name)
-            new_backend(name)
-            parent.project.refresh_backends()
+        s = str(pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin')
+        if s not in os.environ['PATH']:
+            os.environ['PATH'] += os.pathsep + s
+            logger.debug(f'PATH appended with {s}')
+            logger.debug(f'new PATH {os.environ["PATH"]}')
 
 def configure_backend(parent):
     class BackendDialog(QDialog):
@@ -191,7 +173,7 @@ def new_backend(text='local', file=None, name=None, molpro_path='molpro', molpro
         n.set('status_command', 'squeue -j')
         n.set('status_running', ' (CF|CG|R|ST|S) *[0-9]')
         n.set('status_waiting', ' (PD|SE) *[0-9]')
-    if text != 'local' and text != 'teach':
+    if text != 'local':
         n.set('cache', '.cache/sjef')
     root.write(file, pretty_print=True, xml_declaration=True, encoding='utf-8')
     return name_
