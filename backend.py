@@ -19,8 +19,11 @@ def sanitise_backends(parent):
     teaching_molpro_path = dot_molpro / 'teach' / 'bin' / 'molpro'
     if hasattr(sys, '_MEIPASS'):
         teaching_molpro_path = pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin' / 'molpro'
-    logger.debug(f'Teaching Molpro path: {teaching_molpro_path}')
+        if sys.platform.startswith('win'):
+            teaching_molpro_path += '.bat'
+            os.environ['PATH'] = str(pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin') + os.pathsep + os.environ['PATH']
     teaching_molpro = teaching_molpro_path.exists()
+    logger.debug(f'Teaching Molpro path: {teaching_molpro_path} {teaching_molpro_path.exists()}')
     regular_molpro = False
     for path in os.environ['PATH'].split(os.pathsep):
         path_ = str(pathlib.Path(path) / 'molpro')
