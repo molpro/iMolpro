@@ -18,17 +18,24 @@ def sanitise_backends(parent):
     dot_molpro= pathlib.Path(settings.settings.filename).parent
     teaching_molpro_path = dot_molpro / 'teach' / 'bin' / 'molpro'
     if hasattr(sys, '_MEIPASS'):
-        teaching_molpro_path = pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin' / 'molpro'
+        mei_path = pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin'
+        teaching_molpro_path = mei_path / 'molpro'
         if sys.platform.startswith('win'):
-            teaching_molpro_path += '.bat'
-            os.environ['PATH'] = str(pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin') + os.pathsep + os.environ['PATH']
+            teaching_molpro_path = mei_path / 'molpro.bat'
+            os.environ['PATH'] = str(mei_path) + os.pathsep + os.environ['PATH']
     teaching_molpro = teaching_molpro_path.exists()
     logger.debug(f'Teaching Molpro path: {teaching_molpro_path} {teaching_molpro_path.exists()}')
     regular_molpro = False
     for path in os.environ['PATH'].split(os.pathsep):
-        path_ = str(pathlib.Path(path) / 'molpro')
-        regular_molpro = regular_molpro or ((pathlib.Path(path) / 'molpro').exists() and path != str(pathlib.Path(sys._MEIPASS)) and path_ != teaching_molpro_path)
-        logger.debug(f'Regular Molpro path: {path_} {(pathlib.Path(path_)).exists()} ')
+        regular_molpro = regular_molpro or (
+                (
+                        (pathlib.Path(path) / 'molpro').exists()
+                        or (pathlib.Path(path) / 'molpro.bat').exists()
+                )
+                and
+                not str(teaching_molpro_path).startswith(path)
+        )
+        logger.debug(f'test Regular Molpro path: {path} {regular_molpro} ')
     logger.debug(f'Regular Molpro : {regular_molpro}')
     if teaching_molpro:
         name = 'teach' if regular_molpro else 'local'
