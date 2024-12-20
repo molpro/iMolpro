@@ -5,6 +5,8 @@ on:
   push:
     tags:
       - '*'
+    branches:
+      - 'no-special-teaching'
 jobs:
   deploy:
     name: Deploy on Unix
