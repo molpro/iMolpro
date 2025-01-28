@@ -283,6 +283,56 @@ def force_suffix(filename, suffix='molpro'):
     return fn
 
 
+class CoordinateSet:
+    r"""
+    Container for a set of molecular orbitals
+    """
+
+
+    def __str__(self):
+        return 'CoordinateSet ' + str(type(self)) + '\n' + str('\n\ncoordinateSet: ') + str(
+            self.coordinateSet)
+
+
+def factory_coordinate_set(input: str, file_type=None, instance=-1):
+    implementors = {
+        'xml': CoordinateSetXML,
+        'molden': CoordinateSetMolden,
+    }
+    if not file_type:
+        import os
+        base, suffix = os.path.splitext(input)
+        return implementors[suffix[1:]](open(input, 'r').read(), instance)
+    else:
+        return implementors[file_type](input, instance)
+
+
+class CoordinateSetMolden(CoordinateSet):
+    def __init__(self, content: str, instance=-1):
+        import re
+        self.coordinateSet = 1
+        super().__init__()
+
+
+class CoordinateSetXML(CoordinateSet):
+    def __init__(self, content: str, instance=-1):
+        super().__init__()
+        import lxml
+        root = lxml.etree.fromstring(content)
+        namespaces_ = {'molpro-output': 'http://www.molpro.net/schema/molpro-output',
+                       'xsd': 'http://www.w3.org/1999/XMLSchema',
+                       'cml': 'http://www.xml-cml.org/schema',
+                       'stm': 'http://www.xml-cml.org/schema',
+                       'xhtml': 'http://www.w3.org/1999/xhtml'}
+        coordinates_node = root.xpath('//cml:atomArray',
+                                   namespaces=namespaces_)
+        if -len(coordinates_node) > instance or len(coordinates_node) <= instance:
+            raise IndexError('instance in CoordinateSet')
+        self.coordinateSet = 0 + len(
+            coordinates_node[instance].xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
+                                          namespaces=namespaces_))
+
+
 class OrbitalSet:
     r"""
     Container for a set of molecular orbitals

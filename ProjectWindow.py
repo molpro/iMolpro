@@ -29,7 +29,7 @@ from OldOutputMenu import OldOutputMenu
 from RecentMenu import RecentMenu
 from database import database_choose_structure
 from help import HelpManager
-from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set
+from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set, factory_coordinate_set
 from backend import configure_backend, BackendConfigurationEditor, sanitise_backends
 from settings import settings, settings_edit
 from OptionsDialog import OptionsDialog
@@ -675,6 +675,10 @@ class ProjectWindow(QMainWindow):
         firstmodel = 1
         firstvib = 1
         firstorb = 1
+        try:
+            firstmodel = factory_coordinate_set(file, **kwargs).coordinateSet
+        except (IndexError, KeyError):
+            firstmodel = None
         try:
             vibs = factory_vibration_set(file, **kwargs)
             firstmodel = firstvib = vibs.coordinateSet
