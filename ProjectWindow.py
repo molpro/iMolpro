@@ -677,17 +677,17 @@ class ProjectWindow(QMainWindow):
         firstorb = 1
         try:
             firstmodel = factory_coordinate_set(file, **kwargs).coordinateSet
-        except (IndexError, KeyError):
+        except:
             firstmodel = None
         try:
             vibs = factory_vibration_set(file, **kwargs)
             firstmodel = firstvib = vibs.coordinateSet
-        except (IndexError, KeyError):
+        except:
             vibs = None
         try:
             orbs = factory_orbital_set(file, **kwargs)
             firstmodel = firstorb = orbs.coordinateSet
-        except (IndexError, KeyError):
+        except:
             orbs = None
         if not 'orbital_transparency' in settings: settings['orbital_transparency'] = 0.3
         html = """<!DOCTYPE html>
