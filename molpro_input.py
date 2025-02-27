@@ -385,7 +385,7 @@ class InputSpecification(UserDict):
             _input += '}\n'
         if 'orbitals' in self:
             for k in self['orbitals']:
-                _input += orbital_types[k]['command'] + '\n'
+                if orbital_types[k]['command'].strip(): _input += '{' + orbital_types[k]['command'] + '}\n'
                 _input += 'put,molden,' + k + '.molden' + '\n'
         if 'postscripts' in self:
             for m in self['postscripts']:
