@@ -21,7 +21,6 @@ hamiltonians = {
 }
 
 orbital_types = {
-    'canonical': {'text': 'Canonical', 'command': ''},
     'ibo': {'text': 'Intrinsic Bond', 'command': 'ibba'},
     'pipek': {'text': 'Pipek-Mezey', 'command': 'locali,pipek'},
     'nbo': {'text': 'NBO', 'command': 'nbo'},
