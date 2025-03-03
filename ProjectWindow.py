@@ -392,6 +392,7 @@ class ProjectWindow(QMainWindow):
         menubar.addSeparator('View')
         menubar.addAction('Job stdout', 'View', lambda: self.add_output_tab(0, 'stdout', name='stdout'))
         menubar.addAction('Job stderr', 'View', lambda: self.add_output_tab(0, 'stderr', name='stderr'))
+        menubar.addAction('Job xml', 'View', lambda: self.add_output_tab(0, 'xml', name='xml'))
 
         self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
         self.run_force_action = menubar.addAction('Run (force)', 'Job', self.run_force, 'Ctrl+Shift+R',
@@ -593,6 +594,20 @@ class ProjectWindow(QMainWindow):
                 if f.replace('.molden', '') in molpro_input.orbital_types:
                     self.vod_selector_action(
                         molpro_input.orbital_types[f.replace('.molden', '')]['text'] + ' orbitals')
+        try:
+            for index in range(10000):
+                molden_file_stem = self.project.filename('molden', 'xml_orbitals').replace('.molden', '')
+                file, label = self.project.orbitals_to_molden(molden_file_stem, index)
+                assert os.path.isfile(file)
+                # print('got molden file from xml: ' + file, os.path.getsize(file), label)
+                # self.visualise_output(file, '', 'Orbitals '+str(index+1))
+                title = ('Orbitals '+str(label)) if label else 'Orbitals'
+                if title not in self.vods:
+                    self.embedded_vod(file, command='mo HOMO', title=title)
+                # self.vod_selector_action(file)
+        except:
+            pass
+
 
     def putfiles(self):
         result = []
@@ -620,8 +635,8 @@ class ProjectWindow(QMainWindow):
         with open(pathlib.Path(self.project.filename(run=-1)) / 'molpro.rc', 'r') as f:
             molprorc = f.read()
         molprorc = molprorc.replace(' --xml-orbdump', '')
-        if 'orbitals' in self.input_specification:
-            molprorc += ' --xml-orbdump'
+        # if 'orbitals' in self.input_specification:
+        molprorc += ' --xml-orbdump'
         with open(pathlib.Path(self.project.filename(run=-1)) / 'molpro.rc', 'w') as f:
             f.write(molprorc)
         if self.guided_possible() and ('geometry' not in self.input_specification or (
