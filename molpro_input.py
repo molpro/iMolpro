@@ -178,11 +178,10 @@ class InputSpecification(UserDict):
                 self['properties'] += [k for k, v in properties.items() if line.lower() == v]
             # elif any([line.lower() == v['command'].lower() for v in orbital_types.values()]):
             #     last_orbital_generator = [k for k, v in orbital_types.items() if command.lower() == v['command'].lower()]
-            elif any([re.match('put,molden,' + k + '.molden', line, flags=re.IGNORECASE) for k in
-                      orbital_types.keys()]):
-                if 'orbitals' not in self: self['orbitals'] = []
+            elif re.match('put,xml', line, flags=re.IGNORECASE):
                 for k in orbital_types:
-                    if re.match('put,molden,' + k + '.molden', line, flags=re.IGNORECASE):
+                    if last_line.lower().strip().replace('}','') == orbital_types[k]['command']:
+                        if 'orbitals' not in self: self['orbitals'] = []
                         self['orbitals'].append(k)
             elif re.match('^geometry *= *{', group, re.IGNORECASE):
                 # print('geometry matched')
@@ -295,6 +294,9 @@ class InputSpecification(UserDict):
                 if 'postscripts' not in self: self['postscripts'] = []
                 self['postscripts'].append(line.lower())
 
+            if line:
+                last_line = line
+
         # if 'method' not in self and 'precursor_methods' in self:
         #     parse_method(self, self['precursor_methods'][-1])
         #     self['precursor_methods'].pop()
@@ -386,7 +388,8 @@ class InputSpecification(UserDict):
         if 'orbitals' in self:
             for k in self['orbitals']:
                 if orbital_types[k]['command'].strip(): _input += '{' + orbital_types[k]['command'] + '}\n'
-                _input += 'put,molden,' + k + '.molden' + '\n'
+                # _input += 'put,molden,' + k + '.molden' + '\n'
+                _input += 'put,xml\n'
         if 'postscripts' in self:
             for m in self['postscripts']:
                 _input += m + '\n'
