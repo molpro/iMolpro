@@ -1416,7 +1416,7 @@ class GuidedPane(QWidget):
 
         self.guided_orbitals_input = OrbitalInput(self)
         self.guided_layout.addWidget(RowOfTitledWidgets({
-            'Express orbitals': self.guided_orbitals_input,
+            'Local orbitals': self.guided_orbitals_input,
             'Expectation values': self.combo_properties,
         }, title='Properties'))
         misc_layout = QHBoxLayout()
