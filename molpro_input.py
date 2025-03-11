@@ -175,11 +175,9 @@ class InputSpecification(UserDict):
             elif line.lower() in properties.values():
                 if 'properties' not in self: self['properties'] = []
                 self['properties'] += [k for k, v in properties.items() if line.lower() == v]
-            # elif any([line.lower() == v['command'].lower() for v in orbital_types.values()]):
-            #     last_orbital_generator = [k for k, v in orbital_types.items() if command.lower() == v['command'].lower()]
-            elif re.match('put,xml', line, flags=re.IGNORECASE):
+            elif line.lower().strip().replace('}','') in [orbital_types[k]['command'] for k in orbital_types.keys()]:
                 for k in orbital_types:
-                    if last_line.lower().strip().replace('}','') == orbital_types[k]['command']:
+                    if line.lower().strip().replace('}','') == orbital_types[k]['command']:
                         if 'orbitals' not in self: self['orbitals'] = []
                         self['orbitals'].append(k)
             elif re.match('^geometry *= *{', group, re.IGNORECASE):
@@ -293,9 +291,6 @@ class InputSpecification(UserDict):
                 if 'postscripts' not in self: self['postscripts'] = []
                 self['postscripts'].append(line.lower())
 
-            if line:
-                last_line = line
-
         # if 'method' not in self and 'precursor_methods' in self:
         #     parse_method(self, self['precursor_methods'][-1])
         #     self['precursor_methods'].pop()
@@ -386,9 +381,10 @@ class InputSpecification(UserDict):
             _input += '}\n'
         if 'orbitals' in self:
             for k in self['orbitals']:
-                if orbital_types[k]['command'].strip(): _input += '{' + orbital_types[k]['command'] + '}\n'
+                # if orbital_types[k]['command'].strip(): _input += '{' + orbital_types[k]['command'] + '}\n'
+                if orbital_types[k]['command'].strip(): _input += orbital_types[k]['command'] + '\n'
                 # _input += 'put,molden,' + k + '.molden' + '\n'
-                _input += 'put,xml\n'
+                # _input += 'put,xml\n'
         if 'postscripts' in self:
             for m in self['postscripts']:
                 _input += m + '\n'
