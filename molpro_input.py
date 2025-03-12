@@ -175,9 +175,9 @@ class InputSpecification(UserDict):
             elif line.lower() in properties.values():
                 if 'properties' not in self: self['properties'] = []
                 self['properties'] += [k for k, v in properties.items() if line.lower() == v]
-            elif line.lower().strip().replace('}','') in [orbital_types[k]['command'] for k in orbital_types.keys()]:
+            elif line.lower().strip().replace('}','').replace('{','') in [orbital_types[k]['command'] for k in orbital_types.keys()]:
                 for k in orbital_types:
-                    if line.lower().strip().replace('}','') == orbital_types[k]['command']:
+                    if line.lower().strip().replace('}','').replace('{','') == orbital_types[k]['command']:
                         if 'orbitals' not in self: self['orbitals'] = []
                         self['orbitals'].append(k)
             elif re.match('^geometry *= *{', group, re.IGNORECASE):
@@ -381,8 +381,8 @@ class InputSpecification(UserDict):
             _input += '}\n'
         if 'orbitals' in self:
             for k in self['orbitals']:
-                # if orbital_types[k]['command'].strip(): _input += '{' + orbital_types[k]['command'] + '}\n'
-                if orbital_types[k]['command'].strip(): _input += orbital_types[k]['command'] + '\n'
+                if orbital_types[k]['command'].strip(): _input += '{' + orbital_types[k]['command'] + '}\n'
+                # if orbital_types[k]['command'].strip(): _input += orbital_types[k]['command'] + '\n'
                 # _input += 'put,molden,' + k + '.molden' + '\n'
                 # _input += 'put,xml\n'
         if 'postscripts' in self:
