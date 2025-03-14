@@ -1715,49 +1715,42 @@ class OrbitalInput(CheckableComboBox):
         self.parent.refresh_input_from_specification()
 
 
-class PropertyInput(CheckableComboBox):
+class InputCombo(CheckableComboBox):
     r"""
-    Helper for constructing input for properties
+    Helper for constructing input
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, identity, parent=None):
         super().__init__(parent, null_text='None')
         self.parent = parent
-        self.addItems(molpro_input.properties.keys())
-        if 'properties' in self.parent.input_specification:
-            for o in self.parent.input_specification['properties']:
+        self.identity = identity
+        self.addItems(getattr(molpro_input,self.identity).keys())
+        if identity in self.parent.input_specification:
+            for o in self.parent.input_specification[identity]:
                 for i in range(self.model().rowCount()):
                     if self.model().item(i).text() == o:
                         self.model().item(i).setCheckState(Qt.Checked)
         self.model().dataChanged.connect(self.refresh)
 
     def refresh(self, text):
-        self.parent.input_specification['properties'] = [k for k, v in molpro_input.properties.items() for t in
-                                                         self.currentData() if t == k]
+        self.parent.input_specification[self.identity] = [k for k, v in getattr(molpro_input,self.identity).items() for t in
+                                                       self.currentData() if t == k]
         self.parent.input_specification.polish()
         self.parent.refresh_input_from_specification()
 
-class InteractInput(CheckableComboBox):
+class InteractInput(InputCombo):
     r"""
     Helper for constructing input for interact
     """
-
     def __init__(self, parent=None):
-        super().__init__(parent, null_text='None')
-        self.parent = parent
-        self.addItems(molpro_input.interact.keys())
-        if 'interact' in self.parent.input_specification:
-            for o in self.parent.input_specification['interact']:
-                for i in range(self.model().rowCount()):
-                    if self.model().item(i).text() == o:
-                        self.model().item(i).setCheckState(Qt.Checked)
-        self.model().dataChanged.connect(self.refresh)
+        super().__init__('interact',parent)
 
-    def refresh(self, text):
-        self.parent.input_specification['interact'] = [k for k, v in molpro_input.interact.items() for t in
-                                                         self.currentData() if t == k]
-        self.parent.input_specification.polish()
-        self.parent.refresh_input_from_specification()
+class PropertyInput(InputCombo):
+    r"""
+    Helper for constructing input for properties
+    """
+    def __init__(self, parent=None):
+        super().__init__('properties',parent)
 
 
 class ChargeSelector(QWidget):
