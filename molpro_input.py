@@ -60,6 +60,11 @@ properties = {
     'Darwin': 'gexpec,darw',
 }
 
+interact = {
+    'No counterpoise': 'do_nocp',
+    'Counterpoise': 'do_cp',
+}
+
 initial_orbital_methods = ['HF', 'KS']
 
 supported_methods = []
@@ -175,6 +180,9 @@ class InputSpecification(UserDict):
             elif line.lower() in properties.values():
                 if 'properties' not in self: self['properties'] = []
                 self['properties'] += [k for k, v in properties.items() if line.lower() == v]
+            elif 'interact' in line.lower():
+                if 'interact' not in self: self['interact'] = []
+                self['interact'] += [k for k, v in interact.items() if ','+v in line.lower()]
             elif line.lower().strip().replace('}','').replace('{','') in [orbital_types[k]['command'] for k in orbital_types.keys()]:
                 for k in orbital_types:
                     if line.lower().strip().replace('}','').replace('{','') == orbital_types[k]['command']:
@@ -385,6 +393,11 @@ class InputSpecification(UserDict):
                 # if orbital_types[k]['command'].strip(): _input += orbital_types[k]['command'] + '\n'
                 # _input += 'put,molden,' + k + '.molden' + '\n'
                 # _input += 'put,xml\n'
+        if 'interact' in self and len(self['interact']) > 0:
+            _input += 'interact'
+            for p in self['interact']:
+                _input += ','+interact[p]
+            _input += '\n'
         if 'postscripts' in self:
             for m in self['postscripts']:
                 _input += m + '\n'
