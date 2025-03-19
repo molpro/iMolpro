@@ -1385,7 +1385,6 @@ class GuidedPane(QWidget):
         self.checkbox_df.clicked.connect(lambda text: self.input_specification_change('density_fitting', text))
 
         self.combo_properties = PropertyInput(self)
-        self.combo_interact = InteractInput(self)
 
         self.method_row = RowOfTitledWidgets({'Type': self.guided_combo_job_type, 'Method': self.guided_combo_method,
                                               'Functional': self.guided_combo_functional, }, title='Calculation')
@@ -1419,7 +1418,6 @@ class GuidedPane(QWidget):
         self.guided_layout.addWidget(RowOfTitledWidgets({
             'Local orbitals': self.guided_orbitals_input,
             'Expectation values': self.combo_properties,
-            'Interact': self.combo_interact,
         }, title='Properties'))
         misc_layout = QHBoxLayout()
         self.guided_layout.addLayout(misc_layout)
@@ -1737,13 +1735,6 @@ class InputCombo(CheckableComboBox):
                                                        self.currentData() if t == k]
         self.parent.input_specification.polish()
         self.parent.refresh_input_from_specification()
-
-class InteractInput(InputCombo):
-    r"""
-    Helper for constructing input for interact
-    """
-    def __init__(self, parent=None):
-        super().__init__('interact',parent)
 
 class PropertyInput(InputCombo):
     r"""
