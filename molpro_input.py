@@ -395,6 +395,7 @@ class InputSpecification(UserDict):
             # if re.match('[ru]ks', step['command'], re.IGNORECASE) and 'density_functional' in step:
             #     _input += ',' + step['density_functional']
             if 'options' in step:
+                step['options'].sort()
                 for option in step['options']:
                     _input += ',' + str(option)
             if 'directives' in step:
