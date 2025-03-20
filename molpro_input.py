@@ -34,7 +34,7 @@ parameter_commands = {
 }
 
 job_type_steps = {
-    'Single point energy': [],
+    'Single point energy': [{'command': 'ansatz'}],
     'Geometry optimisation': [{'command': 'optg', 'options': ['savexyz=optimised.xyz']}],
     'Hessian': [{'command': 'frequencies', 'directives': [{'command': 'thermo'}]}],
     'Non-covalent complex': [{'command': 'interact', 'directives': []}],
@@ -97,7 +97,7 @@ class InputSpecification(UserDict):
         """
         if os.path.exists(input):
             with open(input, 'r') as f:
-                print(input)
+                # print(input)
                 return self.parse(f.read())
 
         # print('allowed_methods', self.allowed_methods)
@@ -110,6 +110,7 @@ class InputSpecification(UserDict):
         self.clear()
         variables = {}
         geometry_active = False
+        self['procname'] = 'ansatz'
         self['steps'] = []
         canonicalised_input_ = re.sub('basis\n(.*)\n *end', r'basis={\1}', input,
                                       flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
@@ -164,6 +165,11 @@ class InputSpecification(UserDict):
                         break
             elif command.lower() == 'angstrom':
                 self['angstrom'] = True
+            elif command.lower() == 'proc':
+                self['procname'] = re.sub('^ *proc *,* *', '', line, flags=re.IGNORECASE)
+                job_type_steps['Single point energy'][0]['command'] = self['procname']
+            elif command.lower() == 'endproc':
+                pass
             elif ((command.lower() == 'nosym') or (re.match('^symmetry *, *', line, re.IGNORECASE))):
                 line = re.sub('^symmetry *, *', '', line, flags=re.IGNORECASE)
                 line = "symmetry," + line
@@ -248,7 +254,7 @@ class InputSpecification(UserDict):
                                    flags=re.IGNORECASE) for
                       df_prefix
                       in df_prefixes
-                      for method in self.allowed_methods + ['optg', 'frequencies','interact']]):
+                      for method in self.allowed_methods + [self['procname'], 'optg', 'frequencies','interact']]):
                 step = {}
                 method_ = command
                 if command[:3] == 'df-':
@@ -299,6 +305,8 @@ class InputSpecification(UserDict):
             self['variables'] = variables
         if 'hamiltonian' not in self:
             self['hamiltonian'] = self.basis_hamiltonian
+        self.regularise_procedure_references()
+
         # spin_ = self.open_shell_electrons
         # print('initial spin_',spin_)
         # if 'variables' in self and 'spin' in self['variables'] and int(self['variables']['spin'])%2 == spin_%2:
@@ -306,6 +314,16 @@ class InputSpecification(UserDict):
         # if 'variables' not in self: self['variables'] = {}
         # self['variables']['spin'] = spin_
         return self
+
+    def regularise_procedure_references(self):
+        for step in self['steps']:
+            job_type_commands = [job_type_ste['command'] for job_type_step in job_type_steps.values() for job_type_ste
+                                 in job_type_step if
+                                 'command' in job_type_ste and job_type_ste['command']!=self['procname']] + ['frequencies']
+            if 'command' in step.keys() and step['command'] in job_type_commands:
+                step['options'] = [option for option in step['options'] if
+                                   'proc' not in option] if 'options' in step else []
+                step['options'].append('proc=' + self['procname'])
 
     def input(self):
         r"""
@@ -359,7 +377,11 @@ class InputSpecification(UserDict):
                 _input += '\n'
         if 'core_correlation' in self:
             _input += 'core,' + self['core_correlation'] + '\n'
+        if 'steps' in self:
+            _input += '\nproc '+self['procname']+'\n'
         for step in (self['steps'] if 'steps' in self else []):
+            if step['command'] == job_type_steps[self.job_type][0]['command']:
+                _input += 'endproc\n\n'
             _input += '{'
             if 'density_fitting' in self and self['density_fitting'] and not any(
                     [step_['command'] == step['command'] for step_ in job_type_steps[self.job_type]]) and step[

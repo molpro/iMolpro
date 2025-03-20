@@ -1540,6 +1540,7 @@ class GuidedPane(QWidget):
             self.input_specification.polish()
         elif key == 'job_type':
             self.input_specification.job_type = value
+            self.input_specification.regularise_procedure_references()
         elif key == 'density_functional':
             self.input_specification.density_functional = value
         else:
