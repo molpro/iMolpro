@@ -1476,7 +1476,7 @@ class GuidedPane(QWidget):
 
         self.step_options_combo.clear()
         self.step_options_combo.addItem('')
-        self.step_options_combo.addItems([step['command'].upper() for step in self.input_specification['steps']])
+        self.step_options_combo.addItems([step['command'].upper() for step in self.input_specification['steps'] if step['command'].lower() != self.input_specification['procname'].lower()])
         self.step_options_combo.setCurrentIndex(0)
         try:
             registry_df = self.parent.procedures_registry[self.input_specification.method.upper()][
