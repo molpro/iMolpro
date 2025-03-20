@@ -96,7 +96,7 @@ def test_recreate_input(methods):
         'geometry={He};{rks,b3lyp}',
         'geometry=newnewnew.xyz\nbasis=cc-pVTZ-PP\nrhf',
         'geometry=wed.xyz\nbasis=cc-pVTZ-PP\nset,charge=1,spin=1,thing=whatsit\nxx=yy,p=q\nrhf',
-        'geometry={Ne};{rhf};ccsd;{frequencies;thermo,temp=298;another}',
+        'geometry={Ne};proc doit;{rhf};ccsd;endproc;{frequencies,proc=doit;thermo,temp=298;another}',
         'symmetry,nosym;geometry=ChemSpider-937.xyz;basis=cc-pV(T+d)Z-PP;gexpec,qm;gthresh,energy=1e-14;{df-rhf}',
         'geometry={Ne};basis=cc-pV(T+d)Z-PP;gprint,basis;{df-rhf}',
         'geometry={Ne;He,Ne,2};basis={default=cc-pV(T+d)Z-PP,He=vdz(s)};gprint,basis;{df-rhf}',
@@ -210,13 +210,13 @@ def test_method_options(methods):
 
 def test_job_type(methods):
     for test, outcome in {
-        '': 'Single point energy',
-        'rhf': 'Single point energy',
-        'rhf;ccsd': 'Single point energy',
-        'rhf;ccsd;optg;frequencies': 'Optimise + vib frequencies',
-        'rhf;ccsd;{optg};frequencies': 'Optimise + vib frequencies',
-        'rhf;ccsd;mrci;{optg};frequencies': 'Optimise + vib frequencies',
-        'rhf;ccsd;{optg};mrci;frequencies': 'Hessian',
+        '': None,
+        'rhf': None,
+        'rhf;ccsd': None,
+        'proc ansatz;rhf;ccsd;endproc;optg,proc=ansatz;frequencies,proc=ansatz': 'Optimise + vib frequencies',
+        'proc ansatz;rhf;ccsd;endproc;{optg,proc=ansatz};frequencies,proc=ansatz': 'Optimise + vib frequencies',
+        'proc ansatz;rhf;ccsd;mrci;endproc;{optg,proc=ansatz};frequencies,proc=ansatz': 'Optimise + vib frequencies',
+        'proc ansatz;rhf;ccsd;{optg};mrci;endproc;frequencies,proc=ansatz': 'Hessian',
     }.items():
         specification = InputSpecification(test)
         assert specification.job_type == outcome
@@ -241,7 +241,7 @@ def test_density_functional(methods):
         'rks,b3lyp,a=b': 'B3LYP',
     }.items():
         specification = InputSpecification(test)
-        print(specification)
+        # print(specification)
         assert specification.density_functional == outcome
         if specification.density_functional:
             specification.density_functional = 'PBE'
@@ -260,7 +260,7 @@ def test_open_shell_electrons(methods, tmpdir):
         'geometry={C;He,C,1}': 0,
     }.items():
         specification = InputSpecification(test)
-        print(specification)
+        # print(specification)
         assert specification.open_shell_electrons == outcome
         open_shell_xyz_file = tmpdir / 'open_shell_electrons.xyz'
         with open(open_shell_xyz_file, 'w') as f:

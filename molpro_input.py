@@ -73,6 +73,7 @@ class InputSpecification(UserDict):
         super(InputSpecification, self).__init__()
         self.allowed_methods = list(set(allowed_methods).union(set(supported_methods)))
         self.directory = directory
+        self['procname'] = 'ansatz'
         # print('self.allowed_methods',self.allowed_methods)
         if specification is not None:
             for k in specification:
@@ -377,14 +378,15 @@ class InputSpecification(UserDict):
                 _input += '\n'
         if 'core_correlation' in self:
             _input += 'core,' + self['core_correlation'] + '\n'
-        if 'steps' in self:
+        if 'steps' in self and self.job_type is not None:
             _input += '\nproc '+self['procname']+'\n'
         for step in (self['steps'] if 'steps' in self else []):
-            if step['command'] == job_type_steps[self.job_type][0]['command']:
+            if self.job_type is not None and step['command'] == job_type_steps[self.job_type][0]['command']:
                 _input += 'endproc\n\n'
             _input += '{'
-            if 'density_fitting' in self and self['density_fitting'] and not any(
-                    [step_['command'] == step['command'] for step_ in job_type_steps[self.job_type]]) and step[
+            # print('job_type_steps[self.job_type]',job_type_steps[self.job_type])
+            if 'density_fitting' in self and self['density_fitting'] and (self.job_type is None or not any(
+                    [step_['command'] == step['command'] for step_ in job_type_steps[self.job_type] if 'command' in step_])) and 'command' in step and step[
                                                                                                               'command'].lower()[
                                                                                                           :4] != 'pno-' and \
                     step['command'].lower()[:4] != 'ldf-':
@@ -438,11 +440,12 @@ class InputSpecification(UserDict):
         :return: job type, or None if the input is complex
         :rtype: str
         """
+        job_type = None
         for job_type_ in job_type_steps:
             ok = True
             last_idx = None
             for step in job_type_steps[job_type_]:
-                commands = [s['command'].lower() for s in self['steps']]
+                commands = [s['command'].lower() for s in self['steps'] if 'command' in s]
                 idx = commands.index(step['command'].lower()) if step['command'].lower() in commands else -1
                 if idx < 0 or (last_idx is not None and last_idx != idx - 1):
                     ok = False
@@ -498,9 +501,9 @@ class InputSpecification(UserDict):
         if method.lower() not in [m.lower() for m in self.hartree_fock_methods]:
             new_steps.append({'command': ('rhf' if method[0].lower() != 'u' else 'uhf')})  # TODO df
         new_steps.append({'command': method.lower()})
-        if 'steps' in self:
+        if 'steps' in self and self.job_type is not None:
             for step in self['steps']:
-                if any([step_['command'] == step['command'] for step_ in job_type_steps[self.job_type]]):
+                if 'command' in step and any([step_['command'] == step['command'] for step_ in job_type_steps[self.job_type]]):
                     new_steps.append(step)
         self['steps'] = new_steps
 
