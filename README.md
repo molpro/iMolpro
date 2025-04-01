@@ -25,3 +25,4 @@ licensed under the [GNU GPL v3](https://www.gnu.org/licenses/licenses.html#GPL).
 * [pymolpro](https://github.com/molpro/pymolpro)
 * [PubChemPy](https://github.com/mcs07/PubChemPy), licensed under the MIT license.
 * [ChemSpiPy](https://github.com/mcs07/ChemSpiPy), licensed under the MIT license.
+* [DraggableTabWidget](https://github.com/akihito-takeuchi/qt-draggable-tab-widget), licensed under the MIT license.

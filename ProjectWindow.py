@@ -22,6 +22,7 @@ from pymolpro import Project
 import molpro_input
 from BasisSelector import BasisSelector
 from SpinComboBox import SpinComboBox
+from draggabletabwidget import DraggableTabWidget
 from molpro_input import InputSpecification
 from CheckableComboBox import CheckableComboBox
 from MenuBar import MenuBar
@@ -192,7 +193,7 @@ class ProjectWindow(QMainWindow):
         self.statusBar.refresh()
 
         left_layout = QVBoxLayout()
-        self.input_tabs = QTabWidget(self)
+        self.input_tabs = MyTabWidget(self)
         self.input_pane.textChanged.connect(lambda: self.thread_executor.submit(self.input_text_changed_consequence))
         self.input_tabs.setTabBarAutoHide(True)
         self.input_tabs.setDocumentMode(True)
@@ -237,7 +238,7 @@ class ProjectWindow(QMainWindow):
         left_widget.setContentsMargins(0, 0, 0, 0)
         left_widget.setLayout(left_layout)
         splitter.addWidget(left_widget)
-        self.output_tabs = QTabWidget(self)
+        self.output_tabs = MyTabWidget(self)
         self.output_tabs.setTabBarAutoHide(True)
         self.output_tabs.setDocumentMode(True)
         self.output_tabs.setTabPosition(QTabWidget.South)
@@ -444,13 +445,13 @@ class ProjectWindow(QMainWindow):
         if force or len(self.output_tabs) != len(
                 [tab_name for tab_name, pane in self.output_panes.items() if
                  os.path.exists(self.project.filename(re.sub(r'.*\.', '', tab_name)))]) + len(self.vods):
-            self.output_tabs.clear()
             logger.debug('rebuilding output tabs')
             for suffix, pane in self.output_panes.items():
-                if os.path.exists(self.project.filename(suffix)):
+                if os.path.exists(self.project.filename(suffix)) and not suffix in self.output_tabs.tab_names:
                     self.output_tabs.addTab(pane, suffix)
             for title, vod in self.vods.items():
-                self.output_tabs.addTab(vod, title)
+                if not title in self.output_tabs.tab_names:
+                    self.output_tabs.addTab(vod, title)
         if 'stderr' not in self.output_panes.keys() and self.project.status == 'completed' and not (
                 os.path.exists(self.project.filename('out')) and self.project.out):
             self.add_output_tab(0, suffix='stderr', name='stderr')
@@ -1777,3 +1778,13 @@ class ChargeSelector(QWidget):
     def change(self, amount=1):
         self.label.setText(str(int(self.label.text()) + amount))
         self.textChanged.emit(self.label.text())
+
+class MyTabWidget(DraggableTabWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.tab_names=set()
+
+    def addTab(self, widget, QWidget=None, *args, **kwargs):
+        super().addTab(widget, QWidget, *args, **kwargs)
+        if type(QWidget) is str:
+            self.tab_names.add(QWidget)
