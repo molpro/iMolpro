@@ -22,12 +22,12 @@ class OptionsDialog(QDialog):
             self.add(k, v)
         layout.addWidget(self.current)
 
-        available_options_ = [available_option for available_option in available_options if
-                              available_option not in current_options]
-        if available_options_:
+        self.available_options = {available_option:value for available_option,value in available_options.items() if
+                              available_option not in current_options}
+        if self.available_options:
             self.available = QComboBox(self)
             self.available.addItem('')
-            self.available.addItems(available_options_)
+            self.available.addItems(self.available_options)
             self.available.currentTextChanged.connect(self.add_from_registry)
             layout.addWidget(QLabel('Add entry:'))
             layout.addWidget(self.available)
@@ -59,7 +59,7 @@ class OptionsDialog(QDialog):
         for row in range(self.current.rowCount()):
             if key == self.current.verticalHeaderItem(row).text():
                 return
-        self.add(key, '')
+        self.add(key, self.available_options[key])
         self.available.setCurrentText('')
 
     def remove(self, key):
