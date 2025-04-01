@@ -234,7 +234,7 @@ class InputSpecification(UserDict):
                 while (
                         newline := re.sub(r'(\[[0-9!]+),', r'\1!',
                                           line)) != line: line = newline  # protect eg occ=[3,1,1]
-                fields = line.split(',')
+                fields = split_comma(line)
                 for field in fields:
                     key = re.sub(' *=.*$', '', field)
                     value = re.sub('.*= *', '', field)
@@ -270,7 +270,7 @@ class InputSpecification(UserDict):
                     return self
                 method_options = (re.sub(';.*$', '', line.lower()).replace('}', '') + ',').split(',', 1)[1]
 
-                method_options_ = method_options.strip(', \n').split(',')
+                method_options_ = split_comma(method_options.strip(', \n'))
                 if method_options_ and method_options_[-1] == '': method_options_ = method_options_[:-2]
                 # print('method_options_',method_options_)
                 step['command'] = method_
@@ -774,3 +774,11 @@ def equivalent(input1, input2, debug=False):
         logger.debug('equivalent: canonicalise(input2)=', canonicalise(input2))
         logger.debug('will return this', canonicalise(input1).lower() == canonicalise(input2).lower())
     return canonicalise(input1).lower() == canonicalise(input2).lower()
+
+def split_comma(string):
+    string_ = string
+    string__ = re.sub(r'(\[.*),(.*\])',r'\1@@@\2',string_)
+    while string__ != string_:
+        string_ = string__
+        string__ = re.sub(r'(\[.*),(.*\])',r'\1@@@\2',string_)
+    return [field.replace('@@@', ',') for field in (string__.split(','))]
