@@ -1476,7 +1476,7 @@ class GuidedPane(QWidget):
             self.guided_combo_core_correlation.setCurrentText(self.input_specification['core_correlation'])
 
         self.step_options_combo.clear()
-        self.step_options_combo.addItem('')
+        self.step_options_combo.addItem('- Select job step -')
         self.step_options_combo.addItems([step['command'].upper() for step in self.input_specification['steps'] if step['command'].lower() != self.input_specification['procname'].lower()])
         self.step_options_combo.setCurrentIndex(0)
         try:
