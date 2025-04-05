@@ -1625,8 +1625,9 @@ class GuidedPane(QWidget):
         if step < 0: return
         step_ = self.parent.input_specification['steps'][step]
         method_ = step_['command'].upper()
-        available_options = {re.sub('=.*','',re.sub('.*:', '', option)):re.sub('.*=','',re.sub('.*:', '', option)) for option in
-                             list(self.parent.procedures_registry[method_.replace('FREQUENCIES', 'FREQ')]['options'])}
+        available_options = {}
+        for option in list(self.parent.procedures_registry[method_.replace('FREQUENCIES', 'FREQ')]['options']):
+            available_options[ re.sub('.*:','',option.split('=')[0])] = (option.split('=')+[''])[1]
         title = 'Options for step ' + str(step + 1) + ' (' + method_ + ')'
         existing_options = {o.split('=')[0]: o.split('=')[1] if len(o.split('=')) > 1 else '' for o in
                             (step_['options'] if 'options' in step_ else [])}
