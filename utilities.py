@@ -516,7 +516,7 @@ class FileBackedDictionary(MutableMapping):
         self.refresh()
 
     def refresh(self):
-        if os.path.exists(self.filename) and self.filetime < os.path.getmtime(self.filename):
+        if os.path.exists(self.filename) and self.filetime < os.path.getmtime(self.filename) and os.stat(self.filename).st_size > 0:
             with open(self.filename, 'r') as fp:
                 self.data = json.load(fp)
         else:
