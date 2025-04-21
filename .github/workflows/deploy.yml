@@ -66,6 +66,7 @@ jobs:
         with:
           activate-environment: iMolpro-github
           auto-activate-base: false
+          conda-remove-defaults: 'true'
       - name: Build
         env:
           MOLPRO_TEACH_URL: ${{ secrets.MOLPRO_TEACH_URL }}
