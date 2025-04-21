@@ -6,7 +6,7 @@ pkgbuild=1
 sh=1
 
 if [ -z "$NOCONDA" ]; then
-conda install -c conda-forge -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
+conda install -c conda-forge -c default -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
 conda remove -y pubchempy
 pip install -I https://github.com/molpro/PubChemPy/archive/refs/heads/master.zip
 gem install --user-install -n~/bin fpm
