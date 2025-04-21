@@ -9,6 +9,7 @@ jobs:
   deploy:
     name: Deploy on Unix
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       matrix:
         os: [ ubuntu-latest, macos-13, macos-14 ]
