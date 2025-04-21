@@ -51,7 +51,7 @@ class BasisSelector(QWidget):
                 if select_ in self.possible_basis_sets:
                     code_selector.setCurrentText(select_)
 
-            new_element_button = QPushButton('Specific element')
+            new_element_button = QPushButton('Element or range')
             self.layout().addWidget(new_element_button, count, 0, 1, 2)
             new_element_button.clicked.connect(self.new_element)
 
