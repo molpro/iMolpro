@@ -27,7 +27,7 @@ jobs:
         with:
           activate-environment: iMolpro-github
       - name: Setup temporary installer signing keychain
-        uses: apple-actions/import-codesign-certs@v5
+        uses: apple-actions/import-codesign-certs@v4
         if: ${{ matrix.mac }}
         with:
           p12-file-base64: ${{ secrets.CERTIFICATES_P12 }}
