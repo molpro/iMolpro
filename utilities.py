@@ -345,7 +345,7 @@ class OrbitalSet:
 
     @property
     def energies(self):
-        return [orbital['energy'] for orbital in self.orbitals]
+        return [orbital['energy'] if 'energy' in orbital else 0.0 for orbital in self.orbitals]
 
 
 def factory_orbital_set(input: str, file_type=None, instance=-1):
