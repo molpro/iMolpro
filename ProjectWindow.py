@@ -119,13 +119,13 @@ class ProjectWindow(QMainWindow):
 
     def changeEvent(self, event):
         super().changeEvent(event)
-        logger.debug('event.type() ' + str(event.type))
+        # logger.debug('event.type() ' + str(event.type))
         if True or event.type() == QEvent.WindowStateChange:
-            logger.debug('windowStateChange')
-            logger.debug('full screen ? ' + str(self.isFullScreen()))
+            # logger.debug('windowStateChange')
+            # logger.debug('full screen ? ' + str(self.isFullScreen()))
             if not self.isFullScreen():
                 self.normal_geometry = self.normalGeometry()
-            logger.debug('normal_geometry ' + str(self.normal_geometry))
+            # logger.debug('normal_geometry ' + str(self.normal_geometry))
             settings['project_window_width'] = self.normal_geometry.width()
             settings['project_window_height'] = self.normal_geometry.height()
 
@@ -440,7 +440,7 @@ class ProjectWindow(QMainWindow):
 
     def refresh_output_tabs(self, force=False):
         index = self.output_tabs.currentIndex()
-        logger.debug('refresh output tabs')
+        # logger.debug('refresh output tabs')
         self.old_output_menu.refresh()
         if force or len(self.output_tabs) != len(
                 [tab_name for tab_name, pane in self.output_panes.items() if
