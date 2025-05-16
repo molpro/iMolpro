@@ -67,6 +67,7 @@ jobs:
           activate-environment: iMolpro-github
           auto-activate-base: false
           conda-remove-defaults: 'true'
+      - uses: milliewalky/setup-7-zip@v2
       - name: Build
         env:
           MOLPRO_TEACH_URL: ${{ secrets.MOLPRO_TEACH_URL }}
