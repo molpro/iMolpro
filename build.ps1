@@ -4,10 +4,10 @@ get-content ENV | foreach {
 }
 
 $molpro_root='molpro-teach-' + $env:molpro_version + '.windows_x64'
-$molpro_zip=${molpro_root} + '.tar.gz'
+$molpro_zip=${molpro_root} + '.exe'
 $full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_zip
 curl -O $full_url
-tar -xzvf ${molpro_zip}
+7z -o"${molpro_root}" x -- ${molpro_zip}
 
 
 cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis python=3.9
