@@ -1586,7 +1586,7 @@ class GuidedPane(QWidget):
         title = 'Global thresholds'
         box = OptionsDialog(
             self.parent.input_specification['thresholds'] if 'thresholds' in self.parent.input_specification else {},
-            available_options, title=title, parent=self,
+            {o.lower(): '' for o in available_options}, title=title, parent=self,
             help_uri='https://www.molpro.net/manual/doku.php?id=program_control&s[]=gthresh#global_thresholds_gthresh')
         result = box.exec()
         if result is not None:
@@ -1614,7 +1614,7 @@ class GuidedPane(QWidget):
         title = 'Global print levels'
         box = OptionsDialog(
             self.parent.input_specification['prints'] if 'prints' in self.parent.input_specification else {},
-            available_options, title=title, parent=self,
+            {o.lower(): '' for o in available_options}, title=title, parent=self,
             help_uri='https://www.molpro.net/manual/doku.php?id=program_control#global_print_options_gprint_nogprint')
         result = box.exec()
         if result is not None:
