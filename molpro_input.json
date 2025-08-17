@@ -1,0 +1,106 @@
+{
+  "$id": "https://www.molpro.net/molpro-input.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Simple Molpro Input",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "geometry": {
+      "default": "He",
+      "type": "string"
+    },
+    "geometry_external": {
+      "description": "Whether the geometry is an external file name instead of an inline geometry specification",
+      "default": false,
+      "type": "boolean"
+    },
+    "method": {
+      "default": "hf",
+      "type": "string"
+    },
+    "properties": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "basis": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "default": "cc-pVTZ-PP",
+          "type": "string"
+        },
+        "elements": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "procname": {
+      "type": "string"
+    },
+    "hamiltonian": {
+      "description": "The Hamiltonian to be used - Schrödinger all-electron, pseudopotential or scalar-relativistic.",
+      "default": "PP",
+      "enum": [
+        "AE",
+        "PP",
+        "DK",
+        "DK3"
+      ]
+    },
+    "steps": {
+      "type": "array",
+      "description": "Job steps defining the energy."
+    },
+    "angstrom": {
+      "type": "boolean",
+      "description": "Whether geometry is expressed in Ångstrom instead of Bohr."
+    },
+    "orientation": {
+      "description": "Weighting of geometry to define centroid and principal axes.",
+      "default": "mass",
+      "enum": [
+        "mass",
+        "charge",
+        "none"
+      ]
+    },
+    "symmetry": {
+      "description": "Whether to use molecular symmetry.",
+      "default": "automatic",
+      "enum": [
+        "automatic",
+        "none"
+      ]
+    },
+    "density_fitting": {
+      "description": "Whether density fitting algorithms are to be used where possible.",
+      "default": false,
+      "type": "boolean"
+    },
+    "orbitals": {
+      "description": "Types of localised orbitals to be calculated.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "ibo",
+          "pipek",
+          "nbo",
+          "boys"
+        ]
+      }
+    },
+    "procname": {
+      "description": "The name of the procedure to be constructed for complex job types.",
+      "type": "string"
+    }
+  }
+}
+

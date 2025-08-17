@@ -3,35 +3,63 @@ import os
 import pathlib
 import re
 from collections import UserDict
+from copy import deepcopy
+import json
 
-logger = logging.getLogger(__name__)
-wave_fct_symm_commands = {
-    'Automatic': '',
-    'No Symmetry': 'symmetry,nosym'
+import jsonschema
+import pymolpro
+
+with open('molpro_input.json', 'r') as f:
+    schema = json.load(f)
+
+_logger = logging.getLogger(__name__)
+_symmetry_commands = {
+    'automatic': '',
+    'none': 'symmetry,nosym'
 }
-wave_fct_symm_aliases = {
+assert (set(_symmetry_commands.keys()).issubset(set(schema['properties']['symmetry']['enum'])))
+_symmetry_command_aliases = {
     'nosym': 'symmetry,nosym',
 }
 
-hamiltonians = {
+_hamiltonians = {
     'AE': {'text': 'All Electron', 'basis_string': ''},
     'PP': {'text': 'Pseudopotential', 'basis_string': '-PP'},
     'DK': {'text': 'Douglas-Kroll-Hess', 'basis_string': '-DK'},
     'DK3': {'text': 'Douglas-Kroll-Hess 3', 'basis_string': '-DK3'},
 }
+assert (set(_hamiltonians.keys()).issubset(set(schema['properties']['hamiltonian']['enum'])))
 
-orbital_types = {
+_local_orbital_types = {
     'ibo': {'text': 'Intrinsic Bond', 'command': 'ibba'},
     'pipek': {'text': 'Pipek-Mezey', 'command': 'locali,pipek'},
     'nbo': {'text': 'NBO', 'command': 'nbo'},
     'boys': {'text': 'Boys', 'command': 'locali'},
 }
+def local_orbital_types():
+    r"""
+    Return the supported local orbital types.
+    """
+    return _local_orbital_types
 
-parameter_commands = {
+_parameter_commands = {
     'parameters': 'gparam',
     'thresholds': 'gthresh',
     'prints': 'gprint',
 }
+
+_job_types = {
+    'SP': 'Single geometry',
+    'OPT': 'Geometry optimization',
+    'FREQ': 'Hessian',
+    'FREQHESS': 'Geometry and hessian',
+}
+def job_types():
+    r"""
+    Return the supported job types.
+    rtype: dict
+    """
+    return _job_types
 
 job_type_steps = {
     'Single point energy': [{'command': 'ansatz'}],
@@ -40,16 +68,17 @@ job_type_steps = {
     'Non-covalent complex': [{'command': 'interact', 'directives': []}],
 }
 job_type_steps['Optimise + vib frequencies'] = job_type_steps['Geometry optimisation'] + job_type_steps['Hessian']
-job_type_aliases = {
+_job_type_aliases = {
     '{optg}': 'optg',
     '{freq}': 'frequencies',
     'freq': 'frequencies',
 }
-orientation_options = {
-    'Mass': 'mass',
-    'Charge': 'charge',
-    'None': 'noorient'
+_orientation_options = {
+    'mass': 'mass',
+    'charge': 'charge',
+    'none': 'noorient'
 }
+assert (set(_orientation_options.keys()).issubset(set(schema['properties']['orientation']['enum'])))
 
 properties = {
     'Dipole moment': 'gexpec,dm',
@@ -61,9 +90,34 @@ properties = {
     'Darwin': 'gexpec,darw',
 }
 
-initial_orbital_methods = ['HF', 'KS']
+_initial_orbital_methods = ['HF', 'KS']
 
-supported_methods = []
+_supported_methods = []
+
+if not '_procedures_registry' in locals():
+    try:
+        _procedures_registry = pymolpro.procedures_registry()
+        if not _procedures_registry:
+            raise ValueError
+    except Exception as e:
+        _procedures_registry = {}
+for keyfound in _procedures_registry.keys():
+    if _procedures_registry[keyfound]['class'] == 'PROG':
+        _supported_methods.append(_procedures_registry[keyfound]['name'])
+
+
+def supported_methods():
+    r"""
+    Returns a list of supported methods.
+    """
+    return _supported_methods
+
+
+def procedures_registry():
+    r"""
+    Returns a dictionary with procedure names as keys and procedures as values.
+    """
+    return _procedures_registry
 
 
 class InputSpecification(UserDict):
@@ -71,13 +125,13 @@ class InputSpecification(UserDict):
 
     def __init__(self, input=None, allowed_methods=[], debug=False, specification=None, directory=None):
         super(InputSpecification, self).__init__()
-        self.allowed_methods = list(set(allowed_methods).union(set(supported_methods)))
+        self.allowed_methods = list(set(allowed_methods).union(set(_supported_methods)))
         self.directory = directory
         self['procname'] = 'ansatz'
         # print('self.allowed_methods',self.allowed_methods)
         if specification is not None:
             for k in specification:
-                self[k] = specification[k]
+                self[k] = deepcopy(specification[k])
         if input is not None:
             try:
                 self.parse(input)
@@ -87,6 +141,11 @@ class InputSpecification(UserDict):
                 self.clear()
         if 'hamiltonian' not in self and self.data:
             self['hamiltonian'] = 'PP'
+
+    def validate(self):
+        jsonschema.validate(instance=json.loads(json.dumps(dict(self))), schema=schema)
+        pass
+
 
     def parse(self, input: str, debug=False):
         r"""
@@ -153,15 +212,15 @@ class InputSpecification(UserDict):
                 if command == df_prefix.lower() + 'ks': command = df_prefix.lower() + 'rks'
                 if command == df_prefix.lower() + 'ldf-ks': command = df_prefix.lower() + 'ldf-rks'
             # print('command', command,'line',line,'group',group)
-            for m in initial_orbital_methods:
+            for m in _initial_orbital_methods:
                 if m.lower() in command.lower() and not any([s + m.lower() in command.lower() for s in ['r', 'u']]):
                     loc = command.lower().index(m.lower())
                     command = re.sub(m.lower(), 'r' + m.lower(), command, flags=re.IGNORECASE)
                     line = re.sub(m.lower(), 'r' + m.lower(), line, flags=re.IGNORECASE)
             if re.match('^orient *, *', line, re.IGNORECASE):
                 line = re.sub('^orient *, *', '', line, flags=re.IGNORECASE)
-                for orientation_option in orientation_options.keys():
-                    if (line.lower() == orientation_options[orientation_option].lower()):
+                for orientation_option in _orientation_options.keys():
+                    if (line.lower() == _orientation_options[orientation_option].lower()):
                         self['orientation'] = orientation_option
                         break
             elif command.lower() == 'angstrom':
@@ -174,18 +233,19 @@ class InputSpecification(UserDict):
             elif ((command.lower() == 'nosym') or (re.match('^symmetry *, *', line, re.IGNORECASE))):
                 line = re.sub('^symmetry *, *', '', line, flags=re.IGNORECASE)
                 line = "symmetry," + line
-                for symmetry_command in wave_fct_symm_commands.keys():
-                    if (line.lower() == wave_fct_symm_commands[symmetry_command]):
-                        self['wave_fct_symm'] = symmetry_command
+                for symmetry_command in _symmetry_commands.keys():
+                    if (line.lower() == _symmetry_commands[symmetry_command]):
+                        self['symmetry'] = symmetry_command
                         break
             elif re.match('^dkho *=.*', command, re.IGNORECASE):
                 self['hamiltonian'] = re.sub('^dkho *= *', 'DK', command, flags=re.IGNORECASE).replace('DK1', 'DK')
             elif line.lower() in properties.values():
                 if 'properties' not in self: self['properties'] = []
                 self['properties'] += [k for k, v in properties.items() if line.lower() == v]
-            elif line.lower().strip().replace('}','').replace('{','') in [orbital_types[k]['command'] for k in orbital_types.keys()]:
-                for k in orbital_types:
-                    if line.lower().strip().replace('}','').replace('{','') == orbital_types[k]['command']:
+            elif line.lower().strip().replace('}', '').replace('{', '') in [_local_orbital_types[k]['command'] for k in
+                                                                            _local_orbital_types.keys()]:
+                for k in _local_orbital_types:
+                    if line.lower().strip().replace('}', '').replace('{', '') == _local_orbital_types[k]['command']:
                         if 'orbitals' not in self: self['orbitals'] = []
                         self['orbitals'].append(k)
             elif re.match('^geometry *= *{', group, re.IGNORECASE):
@@ -227,21 +287,22 @@ class InputSpecification(UserDict):
                 # print('made basis specification',self)
             elif re.match('^basis *=', line, re.IGNORECASE):
                 # raise ValueError('unparseable basis', line)
-                self.data.clear(); return self
+                self.data.clear();
+                return self
                 pass
             elif re.match('(set,)?[a-z][a-z0-9_]* *=.*$', line, flags=re.IGNORECASE):
                 line = re.sub(' *!.*$', '', re.sub('set *,', '', line, flags=re.IGNORECASE)).strip()
                 while (
                         newline := re.sub(r'(\[[0-9!]+),', r'\1!',
                                           line)) != line: line = newline  # protect eg occ=[3,1,1]
-                fields = split_comma(line)
+                fields = _split_comma(line)
                 for field in fields:
                     key = re.sub(' *=.*$', '', field)
                     value = re.sub('.*= *', '', field)
                     # print('field, key=', key, 'value=', value)
                     variables[key] = value.replace('!', ',')  # unprotect
-            elif command in parameter_commands.values():
-                spec_field = [k for k, v in parameter_commands.items() if v == command][0]
+            elif command in _parameter_commands.values():
+                spec_field = [k for k, v in _parameter_commands.items() if v == command][0]
                 fields = re.sub('^ *' + command.lower() + ' *,*', '', line.strip().lower(), flags=re.IGNORECASE).split(
                     ',')
                 self[spec_field] = {
@@ -255,7 +316,7 @@ class InputSpecification(UserDict):
                                    flags=re.IGNORECASE) for
                       df_prefix
                       in df_prefixes
-                      for method in self.allowed_methods + [self['procname'], 'optg', 'frequencies','interact']]):
+                      for method in self.allowed_methods + [self['procname'], 'optg', 'frequencies', 'interact']]):
                 step = {}
                 method_ = command
                 if command[:3] == 'df-':
@@ -270,7 +331,7 @@ class InputSpecification(UserDict):
                     return self
                 method_options = (re.sub(';.*$', '', line.lower()).replace('}', '') + ',').split(',', 1)[1]
 
-                method_options_ = split_comma(method_options.strip(', \n'))
+                method_options_ = _split_comma(method_options.strip(', \n'))
                 if method_options_ and method_options_[-1] == '': method_options_ = method_options_[:-2]
                 # print('method_options_',method_options_)
                 step['command'] = method_
@@ -314,13 +375,16 @@ class InputSpecification(UserDict):
         #     spin_ = self['variables']['spin']
         # if 'variables' not in self: self['variables'] = {}
         # self['variables']['spin'] = spin_
+
+        self.validate()
         return self
 
     def regularise_procedure_references(self):
         for step in self['steps']:
             job_type_commands = [job_type_ste['command'] for job_type_step in job_type_steps.values() for job_type_ste
                                  in job_type_step if
-                                 'command' in job_type_ste and job_type_ste['command']!=self['procname']] + ['frequencies']
+                                 'command' in job_type_ste and job_type_ste['command'] != self['procname']] + [
+                                    'frequencies']
             if 'command' in step.keys() and step['command'] in job_type_commands:
                 step['options'] = [option for option in step['options'] if
                                    'proc' not in option] if 'options' in step else []
@@ -335,10 +399,10 @@ class InputSpecification(UserDict):
         """
         _input = ''
         if 'orientation' in self:
-            _input += 'orient,' + orientation_options[self['orientation']] + '\n'
+            _input += 'orient,' + _orientation_options[self['orientation']] + '\n'
 
-        if 'wave_fct_symm' in self:
-            _input += wave_fct_symm_commands[self['wave_fct_symm']] + '\n'
+        if 'symmetry' in self:
+            _input += _symmetry_commands[self['symmetry']] + '\n'
 
         if 'angstrom' in self and self['angstrom']:
             _input += 'angstrom' + '\n'
@@ -370,7 +434,7 @@ class InputSpecification(UserDict):
         if 'properties' in self:
             for p in self['properties']:
                 _input += properties[p] + '\n'
-        for typ, command in parameter_commands.items():
+        for typ, command in _parameter_commands.items():
             if typ in self and len(self[typ]) > 0:
                 _input += command
                 for k, v in self[typ].items():
@@ -379,23 +443,24 @@ class InputSpecification(UserDict):
         if 'core_correlation' in self:
             _input += 'core,' + self['core_correlation'] + '\n'
         if 'steps' in self and self.job_type is not None:
-            _input += '\nproc '+self['procname']+'\n'
+            _input += '\nproc ' + self['procname'] + '\n'
         for step in (self['steps'] if 'steps' in self else []):
             if self.job_type is not None and step['command'] == job_type_steps[self.job_type][0]['command']:
                 _input += 'endproc\n\n'
             _input += '{'
             # print('job_type_steps[self.job_type]',job_type_steps[self.job_type])
             if 'density_fitting' in self and self['density_fitting'] and (self.job_type is None or not any(
-                    [step_['command'] == step['command'] for step_ in job_type_steps[self.job_type] if 'command' in step_])) and 'command' in step and step[
-                                                                                                              'command'].lower()[
-                                                                                                          :4] != 'pno-' and \
+                    [step_['command'] == step['command'] for step_ in job_type_steps[self.job_type] if
+                     'command' in step_])) and 'command' in step and step[
+                                                                         'command'].lower()[
+                                                                     :4] != 'pno-' and \
                     step['command'].lower()[:4] != 'ldf-':
                 _input += 'df-'
             _input += step['command']
             # if re.match('[ru]ks', step['command'], re.IGNORECASE) and 'density_functional' in step:
             #     _input += ',' + step['density_functional']
             if 'options' in step:
-                numerical_options=[]
+                numerical_options = []
                 for option in step['options']:
                     if re.match('[0123456789]+', option):
                         numerical_options.append(option)
@@ -413,7 +478,7 @@ class InputSpecification(UserDict):
             _input += '}\n'
         if 'orbitals' in self:
             for k in self['orbitals']:
-                if orbital_types[k]['command'].strip(): _input += '{' + orbital_types[k]['command'] + '}\n'
+                if _local_orbital_types[k]['command'].strip(): _input += '{' + _local_orbital_types[k]['command'] + '}\n'
                 # if orbital_types[k]['command'].strip(): _input += orbital_types[k]['command'] + '\n'
                 # _input += 'put,molden,' + k + '.molden' + '\n'
                 # _input += 'put,xml\n'
@@ -510,7 +575,8 @@ class InputSpecification(UserDict):
         new_steps.append({'command': method.lower()})
         if 'steps' in self and self.job_type is not None:
             for step in self['steps']:
-                if 'command' in step and any([step_['command'] == step['command'] for step_ in job_type_steps[self.job_type]]):
+                if 'command' in step and any(
+                        [step_['command'] == step['command'] for step_ in job_type_steps[self.job_type]]):
                     new_steps.append(step)
         self['steps'] = new_steps
 
@@ -560,7 +626,7 @@ class InputSpecification(UserDict):
     @property
     def basis_hamiltonian(self):
         result = 'AE'
-        for v, k in hamiltonians.items():
+        for v, k in _hamiltonians.items():
             if k and 'basis' in self and 'default' in self['basis'] and k['basis_string'] in \
                     self['basis']['default']: result = v
         if 'variables' in self and 'dkho' in self['variables']:
@@ -615,7 +681,7 @@ class InputSpecification(UserDict):
             line_number += 1
             if line.strip().isdigit() and line_number == 1: start_line = 3
             if line_number >= start_line and line.strip():
-                word = re.sub(r'\s+',',',line.strip()).split(',')[0]
+                word = re.sub(r'\s+', ',', line.strip()).split(',')[0]
                 word = re.sub(r'\d.*$', '', word[0].upper() + word[1:].lower())
                 atomic_number = periodic_table.index(word) + 1
                 total_nuclear_charge += atomic_number
@@ -744,12 +810,12 @@ def canonicalise(input):
         # for m in initial_orbital_methods:
         #     line = re.sub('r' + m, m, line, flags=re.IGNORECASE)
         # transform in alternate spin markers
-        for m in initial_orbital_methods:
+        for m in _initial_orbital_methods:
             line = re.sub('^{' + m, '{r' + m.lower(), line, flags=re.IGNORECASE)
 
-        if line.lower().strip() in job_type_aliases.keys(): line = job_type_aliases[line.lower().strip()]
-        if line.lower().strip() in wave_fct_symm_aliases.keys():
-            line = wave_fct_symm_aliases[line.lower().strip()]
+        if line.lower().strip() in _job_type_aliases.keys(): line = _job_type_aliases[line.lower().strip()]
+        if line.lower().strip() in _symmetry_command_aliases.keys():
+            line = _symmetry_command_aliases[line.lower().strip()]
         line = line.replace('!', '&&&&&')  # protect trailing comments
         while (newline := re.sub(r'(\[[0-9!]+),', r'\1!', line)) != line: line = newline  # protect eg occ=[3,1,1]
         if re.match(r'[a-z][a-z0-9_]* *= *\[?[!a-z0-9_. ]*\]? *,', line, flags=re.IGNORECASE):
@@ -760,7 +826,7 @@ def canonicalise(input):
         line = line.replace('&&&&&', '!').strip() + '\n'  # unprotect
         # print('line before bracketing',line, in_group)
         if line.strip() and line.strip()[0] != '{' and not re.match(r'^ *\w+ *=', line) and not in_group and not any(
-                [v in line for v in parameter_commands.values()]):
+                [v in line for v in _parameter_commands.values()]):
             comment_split = line.split('!')
             line = '{' + comment_split[0].strip() + '}'  # + (comment_split[1] if len(comment_split) > 1 else '')
         # print('line after bracketing',line)
@@ -774,17 +840,18 @@ def equivalent(input1, input2, debug=False):
     if isinstance(input1, InputSpecification): return equivalent(input1.input(), input2, debug)
     if isinstance(input2, InputSpecification): return equivalent(input1, input2.input(), debug)
     if debug:
-        logger.debug('equivalent: input1=', input1)
-        logger.debug('equivalent: input2=', input2)
-        logger.debug('equivalent: canonicalise(input1)=', canonicalise(input1))
-        logger.debug('equivalent: canonicalise(input2)=', canonicalise(input2))
-        logger.debug('will return this', canonicalise(input1).lower() == canonicalise(input2).lower())
+        _logger.debug('equivalent: input1=', input1)
+        _logger.debug('equivalent: input2=', input2)
+        _logger.debug('equivalent: canonicalise(input1)=', canonicalise(input1))
+        _logger.debug('equivalent: canonicalise(input2)=', canonicalise(input2))
+        _logger.debug('will return this', canonicalise(input1).lower() == canonicalise(input2).lower())
     return canonicalise(input1).lower() == canonicalise(input2).lower()
 
-def split_comma(string):
+
+def _split_comma(string):
     string_ = string
-    string__ = re.sub(r'(\[.*),(.*\])',r'\1@@@\2',string_)
+    string__ = re.sub(r'(\[.*),(.*\])', r'\1@@@\2', string_)
     while string__ != string_:
         string_ = string__
-        string__ = re.sub(r'(\[.*),(.*\])',r'\1@@@\2',string_)
+        string__ = re.sub(r'(\[.*),(.*\])', r'\1@@@\2', string_)
     return [field.replace('@@@', ',') for field in (string__.split(','))]

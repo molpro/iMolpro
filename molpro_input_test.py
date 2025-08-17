@@ -1,16 +1,21 @@
+import json
 import os
 import re
 
-from molpro_input import equivalent, canonicalise, InputSpecification, supported_methods
+import jsonschema
+
+import molpro_input
+from molpro_input import equivalent, canonicalise, InputSpecification, _supported_methods
 import pytest
 
 
 @pytest.fixture
 def methods():
     import molpro_input
-    molpro_input.supported_methods = ['RHF', 'CCSD', 'RKS', 'CASSCF', 'MRCI', 'UHF', 'UKS', 'OCC', 'OPTG',
+    molpro_input._supported_methods = ['RHF', 'CCSD', 'RKS', 'CASSCF', 'MRCI', 'UHF', 'UKS', 'OCC', 'OPTG',
                                       'FREQUENCIES', 'THERMO']
-    yield supported_methods
+    return molpro_input._supported_methods
+    # yield supported_methods
 
 
 def test_file(methods, tmpdir):
@@ -268,3 +273,37 @@ def test_open_shell_electrons(methods, tmpdir):
         specification = InputSpecification(re.sub('{.*}', str(open_shell_xyz_file), test))
         assert specification.open_shell_electrons == outcome
         os.remove(open_shell_xyz_file)
+
+
+def test_json():
+    from jsonschema import validate
+    good_strings = [
+        '{"geometry":"He", "method":"hf"}',
+        '{"geometry":"He", "method":"hf", "basis": {"default":"cc-pvdz"}}',
+        '{"geometry":"He", "method":"hf", "basis": {"default":"cc-pvdz", "elements":{}}}',
+        '{"geometry":"He", "method":"hf", "basis": {"default":"cc-pvdz", "elements":{"Cu":"cc-pVTZ-PP","Zn":"cc-pVTZ"}}}',
+        '{"geometry":"He", "method": "hf", "hamiltonian":"PP"}',
+        '{"geometry":"He", "method": "hf", "hamiltonian":"AE"}',
+        '{"geometry":"He", "method": "hf", "orientation":"mass"}',
+        '{"procname": "ansatz", "steps": [{"command": "rhf"}, {"command": "mp2"}, {"command": "ansatz"}], "symmetry": "none", "geometry": "PubChem-962.xyz", "geometry_external": true, "basis": {"default": "cc-pV(T+d)Z", "elements": {}}, "density_fitting": true, "orbitals": ["ibo", "pipek", "nbo", "boys"], "hamiltonian": "AE"}',
+    ]
+    good_strings.append(json.dumps(dict(molpro_input.InputSpecification('geometry={He}'))))
+    bad_strings = [
+        '{}',
+        '{"geometry":"He", "hamiltonian":"pp"}',
+        '{"geometry":"He", "orientation":"Mass"}',
+        '{"geometry":"He", "method":"hf", "basis": {"defaul":"cc-pvdz"}}',
+        '{"geometry":"He", "method":"hf", "basis": {"default":"cc-pvdz", "elements":["Cu","cc-pVTZ-PP"]}}',
+        '{"geometry":"He", "method":"hf", "basis": {"default":"cc-pvdz", "elements":{"Cu":1,"Zn":2}}}',
+        '{"procname": "ansatz", "steps": [{"command": "rhf"}, {"command": "mp2"}, {"command": "ansatz"}], "symmetry": "none", "geometry": "PubChem-962.xyz", "geometry_external": true, "basis": {"default": "cc-pV(T+d)Z", "elements": {}}, "density_fitting": true, "orbitals": ["ibo", "pipek", "nbo", "ibo"], "hamiltonian": "AE"}',
+    ]
+    with open('molpro_input.json', 'r') as f:
+        schema = json.load(f)
+    for string in good_strings:
+        obj = json.loads(string)
+        validate(instance=obj, schema=schema)
+    for string in bad_strings:
+        with pytest.raises(jsonschema.exceptions.ValidationError) as excinfo:
+            obj = json.loads(string)
+            validate(instance=obj, schema=schema)
+    print('schema',schema['properties']['orientation']['enum'])
