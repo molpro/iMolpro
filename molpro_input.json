@@ -2,31 +2,74 @@
   "$id": "https://www.molpro.net/molpro-input.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Simple Molpro Input",
+  "description": "Structured input for Molpro that covers the case of a single ansatz, with a given basis set at a given geometry. All fields are optional, with reasonable defaults, although at least geometry, method and basis will normally be specified",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "geometry": {
+      "description": "The geometry, in any form that Molpro will accept. If the value is the name of a readable file, that file will be the source of the geometry specification; otherwise, the value will be interpreted directly, with or without enclosing {}.",
       "default": "He",
       "type": "string"
     },
-    "geometry_external": {
-      "description": "Whether the geometry is an external file name instead of an inline geometry specification",
-      "default": false,
-      "type": "boolean"
+    "job_type": {
+      "description": "The job type - single point, optimisation, frequencies etc.",
+      "default": "SP",
+      "anyOf": [
+        {
+          "const": "SP",
+          "title": "Single point",
+          "description": "Calculate at a single geometry",
+          "default": ""
+        },
+        {
+          "const": "OPT",
+          "title": "Geometry optimisation",
+          "description": "Optimise the geometry"
+        },
+        {
+          "const": "FREQ",
+          "title": "Hessian",
+          "description": "Calculate harmonic force constants and normal modes"
+        },
+        {
+          "const": "OPT+FREQ",
+          "title": "Optimise + vib frequencies",
+          "description": "Optimise the geometry and then calculate normal modes"
+        },
+        {
+          "const": "INTERACT",
+          "description": "",
+          "title": "Non-covalent complex"
+        }
+      ]
     },
     "method": {
       "default": "hf",
-      "type": "string"
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
     },
-    "properties": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": {
-        "type": "string"
-      }
+    "hamiltonian": {
+      "description": "The Hamiltonian to be used - Schrödinger all-electron, pseudopotential or scalar-relativistic.",
+      "default": "PP",
+      "enum": [
+        "AE",
+        "PP",
+        "DK",
+        "DK3"
+      ]
     },
     "basis": {
       "type": "object",
+      "description": "Specification of the orbital basis set",
       "properties": {
         "default": {
           "default": "cc-pVTZ-PP",
@@ -41,22 +84,93 @@
       },
       "additionalProperties": false
     },
-    "procname": {
-      "type": "string"
+    "core_correlation": {
+      "type": "string",
+      "description": "Specification of core correlation"
     },
-    "hamiltonian": {
-      "description": "The Hamiltonian to be used - Schrödinger all-electron, pseudopotential or scalar-relativistic.",
-      "default": "PP",
-      "enum": [
-        "AE",
-        "PP",
-        "DK",
-        "DK3"
-      ]
-    },
-    "steps": {
+    "properties": {
       "type": "array",
-      "description": "Job steps defining the energy."
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "orbitals": {
+      "description": "Types of localised orbitals to be calculated.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "ibo",
+          "pipek",
+          "nbo",
+          "boys"
+        ]
+      }
+    },
+    "variables": {
+      "description": "Variables to be defined at the start of the job",
+      "type": "object"
+    },
+    "parameter": {
+      "description": "Items for gparam in Molpro input",
+      "type": "object"
+    },
+    "threshold": {
+      "description": "Items for gthresh in Molpro input",
+      "type": "object"
+    },
+    "print": {
+      "description": "Items for gprint in Molpro input",
+      "type": "object"
+    },
+    "job_type_commands": {
+      "description": "Commands for the job_type drivers",
+      "uniqueItems": true,
+      "type": "object",
+      "items": {
+        "SP": {
+          "type": "array",
+          "default": []
+        },
+        "OPT": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "optg,savexyz=optimised.xyz"
+          ]
+        },
+        "FREQ": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "freq"
+          ]
+        },
+        "OPT+FREQ": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "optg,savexyz=optimised.xyz",
+            "freq;thermo"
+          ]
+        },
+        "INTERACT": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "interact"
+          ]
+        }
+      }
     },
     "angstrom": {
       "type": "boolean",
@@ -84,22 +198,33 @@
       "default": false,
       "type": "boolean"
     },
-    "orbitals": {
-      "description": "Types of localised orbitals to be calculated.",
-      "type": "array",
-      "uniqueItems": true,
-      "items": {
-        "enum": [
-          "ibo",
-          "pipek",
-          "nbo",
-          "boys"
-        ]
-      }
+    "prologue": {
+      "description": "Arbitrary Molpro commands to appear at the start of the job",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
     },
-    "procname": {
-      "description": "The name of the procedure to be constructed for complex job types.",
-      "type": "string"
+    "epilogue": {
+      "description": "Arbitrary Molpro commands to appear at the end of the job",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
     }
   }
 }

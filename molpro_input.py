@@ -2,9 +2,10 @@ import logging
 import os
 import pathlib
 import re
-from collections import UserDict
+from collections import UserDict, OrderedDict
 from copy import deepcopy
 import json
+from dataclasses import dataclass
 
 import jsonschema
 import pymolpro
@@ -36,11 +37,14 @@ _local_orbital_types = {
     'nbo': {'text': 'NBO', 'command': 'nbo'},
     'boys': {'text': 'Boys', 'command': 'locali'},
 }
+
+
 def local_orbital_types():
     r"""
     Return the supported local orbital types.
     """
     return _local_orbital_types
+
 
 _parameter_commands = {
     'parameters': 'gparam',
@@ -52,8 +56,12 @@ _job_types = {
     'SP': 'Single geometry',
     'OPT': 'Geometry optimization',
     'FREQ': 'Hessian',
-    'FREQHESS': 'Geometry and hessian',
+    'OPT+FREQ': 'Geometry and hessian',
+    'INTERACT': 'Non-covalent complex',
 }
+assert (set(_job_types.keys()).issubset(set([a['const'] for a in schema['properties']['job_type']['anyOf']])))
+
+
 def job_types():
     r"""
     Return the supported job types.
@@ -61,13 +69,7 @@ def job_types():
     """
     return _job_types
 
-job_type_steps = {
-    'Single point energy': [{'command': 'ansatz'}],
-    'Geometry optimisation': [{'command': 'optg', 'options': ['savexyz=optimised.xyz']}],
-    'Hessian': [{'command': 'frequencies', 'directives': [{'command': 'thermo'}]}],
-    'Non-covalent complex': [{'command': 'interact', 'directives': []}],
-}
-job_type_steps['Optimise + vib frequencies'] = job_type_steps['Geometry optimisation'] + job_type_steps['Hessian']
+
 _job_type_aliases = {
     '{optg}': 'optg',
     '{freq}': 'frequencies',
@@ -120,32 +122,141 @@ def procedures_registry():
     return _procedures_registry
 
 
+@dataclass
+class JobStep:
+    command: str
+    options: OrderedDict
+    directives: list
+
+    def __init__(self, card: str):
+        self.load(card)
+
+    def load(self, card: str):
+        lines = card.replace(';', '\n').split('\n')
+        fields = lines[0].split(',')
+        self.command = fields[0]
+        self.options = OrderedDict()
+        for field in fields[1:]:
+            if '=' in field:
+                key, value = field.split('=')
+            else:
+                key, value = field, ''
+            self.options[key] = value
+        self.directives = lines[1:]
+
+    def dump(self):
+        card = '{' + self.command
+        for option, value in self.options.items():
+            card += ',' + option
+            if value:
+                card += '=' + value
+        for directive in self.directives:
+            card += '\n' + directive
+        card += '}'
+        return card
+
+
+# _default_job_type_commands = {
+#     'SP': ['ansatz'],
+#     'OPT': ['optg, savexyz=optimised.xyz'],
+#     'FREQ': ['frequencies;thermo'],
+#     'INTERACT': ['interact'],
+# }
+# _default_job_type_commands['OPT+FREQ'] = _default_job_type_commands['OPT'] + _default_job_type_commands['FREQ']
+
+_default_job_type_commands = {k:v['default'] for k, v in schema['properties']['job_type_commands']['items'].items()}
+
+def load_permissive_json(string):
+    if type(string) != str:
+        return string
+    _string = string.strip()
+    if _string[0] == '{': _string = _string[1:]
+    if _string[-1] == '}': _string = _string[:-2]
+    result = {}
+    for keyval in _string.split(','):
+        key, value = re.split(r'[=:]',keyval)
+        key = re.sub(r'["\']','',key).strip()
+        value = re.sub(r'["\']','',value).strip()
+        if value == 'True':
+            value = True
+        if value == 'False':
+            value = False
+        result[key] = value
+    return result
+
+
 class InputSpecification(UserDict):
     hartree_fock_methods = ['RHF', 'RKS', 'UHF', 'UKS', 'LDF-RHF', 'LDF-UHF']
+
+    @property
+    def job_steps(self):
+        r"""
+        Returns the job steps in this input
+        """
+        job_steps = []
+        if 'method' in self:
+            if type(self['method']) is list:
+                for method_step in self['method']:
+                    job_steps.append(JobStep(method_step))
+            else:
+                job_steps.append(JobStep(self['method']))
+        if 'job_type' not in self:
+            self['job_type'] = self.schema['properties']['job_type']['default']
+        if 'job_type_commands' in self:
+            for k in range(len(self['job_type_commands'])):
+                job_steps.append(JobStep(self['job_type_commands'][k]))
+            for k in range(len(self['job_type_commands']), len(_default_job_type_commands[self['job_type']])):
+                job_steps.append(JobStep(_default_job_type_commands[self['job_type']][k]))
+        else:
+            for k in range(len(_default_job_type_commands[self['job_type']])):
+                job_steps.append(JobStep(_default_job_type_commands[self['job_type']][k]))
+
+    def set_job_step(self, job_step: JobStep, index: int):
+        if index < len(self['method']):
+            self['method'][index] = job_step.dump()
+        else:
+            if 'job_type_commands' not in self:
+                self['job_type_commands'] = []
+            for k in range(len(self['job_type_commands']), index):
+                self['job_type_commands'].append(_default_job_type_commands[self['job_type']][k])
+            if index < len(self['job_type_commands']):
+                self['job_type_commands'][index] = job_step.dump()
+            else:
+                self['job_type_commands'].append(job_step.dump())
 
     def __init__(self, input=None, allowed_methods=[], debug=False, specification=None, directory=None):
         super(InputSpecification, self).__init__()
         self.allowed_methods = list(set(allowed_methods).union(set(_supported_methods)))
         self.directory = directory
-        self['procname'] = 'ansatz'
+        self.procname = 'ansatz'
         # print('self.allowed_methods',self.allowed_methods)
+        # print(specification, type(specification))
         if specification is not None:
-            for k in specification:
-                self[k] = deepcopy(specification[k])
+            if type(specification) is str:
+                _specification = load_permissive_json(specification)
+            else:
+                _specification = specification
+            for k in _specification:
+                print(k, _specification[k])
+                self[k] = deepcopy(_specification[k])
+            print('InputSpecification() input=',input,'specification=',specification, '_specification=',_specification)
         if input is not None:
+            self.parse(input)
             try:
                 self.parse(input)
             except Exception as e:
                 print('Warning: InputSpecification.parse() has thrown an exception', e,
                       '\nPlease report, with a copy of the input, at https://github.com/molpro/iMolpro/issues/new')
                 self.clear()
-        if 'hamiltonian' not in self and self.data:
-            self['hamiltonian'] = 'PP'
+        # print('after parse',self)
+        if self.data:
+            for field in ['hamiltonian']:
+                if field not in self:
+                    self[field] = schema['properties'][field]['default']
 
     def validate(self):
         jsonschema.validate(instance=json.loads(json.dumps(dict(self))), schema=schema)
         pass
-
 
     def parse(self, input: str, debug=False):
         r"""
@@ -155,10 +266,12 @@ class InputSpecification(UserDict):
         :return:
         :rtype: InputSpecification
         """
-        if os.path.exists(input):
+        if (os.path.isfile(input) and os.access(input, os.R_OK)):
             with open(input, 'r') as f:
-                # print(input)
                 return self.parse(f.read())
+
+        if debug:
+            print('InputSpecification.parse() input=',input)
 
         # print('allowed_methods', self.allowed_methods)
         precursor_methods = ['LOCALI', 'CASSCF', 'OCC', 'CORE', 'CLOSED', 'FROZEN', 'WF',
@@ -170,8 +283,7 @@ class InputSpecification(UserDict):
         self.clear()
         variables = {}
         geometry_active = False
-        self['procname'] = 'ansatz'
-        self['steps'] = []
+        self.procname = 'ansatz'
         canonicalised_input_ = re.sub('basis\n(.*)\n *end', r'basis={\1}', input,
                                       flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
         canonicalised_input_ = re.sub('basis={\n', r'basis={', canonicalised_input_,
@@ -188,6 +300,9 @@ class InputSpecification(UserDict):
                                           flags=re.DOTALL | re.IGNORECASE)
         canonicalised_input_ = canonicalised_input_.replace('{FREQ}', '{frequencies\nthermo}')  # hack for gmolpro
 
+        if debug:
+            print('canonicalised_input_=',canonicalised_input_)
+
         # parse and protect {....}
         line_end_protected_ = '±'
         for i in range(len(canonicalised_input_)):
@@ -200,7 +315,10 @@ class InputSpecification(UserDict):
                         canonicalised_input_ = canonicalised_input_[:j] + line_end_protected_ + canonicalised_input_[
                                                                                                 j + 1:]
         canonicalised_input_ = canonicalised_input_.replace(';', '\n').replace(line_end_protected_, ';')
+        methods_still_possible = True
+        self['job_type'] = schema['properties']['job_type']['default']
         for line in canonicalised_input_.split('\n'):
+            # print('line=',line)
             line = re.sub('basis *,', 'basis=', line, flags=re.IGNORECASE)
             line = re.sub('basis=$,', 'basis=cc-pVDZ-PP', line, flags=re.IGNORECASE)
             group = line.strip()
@@ -226,8 +344,8 @@ class InputSpecification(UserDict):
             elif command.lower() == 'angstrom':
                 self['angstrom'] = True
             elif command.lower() == 'proc':
-                self['procname'] = re.sub('^ *proc *,* *', '', line, flags=re.IGNORECASE)
-                job_type_steps['Single point energy'][0]['command'] = self['procname']
+                self.procname = re.sub('^ *proc *,* *', '', line, flags=re.IGNORECASE)
+                # _default_job_type_commands[list(_default_job_type_commands.keys())[0]][0]['command'] = self.procname #TODO do this differently
             elif command.lower() == 'endproc':
                 pass
             elif ((command.lower() == 'nosym') or (re.match('^symmetry *, *', line, re.IGNORECASE))):
@@ -250,7 +368,7 @@ class InputSpecification(UserDict):
                         self['orbitals'].append(k)
             elif re.match('^geometry *= *{', group, re.IGNORECASE):
                 # print('geometry matched')
-                if 'steps' in self and self['steps']: self.data.clear(); return self  # input too complex
+                if not methods_still_possible: self.data.clear(); return self  # input too complex
                 if 'geometry' in self: self.data.clear(); return self  # input too complex
                 self['geometry'] = re.sub(';', '\n',
                                           re.sub('^geometry *= *{ *\n*', '', group + '\n', flags=re.IGNORECASE)).strip()
@@ -265,15 +383,15 @@ class InputSpecification(UserDict):
                 self['geometry'] = self['geometry'].rstrip(' \n') + '\n'
                 geometry_active = not re.match('.*}.*', line)
             elif re.match('^geometry *=', line, re.IGNORECASE):
-                if 'steps' in self and self['steps']: self.data.clear(); return self  # input too complex
+                if not methods_still_possible: self.data.clear(); return self  # input too complex
                 if 'geometry' in self: self.data.clear(); return self  # input too complex
                 self['geometry'] = re.sub('geometry *= *', '', line, flags=re.IGNORECASE)
                 self['geometry'] = re.sub(' *!.*', '', self['geometry'])
-                self['geometry_external'] = True
+                # self['geometry_external'] = True
             elif command == 'basis':
                 raise ValueError('** warning should not happen basis', line)
             elif re.match('^basis *= *[^{]', line, re.IGNORECASE):
-                if 'steps' in self and self['steps']: self.data.clear(); return self  # input too complex
+                if not methods_still_possible: self.data.clear(); return self  # input too complex
                 self['basis'] = {'default': (re.sub(',.*', '', re.sub(' *basis *= *{*(default=)*', '',
                                                                       group.replace('{', '').replace('}', ''),
                                                                       flags=re.IGNORECASE)))}
@@ -312,54 +430,76 @@ class InputSpecification(UserDict):
 
             elif command == 'core':
                 self['core_correlation'] = (line + ',').split(',')[1].lower()
-            elif any([re.fullmatch('{?' + df_prefix + re.escape(method), command,
+            elif command in [re.sub(r'[,;].*$','',v[0]) for v in _default_job_type_commands.values() if v]:
+                methods_still_possible = False
+                if command[:4] == 'freq' and self['job_type'] == 'OPT':
+                    self['job_type'] = 'OPT+FREQ'
+                    self['job_type_commands'][self['job_type']] = self['job_type_commands'].pop('OPT')
+                else:
+                    self['job_type'] = [k for k,v in _default_job_type_commands.items() if v and re.sub(r'[,;].*$','',v[0]) == command][0]
+                    self['job_type_commands'] = {}
+                    self['job_type_commands'][self['job_type']] = []
+                self['job_type_commands'][self['job_type']].append(line.replace('}','').replace('{','').replace(',proc='+self.procname,''))
+                # print('job_type', self['job_type'])
+                # print('job_type_commands', self['job_type_commands'])
+            elif methods_still_possible and any([re.fullmatch('{?' + df_prefix + re.escape(method), command,
                                    flags=re.IGNORECASE) for
                       df_prefix
                       in df_prefixes
-                      for method in self.allowed_methods + [self['procname'], 'optg', 'frequencies', 'interact']]):
+                      for method in self.allowed_methods ]):
                 step = {}
+                method_with_options = re.sub('^{', '', re.sub('}$','',group))
+                # print('matched for method; line=',line,'command=',command,'group=',group)
                 method_ = command
                 if command[:3] == 'df-':
                     self['density_fitting'] = True
                     method_ = command[3:]
                 elif command[:4] == 'pno-' or command[:4] == 'ldf-':
                     self['density_fitting'] = True
-                elif 'density_fitting' in self and self['density_fitting'] and not any(
-                        [step_['command'] == command for job_type in job_type_steps for step_ in
-                         job_type_steps[job_type]]):
+                elif False and 'density_fitting' in self and self['density_fitting'] and not any(
+                        [step_['command'] == command for job_type in _default_job_type_commands for step_ in
+                         _default_job_type_commands[job_type]]): # what was this all about?
                     self.data.clear()
                     return self
-                method_options = (re.sub(';.*$', '', line.lower()).replace('}', '') + ',').split(',', 1)[1]
+                # method_options = (re.sub(';.*$', '', line.lower()).replace('}', '') + ',').split(',', 1)[1]
 
-                method_options_ = _split_comma(method_options.strip(', \n'))
-                if method_options_ and method_options_[-1] == '': method_options_ = method_options_[:-2]
+                # method_options_ = _split_comma(method_options.strip(', \n'))
+                # if method_options_ and method_options_[-1] == '': method_options_ = method_options_[:-2]
                 # print('method_options_',method_options_)
-                step['command'] = method_
-                if method_options_:
-                    step['options'] = method_options_
+                step = JobStep(line.replace(command,method_).replace('}','').lower())
+                # step['command'] = method_
+                # if method_options_:
+                #     step['options'] = method_options_
                 # TODO parsing of extras from following directives
                 # print('group before directives',group)
-                directives = group.replace('}', '').split(';')[1:]
+                # directives = group.replace('}', '').split(';')[1:]
                 # print('directives', directives)
                 # print('intial step', step)
-                for directive in directives:
-                    cmd, opt = (directive + ',').split(',', 1)
-                    # print('cmd',cmd,'opt',opt)
-                    opts = {m1.split('=')[0].strip(): (m1.split('=')[1].strip() if len(m1.split('=')) > 1 else '') for
-                            m1 in opt.rstrip(',').split(',')}
-                    if '' in opts: del opts['']
-                    if 'directives' not in step: step['directives'] = []
-                    opts = opt.rstrip(',').split(',')
-                    if opts and opts[-1] == '': opts = opts[:-2]
-                    d = {'command': cmd}
-                    if opts: d['options'] = opts
-                    step['directives'].append(d)
-                # print('step', step)
-                self['steps'].append(step)
-            elif any([re.match('{? *' + postscript, command, flags=re.IGNORECASE) for postscript in postscripts]):
-                if 'postscripts' not in self: self['postscripts'] = []
-                self['postscripts'].append(line.lower())
+                # for directive in directives:
+                #     cmd, opt = (directive + ',').split(',', 1)
+                #     print('cmd',cmd,'opt',opt)
+                    # opts = {m1.split('=')[0].strip(): (m1.split('=')[1].strip() if len(m1.split('=')) > 1 else '') for
+                    #         m1 in opt.rstrip(',').split(',')}
+                    # if '' in opts: del opts['']
+                    # if 'directives' not in step: step['directives'] = []
+                    # opts = opt.rstrip(',').split(',')
+                    # if opts and opts[-1] == '': opts = opts[:-2]
+                    # d = {'command': cmd}
+                    # if opts: d['options'] = opts
+                    # step['directives'].append(d)
+                if 'method' not in self:
+                    self['method'] = []
+                # method_ = command
+                # print('step.dump()',step.dump())
+                self['method'].append(step.dump().replace('{','').replace('}',''))
+                # print('self[method]', self['method'])
+            elif not methods_still_possible and line:
+                if 'epilogue' not in self:
+                    self['epilogue'] = []
+                self['epilogue'].append(line.replace('}','').lower())
 
+        if 'job_type_commands' in self and self['job_type_commands'].get('job_type','') == schema['properties']['job_type_commands']['items'][self['job_type']]['default']:
+            self.pop('job_type_commands')
         # if 'method' not in self and 'precursor_methods' in self:
         #     parse_method(self, self['precursor_methods'][-1])
         #     self['precursor_methods'].pop()
@@ -367,7 +507,7 @@ class InputSpecification(UserDict):
             self['variables'] = variables
         if 'hamiltonian' not in self:
             self['hamiltonian'] = self.basis_hamiltonian
-        self.regularise_procedure_references()
+        # self.regularise_procedure_references()
 
         # spin_ = self.open_shell_electrons
         # print('initial spin_',spin_)
@@ -376,21 +516,26 @@ class InputSpecification(UserDict):
         # if 'variables' not in self: self['variables'] = {}
         # self['variables']['spin'] = spin_
 
+        # print('before deduce_job_type', self)
+        # self.deduce_job_type()
+        # print('after deduce_job_type', self)
+        # print('final self',self)
         self.validate()
         return self
 
-    def regularise_procedure_references(self):
-        for step in self['steps']:
-            job_type_commands = [job_type_ste['command'] for job_type_step in job_type_steps.values() for job_type_ste
-                                 in job_type_step if
-                                 'command' in job_type_ste and job_type_ste['command'] != self['procname']] + [
-                                    'frequencies']
-            if 'command' in step.keys() and step['command'] in job_type_commands:
-                step['options'] = [option for option in step['options'] if
-                                   'proc' not in option] if 'options' in step else []
-                step['options'].append('proc=' + self['procname'])
+    # def regularise_procedure_references(self):
+    #     for step in self['steps']:
+    #         job_type_commands = [job_type_ste['command'] for job_type_step in _default_job_type_commands.values() for
+    #                              job_type_ste
+    #                              in job_type_step if
+    #                              'command' in job_type_ste and job_type_ste['command'] != self.procname] + [
+    #                                 'frequencies']
+    #         if 'command' in step.keys() and step['command'] in job_type_commands:
+    #             step['options'] = [option for option in step['options'] if
+    #                                'proc' not in option] if 'options' in step else []
+    #             step['options'].append('proc=' + self.procname)
 
-    def input(self):
+    def molpro_input(self):
         r"""
         Create a Molpro input from a declarative specification
         :param self:
@@ -398,21 +543,28 @@ class InputSpecification(UserDict):
         :rtype: str
         """
         _input = ''
-        if 'orientation' in self:
-            _input += 'orient,' + _orientation_options[self['orientation']] + '\n'
+        if 'prologue' in self:
+            if type(self['prologue']) is list:
+                for prologue in self['prologue']:
+                    _input += prologue + '\n'
+            else:
+                _input += self['prologue'] + '\n'
 
-        if 'symmetry' in self:
-            _input += _symmetry_commands[self['symmetry']] + '\n'
+            if 'orientation' in self:
+                _input += 'orient,' + _orientation_options[self['orientation']] + '\n'
 
-        if 'angstrom' in self and self['angstrom']:
-            _input += 'angstrom' + '\n'
+            if 'symmetry' in self:
+                _input += _symmetry_commands[self['symmetry']] + '\n'
+
+            if 'angstrom' in self and self['angstrom']:
+                _input += 'angstrom' + '\n'
 
         if 'geometry' in self:
-            _input += ('geometry=' + self[
-                'geometry'] + '\n' if 'geometry_external' in self else 'geometry={\n' +
-                                                                       self[
-                                                                           'geometry']).rstrip(
-                ' \n') + '\n' + ('' if 'geometry_external' in self else '}\n')
+            _geometry = self['geometry'].strip()
+            if (os.path.isfile(_geometry) and os.access(_geometry, os.R_OK)) or (_geometry[0] == '{' and _geometry[-1] == '}'):
+                _input += 'geometry=' + _geometry + '\n'
+            else:
+                _input += 'geometry=' + '{' + _geometry + '}' + '\n'
 
         if 'basis' in self:
             _input += 'basis=' + self['basis']['default']
@@ -420,71 +572,80 @@ class InputSpecification(UserDict):
                 for e, b in self['basis']['elements'].items():
                     _input += ',' + e + '=' + b
             _input += '\n'
-        if 'variables' not in self: self['variables'] = {}
-        if self['hamiltonian'][:2] == 'DK':
-            self['variables']['dkho'] = self['hamiltonian'][2] if len(
-                self['hamiltonian']) > 2 else '1'
-        elif 'dkho' in self['variables']:
-            del self['variables']['dkho']
+
+        if 'hamiltonian' in self and self['hamiltonian'][:2] == 'DK':
+            _input += 'dkho=' + self['hamiltonian'][2] if len(self['hamiltonian']) > 2 else '1' + '\n'
+
         if 'variables' in self:
             for k, v in self['variables'].items():
                 if v != '' and (k != 'charge' or v != '0'):
                     _input += k + '=' + v + '\n'
-        if len(self['variables']) == 0: del self['variables']
+
         if 'properties' in self:
             for p in self['properties']:
-                _input += properties[p] + '\n'
+                _input += properties[p] + '\n'  # TODO review. It looks wrong
+
         for typ, command in _parameter_commands.items():
             if typ in self and len(self[typ]) > 0:
                 _input += command
                 for k, v in self[typ].items():
                     _input += ',' + k.lower() + ('=' + str(v) if str(v) != '' else '')
                 _input += '\n'
+
         if 'core_correlation' in self:
             _input += 'core,' + self['core_correlation'] + '\n'
-        if 'steps' in self and self.job_type is not None:
-            _input += '\nproc ' + self['procname'] + '\n'
-        for step in (self['steps'] if 'steps' in self else []):
-            if self.job_type is not None and step['command'] == job_type_steps[self.job_type][0]['command']:
-                _input += 'endproc\n\n'
+
+        _input += '\nproc ' + self.procname + '\n'
+        _method = self['method'] if 'method' in self else schema['properties']['method']['default']
+        if type(_method) is str:
+            _method = [_method]
+        for step in _method:
             _input += '{'
-            # print('job_type_steps[self.job_type]',job_type_steps[self.job_type])
-            if 'density_fitting' in self and self['density_fitting'] and (self.job_type is None or not any(
-                    [step_['command'] == step['command'] for step_ in job_type_steps[self.job_type] if
-                     'command' in step_])) and 'command' in step and step[
-                                                                         'command'].lower()[
-                                                                     :4] != 'pno-' and \
-                    step['command'].lower()[:4] != 'ldf-':
+            if 'density_fitting' in self and self['density_fitting'] and step.lower()[:4] != 'pno-' and \
+                    step.lower()[:4] != 'ldf-':
                 _input += 'df-'
-            _input += step['command']
-            # if re.match('[ru]ks', step['command'], re.IGNORECASE) and 'density_functional' in step:
-            #     _input += ',' + step['density_functional']
-            if 'options' in step:
-                numerical_options = []
-                for option in step['options']:
-                    if re.match('[0123456789]+', option):
-                        numerical_options.append(option)
-                other_options = step['options'][len(numerical_options):]
-                other_options.sort()
-                step['options'] = numerical_options + other_options
-                for option in step['options']:
-                    _input += ',' + str(option)
-            if 'directives' in step:
-                for directive in step['directives']:
-                    _input += ';' + directive['command']
-                    if 'options' in directive:
-                        for option in directive['options']:
-                            _input += ',' + str(option)
+            _input += step
+            if False:  # TODO don't lose this logic
+                if 'options' in step:
+                    numerical_options = []
+                    for option in step['options']:
+                        if re.match('[0123456789]+', option):
+                            numerical_options.append(option)
+                    other_options = step['options'][len(numerical_options):]
+                    other_options.sort()
+                    step['options'] = numerical_options + other_options
+                    for option in step['options']:
+                        _input += ',' + str(option)
+                if 'directives' in step:
+                    for directive in step['directives']:
+                        _input += ';' + directive['command']
+                        if 'options' in directive:
+                            for option in directive['options']:
+                                _input += ',' + str(option)
             _input += '}\n'
+        _input += 'endproc\n\n'
+
+        _job_type = self['job_type'] if 'job_type' in self else schema['properties']['job_type']['default']
+        _job_type_commands = self['job_type_commands'][_job_type] if 'job_type_commands' in self and _job_type in self['job_type_commands'] else schema['properties']['job_type_commands']['items'][_job_type]['default']
+        if len(_job_type_commands) > 0:
+            for step in _job_type_commands:
+                _step = JobStep(step)
+                _step.options['proc']=self.procname
+                _input += _step.dump()+'\n'
+        else:
+            _input += self.procname+'\n'
+
         if 'orbitals' in self:
             for k in self['orbitals']:
-                if _local_orbital_types[k]['command'].strip(): _input += '{' + _local_orbital_types[k]['command'] + '}\n'
-                # if orbital_types[k]['command'].strip(): _input += orbital_types[k]['command'] + '\n'
-                # _input += 'put,molden,' + k + '.molden' + '\n'
-                # _input += 'put,xml\n'
-        if 'postscripts' in self:
-            for m in self['postscripts']:
-                _input += m + '\n'
+                if _local_orbital_types[k]['command'].strip(): _input += '{' + _local_orbital_types[k][
+                    'command'] + '}\n'
+
+        if 'epilogue' in self:
+            if type(self['epilogue']) is list:
+                for epilogue in self['epilogue']:
+                    _input += epilogue + '\n'
+            else:
+                _input += self['epilogue'] + '\n'
         return _input.rstrip('\n') + '\n'
 
     # def force_job_type(self, job_type):
@@ -505,36 +666,42 @@ class InputSpecification(UserDict):
     #             # print('removing', step)
     #             del self['steps'][step]
 
-    @property
-    def job_type(self):
+    def deduce_job_type(self):
         r"""
         Deduce the job type from the stored input specification
         :return: job type, or None if the input is complex
         :rtype: str
         """
-        job_type = None
-        for job_type_ in job_type_steps:
+        job_type = list(_default_job_type_commands.keys())[0]
+        for job_type_ in _default_job_type_commands:
+            print('job_type_', job_type_)
             ok = True
             last_idx = None
-            for step in job_type_steps[job_type_]:
+            for step in _default_job_type_commands[job_type_]:
                 commands = [s['command'].lower() for s in self['steps'] if 'command' in s]
+                print('commands', commands, 'step[command]', step['command'])
                 idx = commands.index(step['command'].lower()) if step['command'].lower() in commands else -1
                 if idx < 0 or (last_idx is not None and last_idx != idx - 1):
                     ok = False
                 last_idx = idx
             if ok: job_type = job_type_
+        print('job_type', job_type)
+        self['job_type'] = job_type
+        print('end of deduce_job_type', self)
         return job_type
 
-    @job_type.setter
-    def job_type(self, new_job_type):
-        if self.job_type == new_job_type: return
+    def set_job_type(self, new_job_type):
+        if self['job_type'] == new_job_type: return
+        self['job_type'] = new_job_type
         if 'steps' not in self: self['steps'] = []
         old_len = len(self['steps'])
         new_steps = [
                         step for step in self['steps']
-                        if step['command'].lower() not in [s['command'].lower() for j in job_type_steps for s in
-                                                           job_type_steps[j]]
-                    ] + job_type_steps[new_job_type]
+                        if
+                        step['command'].lower() not in [s['command'].lower() for j in _default_job_type_commands for s
+                                                        in
+                                                        _default_job_type_commands[j]]
+                    ] + _default_job_type_commands[new_job_type]
         for new_step in new_steps:
             for step in self['steps']:
                 if step['command'].lower() == new_step['command'].lower() and 'options' in step:
@@ -552,7 +719,7 @@ class InputSpecification(UserDict):
         if 'steps' in self:
             for i in range(len(self['steps'])):
                 command = self['steps'][i]['command'].lower()
-                if command not in [s['command'].lower() for t in job_type_steps.values() for s in t]:
+                if command not in [s['command'].lower() for t in _default_job_type_commands.values() for s in t]:
                     methods.append(command)
                     if command not in [m.lower() for m in self.hartree_fock_methods] and methods[0] in [m.lower() for m
                                                                                                         in
@@ -573,10 +740,11 @@ class InputSpecification(UserDict):
         if method.lower() not in [m.lower() for m in self.hartree_fock_methods]:
             new_steps.append({'command': ('rhf' if method[0].lower() != 'u' else 'uhf')})  # TODO df
         new_steps.append({'command': method.lower()})
-        if 'steps' in self and self.job_type is not None:
+        if 'steps' in self and self['job_type'] is not None:
             for step in self['steps']:
                 if 'command' in step and any(
-                        [step_['command'] == step['command'] for step_ in job_type_steps[self.job_type]]):
+                        [step_['command'] == step['command'] for step_ in
+                         _default_job_type_commands[self['job_type']]]):
                     new_steps.append(step)
         self['steps'] = new_steps
 
@@ -837,8 +1005,8 @@ def canonicalise(input):
 
 
 def equivalent(input1, input2, debug=False):
-    if isinstance(input1, InputSpecification): return equivalent(input1.input(), input2, debug)
-    if isinstance(input2, InputSpecification): return equivalent(input1, input2.input(), debug)
+    if isinstance(input1, InputSpecification): return equivalent(input1.molpro_input(), input2, debug)
+    if isinstance(input2, InputSpecification): return equivalent(input1, input2.molpro_input(), debug)
     if debug:
         _logger.debug('equivalent: input1=', input1)
         _logger.debug('equivalent: input2=', input2)

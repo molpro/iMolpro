@@ -30,7 +30,8 @@ def test_create_input(methods):
     for spec in [
         {'geometry': 'F\nH,F,1.7',
          'basis': {'default': 'cc-pVTZ', 'elements': {}},
-         'steps': [{'command': 'rks', 'options': ['b3lyp']}, {'command': 'ccsd'}],
+         # 'steps': [{'command': 'rks', 'options': ['b3lyp']}, {'command': 'ccsd'}],
+            'method': ['rks,b3lyp','ccsd'],
          'hamiltonian': 'AE',
          },
     ]:
@@ -39,7 +40,7 @@ def test_create_input(methods):
         # print('initial specification',specification)
         # print('created input',specification.create_input(),'---')
         # print('new_specification', InputSpecification(specification.create_input()))
-        assert InputSpecification(specification.input()) == specification
+        assert InputSpecification(specification.molpro_input(),debug=True) == specification
 
     for input in [
         'Geometry={F;H,F,1.7};basis={default=cc-pVTZ,h=cc-pVDZ} !some comment;{ks,b3lyp};{ccsd}\n',
@@ -67,7 +68,7 @@ def test_create_input(methods):
     ]:
         # print('new one---\n',input)
         specification = InputSpecification(input)
-        regenerated_input = specification.input()
+        regenerated_input = specification.molpro_input()
         regenerated_specification = InputSpecification(regenerated_input)
         assert regenerated_specification == specification
         if not equivalent(regenerated_input, input):
@@ -107,7 +108,7 @@ def test_recreate_input(methods):
         'geometry={Ne;He,Ne,2};basis={default=cc-pV(T+d)Z-PP,He=vdz(s)};gprint,basis;{df-rhf}',
     ]:
         specification = InputSpecification(input)
-        regenerated_input = specification.input()
+        regenerated_input = specification.molpro_input()
         regenerated_specification = InputSpecification(regenerated_input)
         if not equivalent(regenerated_input, input) or regenerated_specification != specification:
             print('specification', specification)
@@ -127,7 +128,7 @@ def test_variables(methods):
     # print('parsed specification', specification)
     # print('recreated input', create_input(specification))
     # print('parsed recreated input', InputSpecification(create_input(specification)))
-    assert InputSpecification(specification.input()) == specification
+    assert InputSpecification(specification.molpro_input()) == specification
     assert specification['variables']['spin'] == '2'
     assert specification['variables']['occ'] == '[3,1,1]'
 
@@ -152,7 +153,7 @@ def test_canonicalise(methods):
     for test_text in [
         'geometry={He}',
     ]:
-        assert equivalent(test_text, InputSpecification(test_text).input())
+        assert equivalent(test_text, InputSpecification(test_text).molpro_input())
 
 
 def test_basis_qualities(methods):
@@ -177,7 +178,7 @@ def test_basis_variants(methods):
         'basis,cc-pVDZ,zR=cc-pVDZ(s),h=cc-pVTZ': 'basis=cc-pVDZ,Zr=cc-pVDZ(s),H=cc-pVTZ',
         'basis={cc-pVDZ,zR=cc-pVDZ(s),h=cc-pVTZ}': 'basis=cc-pVDZ,Zr=cc-pVDZ(s),H=cc-pVTZ',
     }.items():
-        assert InputSpecification(test).input() == outcome.strip('\n') + '\n'
+        assert InputSpecification(test).molpro_input() == outcome.strip('\n') + '\n'
 
 
 def test_method(methods):
@@ -229,7 +230,7 @@ def test_job_type(methods):
             specification.method = method
             assert specification.job_type == outcome
         import molpro_input
-        for jt in molpro_input.job_type_steps:
+        for jt in molpro_input._default_job_type_commands:
             # print('force jt',jt)
             # print('before',specification, specification.job_type)
             specification.job_type = jt
@@ -278,6 +279,7 @@ def test_open_shell_electrons(methods, tmpdir):
 def test_json():
     from jsonschema import validate
     good_strings = [
+        '{}',
         '{"geometry":"He", "method":"hf"}',
         '{"geometry":"He", "method":"hf", "basis": {"default":"cc-pvdz"}}',
         '{"geometry":"He", "method":"hf", "basis": {"default":"cc-pvdz", "elements":{}}}',
@@ -285,25 +287,29 @@ def test_json():
         '{"geometry":"He", "method": "hf", "hamiltonian":"PP"}',
         '{"geometry":"He", "method": "hf", "hamiltonian":"AE"}',
         '{"geometry":"He", "method": "hf", "orientation":"mass"}',
-        '{"procname": "ansatz", "steps": [{"command": "rhf"}, {"command": "mp2"}, {"command": "ansatz"}], "symmetry": "none", "geometry": "PubChem-962.xyz", "geometry_external": true, "basis": {"default": "cc-pV(T+d)Z", "elements": {}}, "density_fitting": true, "orbitals": ["ibo", "pipek", "nbo", "boys"], "hamiltonian": "AE"}',
+        '{ "method": [ "rhf",  "mp2"], "symmetry": "none", "geometry": "PubChem-962.xyz", "basis": {"default": "cc-pV(T+d)Z", "elements": {}}, "density_fitting": true, "orbitals": ["ibo", "pipek", "nbo", "boys"], "hamiltonian": "AE"}',
     ]
     good_strings.append(json.dumps(dict(molpro_input.InputSpecification('geometry={He}'))))
     bad_strings = [
-        '{}',
         '{"geometry":"He", "hamiltonian":"pp"}',
         '{"geometry":"He", "orientation":"Mass"}',
         '{"geometry":"He", "method":"hf", "basis": {"defaul":"cc-pvdz"}}',
         '{"geometry":"He", "method":"hf", "basis": {"default":"cc-pvdz", "elements":["Cu","cc-pVTZ-PP"]}}',
         '{"geometry":"He", "method":"hf", "basis": {"default":"cc-pvdz", "elements":{"Cu":1,"Zn":2}}}',
-        '{"procname": "ansatz", "steps": [{"command": "rhf"}, {"command": "mp2"}, {"command": "ansatz"}], "symmetry": "none", "geometry": "PubChem-962.xyz", "geometry_external": true, "basis": {"default": "cc-pV(T+d)Z", "elements": {}}, "density_fitting": true, "orbitals": ["ibo", "pipek", "nbo", "ibo"], "hamiltonian": "AE"}',
+        '{ "method": [ "rhf",  "mp2"], "symmetry": "none", "geometry": "PubChem-962.xyz", "basis": {"default": "cc-pV(T+d)Z", "elements": {}}, "density_fitting": true, "orbitals": ["ibo", "pipek", "nbo", "ibo"], "hamiltonian": "AE"}',
     ]
     with open('molpro_input.json', 'r') as f:
         schema = json.load(f)
     for string in good_strings:
         obj = json.loads(string)
+        print('string', string)
+        print('obj',obj)
         validate(instance=obj, schema=schema)
+        print(molpro_input.InputSpecification(specification=obj).molpro_input())
     for string in bad_strings:
         with pytest.raises(jsonschema.exceptions.ValidationError) as excinfo:
             obj = json.loads(string)
+            print('string', string)
+            print('obj',obj)
             validate(instance=obj, schema=schema)
     print('schema',schema['properties']['orientation']['enum'])

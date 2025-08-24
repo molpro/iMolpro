@@ -484,7 +484,7 @@ class ProjectWindow(QMainWindow):
         if not guided and index == 1:
             box = QMessageBox()
             box.setText('Guided mode cannot be used because the input is too complex')
-            spec_input = molpro_input.canonicalise(self.input_specification.input())
+            spec_input = molpro_input.canonicalise(self.input_specification.molpro_input())
             file_input = molpro_input.canonicalise(self.input_pane.toPlainText())
             box.setInformativeText(
                 'The input regenerated from the attempt to parse into guided mode is\n' +
@@ -1349,7 +1349,7 @@ class GuidedPane(QWidget):
 
         self.guided_combo_job_type = QComboBox(self)
         self.guided_combo_job_type.setMaximumWidth(180)
-        self.guided_combo_job_type.addItems(molpro_input.job_type_steps.keys())
+        self.guided_combo_job_type.addItems(molpro_input._default_job_type_commands.keys())
         self.guided_combo_job_type.currentTextChanged.connect(
             lambda text: self.input_specification_change('job_type', text))
 
@@ -1460,7 +1460,7 @@ class GuidedPane(QWidget):
             else:
                 self.method_row.ensure_not(['Functional'])
                 self.method_row.ensure({'Core Correlation': self.guided_combo_core_correlation, })
-        self.guided_combo_job_type.setCurrentText(self.input_specification.job_type)
+        self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
         if 'core_correlation' in self.input_specification:
             self.guided_combo_core_correlation.setCurrentText(self.input_specification['core_correlation'])
 
@@ -1529,7 +1529,7 @@ class GuidedPane(QWidget):
                 self.method_asserted = True
             self.input_specification.polish()
         elif key == 'job_type':
-            self.input_specification.job_type = value
+            self.input_specification.set_job_type(value)
             self.input_specification.regularise_procedure_references()
         elif key == 'density_functional':
             self.input_specification.density_functional = value
@@ -1565,7 +1565,7 @@ class GuidedPane(QWidget):
     def refresh_input_from_specification(self):
         # logger.debug('refresh_input_from_specification')
         if not self.parent.guided_possible(): return
-        new_input = self.input_specification.input()
+        new_input = self.input_specification.molpro_input()
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
             self.input_pane.setPlainText(new_input)
 
