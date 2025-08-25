@@ -30,6 +30,9 @@ _hamiltonians = {
     'DK3': {'text': 'Douglas-Kroll-Hess 3', 'basis_string': '-DK3'},
 }
 assert (set(_hamiltonians.keys()).issubset(set(schema['properties']['hamiltonian']['enum'])))
+def hamiltonians():
+    return _hamiltonians
+
 
 _local_orbital_types = {
     'ibo': {'text': 'Intrinsic Bond', 'command': 'ibba'},
@@ -81,6 +84,8 @@ _orientation_options = {
     'none': 'noorient'
 }
 assert (set(_orientation_options.keys()).issubset(set(schema['properties']['orientation']['enum'])))
+def orientation_options():
+    return _orientation_options
 
 properties = {
     'Dipole moment': 'gexpec,dm',
@@ -146,8 +151,8 @@ class JobStep:
         #     self.options[key] = value
         self.directives = lines[1:]
 
-    def dump(self):
-        card = '{' + self.command
+    def dump(self, braces=True):
+        card = ('{' if braces else '') + self.command
         # for option, value in self.options.items():
         #     card += ',' + option
         #     if value:
@@ -156,7 +161,8 @@ class JobStep:
             card += ',' + option
         for directive in self.directives:
             card += '\n' + directive
-        card += '}'
+        if braces:
+            card += '}'
         return card
 
 
@@ -229,6 +235,7 @@ class InputSpecification(UserDict):
         return result
 
     def _ensure_orbital_method(self):
+        # print('enter ensure_orbital_method',self.get('method',''))
         if 'method' not in self:
             self['method'] = self.with_defaults['method']
             return
@@ -238,12 +245,14 @@ class InputSpecification(UserDict):
             return
         if methods[0] not in ['hf','rhf','uhf','ks','rks','uks','avas']:
             self['method'] = ['hf'] + methods
+        # print('exit ensure_orbital_method',self.get('method',''))
 
     @property
     def job_steps(self):
         r"""
         Returns the job steps in this input
         """
+        # print('enter job_steps',self.get('method',''))
         job_steps = []
         if 'method' in self:
             if type(self['method']) is list:
@@ -261,19 +270,21 @@ class InputSpecification(UserDict):
         else:
             for k in range(len(_default_job_type_commands[self['job_type']])):
                 job_steps.append(JobStep(_default_job_type_commands[self['job_type']][k]))
+        # print('exit job_steps',self.get('method',''))
+        return job_steps
 
     def set_job_step(self, job_step: JobStep, index: int):
         if index < len(self['method']):
-            self['method'][index] = job_step.dump()
+            self['method'][index] = job_step.dump(braces=False)
         else:
             if 'job_type_commands' not in self:
                 self['job_type_commands'] = []
             for k in range(len(self['job_type_commands']), index):
                 self['job_type_commands'].append(_default_job_type_commands[self['job_type']][k])
             if index < len(self['job_type_commands']):
-                self['job_type_commands'][index] = job_step.dump()
+                self['job_type_commands'][index] = job_step.dump(braces=False)
             else:
-                self['job_type_commands'].append(job_step.dump())
+                self['job_type_commands'].append(job_step.dump(braces=False))
 
     def __init__(self, input=None, allowed_methods=[], debug=False, specification=None, directory=None):
         super(InputSpecification, self).__init__()
@@ -812,9 +823,10 @@ class InputSpecification(UserDict):
         # self['steps'] = new_steps
         if method.lower() not in [m.lower() for m in self.hartree_fock_methods]:
             # new_steps.append({'command': ('rhf' if method[0].lower() != 'u' else 'uhf')})  # TODO df
-            self['method'] =('rhf' if method[0].lower() != 'u' else 'uhf' ) + ';' + method
+            self['method'] =['rhf' if method[0].lower() != 'u' else 'uhf' ,  method.lower()]
         else:
-            self['method'] = method
+            self['method'] = method.lower()
+        print('have set self[method]',self['method'])
 
 
     @property
@@ -984,25 +996,27 @@ class InputSpecification(UserDict):
         self.clean_coupled_cluster_property_input()
 
     def clean_coupled_cluster_property_input(self):
-        for step in self['steps']:
-            if step['command'].lower()[:4] in ['ccsd', 'bccd', 'qcisd']:
-                if 'directives' in step:
-                    for directive in step['directives']:
-                        if directive['command'].lower() == 'expec':
-                            operator = directive['options'][0].lower().replace('expec,', '')
+        for step_index, step in enumerate(self.job_steps):
+            # print('clean_coupled_cluster_property_input, step',step)
+            if step.command.lower()[:4] in ['ccsd', 'bccd', 'qcisd']:
+                for index, directive in enumerate(step.directives):
+                    _directive = JobStep(directive)
+                    if _directive.command.lower() == 'expec':
+                            operator = _directive.options[0].lower().replace('expec,', '')
                             property = [k for k, v in properties.items() if v == 'gexpec,' + operator][0]
                             if 'properties' in self and property not in \
                                     self['properties']:
-                                step['directives'].remove(directive)
+                                # step.directives.remove(_directive)
+                                step.directives.pop(index)
+                            self.set_job_step(step, step_index)
                 if 'properties' in self:
                     for property in self['properties']:
                         cmd = properties[property]
                         operator = cmd.lower().replace('gexpec,', '').strip()
-                        directive = {'command': 'expec', 'options': [operator]}
-                        if 'directives' not in step or directive not in step['directives']:
-                            if 'directives' not in step:
-                                step['directives'] = []
-                            step['directives'].append(directive)
+                        directive = 'expec,'+operator
+                        if directive not in step.directives:
+                            step.directives.append(directive)
+                            self.set_job_step(step, step_index)
 
 
 def canonicalise(input):

@@ -1198,23 +1198,16 @@ class BasisAndHamiltonianChooser(QWidget):
     null_prompt = '- Select -'
     all_qualities = 'All Qualities'
     basis_qualities = [all_qualities, 'SZ', 'DZ', 'TZ', 'QZ', '5Z', '6Z']
-    _hamiltonians = {
-        'AE': {'text': 'All Electron', 'basis_string': ''},
-        'PP': {'text': 'Pseudopotential', 'basis_string': '-PP'},
-        'DK': {'text': 'Douglas-Kroll-Hess', 'basis_string': '-DK'},
-        'DK3': {'text': 'Douglas-Kroll-Hess 3', 'basis_string': '-DK3'},
-    }
 
     def __init__(self, parent: ProjectWindow):
         super().__init__(parent)
-        assert(set(self._hamiltonians.keys()).issubset(set(molpro_input.schema['properties']['hamiltonian']['enum'])))
         self.parent = parent
 
         self.basis_registry = self.parent.project.basis_registry()
         self.desired_basis_quality = self.parent.input_specification.basis_quality
 
         self.combo_hamiltonian = QComboBox(self)
-        self.combo_hamiltonian.addItems([h['text'] for h in self._hamiltonians.values()])
+        self.combo_hamiltonian.addItems([h['text'] for h in molpro_input.hamiltonians().values()])
         self.combo_hamiltonian.currentTextChanged.connect(self.changed_hamiltonian)
 
         self.guided_combo_basis_quality = QComboBox(self)
@@ -1261,12 +1254,12 @@ class BasisAndHamiltonianChooser(QWidget):
 
             self.guided_combo_basis_quality.setCurrentText(self.basis_qualities[self.desired_basis_quality])
             self.combo_hamiltonian.setCurrentText(
-                self._hamiltonians[self.input_specification['hamiltonian']]['text'])
+                molpro_input.hamiltonians()[self.input_specification['hamiltonian']]['text'])
             break
 
     def changed_hamiltonian(self, text):
-        new_hamiltonian_ = list(self._hamiltonians.keys())[
-            [v['text'] for v in self._hamiltonians.values()].index(text)]
+        new_hamiltonian_ = list(molpro_input.hamiltonians().keys())[
+            [v['text'] for v in molpro_input.hamiltonians().values()].index(text)]
         if self.input_specification['hamiltonian'] != new_hamiltonian_:
             self.input_specification['hamiltonian'] = new_hamiltonian_
             if 'basis' in self.input_specification and 'default' in self.input_specification['basis']:
@@ -1282,7 +1275,7 @@ class BasisAndHamiltonianChooser(QWidget):
     def default_basis_for_hamiltonian(self, desired_basis_quality=0):
         quality = self.desired_basis_quality if desired_basis_quality > 0 else 3
         return {'default': 'cc-pV(' + self.basis_qualities[quality][0] + '+d)Z' +
-                           self._hamiltonians[self.input_specification['hamiltonian']]['basis_string'],
+                           molpro_input.hamiltonians()[self.input_specification['hamiltonian']]['basis_string'],
                 'elements': {}, 'quality': quality}
 
     def changed_default_basis(self, spec):
@@ -1331,7 +1324,7 @@ class GuidedPane(QWidget):
         self.setLayout(self.guided_layout)
 
         self.guided_combo_orientation = QComboBox(self)
-        self.guided_combo_orientation.addItems(molpro_input.schema['properties']['orientation']['enum'])
+        self.guided_combo_orientation.addItems(molpro_input.orientation_options().keys())
         self.guided_combo_orientation.currentTextChanged.connect(
             lambda text: self.input_specification_change('orientation', text))
 
@@ -1428,12 +1421,8 @@ class GuidedPane(QWidget):
         return self.parent.input_specification
 
     def refresh(self):
-        self.guided_combo_orientation.setCurrentText(
-            self.input_specification['orientation'] if 'orientation' in self.input_specification else
-            molpro_input.schema['properties']['orientation']['default'])
-        self.guided_combo_wave_fct_symm.setCurrentText(
-            self.input_specification['symmetry'] if 'symmetry' in self.input_specification else
-            molpro_input.schema['properties']['symmetry']['default'])
+        self.guided_combo_orientation.setCurrentText(self.input_specification.with_defaults['orientation'])
+        self.guided_combo_wave_fct_symm.setCurrentText(self.input_specification.with_defaults['symmetry'])
         if 'variables' in self.input_specification and 'charge' in self.input_specification['variables']:
             self.charge_line.setText(self.input_specification['variables']['charge'])
         else:
@@ -1445,7 +1434,7 @@ class GuidedPane(QWidget):
             if self.input_specification.method is None:
                 self.input_specification.method = 'rhf'
             base_method = re.sub('^df-', '', self.input_specification.method, flags=re.IGNORECASE)
-            method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
+            method_index = self.guided_combo_method.findText(base_method.upper(), Qt.MatchFixedString)
             self.guided_combo_method.setCurrentIndex(method_index)
             if re.match('[ru]ks', self.input_specification.method, flags=re.IGNORECASE):
                 self.method_row.ensure_not(['Core Correlation'])
@@ -1466,7 +1455,7 @@ class GuidedPane(QWidget):
 
         self.step_options_combo.clear()
         self.step_options_combo.addItem('- Select job step -')
-        self.step_options_combo.addItems([step['command'].upper() for step in self.input_specification['steps'] if step['command'].lower() != self.input_specification['procname'].lower()])
+        self.step_options_combo.addItems([step.command.upper() for step in self.input_specification.job_steps if step.command.lower() != self.input_specification.procname.lower()])
         self.step_options_combo.setCurrentIndex(0)
         try:
             registry_df = molpro_input.procedures_registry()[self.input_specification.method.upper()][
@@ -1535,6 +1524,8 @@ class GuidedPane(QWidget):
             self.input_specification.density_functional = value
         else:
             self.input_specification[key] = value
+            if key == 'properties':
+                self.input_specification.polish()
         self.refresh_input_from_specification()
         self.refresh()
 
@@ -1612,7 +1603,7 @@ class GuidedPane(QWidget):
 
     def step_options_edit(self, step: int):
         if step < 0: return
-        step_ = self.parent.input_specification['steps'][step]
+        step_ = self.parent.input_specification.job_steps[step]
         method_ = step_['command'].upper()
         available_options = {}
         for option in list(molpro_input.procedures_registry()[method_.replace('FREQUENCIES', 'FREQ')]['options']):
@@ -1624,8 +1615,9 @@ class GuidedPane(QWidget):
                             help_uri='https://www.molpro.net/manual/doku.php?q=' + method_ + '&do=search')
         result = box.exec()
         if result is not None:
-            self.parent.input_specification['steps'][step]['options'] = [k + '=' + v if v else k for k, v in
+            step_['options'] = [k + '=' + v if v else k for k, v in
                                                                          result.items()]
+            self.parent.input_specification.set_job_steps(step_,step)
             self.refresh_input_from_specification()
         self.step_options_combo.setCurrentIndex(0)
 
