@@ -252,7 +252,7 @@ class InputSpecification(UserDict):
             else:
                 job_steps.append(JobStep(self['method']))
         if 'job_type' not in self:
-            self['job_type'] = self.schema['properties']['job_type']['default']
+            self['job_type'] = self.with_defaults['job_type']
         if 'job_type_commands' in self:
             for k in range(len(self['job_type_commands'])):
                 job_steps.append(JobStep(self['job_type_commands'][k]))
@@ -303,7 +303,7 @@ class InputSpecification(UserDict):
         if self.data:
             for field in ['hamiltonian']:
                 if field not in self:
-                    self[field] = schema['properties'][field]['default']
+                    self[field] = self.with_defaults[field]
 
     def validate(self):
         jsonschema.validate(instance=json.loads(json.dumps(dict(self))), schema=schema)
@@ -368,7 +368,7 @@ class InputSpecification(UserDict):
         canonicalised_input_ = canonicalised_input_.replace(';', '\n').replace(line_end_protected_, ';')
         methods_still_possible = True
         methods_started = False
-        self['job_type'] = schema['properties']['job_type']['default']
+        self['job_type'] = self.with_defaults['job_type']
         for line in canonicalised_input_.split('\n'):
             line = re.sub('basis *,', 'basis=', line, flags=re.IGNORECASE)
             line = re.sub('basis=$,', 'basis=cc-pVDZ-PP', line, flags=re.IGNORECASE)
@@ -652,7 +652,7 @@ class InputSpecification(UserDict):
         _job_type_commands = defaulted_spec['job_type_commands'][_job_type]
         if _job_type != 'SP':
             _input += '\nproc ' + self.procname + '\n'
-        _method = self['method'] if 'method' in self else schema['properties']['method']['default']
+        _method = self.with_defaults['method']
         if type(_method) is str:
             _method = [_method]
         for step in _method:
