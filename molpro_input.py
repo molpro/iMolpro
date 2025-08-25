@@ -47,9 +47,9 @@ def local_orbital_types():
 
 
 _parameter_commands = {
-    'parameters': 'gparam',
-    'thresholds': 'gthresh',
-    'prints': 'gprint',
+    'parameter': 'gparam',
+    'threshold': 'gthresh',
+    'print': 'gprint',
 }
 
 _job_types = {
@@ -125,7 +125,8 @@ def procedures_registry():
 @dataclass
 class JobStep:
     command: str
-    options: OrderedDict
+    # options: OrderedDict
+    options: list
     directives: list
 
     def __init__(self, card: str):
@@ -135,21 +136,24 @@ class JobStep:
         lines = card.replace(';', '\n').split('\n')
         fields = lines[0].split(',')
         self.command = fields[0]
-        self.options = OrderedDict()
-        for field in fields[1:]:
-            if '=' in field:
-                key, value = field.split('=')
-            else:
-                key, value = field, ''
-            self.options[key] = value
+        # self.options = OrderedDict()
+        self.options = fields[1:]
+        # for field in fields[1:]:
+        #     if '=' in field:
+        #         key, value = field.split('=')
+        #     else:
+        #         key, value = field, ''
+        #     self.options[key] = value
         self.directives = lines[1:]
 
     def dump(self):
         card = '{' + self.command
-        for option, value in self.options.items():
+        # for option, value in self.options.items():
+        #     card += ',' + option
+        #     if value:
+        #         card += '=' + value
+        for option in self.options:
             card += ',' + option
-            if value:
-                card += '=' + value
         for directive in self.directives:
             card += '\n' + directive
         card += '}'
@@ -187,6 +191,53 @@ def load_permissive_json(string):
 
 class InputSpecification(UserDict):
     hartree_fock_methods = ['RHF', 'RKS', 'UHF', 'UKS', 'LDF-RHF', 'LDF-UHF']
+
+    @classmethod
+    def default_instance(cls):
+        self = cls()
+        for k,v in schema['properties'].items():
+            if 'default' in v:
+                self[k] = v['default']
+            elif k == 'basis':
+                self[k] = {'default': v['properties']['default']['default']}
+            elif k == 'job_type_commands':
+                self[k] = { k2: v2['default'] for k2, v2 in v['items'].items()}
+        self.validate()
+        return self
+
+    @property
+    def with_defaults(self):
+        result = self.default_instance()
+        for k, v in self.items():
+            if k in result and type(result[k]) is str and type(v) is list and len(v) == 1:
+                result[k] = v[0]
+            else:
+                result[k] = v
+        return result
+
+    @property
+    def without_defaults(self):
+        result = type(self)()
+        di = self.default_instance()
+        for k, v in self.items():
+            if k in di and type(di[k]) is str and type(v) is list and len(v) == 1:
+                if v[0] != di[k]:
+                    result[k] = v[0]
+            else:
+                if k not in di or v != di[k]:
+                    result[k] = v
+        return result
+
+    def _ensure_orbital_method(self):
+        if 'method' not in self:
+            self['method'] = self.with_defaults['method']
+            return
+        methods = self['method'].split(';') if type(self['method']) is str else self['method']
+        if not methods:
+            self['method'] = self.with_defaults['method']
+            return
+        if methods[0] not in ['hf','rhf','uhf','ks','rks','uks','avas']:
+            self['method'] = ['hf'] + methods
 
     @property
     def job_steps(self):
@@ -237,9 +288,9 @@ class InputSpecification(UserDict):
             else:
                 _specification = specification
             for k in _specification:
-                print(k, _specification[k])
                 self[k] = deepcopy(_specification[k])
-            print('InputSpecification() input=',input,'specification=',specification, '_specification=',_specification)
+            self._ensure_orbital_method()
+            # print('InputSpecification() input=',input,'specification=',specification, '_specification=',_specification)
         if input is not None:
             self.parse(input)
             try:
@@ -316,9 +367,9 @@ class InputSpecification(UserDict):
                                                                                                 j + 1:]
         canonicalised_input_ = canonicalised_input_.replace(';', '\n').replace(line_end_protected_, ';')
         methods_still_possible = True
+        methods_started = False
         self['job_type'] = schema['properties']['job_type']['default']
         for line in canonicalised_input_.split('\n'):
-            # print('line=',line)
             line = re.sub('basis *,', 'basis=', line, flags=re.IGNORECASE)
             line = re.sub('basis=$,', 'basis=cc-pVDZ-PP', line, flags=re.IGNORECASE)
             group = line.strip()
@@ -368,7 +419,7 @@ class InputSpecification(UserDict):
                         self['orbitals'].append(k)
             elif re.match('^geometry *= *{', group, re.IGNORECASE):
                 # print('geometry matched')
-                if not methods_still_possible: self.data.clear(); return self  # input too complex
+                if methods_started: self.data.clear(); return self  # input too complex
                 if 'geometry' in self: self.data.clear(); return self  # input too complex
                 self['geometry'] = re.sub(';', '\n',
                                           re.sub('^geometry *= *{ *\n*', '', group + '\n', flags=re.IGNORECASE)).strip()
@@ -383,7 +434,7 @@ class InputSpecification(UserDict):
                 self['geometry'] = self['geometry'].rstrip(' \n') + '\n'
                 geometry_active = not re.match('.*}.*', line)
             elif re.match('^geometry *=', line, re.IGNORECASE):
-                if not methods_still_possible: self.data.clear(); return self  # input too complex
+                if methods_started: self.data.clear(); return self  # input too complex
                 if 'geometry' in self: self.data.clear(); return self  # input too complex
                 self['geometry'] = re.sub('geometry *= *', '', line, flags=re.IGNORECASE)
                 self['geometry'] = re.sub(' *!.*', '', self['geometry'])
@@ -391,7 +442,7 @@ class InputSpecification(UserDict):
             elif command == 'basis':
                 raise ValueError('** warning should not happen basis', line)
             elif re.match('^basis *= *[^{]', line, re.IGNORECASE):
-                if not methods_still_possible: self.data.clear(); return self  # input too complex
+                if methods_started: self.data.clear(); return self  # input too complex
                 self['basis'] = {'default': (re.sub(',.*', '', re.sub(' *basis *= *{*(default=)*', '',
                                                                       group.replace('{', '').replace('}', ''),
                                                                       flags=re.IGNORECASE)))}
@@ -492,6 +543,7 @@ class InputSpecification(UserDict):
                 # method_ = command
                 # print('step.dump()',step.dump())
                 self['method'].append(step.dump().replace('{','').replace('}',''))
+                methods_started = True
                 # print('self[method]', self['method'])
             elif not methods_still_possible and line:
                 if 'epilogue' not in self:
@@ -543,6 +595,7 @@ class InputSpecification(UserDict):
         :rtype: str
         """
         _input = ''
+        defaulted_spec = self.with_defaults
         if 'prologue' in self:
             if type(self['prologue']) is list:
                 for prologue in self['prologue']:
@@ -550,18 +603,18 @@ class InputSpecification(UserDict):
             else:
                 _input += self['prologue'] + '\n'
 
-            if 'orientation' in self:
-                _input += 'orient,' + _orientation_options[self['orientation']] + '\n'
+        if 'orientation' in self:
+            _input += 'orient,' + _orientation_options[self['orientation']] + '\n'
 
-            if 'symmetry' in self:
-                _input += _symmetry_commands[self['symmetry']] + '\n'
+        if 'symmetry' in self:
+            _input += _symmetry_commands[self['symmetry']] + '\n'
 
-            if 'angstrom' in self and self['angstrom']:
-                _input += 'angstrom' + '\n'
+        if 'angstrom' in self and self['angstrom']:
+            _input += 'angstrom' + '\n'
 
         if 'geometry' in self:
             _geometry = self['geometry'].strip()
-            if (os.path.isfile(_geometry) and os.access(_geometry, os.R_OK)) or (_geometry[0] == '{' and _geometry[-1] == '}'):
+            if (os.path.isfile(_geometry) and os.access(_geometry, os.R_OK)) or re.match(r'.*\.(xyz|h5)$',_geometry) or (_geometry[0] == '{' and _geometry[-1] == '}'):
                 _input += 'geometry=' + _geometry + '\n'
             else:
                 _input += 'geometry=' + '{' + _geometry + '}' + '\n'
@@ -595,7 +648,10 @@ class InputSpecification(UserDict):
         if 'core_correlation' in self:
             _input += 'core,' + self['core_correlation'] + '\n'
 
-        _input += '\nproc ' + self.procname + '\n'
+        _job_type = defaulted_spec['job_type']
+        _job_type_commands = defaulted_spec['job_type_commands'][_job_type]
+        if _job_type != 'SP':
+            _input += '\nproc ' + self.procname + '\n'
         _method = self['method'] if 'method' in self else schema['properties']['method']['default']
         if type(_method) is str:
             _method = [_method]
@@ -623,17 +679,19 @@ class InputSpecification(UserDict):
                             for option in directive['options']:
                                 _input += ',' + str(option)
             _input += '}\n'
-        _input += 'endproc\n\n'
 
-        _job_type = self['job_type'] if 'job_type' in self else schema['properties']['job_type']['default']
-        _job_type_commands = self['job_type_commands'][_job_type] if 'job_type_commands' in self and _job_type in self['job_type_commands'] else schema['properties']['job_type_commands']['items'][_job_type]['default']
         if len(_job_type_commands) > 0:
+            _input += 'endproc\n\n'
             for step in _job_type_commands:
                 _step = JobStep(step)
-                _step.options['proc']=self.procname
+                for option in _step.options:
+                    if re.match(r'^proc=.*$', option):
+                        _index = step.options.index(option)
+                try:
+                    _step.options[_index] = 'proc='+self.procname
+                except NameError:
+                    _step.options.append('proc='+self.procname)
                 _input += _step.dump()+'\n'
-        else:
-            _input += self.procname+'\n'
 
         if 'orbitals' in self:
             for k in self['orbitals']:
@@ -666,29 +724,29 @@ class InputSpecification(UserDict):
     #             # print('removing', step)
     #             del self['steps'][step]
 
-    def deduce_job_type(self):
-        r"""
-        Deduce the job type from the stored input specification
-        :return: job type, or None if the input is complex
-        :rtype: str
-        """
-        job_type = list(_default_job_type_commands.keys())[0]
-        for job_type_ in _default_job_type_commands:
-            print('job_type_', job_type_)
-            ok = True
-            last_idx = None
-            for step in _default_job_type_commands[job_type_]:
-                commands = [s['command'].lower() for s in self['steps'] if 'command' in s]
-                print('commands', commands, 'step[command]', step['command'])
-                idx = commands.index(step['command'].lower()) if step['command'].lower() in commands else -1
-                if idx < 0 or (last_idx is not None and last_idx != idx - 1):
-                    ok = False
-                last_idx = idx
-            if ok: job_type = job_type_
-        print('job_type', job_type)
-        self['job_type'] = job_type
-        print('end of deduce_job_type', self)
-        return job_type
+    # def deduce_job_type(self):
+    #     r"""
+    #     Deduce the job type from the stored input specification
+    #     :return: job type, or None if the input is complex
+    #     :rtype: str
+    #     """
+    #     job_type = list(_default_job_type_commands.keys())[0]
+    #     for job_type_ in _default_job_type_commands:
+    #         print('job_type_', job_type_)
+    #         ok = True
+    #         last_idx = None
+    #         for step in _default_job_type_commands[job_type_]:
+    #             commands = [s['command'].lower() for s in self['steps'] if 'command' in s]
+    #             print('commands', commands, 'step[command]', step['command'])
+    #             idx = commands.index(step['command'].lower()) if step['command'].lower() in commands else -1
+    #             if idx < 0 or (last_idx is not None and last_idx != idx - 1):
+    #                 ok = False
+    #             last_idx = idx
+    #         if ok: job_type = job_type_
+    #     print('job_type', job_type)
+    #     self['job_type'] = job_type
+    #     print('end of deduce_job_type', self)
+    #     return job_type
 
     def set_job_type(self, new_job_type):
         if self['job_type'] == new_job_type: return
@@ -716,17 +774,22 @@ class InputSpecification(UserDict):
         :rtype: str
         """
         methods = []
-        if 'steps' in self:
-            for i in range(len(self['steps'])):
-                command = self['steps'][i]['command'].lower()
-                if command not in [s['command'].lower() for t in _default_job_type_commands.values() for s in t]:
-                    methods.append(command)
-                    if command not in [m.lower() for m in self.hartree_fock_methods] and methods[0] in [m.lower() for m
-                                                                                                        in
-                                                                                                        self.hartree_fock_methods]:
-                        del methods[0]
-        # print('methods',methods)
-        if len(methods) == 1: return methods[0]
+        defaulted_spec = self.with_defaults
+        if 'method' in defaulted_spec:
+            methods = defaulted_spec['method']
+        # if 'steps' in self:
+        #     for i in range(len(self['steps'])):
+        #         command = self['steps'][i]['command'].lower()
+        #         if command not in [s['command'].lower() for t in _default_job_type_commands.values() for s in t]:
+        #             methods.append(command)
+        #             if command not in [m.lower() for m in self.hartree_fock_methods] and methods[0] in [m.lower() for m
+        #                                                                                                 in
+        #                                                                                                 self.hartree_fock_methods]:
+        #                 del methods[0]
+        if type(methods) is str:
+            return methods.split(';')[-1]
+        else:
+            return methods[-1].split(';')[-1]
 
     @method.setter
     def method(self, method):
@@ -736,37 +799,54 @@ class InputSpecification(UserDict):
         :type method: str
         """
         if method is None or method == '' or (self.method is not None and method.lower() == self.method.lower()): return
-        new_steps = []
+        # new_steps = []
+        # if method.lower() not in [m.lower() for m in self.hartree_fock_methods]:
+        #     new_steps.append({'command': ('rhf' if method[0].lower() != 'u' else 'uhf')})  # TODO df
+        # new_steps.append({'command': method.lower()})
+        # if 'steps' in self and self['job_type'] is not None:
+        #     for step in self['steps']:
+        #         if 'command' in step and any(
+        #                 [step_['command'] == step['command'] for step_ in
+        #                  _default_job_type_commands[self['job_type']]]):
+        #             new_steps.append(step)
+        # self['steps'] = new_steps
         if method.lower() not in [m.lower() for m in self.hartree_fock_methods]:
-            new_steps.append({'command': ('rhf' if method[0].lower() != 'u' else 'uhf')})  # TODO df
-        new_steps.append({'command': method.lower()})
-        if 'steps' in self and self['job_type'] is not None:
-            for step in self['steps']:
-                if 'command' in step and any(
-                        [step_['command'] == step['command'] for step_ in
-                         _default_job_type_commands[self['job_type']]]):
-                    new_steps.append(step)
-        self['steps'] = new_steps
+            # new_steps.append({'command': ('rhf' if method[0].lower() != 'u' else 'uhf')})  # TODO df
+            self['method'] =('rhf' if method[0].lower() != 'u' else 'uhf' ) + ';' + method
+        else:
+            self['method'] = method
+
 
     @property
-    def method_options(self):
+    def method_options(self, command=None):
         r"""Get the options for a single-method job
         """
-        if 'steps' in self:
-            for step in self['steps']:
-                if self.method == step['command'] and 'options' in step:
-                    return step['options']
+        _command = command if command is not None else self.method.split(',')[0].split(';')[0]
+        if 'method' not in self:
+            return []
+        for step in self['method'] if type(self['method']) is list else [self['method']]:
+            js = JobStep(step)
+            if js.command == _command:
+                return js.options
         return []
 
     @method_options.setter
-    def method_options(self, options):
+    def method_options(self, options, command=None):
         r"""
         Set the options for a single-method job
         """
-        if 'steps' in self:
-            for step in self['steps']:
-                if self.method == step['command']:
-                    step['options'] = options
+        if 'method' not in self:
+            self['method'] = 'hf'
+        _command = command if command is not None else self.method.split(',')[0].split(';')[0]
+        if type(self['method']) is not list:
+            self['method'] = [self['method']]
+        for index,step in enumerate(self['method']):
+            js = JobStep(step)
+            if js.command == _command:
+                js.options = [k+'='+v for k, v in options.items()] if type(options) is not list else options
+                self['method'][index] = js.dump().replace('{','').replace('}','')
+        if len(self['method']) == 1:
+            self['method'] = self['method'][0]
 
     @method_options.deleter
     def method_options(self):
@@ -804,19 +884,30 @@ class InputSpecification(UserDict):
 
     @property
     def density_functional(self):
-        if self.method is not None and self.method.lower() in [m.lower() for m in
-                                                               self.hartree_fock_methods] and 'ks' in self.method.lower():
-            if self.method_options is not None and self.method_options:
-                return self.method_options[0].upper()
+        if 'method' not in self or not self['method']:
+            return None
+        methods = self['method'] if type(self['method']) is list else [self['method']]
+        js = JobStep(methods[0])
+        if js.command not in ['ks', 'rks', 'uks']:
+            return None
+        if not js.options:
+            return 'LDA'
+        return js.options[0].upper()
 
     @density_functional.setter
     def density_functional(self, density_functional):
-        if self.method is not None and self.method.lower() in [m.lower() for m in
-                                                               self.hartree_fock_methods] and 'ks' in self.method.lower():
-            if self.method_options is not None and self.method_options:
-                self.method_options[0] = density_functional
-            else:
-                self.method_options = [density_functional]
+        if 'method' not in self or not self['method']:
+            return
+        methods = self['method'] if type(self['method']) is list else [self['method']]
+        js = JobStep(methods[0])
+        if js.command not in ['ks', 'rks', 'uks']:
+            return
+        if js.options and '=' not in js.options[0]:
+            js.options[0] = density_functional
+        else:
+            js.options = [density_functional] + js.options
+        methods[0] = js.dump().replace('{','').replace('}','')
+        self['method'] = methods if len(methods)>1 else methods[0]
 
     @property
     def open_shell_electrons(self):
@@ -829,17 +920,11 @@ class InputSpecification(UserDict):
         from defbas import periodic_table
         if 'geometry' not in self: return 0
         # print('enter open_shell_electrons')
-        if 'geometry_external' in self and self['geometry_external']:
-            # print('geometry',self['geometry'])
-            # print('directory',self.directory)
-            # print(pathlib.Path(self.directory if self.directory is not None else '.') / self['geometry'])
-            try:
-                with open(pathlib.Path(self.directory if self.directory is not None else '.') / self['geometry'],
-                          'r') as f:
-                    geometry = ''.join(f.readlines())
-            except:
-                return 0
-        else:
+        try:
+            with open(pathlib.Path(self.directory if self.directory is not None else '.') / self['geometry'],
+                      'r') as f:
+                geometry = ''.join(f.readlines())
+        except:
             geometry = self['geometry']
         # print('geometry',geometry)
         line_number = 0

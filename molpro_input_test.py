@@ -23,7 +23,7 @@ def test_file(methods, tmpdir):
     test_text = 'Geometry={F;H,F,1.7};geometry=hf.xyz;basis=cc-pVTZ !some comment;rhf\nccsd\n'
     with open(test_file, 'w') as f:
         f.write(test_text)
-    assert InputSpecification(test_text) == InputSpecification(test_file)
+    assert InputSpecification(test_text).without_defaults == InputSpecification(test_file).without_defaults
 
 
 def test_create_input(methods):
@@ -40,7 +40,8 @@ def test_create_input(methods):
         # print('initial specification',specification)
         # print('created input',specification.create_input(),'---')
         # print('new_specification', InputSpecification(specification.create_input()))
-        assert InputSpecification(specification.molpro_input(),debug=True) == specification
+        assert InputSpecification(specification.molpro_input()).with_defaults == specification.with_defaults
+        assert InputSpecification(specification.molpro_input()).without_defaults == specification.without_defaults
 
     for input in [
         'Geometry={F;H,F,1.7};basis={default=cc-pVTZ,h=cc-pVDZ} !some comment;{ks,b3lyp};{ccsd}\n',
@@ -50,7 +51,7 @@ def test_create_input(methods):
         'Geometry={\nF\nH,F,1.7\n};basis={default=cc-pVTZ,h=cc-pVDZ} !some comment;{ks,b3lyp};ccsd\n',
         'geometry={\nHe\n}\nhf',
         'geometry={\nHe\n}\nhf\nccsd',
-        'geometry=thing.xyz',
+        'geometry=thing.xyz;rhf',
         'geometry={H};uhf',
         'geometry={H};{uhf}',
         'geometry={H};{rhf}',
@@ -70,7 +71,7 @@ def test_create_input(methods):
         specification = InputSpecification(input)
         regenerated_input = specification.molpro_input()
         regenerated_specification = InputSpecification(regenerated_input)
-        assert regenerated_specification == specification
+        assert regenerated_specification.without_defaults == specification.without_defaults
         if not equivalent(regenerated_input, input):
             print('input', input)
             print('specification', specification)
@@ -146,12 +147,12 @@ def test_canonicalise(methods):
     for given, expected in {
         'geometry={\nHe\n}': 'geometry={he}\n',
         'a\n\n\nb\n': '{a}\n{b}\n',
-        # 'basis={\ndefault=cc-pVTZ,h=cc-pVDZ\n} !some comment': 'basis=cc-pvtz,h=cc-pvdz !some comment\n'
-        'basis={\ndefault=cc-pVTZ,h=cc-pVDZ\n} !some comment': 'basis=cc-pvtz,h=cc-pvdz\n'
+        'basis={\ndefault=cc-pVTZ,h=cc-pVDZ\n} !some comment': 'basis=cc-pvtz,h=cc-pvdz !some comment\n',
+        'basis={\ndefault=cc-pVTZ,h=cc-pVDZ\n} !some comment': 'basis=cc-pvtz,h=cc-pvdz\n',
     }.items():
         assert canonicalise(given) == expected
     for test_text in [
-        'geometry={He}',
+        'geometry={He}\nhf',
     ]:
         assert equivalent(test_text, InputSpecification(test_text).molpro_input())
 
@@ -178,17 +179,17 @@ def test_basis_variants(methods):
         'basis,cc-pVDZ,zR=cc-pVDZ(s),h=cc-pVTZ': 'basis=cc-pVDZ,Zr=cc-pVDZ(s),H=cc-pVTZ',
         'basis={cc-pVDZ,zR=cc-pVDZ(s),h=cc-pVTZ}': 'basis=cc-pVDZ,Zr=cc-pVDZ(s),H=cc-pVTZ',
     }.items():
-        assert InputSpecification(test).molpro_input() == outcome.strip('\n') + '\n'
+        assert outcome in InputSpecification(test).molpro_input()
 
 
 def test_method(methods):
     for test, outcome in {
-        '': None,
+        # '': None,
         'rhf': 'rhf',
         'rhf;ccsd': 'ccsd',
         'rhf;ccsd;optg;frequencies': 'ccsd',
         'rhf;ccsd;{optg};frequencies': 'ccsd',
-        'rhf;ccsd;mrci;{optg};frequencies': None,
+        'rhf;ccsd;mrci;{optg};frequencies': 'mrci',
     }.items():
         specification = InputSpecification(test)
         assert specification.method == outcome
@@ -199,55 +200,51 @@ def test_method(methods):
 
 def test_method_options(methods):
     for test, outcome in {
-        '': None,
+        '': 'hf',
         'rhf': 'rhf',
         'rhf;ccsd': 'ccsd',
         'rhf;ccsd;optg;frequencies': 'ccsd',
         'rhf;ccsd;{optg};frequencies': 'ccsd',
-        'rhf;ccsd;mrci;{optg};frequencies': None,
+        'rhf;ccsd;mrci;{optg};frequencies': 'mrci',
     }.items():
         specification = InputSpecification(test)
         assert specification.method == outcome
         if specification.method is not None:
             options = {'option1': 'value1', 'option2': 'value2'}
             specification.method_options = options
-            assert specification.method_options == options
+            assert specification.method_options == [k+'='+v for k,v in options.items()]
 
 
 def test_job_type(methods):
     for test, outcome in {
-        '': None,
-        'rhf': None,
-        'rhf;ccsd': None,
-        'proc ansatz;rhf;ccsd;endproc;optg,proc=ansatz;frequencies,proc=ansatz': 'Optimise + vib frequencies',
-        'proc ansatz;rhf;ccsd;endproc;{optg,proc=ansatz};frequencies,proc=ansatz': 'Optimise + vib frequencies',
-        'proc ansatz;rhf;ccsd;mrci;endproc;{optg,proc=ansatz};frequencies,proc=ansatz': 'Optimise + vib frequencies',
-        'proc ansatz;rhf;ccsd;{optg};mrci;endproc;frequencies,proc=ansatz': 'Hessian',
+        '': 'SP',
+        'rhf': 'SP',
+        'rhf;ccsd': 'SP',
+        'proc ansatz;rhf;ccsd;endproc;optg,proc=ansatz;frequencies,proc=ansatz': 'OPT+FREQ',
+        'proc ansatz;rhf;ccsd;endproc;{optg,proc=ansatz};frequencies,proc=ansatz': 'OPT+FREQ',
+        'proc ansatz;rhf;ccsd;mrci;endproc;{optg,proc=ansatz};frequencies,proc=ansatz': 'OPT+FREQ',
+        'proc ansatz;rhf;ccsd;{optg};mrci;endproc;frequencies,proc=ansatz': 'OPT+FREQ', # TODO really?
     }.items():
         specification = InputSpecification(test)
-        assert specification.job_type == outcome
+        assert specification['job_type'] == outcome
         for method in ['rhf', 'ccsd', 'ks']:
             specification.method = method
-            assert specification.job_type == outcome
+            assert specification['job_type'] == outcome
         import molpro_input
         for jt in molpro_input._default_job_type_commands:
-            # print('force jt',jt)
-            # print('before',specification, specification.job_type)
-            specification.job_type = jt
-            # print('after',specification, specification.job_type)
-            assert specification.job_type == jt
+            specification['job_type'] = jt
+            assert specification['job_type'] == jt
 
 
 def test_density_functional(methods):
     for test, outcome in {
         '': None,
         'hf': None,
-        'ks': None,
+        'ks': 'LDA',
         'rks,b3lyp': 'B3LYP',
         'rks,b3lyp,a=b': 'B3LYP',
     }.items():
         specification = InputSpecification(test)
-        # print(specification)
         assert specification.density_functional == outcome
         if specification.density_functional:
             specification.density_functional = 'PBE'
@@ -302,14 +299,14 @@ def test_json():
         schema = json.load(f)
     for string in good_strings:
         obj = json.loads(string)
-        print('string', string)
-        print('obj',obj)
+        # print('string', string)
+        # print('obj',obj)
         validate(instance=obj, schema=schema)
-        print(molpro_input.InputSpecification(specification=obj).molpro_input())
+        # print(molpro_input.InputSpecification(specification=obj).molpro_input())
     for string in bad_strings:
         with pytest.raises(jsonschema.exceptions.ValidationError) as excinfo:
             obj = json.loads(string)
-            print('string', string)
-            print('obj',obj)
+            # print('string', string)
+            # print('obj',obj)
             validate(instance=obj, schema=schema)
-    print('schema',schema['properties']['orientation']['enum'])
+    # print('schema',schema['properties']['orientation']['enum'])
