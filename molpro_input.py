@@ -947,7 +947,10 @@ class InputSpecification(UserDict):
             if line_number >= start_line and line.strip():
                 word = re.sub(r'\s+', ',', line.strip()).split(',')[0]
                 word = re.sub(r'\d.*$', '', word[0].upper() + word[1:].lower())
-                atomic_number = periodic_table.index(word) + 1
+                try:
+                    atomic_number = periodic_table.index(word) + 1
+                except ValueError:
+                    atomic_number = 0
                 total_nuclear_charge += atomic_number
         charge = int(self['variables']['charge']) if 'variables' in self and 'charge' in self['variables'] and \
                                                      self['variables']['charge'] != '' and self['variables'][

@@ -105,11 +105,11 @@ class ProjectWindow(QMainWindow):
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
-        logger.debug('ProjectWindow.resizeEvent: ' + str(self.size()))
+        # logger.debug('ProjectWindow.resizeEvent: ' + str(self.size()))
         self.restart_vods()
 
     def restart_vods(self):
-        logger.debug('Restarting vods')
+        # logger.debug('Restarting vods')
         for vod in list(self.vods.keys()):
             # if vod not in ['builder', 'initial structure', 'inp']:
             if vod in self.vods:
@@ -444,7 +444,7 @@ class ProjectWindow(QMainWindow):
         if force or len(self.output_tabs) != len(
                 [tab_name for tab_name, pane in self.output_panes.items() if
                  os.path.exists(self.project.filename(re.sub(r'.*\.', '', tab_name)))]) + len(self.vods):
-            logger.debug('rebuilding output tabs')
+            # logger.debug('rebuilding output tabs')
             for suffix, pane in self.output_panes.items():
                 if os.path.exists(self.project.filename(suffix)) and not suffix in self.output_tabs.tab_names:
                     self.output_tabs.addTab(pane, suffix)
@@ -466,7 +466,7 @@ class ProjectWindow(QMainWindow):
                 self.output_tabs.setCurrentIndex(i)
 
     def guided_toggle(self):
-        logger.debug('guided_toggle')
+        # logger.debug('guided_toggle')
         index = 1 if self.guided_action.isChecked() else 0
         if 'inp' in self.output_panes:
             if index == 0:
@@ -514,7 +514,7 @@ class ProjectWindow(QMainWindow):
         return guided
 
     def input_tab_changed_consequence(self, index=0):
-        logger.debug('index=' + str(index) + ' ' + str(self.input_tabs.currentIndex()))
+        # logger.debug('index=' + str(index) + ' ' + str(self.input_tabs.currentIndex()))
         if self.input_tabs.currentIndex() == 1:
             self.guided_pane.refresh()
 
@@ -529,8 +529,8 @@ class ProjectWindow(QMainWindow):
         return result
 
     def vod_selector_action(self, text, external_path=None, force=False):
-        logger.debug('vod_selector_action ' + text + ' ' + str(external_path))
-        logger.debug('self.vods ' + str(self.vods))
+        # logger.debug('vod_selector_action ' + text + ' ' + str(external_path))
+        # logger.debug('self.vods ' + str(self.vods))
         # print('vod_selector_action', text, external_path, force)
         if force and self.vod_selector.currentText().strip() == 'None':
             self.vod_selector.setCurrentText('Final structure')
@@ -562,7 +562,7 @@ class ProjectWindow(QMainWindow):
                     self.visualise_output(external_path, '', self.project.filename('molden', typ, run=0))
 
     def rebuild_vod_selector(self):
-        logger.debug('rebuild_vod_selector')
+        # logger.debug('rebuild_vod_selector')
         self.vods.clear()
         for t, f in self.geometry_files():
             self.vod_selector_action('Edit ' + f)
@@ -668,8 +668,7 @@ class ProjectWindow(QMainWindow):
 
     def embedded_vod(self, file, command='', title='structure', **kwargs):
         height, width = self.embedded_geometry(280)
-        logger.debug('embedded_vod ' + file + ', ' + command + ', ' + title + ', ' + str(height) + ', ' + str(width))
-        firstmodel = 1
+        # logger.debug('embedded_vod ' + file + ', ' + command + ', ' + title + ', ' + str(height) + ', ' + str(width))
         firstvib = 1
         firstorb = 1
         try:
@@ -892,10 +891,10 @@ Jmol.jmolHtml("</p>")
     def show_xyz(self, instance=-1):
         for file in self.geometry_files():
             full_file = self.project.filename('', file[1], instance)
-            logger.debug('xyz file ' + full_file)
+            # logger.debug('xyz file ' + full_file)
             with open(full_file, 'r') as f:
                 contents = ''.join(f.readlines())
-            logger.debug('xyz file ' + contents)
+            # logger.debug('xyz file ' + contents)
             QMessageBox.information(self, 'xyz', contents)
 
     def show_xyz_input(self):
@@ -906,7 +905,7 @@ Jmol.jmolHtml("</p>")
         pass
 
     def visualise_input(self, external_path=None):
-        logger.debug('visualise_input' + str(self.vods.keys()))
+        # logger.debug('visualise_input' + str(self.vods.keys()))
         import tempfile
         geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
         geometry_directory.mkdir(exist_ok=True)
@@ -918,7 +917,7 @@ Jmol.jmolHtml("</p>")
             with tempfile.TemporaryDirectory() as tmpdirname:
                 path = pathlib.Path(tmpdirname) / 'input_geometries'
                 os.makedirs(str(path), exist_ok=True)
-                logger.debug('visualise_input makes project at ' + str(path))
+                # logger.debug('visualise_input makes project at ' + str(path))
                 self.project.copy(pathlib.Path(self.project.filename(run=-1)).name, location=path)
                 project_path = path / pathlib.Path(self.project.filename(run=-1)).name
                 project = Project(str(project_path))
@@ -938,11 +937,11 @@ Jmol.jmolHtml("</p>")
                                 detail += ''.join(ff.readlines())
                         except:
                             pass
-                    try:
-                        logger.debug('visualise_input project input file contents\n' + open(project.filename('inp'),'r').read())
-                        logger.debug('visualise_input project output file contents\n' + open(project.filename('out'),'r').read())
-                    except:
-                        pass
+                    # try:
+                        # logger.debug('visualise_input project input file contents\n' + open(project.filename('inp'),'r').read())
+                        # logger.debug('visualise_input project output file contents\n' + open(project.filename('out'),'r').read())
+                    # except:
+                    #     pass
                     msg = QMessageBox()
                     msg.setIcon(QMessageBox.Critical)
                     msg.setWindowTitle("Error")
