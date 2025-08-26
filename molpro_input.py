@@ -798,9 +798,9 @@ class InputSpecification(UserDict):
         #                                                                                                 self.hartree_fock_methods]:
         #                 del methods[0]
         if type(methods) is str:
-            return methods.split(';')[-1]
+            return methods.replace('\n',';').split(';')[0]
         else:
-            return methods[-1].split(';')[-1]
+            return methods[-1].replace('\n',';').split(';')[0]
 
     @method.setter
     def method(self, method):
@@ -826,7 +826,6 @@ class InputSpecification(UserDict):
             self['method'] =['rhf' if method[0].lower() != 'u' else 'uhf' ,  method.lower()]
         else:
             self['method'] = method.lower()
-        print('have set self[method]',self['method'])
 
 
     @property
