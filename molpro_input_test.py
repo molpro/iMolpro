@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import string
 
 import jsonschema
 
@@ -311,3 +312,18 @@ def test_json():
             # print('obj',obj)
             validate(instance=obj, schema=schema)
     # print('schema',schema['properties']['orientation']['enum'])
+
+def test_keyval():
+    tests = {
+        'method=ccsd' : '{"method" :\n"ccsd"}',
+        'geometry="F;H,F,1.732"':'{"geometry":"F;H,F,1.732"}',
+        'geometry="F;H,F,1.732", method=ccsd"':'{"geometry":"F;H,F,1.732","method":"ccsd"}',
+        'geometry="F;H,F,1.732", method=ccsd,basis=cc-pvdz':'{"geometry":"F;H,F,1.732", "method":"ccsd", "basis":{"default" : "cc-pvdz"}}',
+        'geometry="F;H,F,1.732", method=ccsd,basis="cc-pvdz"':'{"geometry":"F;H,F,1.732", "method":"ccsd", "basis":{"default" : "cc-pvdz"}}',
+        'geometry="F;H,F,1.732", method=ccsd,basis="cc-pvdz,Cu=cc-vtz"':'{"geometry":"F;H,F,1.732", "method":"ccsd", "basis":{"default" : "cc-pvdz","elements":{"Cu":"cc-vtz"}}}',
+        'geometry="F;H,F,1.732", method=ccsd,basis="cc-pvdz,Ni=cc-pvqz,Cu=cc-vtz"':'{"geometry":"F;H,F,1.732", "method":"ccsd", "basis":{"default" : "cc-pvdz","elements":{"Ni":"cc-pvqz","Cu":"cc-vtz"}}}',
+    }
+    for test in tests:
+        converted = molpro_input._convert_keyval_to_json(test)
+        assert re.sub('\s+','',converted) == re.sub('\s+','',tests[test])
+        jsonschema.validate(instance=json.loads(converted), schema=molpro_input.schema)

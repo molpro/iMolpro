@@ -1335,13 +1335,13 @@ class GuidedPane(QWidget):
             lambda ms2: self.input_specification_variable_change('spin', str(ms2) if ms2 >= 0 else ''))
 
         self.guided_combo_wave_fct_symm = QComboBox(self)
-        self.guided_combo_wave_fct_symm.addItems(molpro_input._symmetry_commands.keys())
+        self.guided_combo_wave_fct_symm.addItems(molpro_input.symmetry_commands().keys())
         self.guided_combo_wave_fct_symm.currentTextChanged.connect(
             lambda text: self.input_specification_change('symmetry', text))
 
         self.guided_combo_job_type = QComboBox(self)
         self.guided_combo_job_type.setMaximumWidth(180)
-        self.guided_combo_job_type.addItems(molpro_input._default_job_type_commands.keys())
+        self.guided_combo_job_type.addItems(molpro_input.job_types().values())
         self.guided_combo_job_type.currentTextChanged.connect(
             lambda text: self.input_specification_change('job_type', text))
 
@@ -1517,8 +1517,7 @@ class GuidedPane(QWidget):
                 self.method_asserted = True
             self.input_specification.polish()
         elif key == 'job_type':
-            self.input_specification.set_job_type(value)
-            self.input_specification.regularise_procedure_references()
+            self.input_specification.set_job_type([k for k, v in molpro_input.job_types().items() if v == value][0])
         elif key == 'density_functional':
             self.input_specification.density_functional = value
         else:
@@ -1603,20 +1602,18 @@ class GuidedPane(QWidget):
     def step_options_edit(self, step: int):
         if step < 0: return
         step_ = self.parent.input_specification.job_steps[step]
-        method_ = step_['command'].upper()
+        method_ = step_.command.upper()
         available_options = {}
         for option in list(molpro_input.procedures_registry()[method_.replace('FREQUENCIES', 'FREQ')]['options']):
             available_options[ re.sub('.*:','',option.split('=')[0])] = (option.split('=')+[''])[1]
         title = 'Options for step ' + str(step + 1) + ' (' + method_ + ')'
-        existing_options = {o.split('=')[0]: o.split('=')[1] if len(o.split('=')) > 1 else '' for o in
-                            (step_['options'] if 'options' in step_ else [])}
+        existing_options = {o.split('=')[0]: o.split('=')[1] if len(o.split('=')) > 1 else '' for o in step_.options}
         box = OptionsDialog(existing_options, available_options, title=title, parent=self,
                             help_uri='https://www.molpro.net/manual/doku.php?q=' + method_ + '&do=search')
         result = box.exec()
         if result is not None:
-            step_['options'] = [k + '=' + v if v else k for k, v in
-                                                                         result.items()]
-            self.parent.input_specification.set_job_steps(step_,step)
+            step_.options = [k + '=' + v if v else k for k, v in result.items()]
+            self.parent.input_specification.set_job_step(step_,step)
             self.refresh_input_from_specification()
         self.step_options_combo.setCurrentIndex(0)
 

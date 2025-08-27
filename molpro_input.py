@@ -19,6 +19,8 @@ _symmetry_commands = {
     'none': 'symmetry,nosym'
 }
 assert (set(_symmetry_commands.keys()).issubset(set(schema['properties']['symmetry']['enum'])))
+def symmetry_commands():
+    return _symmetry_commands
 _symmetry_command_aliases = {
     'nosym': 'symmetry,nosym',
 }
@@ -176,23 +178,67 @@ class JobStep:
 
 _default_job_type_commands = {k:v['default'] for k, v in schema['properties']['job_type_commands']['items'].items()}
 
+def split_quote_protected_string(string, delimiter):
+    result=['']
+    quoted=False
+    for s in string:
+        if not quoted and s == delimiter:
+            result.append('')
+        else:
+            if quoted and s in '\'"':
+                quoted=False
+            elif not quoted and s in '\'"':
+                quoted = True
+            result[-1] = result[-1] + s
+    return result
+
 def load_permissive_json(string):
+
     if type(string) != str:
         return string
+    string_with_quoted_parts_removed = re.sub(r"'[^']*'",'', re.sub(r'"[^"]*"','',string))
+    if ';' in string_with_quoted_parts_removed or '\n' in string_with_quoted_parts_removed:
+        return string
     _string = string.strip()
-    if _string[0] == '{': _string = _string[1:]
-    if _string[-1] == '}': _string = _string[:-2]
-    result = {}
-    for keyval in _string.split(','):
-        key, value = re.split(r'[=:]',keyval)
-        key = re.sub(r'["\']','',key).strip()
-        value = re.sub(r'["\']','',value).strip()
-        if value == 'True':
-            value = True
-        if value == 'False':
-            value = False
-        result[key] = value
+    if _string[0] == '{' and string[-1]=='}': _string = _string[1:-1]
+    try:
+        result = json.loads('{'+_string+'}')
+        jsonschema.validate(result, schema)
+    except json.decoder.JSONDecodeError:
+        result = json.loads(_convert_keyval_to_json(_string))
+        jsonschema.validate(result, schema)
     return result
+
+
+
+def _convert_keyval_to_json(string):
+    split = {}
+    result = ''
+    for keyval in split_quote_protected_string(string, ','):
+        key, value = re.split(r'[=:]', keyval,1)
+        key = re.sub(r'["\']', '', key).strip()
+        value = re.sub(r'["\']', '', value).strip()
+        if key == 'basis' and 'default' not in value:
+            value = 'default='+value
+        if key == 'basis':
+            value_split = value.split(',')
+            value = '{'
+            for index, field in enumerate(value_split):
+                field_split = field.split('=')
+                if index == 1:
+                    value = value + '"elements":{'
+                value = value + '"' + field_split[0] + '":"' + (field_split[1] if len(field_split) > 1 else '') + '",'
+                if index == len(value_split)-1 and index != 0:
+                    value = value[:-1] + '},'
+            value = value[:-1] + '}'
+        elif value == 'True':
+            value = True
+        elif value == 'False':
+            value = False
+        else:
+            value = '"' + value + '"'
+        result += (',' if result else '{') + '"' + key + '":' + value
+    return result + '}'
 
 
 class InputSpecification(UserDict):
@@ -217,6 +263,9 @@ class InputSpecification(UserDict):
         for k, v in self.items():
             if k in result and type(result[k]) is str and type(v) is list and len(v) == 1:
                 result[k] = v[0]
+            elif k in result and type(result[k]) is dict and type(v) is dict:
+                for k2, v2 in v.items():
+                    result[k][k2] = v2
             else:
                 result[k] = v
         return result
@@ -252,25 +301,16 @@ class InputSpecification(UserDict):
         r"""
         Returns the job steps in this input
         """
-        # print('enter job_steps',self.get('method',''))
         job_steps = []
-        if 'method' in self:
-            if type(self['method']) is list:
-                for method_step in self['method']:
+        defaulted = self.with_defaults
+        if 'method' in defaulted:
+            if type(defaulted['method']) is list:
+                for method_step in defaulted['method']:
                     job_steps.append(JobStep(method_step))
             else:
-                job_steps.append(JobStep(self['method']))
-        if 'job_type' not in self:
-            self['job_type'] = self.with_defaults['job_type']
-        if 'job_type_commands' in self:
-            for k in range(len(self['job_type_commands'])):
-                job_steps.append(JobStep(self['job_type_commands'][k]))
-            for k in range(len(self['job_type_commands']), len(_default_job_type_commands[self['job_type']])):
-                job_steps.append(JobStep(_default_job_type_commands[self['job_type']][k]))
-        else:
-            for k in range(len(_default_job_type_commands[self['job_type']])):
-                job_steps.append(JobStep(_default_job_type_commands[self['job_type']][k]))
-        # print('exit job_steps',self.get('method',''))
+                job_steps.append(JobStep(defaulted['method']))
+        for step in defaulted['job_type_commands'][defaulted['job_type']]:
+            job_steps.append(JobStep(step))
         return job_steps
 
     def set_job_step(self, job_step: JobStep, index: int):
@@ -298,6 +338,7 @@ class InputSpecification(UserDict):
                 _specification = load_permissive_json(specification)
             else:
                 _specification = specification
+            # print('Specification:', _specification)
             for k in _specification:
                 self[k] = deepcopy(_specification[k])
             self._ensure_orbital_method()
@@ -310,8 +351,7 @@ class InputSpecification(UserDict):
                 print('Warning: InputSpecification.parse() has thrown an exception', e,
                       '\nPlease report, with a copy of the input, at https://github.com/molpro/iMolpro/issues/new')
                 self.clear()
-        # print('after parse',self)
-        if self.data:
+        if False and self.data:
             for field in ['hamiltonian']:
                 if field not in self:
                     self[field] = self.with_defaults[field]
@@ -1124,3 +1164,67 @@ def _split_comma(string):
         string_ = string__
         string__ = re.sub(r'(\[.*),(.*\])', r'\1@@@\2', string_)
     return [field.replace('@@@', ',') for field in (string__.split(','))]
+
+if __name__ == '__main__':
+    import argparse
+    import tempfile
+
+    import time
+    import os
+
+
+    def follow(thefile):
+        '''generator function that yields new lines in a file
+        '''
+        # seek the end of the file
+        # thefile.seek(0, os.SEEK_END)
+
+        # start infinite loop
+        while True:
+            # read last line of file
+            line = thefile.readline()
+            # sleep if file hasn't been updated
+            if not line:
+                time.sleep(0.1)
+                continue
+
+            yield line
+    parser = argparse.ArgumentParser(
+        prog='Molpro'
+    )
+    parser.add_argument('input', nargs=1)
+    parser.add_argument('project_name', nargs='?', default=None)
+    args = parser.parse_args()
+    spec = InputSpecification(specification=args.input[0])
+    # print('spec',spec)
+    try:
+        jsonschema.validate(instance=dict(spec), schema=schema)
+        input = spec.molpro_input()
+    except Exception as ex:
+        # print('not taking spec',ex)
+        input = args.input[0]
+
+    # print('input',input)
+    # print('json of input',json.dumps(dict(InputSpecification(input))))
+    # exit()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        if args.project_name is not None:
+            fully_qualified_project_directory = pathlib.Path(args.project_name).absolute()
+        else:
+            fully_qualified_project_directory = (pathlib.Path(tmpdir) / 'project')
+        location = fully_qualified_project_directory.parent
+        project_name = fully_qualified_project_directory.name
+        project = pymolpro.Project(project_name, location=location)
+        project.write_input(input)
+        project.run(wait=False)
+        while not os.path.exists(project.filename('out','',0)):
+            time.sleep(0.1)
+        with open(project.filename('out','',run=0),'r') as o:
+            lines = follow(o)
+            for line in lines:
+                print(line.rstrip())
+                if 'Molpro calculation terminated' in line or (not line and o.tell() >= os.fstat(o.fileno()).st_size):
+                    break
+
+
