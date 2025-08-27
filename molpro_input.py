@@ -19,8 +19,12 @@ _symmetry_commands = {
     'none': 'symmetry,nosym'
 }
 assert (set(_symmetry_commands.keys()).issubset(set(schema['properties']['symmetry']['enum'])))
+
+
 def symmetry_commands():
     return _symmetry_commands
+
+
 _symmetry_command_aliases = {
     'nosym': 'symmetry,nosym',
 }
@@ -32,6 +36,8 @@ _hamiltonians = {
     'DK3': {'text': 'Douglas-Kroll-Hess 3', 'basis_string': '-DK3'},
 }
 assert (set(_hamiltonians.keys()).issubset(set(schema['properties']['hamiltonian']['enum'])))
+
+
 def hamiltonians():
     return _hamiltonians
 
@@ -86,8 +92,11 @@ _orientation_options = {
     'none': 'noorient'
 }
 assert (set(_orientation_options.keys()).issubset(set(schema['properties']['orientation']['enum'])))
+
+
 def orientation_options():
     return _orientation_options
+
 
 properties = {
     'Dipole moment': 'gexpec,dm',
@@ -132,7 +141,6 @@ def procedures_registry():
 @dataclass
 class JobStep:
     command: str
-    # options: OrderedDict
     options: list
     directives: list
 
@@ -145,20 +153,10 @@ class JobStep:
         self.command = fields[0]
         # self.options = OrderedDict()
         self.options = fields[1:]
-        # for field in fields[1:]:
-        #     if '=' in field:
-        #         key, value = field.split('=')
-        #     else:
-        #         key, value = field, ''
-        #     self.options[key] = value
         self.directives = lines[1:]
 
     def dump(self, braces=True):
         card = ('{' if braces else '') + self.command
-        # for option, value in self.options.items():
-        #     card += ',' + option
-        #     if value:
-        #         card += '=' + value
         for option in self.options:
             card += ',' + option
         for directive in self.directives:
@@ -168,41 +166,34 @@ class JobStep:
         return card
 
 
-# _default_job_type_commands = {
-#     'SP': ['ansatz'],
-#     'OPT': ['optg, savexyz=optimised.xyz'],
-#     'FREQ': ['frequencies;thermo'],
-#     'INTERACT': ['interact'],
-# }
-# _default_job_type_commands['OPT+FREQ'] = _default_job_type_commands['OPT'] + _default_job_type_commands['FREQ']
+_default_job_type_commands = {k: v['default'] for k, v in schema['properties']['job_type_commands']['items'].items()}
 
-_default_job_type_commands = {k:v['default'] for k, v in schema['properties']['job_type_commands']['items'].items()}
 
-def split_quote_protected_string(string, delimiter):
-    result=['']
-    quoted=False
+def _split_quote_protected_string(string, delimiter):
+    result = ['']
+    quoted = False
     for s in string:
         if not quoted and s == delimiter:
             result.append('')
         else:
             if quoted and s in '\'"':
-                quoted=False
+                quoted = False
             elif not quoted and s in '\'"':
                 quoted = True
             result[-1] = result[-1] + s
     return result
 
-def load_permissive_json(string):
 
+def _load_permissive_json(string):
     if type(string) != str:
         return string
-    string_with_quoted_parts_removed = re.sub(r"'[^']*'",'', re.sub(r'"[^"]*"','',string))
+    string_with_quoted_parts_removed = re.sub(r"'[^']*'", '', re.sub(r'"[^"]*"', '', string))
     if ';' in string_with_quoted_parts_removed or '\n' in string_with_quoted_parts_removed:
         return string
     _string = string.strip()
-    if _string[0] == '{' and string[-1]=='}': _string = _string[1:-1]
+    if _string[0] == '{' and string[-1] == '}': _string = _string[1:-1]
     try:
-        result = json.loads('{'+_string+'}')
+        result = json.loads('{' + _string + '}')
         jsonschema.validate(result, schema)
     except json.decoder.JSONDecodeError:
         result = json.loads(_convert_keyval_to_json(_string))
@@ -210,16 +201,15 @@ def load_permissive_json(string):
     return result
 
 
-
 def _convert_keyval_to_json(string):
     split = {}
     result = ''
-    for keyval in split_quote_protected_string(string, ','):
-        key, value = re.split(r'[=:]', keyval,1)
+    for keyval in _split_quote_protected_string(string, ','):
+        key, value = re.split(r'[=:]', keyval, 1)
         key = re.sub(r'["\']', '', key).strip()
         value = re.sub(r'["\']', '', value).strip()
         if key == 'basis' and 'default' not in value:
-            value = 'default='+value
+            value = 'default=' + value
         if key == 'basis':
             value_split = value.split(',')
             value = '{'
@@ -228,7 +218,7 @@ def _convert_keyval_to_json(string):
                 if index == 1:
                     value = value + '"elements":{'
                 value = value + '"' + field_split[0] + '":"' + (field_split[1] if len(field_split) > 1 else '') + '",'
-                if index == len(value_split)-1 and index != 0:
+                if index == len(value_split) - 1 and index != 0:
                     value = value[:-1] + '},'
             value = value[:-1] + '}'
         elif value == 'True':
@@ -247,13 +237,13 @@ class InputSpecification(UserDict):
     @classmethod
     def default_instance(cls):
         self = cls()
-        for k,v in schema['properties'].items():
+        for k, v in schema['properties'].items():
             if 'default' in v:
                 self[k] = v['default']
             elif k == 'basis':
                 self[k] = {'default': v['properties']['default']['default']}
             elif k == 'job_type_commands':
-                self[k] = { k2: v2['default'] for k2, v2 in v['items'].items()}
+                self[k] = {k2: v2['default'] for k2, v2 in v['items'].items()}
         self.validate()
         return self
 
@@ -292,7 +282,7 @@ class InputSpecification(UserDict):
         if not methods:
             self['method'] = self.with_defaults['method']
             return
-        if methods[0] not in ['hf','rhf','uhf','ks','rks','uks','avas']:
+        if methods[0] not in ['hf', 'rhf', 'uhf', 'ks', 'rks', 'uks', 'avas']:
             self['method'] = ['hf'] + methods
         # print('exit ensure_orbital_method',self.get('method',''))
 
@@ -335,7 +325,7 @@ class InputSpecification(UserDict):
         # print(specification, type(specification))
         if specification is not None:
             if type(specification) is str:
-                _specification = load_permissive_json(specification)
+                _specification = _load_permissive_json(specification)
             else:
                 _specification = specification
             # print('Specification:', _specification)
@@ -373,7 +363,7 @@ class InputSpecification(UserDict):
                 return self.parse(f.read())
 
         if debug:
-            print('InputSpecification.parse() input=',input)
+            print('InputSpecification.parse() input=', input)
 
         # print('allowed_methods', self.allowed_methods)
         precursor_methods = ['LOCALI', 'CASSCF', 'OCC', 'CORE', 'CLOSED', 'FROZEN', 'WF',
@@ -403,7 +393,7 @@ class InputSpecification(UserDict):
         canonicalised_input_ = canonicalised_input_.replace('{FREQ}', '{frequencies\nthermo}')  # hack for gmolpro
 
         if debug:
-            print('canonicalised_input_=',canonicalised_input_)
+            print('canonicalised_input_=', canonicalised_input_)
 
         # parse and protect {....}
         line_end_protected_ = '±'
@@ -532,25 +522,28 @@ class InputSpecification(UserDict):
 
             elif command == 'core':
                 self['core_correlation'] = (line + ',').split(',')[1].lower()
-            elif command in [re.sub(r'[,;].*$','',v[0]) for v in _default_job_type_commands.values() if v]:
+            elif command in [re.sub(r'[,;].*$', '', v[0]) for v in _default_job_type_commands.values() if v]:
                 methods_still_possible = False
                 if command[:4] == 'freq' and self['job_type'] == 'OPT':
                     self['job_type'] = 'OPT+FREQ'
                     self['job_type_commands'][self['job_type']] = self['job_type_commands'].pop('OPT')
                 else:
-                    self['job_type'] = [k for k,v in _default_job_type_commands.items() if v and re.sub(r'[,;].*$','',v[0]) == command][0]
+                    self['job_type'] = \
+                    [k for k, v in _default_job_type_commands.items() if v and re.sub(r'[,;].*$', '', v[0]) == command][
+                        0]
                     self['job_type_commands'] = {}
                     self['job_type_commands'][self['job_type']] = []
-                self['job_type_commands'][self['job_type']].append(line.replace('}','').replace('{','').replace(',proc='+self.procname,''))
+                self['job_type_commands'][self['job_type']].append(
+                    line.replace('}', '').replace('{', '').replace(',proc=' + self.procname, ''))
                 # print('job_type', self['job_type'])
                 # print('job_type_commands', self['job_type_commands'])
             elif methods_still_possible and any([re.fullmatch('{?' + df_prefix + re.escape(method), command,
-                                   flags=re.IGNORECASE) for
-                      df_prefix
-                      in df_prefixes
-                      for method in self.allowed_methods ]):
+                                                              flags=re.IGNORECASE) for
+                                                 df_prefix
+                                                 in df_prefixes
+                                                 for method in self.allowed_methods]):
                 step = {}
-                method_with_options = re.sub('^{', '', re.sub('}$','',group))
+                method_with_options = re.sub('^{', '', re.sub('}$', '', group))
                 # print('matched for method; line=',line,'command=',command,'group=',group)
                 method_ = command
                 if command[:3] == 'df-':
@@ -560,7 +553,7 @@ class InputSpecification(UserDict):
                     self['density_fitting'] = True
                 elif False and 'density_fitting' in self and self['density_fitting'] and not any(
                         [step_['command'] == command for job_type in _default_job_type_commands for step_ in
-                         _default_job_type_commands[job_type]]): # what was this all about?
+                         _default_job_type_commands[job_type]]):  # what was this all about?
                     self.data.clear()
                     return self
                 # method_options = (re.sub(';.*$', '', line.lower()).replace('}', '') + ',').split(',', 1)[1]
@@ -568,7 +561,7 @@ class InputSpecification(UserDict):
                 # method_options_ = _split_comma(method_options.strip(', \n'))
                 # if method_options_ and method_options_[-1] == '': method_options_ = method_options_[:-2]
                 # print('method_options_',method_options_)
-                step = JobStep(line.replace(command,method_).replace('}','').lower())
+                step = JobStep(line.replace(command, method_).replace('}', '').lower())
                 # step['command'] = method_
                 # if method_options_:
                 #     step['options'] = method_options_
@@ -580,28 +573,29 @@ class InputSpecification(UserDict):
                 # for directive in directives:
                 #     cmd, opt = (directive + ',').split(',', 1)
                 #     print('cmd',cmd,'opt',opt)
-                    # opts = {m1.split('=')[0].strip(): (m1.split('=')[1].strip() if len(m1.split('=')) > 1 else '') for
-                    #         m1 in opt.rstrip(',').split(',')}
-                    # if '' in opts: del opts['']
-                    # if 'directives' not in step: step['directives'] = []
-                    # opts = opt.rstrip(',').split(',')
-                    # if opts and opts[-1] == '': opts = opts[:-2]
-                    # d = {'command': cmd}
-                    # if opts: d['options'] = opts
-                    # step['directives'].append(d)
+                # opts = {m1.split('=')[0].strip(): (m1.split('=')[1].strip() if len(m1.split('=')) > 1 else '') for
+                #         m1 in opt.rstrip(',').split(',')}
+                # if '' in opts: del opts['']
+                # if 'directives' not in step: step['directives'] = []
+                # opts = opt.rstrip(',').split(',')
+                # if opts and opts[-1] == '': opts = opts[:-2]
+                # d = {'command': cmd}
+                # if opts: d['options'] = opts
+                # step['directives'].append(d)
                 if 'method' not in self:
                     self['method'] = []
                 # method_ = command
                 # print('step.dump()',step.dump())
-                self['method'].append(step.dump().replace('{','').replace('}',''))
+                self['method'].append(step.dump().replace('{', '').replace('}', ''))
                 methods_started = True
                 # print('self[method]', self['method'])
             elif not methods_still_possible and line:
                 if 'epilogue' not in self:
                     self['epilogue'] = []
-                self['epilogue'].append(line.replace('}','').lower())
+                self['epilogue'].append(line.replace('}', '').lower())
 
-        if 'job_type_commands' in self and self['job_type_commands'].get('job_type','') == schema['properties']['job_type_commands']['items'][self['job_type']]['default']:
+        if 'job_type_commands' in self and self['job_type_commands'].get('job_type', '') == \
+                schema['properties']['job_type_commands']['items'][self['job_type']]['default']:
             self.pop('job_type_commands')
         # if 'method' not in self and 'precursor_methods' in self:
         #     parse_method(self, self['precursor_methods'][-1])
@@ -665,7 +659,9 @@ class InputSpecification(UserDict):
 
         if 'geometry' in self:
             _geometry = self['geometry'].strip()
-            if (os.path.isfile(_geometry) and os.access(_geometry, os.R_OK)) or re.match(r'.*\.(xyz|h5)$',_geometry) or (_geometry[0] == '{' and _geometry[-1] == '}'):
+            if (os.path.isfile(_geometry) and os.access(_geometry, os.R_OK)) or re.match(r'.*\.(xyz|h5)$',
+                                                                                         _geometry) or (
+                    _geometry[0] == '{' and _geometry[-1] == '}'):
                 _input += 'geometry=' + _geometry + '\n'
             else:
                 _input += 'geometry=' + '{' + _geometry + '}' + '\n'
@@ -739,10 +735,10 @@ class InputSpecification(UserDict):
                     if re.match(r'^proc=.*$', option):
                         _index = step.options.index(option)
                 try:
-                    _step.options[_index] = 'proc='+self.procname
+                    _step.options[_index] = 'proc=' + self.procname
                 except NameError:
-                    _step.options.append('proc='+self.procname)
-                _input += _step.dump()+'\n'
+                    _step.options.append('proc=' + self.procname)
+                _input += _step.dump() + '\n'
 
         if 'orbitals' in self:
             for k in self['orbitals']:
@@ -756,48 +752,6 @@ class InputSpecification(UserDict):
             else:
                 _input += self['epilogue'] + '\n'
         return _input.rstrip('\n') + '\n'
-
-    # def force_job_type(self, job_type):
-    #     r"""
-    #     Force the specification to be compliant with a particular job type
-    #
-    #     :param job_type: Force the job type to be this, and make specification['steps'] compliant.
-    #     :type job_type: str
-    #     """
-    #     if not 'steps' in self:
-    #         self['steps'] = []
-    #     for step in job_type_steps[job_type]:
-    #         if not any([step_['command'] == step['command'] for step_ in self['steps']]):
-    #             # print('appending', step)
-    #             self['steps'].append(step)
-    #     for step in self['steps']:
-    #         if not any([step_['command'] == step['command'] for step_ in job_type_steps]):
-    #             # print('removing', step)
-    #             del self['steps'][step]
-
-    # def deduce_job_type(self):
-    #     r"""
-    #     Deduce the job type from the stored input specification
-    #     :return: job type, or None if the input is complex
-    #     :rtype: str
-    #     """
-    #     job_type = list(_default_job_type_commands.keys())[0]
-    #     for job_type_ in _default_job_type_commands:
-    #         print('job_type_', job_type_)
-    #         ok = True
-    #         last_idx = None
-    #         for step in _default_job_type_commands[job_type_]:
-    #             commands = [s['command'].lower() for s in self['steps'] if 'command' in s]
-    #             print('commands', commands, 'step[command]', step['command'])
-    #             idx = commands.index(step['command'].lower()) if step['command'].lower() in commands else -1
-    #             if idx < 0 or (last_idx is not None and last_idx != idx - 1):
-    #                 ok = False
-    #             last_idx = idx
-    #         if ok: job_type = job_type_
-    #     print('job_type', job_type)
-    #     self['job_type'] = job_type
-    #     print('end of deduce_job_type', self)
-    #     return job_type
 
     def set_job_type(self, new_job_type):
         if self['job_type'] == new_job_type: return
@@ -838,9 +792,9 @@ class InputSpecification(UserDict):
         #                                                                                                 self.hartree_fock_methods]:
         #                 del methods[0]
         if type(methods) is str:
-            return methods.replace('\n',';').split(';')[0]
+            return methods.replace('\n', ';').split(';')[0]
         else:
-            return methods[-1].replace('\n',';').split(';')[0]
+            return methods[-1].replace('\n', ';').split(';')[0]
 
     @method.setter
     def method(self, method):
@@ -863,10 +817,9 @@ class InputSpecification(UserDict):
         # self['steps'] = new_steps
         if method.lower() not in [m.lower() for m in self.hartree_fock_methods]:
             # new_steps.append({'command': ('rhf' if method[0].lower() != 'u' else 'uhf')})  # TODO df
-            self['method'] =['rhf' if method[0].lower() != 'u' else 'uhf' ,  method.lower()]
+            self['method'] = ['rhf' if method[0].lower() != 'u' else 'uhf', method.lower()]
         else:
             self['method'] = method.lower()
-
 
     @property
     def method_options(self, command=None):
@@ -891,11 +844,11 @@ class InputSpecification(UserDict):
         _command = command if command is not None else self.method.split(',')[0].split(';')[0]
         if type(self['method']) is not list:
             self['method'] = [self['method']]
-        for index,step in enumerate(self['method']):
+        for index, step in enumerate(self['method']):
             js = JobStep(step)
             if js.command == _command:
-                js.options = [k+'='+v for k, v in options.items()] if type(options) is not list else options
-                self['method'][index] = js.dump().replace('{','').replace('}','')
+                js.options = [k + '=' + v for k, v in options.items()] if type(options) is not list else options
+                self['method'][index] = js.dump().replace('{', '').replace('}', '')
         if len(self['method']) == 1:
             self['method'] = self['method'][0]
 
@@ -957,8 +910,8 @@ class InputSpecification(UserDict):
             js.options[0] = density_functional
         else:
             js.options = [density_functional] + js.options
-        methods[0] = js.dump().replace('{','').replace('}','')
-        self['method'] = methods if len(methods)>1 else methods[0]
+        methods[0] = js.dump().replace('{', '').replace('}', '')
+        self['method'] = methods if len(methods) > 1 else methods[0]
 
     @property
     def open_shell_electrons(self):
@@ -1035,27 +988,27 @@ class InputSpecification(UserDict):
         self['variables']['spin'] = str(value_)
 
     def polish(self):
-        self.clean_coupled_cluster_property_input()
+        self._clean_coupled_cluster_property_input()
 
-    def clean_coupled_cluster_property_input(self):
+    def _clean_coupled_cluster_property_input(self):
         for step_index, step in enumerate(self.job_steps):
             # print('clean_coupled_cluster_property_input, step',step)
             if step.command.lower()[:4] in ['ccsd', 'bccd', 'qcisd']:
                 for index, directive in enumerate(step.directives):
                     _directive = JobStep(directive)
                     if _directive.command.lower() == 'expec':
-                            operator = _directive.options[0].lower().replace('expec,', '')
-                            property = [k for k, v in properties.items() if v == 'gexpec,' + operator][0]
-                            if 'properties' in self and property not in \
-                                    self['properties']:
-                                # step.directives.remove(_directive)
-                                step.directives.pop(index)
-                            self.set_job_step(step, step_index)
+                        operator = _directive.options[0].lower().replace('expec,', '')
+                        property = [k for k, v in properties.items() if v == 'gexpec,' + operator][0]
+                        if 'properties' in self and property not in \
+                                self['properties']:
+                            # step.directives.remove(_directive)
+                            step.directives.pop(index)
+                        self.set_job_step(step, step_index)
                 if 'properties' in self:
                     for property in self['properties']:
                         cmd = properties[property]
                         operator = cmd.lower().replace('gexpec,', '').strip()
-                        directive = 'expec,'+operator
+                        directive = 'expec,' + operator
                         if directive not in step.directives:
                             step.directives.append(directive)
                             self.set_job_step(step, step_index)
@@ -1165,30 +1118,25 @@ def _split_comma(string):
         string__ = re.sub(r'(\[.*),(.*\])', r'\1@@@\2', string_)
     return [field.replace('@@@', ',') for field in (string__.split(','))]
 
+
 if __name__ == '__main__':
     import argparse
     import tempfile
 
     import time
-    import os
 
 
     def follow(thefile):
         '''generator function that yields new lines in a file
         '''
-        # seek the end of the file
-        # thefile.seek(0, os.SEEK_END)
-
-        # start infinite loop
         while True:
-            # read last line of file
             line = thefile.readline()
-            # sleep if file hasn't been updated
             if not line:
                 time.sleep(0.1)
                 continue
-
             yield line
+
+
     parser = argparse.ArgumentParser(
         prog='Molpro'
     )
@@ -1218,13 +1166,11 @@ if __name__ == '__main__':
         project = pymolpro.Project(project_name, location=location)
         project.write_input(input)
         project.run(wait=False)
-        while not os.path.exists(project.filename('out','',0)):
+        while not os.path.exists(project.filename('out', '', 0)):
             time.sleep(0.1)
-        with open(project.filename('out','',run=0),'r') as o:
+        with open(project.filename('out', '', run=0), 'r') as o:
             lines = follow(o)
             for line in lines:
                 print(line.rstrip())
                 if 'Molpro calculation terminated' in line or (not line and o.tell() >= os.fstat(o.fileno()).st_size):
                     break
-
-
