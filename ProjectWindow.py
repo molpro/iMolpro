@@ -19,11 +19,11 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBo
 from PyQt5.QtGui import QFont, QDesktopServices
 from pymolpro import Project
 
-import molpro_input
+from pymolpro import molpro_input
 from BasisSelector import BasisSelector
 from SpinComboBox import SpinComboBox
 from draggabletabwidget import DraggableTabWidget
-from molpro_input import InputSpecification
+from pymolpro.molpro_input import InputSpecification
 from CheckableComboBox import CheckableComboBox
 from MenuBar import MenuBar
 from OldOutputMenu import OldOutputMenu
@@ -1604,8 +1604,10 @@ class GuidedPane(QWidget):
         step_ = self.parent.input_specification.job_steps[step]
         method_ = step_.command.upper()
         available_options = {}
-        for option in list(molpro_input.procedures_registry()[method_.replace('FREQUENCIES', 'FREQ')]['options']):
-            available_options[ re.sub('.*:','',option.split('=')[0])] = (option.split('=')+[''])[1]
+        for option in list(
+                molpro_input.procedures_registry()[re.sub('^HF', 'RHF', method_.replace('FREQUENCIES', 'FREQ'))][
+                    'options']):
+            available_options[re.sub('.*:', '', option.split('=')[0])] = (option.split('=') + [''])[1]
         title = 'Options for step ' + str(step + 1) + ' (' + method_ + ')'
         existing_options = {o.split('=')[0]: o.split('=')[1] if len(o.split('=')) > 1 else '' for o in step_.options}
         box = OptionsDialog(existing_options, available_options, title=title, parent=self,
@@ -1613,7 +1615,7 @@ class GuidedPane(QWidget):
         result = box.exec()
         if result is not None:
             step_.options = [k + '=' + v if v else k for k, v in result.items()]
-            self.parent.input_specification.set_job_step(step_,step)
+            self.parent.input_specification.set_job_step(step_, step)
             self.refresh_input_from_specification()
         self.step_options_combo.setCurrentIndex(0)
 
