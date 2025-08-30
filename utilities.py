@@ -504,7 +504,7 @@ class VibrationSetXML(VibrationSet):
                 'real_zero_imag': c.attrib['real_zero_imag'],
             }
             for c in (vibrations_node[instance].xpath(
-                'molpro-output:normalCoordinate[not(@real_zero_imag) or @real_zero_imag!="Z"]',
+                'molpro-output:normalCoordinate',
                 namespaces=namespaces_))
         ]
 
