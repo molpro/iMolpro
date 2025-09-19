@@ -19,11 +19,11 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBo
 from PyQt5.QtGui import QFont, QDesktopServices
 from pymolpro import Project
 
-import molpro_input
+from pymolpro import molpro_input
 from BasisSelector import BasisSelector
 from SpinComboBox import SpinComboBox
 from draggabletabwidget import DraggableTabWidget
-from molpro_input import InputSpecification
+from pymolpro.molpro_input import InputSpecification
 from CheckableComboBox import CheckableComboBox
 from MenuBar import MenuBar
 from OldOutputMenu import OldOutputMenu
@@ -105,11 +105,11 @@ class ProjectWindow(QMainWindow):
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
-        logger.debug('ProjectWindow.resizeEvent: ' + str(self.size()))
+        # logger.debug('ProjectWindow.resizeEvent: ' + str(self.size()))
         self.restart_vods()
 
     def restart_vods(self):
-        logger.debug('Restarting vods')
+        # logger.debug('Restarting vods')
         for vod in list(self.vods.keys()):
             # if vod not in ['builder', 'initial structure', 'inp']:
             if vod in self.vods:
@@ -170,7 +170,6 @@ class ProjectWindow(QMainWindow):
         self.input_pane = EditFile(self.project.filename('inp', run=-1), latency)
         self.setWindowTitle(filename)
 
-        molpro_input.supported_methods = self.allowed_methods()
         self.input_specification = InputSpecification(self.input_pane.toPlainText(), directory=self.project.filename())
 
         self.output_panes = {
@@ -445,7 +444,7 @@ class ProjectWindow(QMainWindow):
         if force or len(self.output_tabs) != len(
                 [tab_name for tab_name, pane in self.output_panes.items() if
                  os.path.exists(self.project.filename(re.sub(r'.*\.', '', tab_name)))]) + len(self.vods):
-            logger.debug('rebuilding output tabs')
+            # logger.debug('rebuilding output tabs')
             for suffix, pane in self.output_panes.items():
                 if os.path.exists(self.project.filename(suffix)) and not suffix in self.output_tabs.tab_names:
                     self.output_tabs.addTab(pane, suffix)
@@ -467,7 +466,7 @@ class ProjectWindow(QMainWindow):
                 self.output_tabs.setCurrentIndex(i)
 
     def guided_toggle(self):
-        logger.debug('guided_toggle')
+        # logger.debug('guided_toggle')
         index = 1 if self.guided_action.isChecked() else 0
         if 'inp' in self.output_panes:
             if index == 0:
@@ -485,7 +484,7 @@ class ProjectWindow(QMainWindow):
         if not guided and index == 1:
             box = QMessageBox()
             box.setText('Guided mode cannot be used because the input is too complex')
-            spec_input = molpro_input.canonicalise(self.input_specification.input())
+            spec_input = molpro_input.canonicalise(self.input_specification.molpro_input())
             file_input = molpro_input.canonicalise(self.input_pane.toPlainText())
             box.setInformativeText(
                 'The input regenerated from the attempt to parse into guided mode is\n' +
@@ -500,7 +499,7 @@ class ProjectWindow(QMainWindow):
             self.input_tabs.setCurrentIndex(index)
 
     def input_text_changed_consequence(self, index=0):
-        logger.debug('input_text_changed_consequence, index=' + str(index))
+        # logger.debug('input_text_changed_consequence, index=' + str(index))
         guided = self.guided_possible()
         if guided:
             self.input_specification = InputSpecification(self.input_pane.toPlainText(),
@@ -515,7 +514,7 @@ class ProjectWindow(QMainWindow):
         return guided
 
     def input_tab_changed_consequence(self, index=0):
-        logger.debug('index=' + str(index) + ' ' + str(self.input_tabs.currentIndex()))
+        # logger.debug('index=' + str(index) + ' ' + str(self.input_tabs.currentIndex()))
         if self.input_tabs.currentIndex() == 1:
             self.guided_pane.refresh()
 
@@ -529,27 +528,9 @@ class ProjectWindow(QMainWindow):
                         result.append(keyfound)
         return result
 
-    def allowed_methods(self):
-        result = []
-        if not hasattr(self, 'procedures_registry'):
-            try:
-                self.procedures_registry = self.project.procedures_registry()
-                if not self.procedures_registry:
-                    raise ValueError
-            except Exception as e:
-                msg = QMessageBox()
-                msg.setText('Error in finding local molpro')
-                msg.setDetailedText('Guided mode will not work correctly\r\n' + str(e))
-                msg.exec()
-                self.procedures_registry = {}
-        for keyfound in self.procedures_registry.keys():
-            if self.procedures_registry[keyfound]['class'] == 'PROG':
-                result.append(self.procedures_registry[keyfound]['name'])
-        return result
-
     def vod_selector_action(self, text, external_path=None, force=False):
-        logger.debug('vod_selector_action ' + text + ' ' + str(external_path))
-        logger.debug('self.vods ' + str(self.vods))
+        # logger.debug('vod_selector_action ' + text + ' ' + str(external_path))
+        # logger.debug('self.vods ' + str(self.vods))
         # print('vod_selector_action', text, external_path, force)
         if force and self.vod_selector.currentText().strip() == 'None':
             self.vod_selector.setCurrentText('Final structure')
@@ -576,12 +557,12 @@ class ProjectWindow(QMainWindow):
         elif text == 'Final structure':
             self.visualise_output(external_path, 'xml')
         else:
-            for typ in molpro_input.orbital_types:
-                if text.replace(' orbitals', '') == molpro_input.orbital_types[typ]['text']:
+            for typ in molpro_input.local_orbital_types():
+                if text.replace(' orbitals', '') == molpro_input.local_orbital_types()[typ]['text']:
                     self.visualise_output(external_path, '', self.project.filename('molden', typ, run=0))
 
     def rebuild_vod_selector(self):
-        logger.debug('rebuild_vod_selector')
+        # logger.debug('rebuild_vod_selector')
         self.vods.clear()
         for t, f in self.geometry_files():
             self.vod_selector_action('Edit ' + f)
@@ -592,9 +573,9 @@ class ProjectWindow(QMainWindow):
                                                                  -9:] == '</molpro>'):
             self.vod_selector_action('Final structure')
             for t, f in self.putfiles():
-                if f.replace('.molden', '') in molpro_input.orbital_types:
+                if f.replace('.molden', '') in molpro_input.local_orbital_types():
                     self.vod_selector_action(
-                        molpro_input.orbital_types[f.replace('.molden', '')]['text'] + ' orbitals')
+                        molpro_input.local_orbital_types()[f.replace('.molden', '')]['text'] + ' orbitals')
         try:
             for index in range(10000):
                 molden_file_stem = self.project.filename('molden', 'xml_orbitals').replace('.molden', '')
@@ -678,8 +659,8 @@ class ProjectWindow(QMainWindow):
             subprocess.Popen([external_path, filename])
         else:
             title = os.path.splitext(os.path.basename(filename))[0]
-            if title in molpro_input.orbital_types.keys():
-                title = molpro_input.orbital_types[title]['text']
+            if title in molpro_input.local_orbital_types().keys():
+                title = molpro_input.local_orbital_types()[title]['text']
             elif title == os.path.splitext(os.path.basename(self.project.filename()))[0]:
                 title = 'final structure'
             if title not in self.vods:
@@ -687,8 +668,7 @@ class ProjectWindow(QMainWindow):
 
     def embedded_vod(self, file, command='', title='structure', **kwargs):
         height, width = self.embedded_geometry(280)
-        logger.debug('embedded_vod ' + file + ', ' + command + ', ' + title + ', ' + str(height) + ', ' + str(width))
-        firstmodel = 1
+        # logger.debug('embedded_vod ' + file + ', ' + command + ', ' + title + ', ' + str(height) + ', ' + str(width))
         firstvib = 1
         firstorb = 1
         try:
@@ -911,10 +891,10 @@ Jmol.jmolHtml("</p>")
     def show_xyz(self, instance=-1):
         for file in self.geometry_files():
             full_file = self.project.filename('', file[1], instance)
-            logger.debug('xyz file ' + full_file)
+            # logger.debug('xyz file ' + full_file)
             with open(full_file, 'r') as f:
                 contents = ''.join(f.readlines())
-            logger.debug('xyz file ' + contents)
+            # logger.debug('xyz file ' + contents)
             QMessageBox.information(self, 'xyz', contents)
 
     def show_xyz_input(self):
@@ -925,7 +905,7 @@ Jmol.jmolHtml("</p>")
         pass
 
     def visualise_input(self, external_path=None):
-        logger.debug('visualise_input' + str(self.vods.keys()))
+        # logger.debug('visualise_input' + str(self.vods.keys()))
         import tempfile
         geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
         geometry_directory.mkdir(exist_ok=True)
@@ -937,14 +917,14 @@ Jmol.jmolHtml("</p>")
             with tempfile.TemporaryDirectory() as tmpdirname:
                 path = pathlib.Path(tmpdirname) / 'input_geometries'
                 os.makedirs(str(path), exist_ok=True)
-                logger.debug('visualise_input makes project at ' + str(path))
+                # logger.debug('visualise_input makes project at ' + str(path))
                 self.project.copy(pathlib.Path(self.project.filename(run=-1)).name, location=path)
                 project_path = path / pathlib.Path(self.project.filename(run=-1)).name
                 project = Project(str(project_path))
                 project.clean(0)
                 open(project.filename('inp', run=-1), 'a').write('\nhf\n---')
-                logger.debug('visualise_input project input filename' + project.filename('inp', run=-1))
-                logger.debug('visualise_input project input file contents\n' + open(project.filename('inp', run=-1),'r').read())
+                # logger.debug('visualise_input project input filename' + project.filename('inp', run=-1))
+                # logger.debug('visualise_input project input file contents\n' + open(project.filename('inp', run=-1),'r').read())
                 with open(pathlib.Path(project.filename(run=-1)) / 'molpro.rc', 'a') as f:
                     f.write(' --geometry')
 
@@ -957,11 +937,11 @@ Jmol.jmolHtml("</p>")
                                 detail += ''.join(ff.readlines())
                         except:
                             pass
-                    try:
-                        logger.debug('visualise_input project input file contents\n' + open(project.filename('inp'),'r').read())
-                        logger.debug('visualise_input project output file contents\n' + open(project.filename('out'),'r').read())
-                    except:
-                        pass
+                    # try:
+                        # logger.debug('visualise_input project input file contents\n' + open(project.filename('inp'),'r').read())
+                        # logger.debug('visualise_input project output file contents\n' + open(project.filename('out'),'r').read())
+                    # except:
+                    #     pass
                     msg = QMessageBox()
                     msg.setIcon(QMessageBox.Critical)
                     msg.setWindowTitle("Error")
@@ -1226,7 +1206,7 @@ class BasisAndHamiltonianChooser(QWidget):
         self.desired_basis_quality = self.parent.input_specification.basis_quality
 
         self.combo_hamiltonian = QComboBox(self)
-        self.combo_hamiltonian.addItems([h['text'] for h in molpro_input.hamiltonians.values()])
+        self.combo_hamiltonian.addItems([h['text'] for h in molpro_input.hamiltonians().values()])
         self.combo_hamiltonian.currentTextChanged.connect(self.changed_hamiltonian)
 
         self.guided_combo_basis_quality = QComboBox(self)
@@ -1273,12 +1253,12 @@ class BasisAndHamiltonianChooser(QWidget):
 
             self.guided_combo_basis_quality.setCurrentText(self.basis_qualities[self.desired_basis_quality])
             self.combo_hamiltonian.setCurrentText(
-                molpro_input.hamiltonians[self.input_specification['hamiltonian']]['text'])
+                molpro_input.hamiltonians()[self.input_specification['hamiltonian']]['text'])
             break
 
     def changed_hamiltonian(self, text):
-        new_hamiltonian_ = list(molpro_input.hamiltonians.keys())[
-            [v['text'] for v in molpro_input.hamiltonians.values()].index(text)]
+        new_hamiltonian_ = list(molpro_input.hamiltonians().keys())[
+            [v['text'] for v in molpro_input.hamiltonians().values()].index(text)]
         if self.input_specification['hamiltonian'] != new_hamiltonian_:
             self.input_specification['hamiltonian'] = new_hamiltonian_
             if 'basis' in self.input_specification and 'default' in self.input_specification['basis']:
@@ -1294,7 +1274,7 @@ class BasisAndHamiltonianChooser(QWidget):
     def default_basis_for_hamiltonian(self, desired_basis_quality=0):
         quality = self.desired_basis_quality if desired_basis_quality > 0 else 3
         return {'default': 'cc-pV(' + self.basis_qualities[quality][0] + '+d)Z' +
-                           molpro_input.hamiltonians[self.input_specification['hamiltonian']]['basis_string'],
+                           molpro_input.hamiltonians()[self.input_specification['hamiltonian']]['basis_string'],
                 'elements': {}, 'quality': quality}
 
     def changed_default_basis(self, spec):
@@ -1314,13 +1294,14 @@ class BasisAndHamiltonianChooser(QWidget):
     def input_specification(self):
         return self.parent.input_specification
 
-    @property
-    def hamiltonians(self):
-        result = set()
-        for keyfound in self.basis_registry.keys():
-            if keyfound is not None:
-                result.add(self.hamiltonian_type(keyfound))
-        return result
+    # @property
+    # def hamiltonians(self):
+    #     result = set()
+    #     for keyfound in self.basis_registry.keys():
+    #         if keyfound is not None:
+    #             result.add(self.hamiltonian_type(keyfound))
+    #     print('BasisAndHamiltonianChooser.hamiltonians:',result)
+    #     return result
 
     def hamiltonian_type(self, key):
         return re.sub(r'\(.*', '', self.basis_registry[key]['type'])
@@ -1342,7 +1323,7 @@ class GuidedPane(QWidget):
         self.setLayout(self.guided_layout)
 
         self.guided_combo_orientation = QComboBox(self)
-        self.guided_combo_orientation.addItems(molpro_input.orientation_options.keys())
+        self.guided_combo_orientation.addItems(molpro_input.orientation_options().keys())
         self.guided_combo_orientation.currentTextChanged.connect(
             lambda text: self.input_specification_change('orientation', text))
 
@@ -1354,19 +1335,19 @@ class GuidedPane(QWidget):
             lambda ms2: self.input_specification_variable_change('spin', str(ms2) if ms2 >= 0 else ''))
 
         self.guided_combo_wave_fct_symm = QComboBox(self)
-        self.guided_combo_wave_fct_symm.addItems(molpro_input.wave_fct_symm_commands.keys())
+        self.guided_combo_wave_fct_symm.addItems(molpro_input.symmetry_commands().keys())
         self.guided_combo_wave_fct_symm.currentTextChanged.connect(
-            lambda text: self.input_specification_change('wave_fct_symm', text))
+            lambda text: self.input_specification_change('symmetry', text))
 
         self.guided_combo_job_type = QComboBox(self)
         self.guided_combo_job_type.setMaximumWidth(180)
-        self.guided_combo_job_type.addItems(molpro_input.job_type_steps.keys())
+        self.guided_combo_job_type.addItems(molpro_input.job_types().values())
         self.guided_combo_job_type.currentTextChanged.connect(
             lambda text: self.input_specification_change('job_type', text))
 
         self.guided_combo_method = QComboBox(self)
 
-        self.guided_combo_method.addItems(self.parent.allowed_methods())
+        self.guided_combo_method.addItems(molpro_input.supported_methods())
         self.guided_combo_method.currentTextChanged.connect(
             lambda text: self.input_specification_change('method', text))
 
@@ -1439,12 +1420,8 @@ class GuidedPane(QWidget):
         return self.parent.input_specification
 
     def refresh(self):
-        self.guided_combo_orientation.setCurrentText(
-            self.input_specification['orientation'] if 'orientation' in self.input_specification else
-            list(molpro_input.orientation_options.keys())[0])
-        self.guided_combo_wave_fct_symm.setCurrentText(
-            self.input_specification['wave_fct_symm'] if 'wave_fct_symm' in self.input_specification else
-            list(molpro_input.wave_fct_symm_commands.keys())[0])
+        self.guided_combo_orientation.setCurrentText(self.input_specification.with_defaults['orientation'])
+        self.guided_combo_wave_fct_symm.setCurrentText(self.input_specification.with_defaults['symmetry'])
         if 'variables' in self.input_specification and 'charge' in self.input_specification['variables']:
             self.charge_line.setText(self.input_specification['variables']['charge'])
         else:
@@ -1455,8 +1432,8 @@ class GuidedPane(QWidget):
         if self.input_specification is not None:
             if self.input_specification.method is None:
                 self.input_specification.method = 'rhf'
-            base_method = re.sub('^df-', '', self.input_specification.method, flags=re.IGNORECASE)
-            method_index = self.guided_combo_method.findText(base_method, Qt.MatchFixedString)
+            method_index = self.guided_combo_method.findText(
+                re.sub('^df-', '', self.input_specification.method, flags=re.IGNORECASE).upper(), Qt.MatchFixedString)
             self.guided_combo_method.setCurrentIndex(method_index)
             if re.match('[ru]ks', self.input_specification.method, flags=re.IGNORECASE):
                 self.method_row.ensure_not(['Core Correlation'])
@@ -1471,16 +1448,16 @@ class GuidedPane(QWidget):
             else:
                 self.method_row.ensure_not(['Functional'])
                 self.method_row.ensure({'Core Correlation': self.guided_combo_core_correlation, })
-        self.guided_combo_job_type.setCurrentText(self.input_specification.job_type)
+        self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
         if 'core_correlation' in self.input_specification:
             self.guided_combo_core_correlation.setCurrentText(self.input_specification['core_correlation'])
 
         self.step_options_combo.clear()
         self.step_options_combo.addItem('- Select job step -')
-        self.step_options_combo.addItems([step['command'].upper() for step in self.input_specification['steps'] if step['command'].lower() != self.input_specification['procname'].lower()])
+        self.step_options_combo.addItems([step.command.upper() for step in self.input_specification.job_steps if step.command.lower() != self.input_specification.procname.lower()])
         self.step_options_combo.setCurrentIndex(0)
         try:
-            registry_df = self.parent.procedures_registry[self.input_specification.method.upper()][
+            registry_df = molpro_input.procedures_registry()[self.input_specification.method.upper()][
                 'DF']  # TODO do something about negative sign in registry
             bit_pattern = '0000' + bin(abs(registry_df)).replace('b', '0') if registry_df is not None else '0000'
             # print(registry_df, bin(registry_df),bit_pattern)
@@ -1540,12 +1517,13 @@ class GuidedPane(QWidget):
                 self.method_asserted = True
             self.input_specification.polish()
         elif key == 'job_type':
-            self.input_specification.job_type = value
-            self.input_specification.regularise_procedure_references()
+            self.input_specification.set_job_type([k for k, v in molpro_input.job_types().items() if v == value][0])
         elif key == 'density_functional':
             self.input_specification.density_functional = value
         else:
             self.input_specification[key] = value
+            if key == 'properties':
+                self.input_specification.polish()
         self.refresh_input_from_specification()
         self.refresh()
 
@@ -1574,9 +1552,9 @@ class GuidedPane(QWidget):
         self.refresh_input_from_specification()
 
     def refresh_input_from_specification(self):
-        logger.debug('refresh_input_from_specification')
+        # logger.debug('refresh_input_from_specification')
         if not self.parent.guided_possible(): return
-        new_input = self.input_specification.input()
+        new_input = self.input_specification.molpro_input()
         if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
             self.input_pane.setPlainText(new_input)
 
@@ -1623,20 +1601,21 @@ class GuidedPane(QWidget):
 
     def step_options_edit(self, step: int):
         if step < 0: return
-        step_ = self.parent.input_specification['steps'][step]
-        method_ = step_['command'].upper()
+        step_ = self.parent.input_specification.job_steps[step]
+        method_ = step_.command.upper()
         available_options = {}
-        for option in list(self.parent.procedures_registry[method_.replace('FREQUENCIES', 'FREQ')]['options']):
-            available_options[ re.sub('.*:','',option.split('=')[0])] = (option.split('=')+[''])[1]
+        for option in list(
+                molpro_input.procedures_registry()[re.sub('^HF', 'RHF', method_.replace('FREQUENCIES', 'FREQ'))][
+                    'options']):
+            available_options[re.sub('.*:', '', option.split('=')[0])] = (option.split('=') + [''])[1]
         title = 'Options for step ' + str(step + 1) + ' (' + method_ + ')'
-        existing_options = {o.split('=')[0]: o.split('=')[1] if len(o.split('=')) > 1 else '' for o in
-                            (step_['options'] if 'options' in step_ else [])}
+        existing_options = {o.split('=')[0]: o.split('=')[1] if len(o.split('=')) > 1 else '' for o in step_.options}
         box = OptionsDialog(existing_options, available_options, title=title, parent=self,
                             help_uri='https://www.molpro.net/manual/doku.php?q=' + method_ + '&do=search')
         result = box.exec()
         if result is not None:
-            self.parent.input_specification['steps'][step]['options'] = [k + '=' + v if v else k for k, v in
-                                                                         result.items()]
+            step_.options = [k + '=' + v if v else k for k, v in result.items()]
+            self.parent.input_specification.set_job_step(step_, step)
             self.refresh_input_from_specification()
         self.step_options_combo.setCurrentIndex(0)
 
@@ -1699,20 +1678,20 @@ class OrbitalInput(CheckableComboBox):
 
     def refresh(self):
         self.clear()
-        self.addItems([o['text'] for k, o in molpro_input.orbital_types.items() if
+        self.addItems([o['text'] for k, o in molpro_input.local_orbital_types().items() if
                        k != 'nbo' or self.parent.input_specification.open_shell_electrons is None or self.parent.input_specification.open_shell_electrons == 0])
         if 'orbitals' in self.parent.input_specification:
             for o in self.parent.input_specification['orbitals']:
                 for i in range(self.model().rowCount()):
-                    if self.model().item(i).text() == molpro_input.orbital_types[o]['text']:
+                    if self.model().item(i).text() == molpro_input.local_orbital_types()[o]['text']:
                         self.model().item(i).setCheckState(Qt.Checked)
         self.updateText()
 
     def action(self, text):
-        self.parent.input_specification['orbitals'] = [k for k, v in molpro_input.orbital_types.items() for t in
+        self.parent.input_specification['orbitals'] = [k for k, v in molpro_input.local_orbital_types().items() for t in
                                                        self.currentData() if t == v['text']]
         if any([b in self.parent.input_specification['orbitals'] for b in ['nbo', 'ibo']]):
-            self.parent.input_specification_change('wave_fct_symm', 'No Symmetry')
+            self.parent.input_specification_change('symmetry', 'none')
         self.parent.refresh_input_from_specification()
 
 
