@@ -5,6 +5,8 @@ on:
   push:
     tags:
       - '*'
+    branches:
+    - 'molpro-input'
 jobs:
   deploy:
     name: Deploy on Unix

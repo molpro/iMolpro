@@ -1348,6 +1348,8 @@ class GuidedPane(QWidget):
         self.guided_combo_method = QComboBox(self)
 
         self.guided_combo_method.addItems(molpro_input.supported_methods())
+        # print('input specification',self.input_specification)
+        # print('input specification method',self.input_specification['method'])
         self.guided_combo_method.currentTextChanged.connect(
             lambda text: self.input_specification_change('method', text))
 
@@ -1427,7 +1429,7 @@ class GuidedPane(QWidget):
         else:
             self.charge_line.setText('0')
 
-        self.spin_line.refresh(self.input_specification.spin)
+        self.spin_line.refresh(self.input_specification.with_defaults['spin'])
 
         if self.input_specification is not None:
             if self.input_specification.method is None:
@@ -1512,6 +1514,8 @@ class GuidedPane(QWidget):
             return
         if key == 'method':
             self.input_specification.method = value
+            if 'ks' in value.lower():
+                self.input_specification.density_functional = self.input_specification.density_functional
             self.method_changed_signal.emit(value)
             if self.parent.initialised_from_input:
                 self.method_asserted = True
