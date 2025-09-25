@@ -9,3 +9,4 @@ git == 2.49
 libboost >= 1.84.0
 certifi >= 2024.8.30
 jsonschema >= 4
+openssl >= 3.5.3
