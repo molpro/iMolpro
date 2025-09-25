@@ -73,6 +73,7 @@ cat << 'EOF' >> iMolpro.spec
     }
 )
 EOF
+conda list
 PATH=/usr/bin:$PATH pyinstaller \
   --distpath "${builddir}"/dist \
   iMolpro.spec || exit 1
@@ -133,6 +134,8 @@ EOF
 else
   rm -rf dist build
   mv "${builddir}"/dist .
+  mkdir -p ./dist/iMolpro/_internal/pymolpro
+  cp -p $CONDA_PREFIX/lib/python$(python --version|sed -e 's/.* //' -e 's/\.[0-9]*$//')/site-packages/pymolpro/molpro_input.json ./dist/iMolpro/_internal/pymolpro
   if [ ! -z "$tar" ]; then
   tar cjf dist/iMolpro-"${descriptor}".tar.bz2 -C dist iMolpro
   fi
