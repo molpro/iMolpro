@@ -44,6 +44,8 @@ ls -lR $builddir/molpro/bin
 rm $molpro_script
 sed -i -e 's@MOLPRO_PREFIX=.*$@me=$(realpath $0 2>/dev/null) || me=$0; MOLPRO_PREFIX=$(dirname $(dirname $me))@' $builddir/molpro/bin/molpro
 
+echo 'done with installing molpro-teach'
+
 
 PATH=/usr/bin:$PATH pyi-makespec \
   --add-data JSmol.min.js:. \
