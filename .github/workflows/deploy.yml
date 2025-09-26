@@ -35,7 +35,7 @@ jobs:
           p12-file-base64: ${{ secrets.CERTIFICATES_P12 }}
           p12-password: ${{ secrets.CERTIFICATES_P12_PW }}
       - name: Remove system libssl3
-        run: apt-get remove -y libssl3
+        run: sudo apt-get remove -y libssl3
         if: ${{ matrix.os == 'ubuntu-22.04' }}
       - name: Build
         env:
