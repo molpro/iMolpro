@@ -14,7 +14,8 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        os: [ ubuntu-24.04, macos-13, macos-14 ]
+#        os: [ ubuntu-24.04, macos-13, macos-14 ]
+        os: [ ubuntu-24.04 ]
         include:
           - os: macos-13
             mac: 1
@@ -38,7 +39,7 @@ jobs:
 #        run: sudo apt-get remove -y libssl3
 #        if: ${{ matrix.os == 'ubuntu-22.04' }}
       - name: id
-        run: cat etc/lsb-release
+        run: cat /etc/lsb-release
         if: ${{ matrix.os == 'ubuntu-24.04' }}
       - name: Build
         env:
@@ -63,6 +64,7 @@ jobs:
           make_latest: false
           prerelease: true
   deploy-windows:
+    if: ${{ false }}
     name:  Deploy on Windows
     runs-on: windows-latest
     steps:
