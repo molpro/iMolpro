@@ -37,6 +37,9 @@ jobs:
 #      - name: Remove system libssl3
 #        run: sudo apt-get remove -y libssl3
 #        if: ${{ matrix.os == 'ubuntu-22.04' }}
+      - name: id
+        run: cat etc/lsb-release
+        if: ${{ matrix.os == 'ubuntu-24.04' }}
       - name: Build
         env:
           MOLPRO_TEACH_URL: ${{ secrets.MOLPRO_TEACH_URL }}
