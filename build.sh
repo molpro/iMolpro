@@ -133,6 +133,8 @@ EOF
 else
   rm -rf dist build
   mv "${builddir}"/dist .
+  mkdir -p ./dist/iMolpro/_internal/pymolpro
+  cp -p $CONDA_PREFIX/lib/python$(python --version|sed -e 's/.* //' -e 's/\.[0-9]*$//')/site-packages/pymolpro/molpro_input.json ./dist/iMolpro/_internal/pymolpro
   if [ ! -z "$tar" ]; then
   tar cjf dist/iMolpro-"${descriptor}".tar.bz2 -C dist iMolpro
   fi
@@ -154,7 +156,7 @@ else
     for type in deb rpm ; do
       rm -f dist/iMolpro-"${descriptor}".${type}
       dash='-'; if [ $type = rpm ]; then dash='_'; fi
-      fpm -s dir -C dist -t ${type} -p dist/iMolpro-"${descriptor}".${type} -v "${version}" -n iMolpro --prefix=${prefix}/libexec --before-install ${builddir}/preinstall --after-install ${builddir}/postinstall iMolpro
+      fpm -s dir -C dist -t ${type} -p dist/imolpro-"${descriptor}".${type} -v "${version}" -n imolpro --prefix=${prefix}/libexec --before-install ${builddir}/preinstall --after-install ${builddir}/postinstall iMolpro
     done
   fi
 fi
