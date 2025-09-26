@@ -135,6 +135,7 @@ else
   mv "${builddir}"/dist .
   mkdir -p ./dist/iMolpro/_internal/pymolpro
   cp -p $CONDA_PREFIX/lib/python$(python --version|sed -e 's/.* //' -e 's/\.[0-9]*$//')/site-packages/pymolpro/molpro_input.json ./dist/iMolpro/_internal/pymolpro
+  cp -p $(find ${CONDA_PREFIX} -name libcrypto.so.3) $(find dist/iMolpro/_internal -name libcrypto.so.3) # because, somehow, pyinstaller picks up the system libcrypto
   if [ ! -z "$tar" ]; then
   tar cjf dist/iMolpro-"${descriptor}".tar.bz2 -C dist iMolpro
   fi
