@@ -39,7 +39,7 @@ jobs:
           conda config --set solver libmamba
           . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
           conda activate iMolpro-github
-          conda install -y openssl
+          conda install -y -c conda-forge openssl=3.5.3
           sudo cp -p $(find ${CONDA_PREFIX} -name libcrypto.so.3) /usr/lib/x86_64-linux-gnu/libcrypto.so.3
       - name: Build
         env:
