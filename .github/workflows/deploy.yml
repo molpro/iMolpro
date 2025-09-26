@@ -34,13 +34,18 @@ jobs:
           p12-password: ${{ secrets.CERTIFICATES_P12_PW }}
       - name: Hack-upgrade libcrypto
         if: ${{ matrix.os == 'ubuntu-24.04' }}
-        run: sudo cp -p $(find /opt -name libcrypto.so.3) /usr/lib/x86_64-linux-gnu/libcrypto.so.3
+        run: |
+          if [ -z "${CONDA_EXE}" ]; then export CONDA_EXE=$(readlink -f $(which conda)) ; fi
+          conda config --set solver libmamba
+          . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
+          conda activate iMolpro-github
+          conda install -y openssl
+          sudo cp -p $(find ${CONDA_PREFIX} -name libcrypto.so.3) /usr/lib/x86_64-linux-gnu/libcrypto.so.3
       - name: Build
         env:
           MOLPRO_TEACH_URL: ${{ secrets.MOLPRO_TEACH_URL }}
         run: |
           if [ -z "${CONDA_EXE}" ]; then export CONDA_EXE=$(readlink -f $(which conda)) ; fi
-          echo github.ref ${{ github.ref }}
           conda config --set solver libmamba
           . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
           conda activate iMolpro-github
