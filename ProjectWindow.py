@@ -519,7 +519,7 @@ class ProjectWindow(QMainWindow):
             self.guided_pane.refresh()
 
     def available_functionals(self):
-        project_registry = self.project.registry('dfunc')
+        project_registry = pymolpro.registry('dfunc')
         result = []
         if project_registry != None:
             for priority in range(5, -1, -1):
@@ -1202,7 +1202,7 @@ class BasisAndHamiltonianChooser(QWidget):
         super().__init__(parent)
         self.parent = parent
 
-        self.basis_registry = self.parent.project.basis_registry()
+        self.basis_registry = pymolpro.basis_registry()
         self.desired_basis_quality = self.parent.input_specification.basis_quality
 
         self.combo_hamiltonian = QComboBox(self)
@@ -1459,7 +1459,7 @@ class GuidedPane(QWidget):
         self.step_options_combo.addItems([step.command.upper() for step in self.input_specification.job_steps if step.command.lower() != self.input_specification.procname.lower()])
         self.step_options_combo.setCurrentIndex(0)
         try:
-            registry_df = molpro_input.procedures_registry()[self.input_specification.method.upper()][
+            registry_df = pymolpro.procedures_registry()[self.input_specification.method.upper()][
                 'DF']  # TODO do something about negative sign in registry
             bit_pattern = '0000' + bin(abs(registry_df)).replace('b', '0') if registry_df is not None else '0000'
             # print(registry_df, bin(registry_df),bit_pattern)
@@ -1563,7 +1563,7 @@ class GuidedPane(QWidget):
             self.input_pane.setPlainText(new_input)
 
     def thresholds_edit(self, flag):
-        project_registry = self.project.registry('THRESH')
+        project_registry = pymolpro.registry('THRESH')
         available_options = [k.split(',')[0] for k in project_registry]
         title = 'Global thresholds'
         box = OptionsDialog(
@@ -1609,7 +1609,7 @@ class GuidedPane(QWidget):
         method_ = step_.command.upper()
         available_options = {}
         for option in list(
-                molpro_input.procedures_registry()[re.sub('^HF', 'RHF', method_.replace('FREQUENCIES', 'FREQ'))][
+                pymolpro.procedures_registry()[re.sub('^HF', 'RHF', method_.replace('FREQUENCIES', 'FREQ'))][
                     'options']):
             available_options[re.sub('.*:', '', option.split('=')[0])] = (option.split('=') + [''])[1]
         title = 'Options for step ' + str(step + 1) + ' (' + method_ + ')'
