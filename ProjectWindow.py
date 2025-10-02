@@ -931,7 +931,10 @@ Jmol.jmolHtml("</p>")
                 with open(pathlib.Path(project.filename(run=-1)) / 'molpro.rc', 'a') as f:
                     f.write(' --geometry')
 
+                ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
                 project.run(wait=True, force=True, backend='local')
+                if ld_library_path is not None:
+                    os.environ['LD_LIBRARY_PATH'] = ld_library_path
                 if not project.xpath_search('//*/cml:atomArray'):
                     detail = ''
                     for suffix in ['stdout', 'stderr', 'out']:
