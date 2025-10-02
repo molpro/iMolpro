@@ -634,11 +634,14 @@ class ProjectWindow(QMainWindow):
             if vod not in ['builder', 'initial structure', 'inp']:
                 del self.vods[vod]
         self.refresh_output_tabs()
+        ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
         try:
             self.project.run(force=force)
         except Exception as e:
             QMessageBox.critical(self, 'Job submission failed', 'Cannot submit job:\n' + str(e))
             return False
+        if ld_library_path is not None:
+            os.environ['LD_LIBRARY_PATH'] = ld_library_path
         for i in range(len(self.output_tabs)):
             if self.output_tabs.tabText(i) == 'out':
                 self.output_tabs.setCurrentIndex(i)
