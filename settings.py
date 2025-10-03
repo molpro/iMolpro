@@ -1,39 +1,40 @@
 import logging
-import os
 import pathlib
-import platform
 
 from OptionsDialog import OptionsDialog
 from utilities import FileBackedDictionary
 
 logger = logging.getLogger(__name__)
 
-settings = FileBackedDictionary(
-    str(pathlib.Path(
-        os.environ['APPDATA' if platform.system() == 'Windows' else 'HOME']) / '.molpro' / 'iMolpro.settings.json'))
+settings = FileBackedDictionary(str(pathlib.Path.home() / '.molpro' / 'iMolpro.settings.json'))
 
 
-def settings_edit(parent=None, callbacks={}):
-    hide=['project_window_width','project_window_height']
-    box = OptionsDialog({k: settings[k] for k in settings if k not in hide},
-                        ['CHEMSPIDER_API_KEY', 'orbital_transparency'], title='Settings',
-                        parent=parent)
+def settings_edit(parent=None, callbacks=None):
+    if callbacks is None:
+        callbacks = {}
+    hide = ['project_window_width', 'project_window_height']
+    visible_settings = {k: settings[k] for k in settings if k not in hide}
+    box = OptionsDialog(visible_settings, [
+        'CHEMSPIDER_API_KEY',
+        'orbital_transparency',
+    ], title='Settings', parent=parent)
     result = box.exec()
     if result is not None:
-        for k in result:
+        for k, v in result.items():
+            original = settings.get(k)
             try:
-                result[k] = int(result[k])
-            except:
+                v = int(v)
+            except (ValueError, TypeError):
                 try:
-                    if type(result[k]) != int:
-                        result[k] = float(result[k])
-                except:
+                    v = float(v)
+                except (ValueError, TypeError):
                     pass
-            changed = k not in settings or settings[k] != result[k]
-            settings[k] = result[k]
-            logger.debug('Settings changed: {}'.format(settings))
-            if changed and k in callbacks and callable(callbacks[k]):
-                callbacks[k]()
-        for k in settings:
-            if k not in result:
-                del settings[k]
+            changed = original != v
+            settings[k] = v
+            if changed:
+                logger.debug(f'Setting changed: {k} = {v}')
+                if k in callbacks and callable(callbacks[k]):
+                    callbacks[k]()
+        to_delete = [k for k in settings if k not in result]
+        for k in to_delete:
+            del settings[k]

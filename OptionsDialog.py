@@ -23,7 +23,7 @@ class OptionsDialog(QDialog):
             self.add(k, v)
         layout.addWidget(self.current)
 
-        self.available_options = {available_option:value for available_option,value in available_options.items() if
+        self.available_options = {available_option:None for available_option in available_options if
                               available_option not in current_options}
         if self.available_options:
             self.available = QComboBox(self)
