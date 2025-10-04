@@ -1,13 +1,18 @@
 import copy
+from typing import Callable, Optional, Dict, List, Any
+from functools import partial
 
 from PyQt5.QtWidgets import QComboBox, QWidget, QLabel, QInputDialog, QGridLayout, QPushButton
 
 
 class BasisSelector(QWidget):
+    """
+    Widget for selecting basis sets.
+    """
     new_elementRange = '- new element or range -'
     delete_elementRange = '- delete element or range -'
 
-    def __init__(self, changed_action, null_prompt):
+    def __init__(self, changed_action: Callable[[Dict[str, Any]], None], null_prompt: str):
         super().__init__()
         self.changed_action = changed_action
         self.null_prompt = null_prompt
@@ -16,60 +21,74 @@ class BasisSelector(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         self.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
+        self.current_spec: Dict[str, Any] = {}
+        self.possible_basis_sets: List[str] = []
 
-    def reload(self, current_spec=None, possible_basis_sets=None):
+    def reload(self, current_spec: Optional[Dict[str, Any]] = None, possible_basis_sets: Optional[List[str]] = None):
         if possible_basis_sets is not None:
             self.possible_basis_sets = possible_basis_sets
         if current_spec is not None:
             self.current_spec = copy.deepcopy(current_spec)
 
+        # Remove all widgets from layout safely
         for i in reversed(range(self.layout().count())):
-            widgetToRemove = self.layout().itemAt(i).widget()
-            self.layout().removeWidget(widgetToRemove)
-            widgetToRemove.setParent(None)
+            item = self.layout().itemAt(i)
+            widget = item.widget()
+            if widget is not None:
+                self.layout().removeWidget(widget)
+                widget.setParent(None)
 
+        # Default selector
         self.layout().addWidget(QLabel('Default'), 0, 0)
         default_selector = QComboBox(self)
-        self.layout().addWidget(default_selector, 0, 1)
-        default_selector.currentTextChanged.connect(lambda: self.changed_code(default_selector, 'default'))
-        select_ = self.current_spec['default'] if self.current_spec[
-                                                      'default'] in self.possible_basis_sets else self.null_prompt
         default_selector.clear()
         default_selector.addItems([self.null_prompt] + self.possible_basis_sets)
+        select_ = self.current_spec.get('default', self.null_prompt)
+        if select_ not in self.possible_basis_sets:
+            select_ = self.null_prompt
         default_selector.setCurrentText(select_)
+        default_selector.currentTextChanged.connect(partial(self.changed_code, default_selector, 'default'))
+        self.layout().addWidget(default_selector, 0, 1)
 
-        if 'elements' in self.current_spec:
-            count = 1
-            for k, v in self.current_spec['elements'].items():
-                self.layout().addWidget(QLabel(k), count, 0)
-                code_selector = QComboBox(self)
-                code_selector.addItems([self.null_prompt] + self.possible_basis_sets + [self.delete_elementRange])
-                code_selector.currentTextChanged.connect(lambda: self.changed_code(code_selector, k))
-                self.layout().addWidget(code_selector, count, 1)
-                count += 1
-                select_ = self.current_spec['elements'][k]
-                if select_ in self.possible_basis_sets:
-                    code_selector.setCurrentText(select_)
+        # Element selectors
+        count = 1
+        elements = self.current_spec.get('elements', {})
+        for k, v in elements.items():
+            self.layout().addWidget(QLabel(k), count, 0)
+            code_selector = QComboBox(self)
+            code_selector.addItems([self.null_prompt] + self.possible_basis_sets + [self.delete_elementRange])
+            select_ = v if v in self.possible_basis_sets else self.null_prompt
+            code_selector.setCurrentText(select_)
+            code_selector.currentTextChanged.connect(partial(self.changed_code, code_selector, k))
+            self.layout().addWidget(code_selector, count, 1)
+            count += 1
 
-            new_element_button = QPushButton('Element or range')
-            self.layout().addWidget(new_element_button, count, 0, 1, 2)
-            new_element_button.clicked.connect(self.new_element)
+        # Add new element/range button
+        new_element_button = QPushButton('Element or range')
+        self.layout().addWidget(new_element_button, count, 0, 1, 2)
+        new_element_button.clicked.connect(self.new_element)
 
     def new_element(self):
-        range, ok = QInputDialog.getText(self, 'New element range',
-                                         'Give chemical symbol of element, or a range such as Li-Ne')
-        if ok and range:
-            self.current_spec['elements'][range] = self.current_spec['default']
+        range_str, ok = QInputDialog.getText(self, 'New element range',
+                                             'Give chemical symbol of element, or a range such as Li-Ne')
+        if ok and range_str:
+            if 'elements' not in self.current_spec:
+                self.current_spec['elements'] = {}
+            self.current_spec['elements'][range_str] = self.current_spec.get('default', self.null_prompt)
             self.reload()
 
-    def changed_code(self, selector, code):
-        if selector.currentText() == self.delete_elementRange:
-            self.current_spec['elements'].pop(code)
-            self.changed_action(self.current_spec)
-            self.reload()
+    def changed_code(self, selector: QComboBox, code: str):
+        selected_text = selector.currentText()
+        if selected_text == self.delete_elementRange:
+            if 'elements' in self.current_spec and code in self.current_spec['elements']:
+                self.current_spec['elements'].pop(code)
+                self.changed_action(self.current_spec)
+                self.reload()
         else:
             if code == 'default':
-                self.current_spec['default'] = selector.currentText()
+                self.current_spec['default'] = selected_text
             else:
-                self.current_spec['elements'][code] = selector.currentText()
+                if 'elements' not in self.current_spec:
+                    self.current_spec['elements'] = {}
+                self.current_spec['elements'][code] = selected_text
             self.changed_action(self.current_spec)
