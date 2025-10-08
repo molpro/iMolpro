@@ -19,6 +19,7 @@ from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayo
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
 from settings import settings, settings_edit
+from pysjef import recent_project
 
 
 class PushButton(QPushButton):
@@ -209,7 +210,7 @@ class Chooser(QMainWindow):
             item.widget().setParent(None)
         self.recent_project_box.layout().addWidget(QLabel('Open a recently-used project:'), 0, QtCore.Qt.AlignLeft)
         for i in range(1, max_items):
-            f = pymolpro.recent_project('molpro', i)
+            f = recent_project('molpro', i)
             if f:
                 button = RecentProjectButton(f, i, self)
                 self.recent_project_box.layout().addWidget(button, -1, QtCore.Qt.AlignLeft)

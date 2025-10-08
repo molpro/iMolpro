@@ -3,6 +3,7 @@ import platform
 
 import pymolpro
 from PyQt5.QtWidgets import QMenu, QAction
+from pysjef import recent_project
 
 
 class RecentMenuAction(QAction):
@@ -32,7 +33,7 @@ class RecentMenu(QMenu):
         self.recentProjects.clear()
         self.clear()
         for i in range(1, max_items+1):
-            f = pymolpro.recent_project('molpro', i)
+            f = recent_project('molpro', i)
             if f:
                 action = RecentMenuAction(self, self.windowManager, f)
                 self.recentProjects.append((f, action))
