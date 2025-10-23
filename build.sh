@@ -6,9 +6,10 @@ pkgbuild=1
 sh=1
 
 if [ -z "$NOCONDA" ]; then
-conda install -c conda-forge -c defaults -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
-conda remove -y pubchempy
-pip install -I https://github.com/molpro/PubChemPy/archive/refs/heads/main.zip
+#conda install -c conda-forge -c defaults -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
+#conda remove -y pubchempy
+#pip install -I https://github.com/molpro/PubChemPy/archive/refs/heads/main.zip
+conda install -c conda-forge -c defaults -y --file=requirements.txt || exit
 gem install --user-install -n~/bin fpm
 PATH=~/bin:$PATH
 #conda list
@@ -152,6 +153,7 @@ else
     echo '#!/bin/sh' > ${builddir}/postinstall
 #    echo 'env' >> ${builddir}/postinstall
     echo "ln -sf ${prefix}/libexec/iMolpro/iMolpro ${prefix}/bin/iMolpro" >> ${builddir}/postinstall
+    echo version=$version
     if [[ "$version" =~ "[0-9]*\.[0-9]*\.[0-9]*" ]] ; then true ; else version="0.0.0" ; fi
     echo version=$version
     for type in deb rpm ; do
