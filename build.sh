@@ -153,8 +153,7 @@ else
     echo '#!/bin/sh' > ${builddir}/postinstall
 #    echo 'env' >> ${builddir}/postinstall
     echo "ln -sf ${prefix}/libexec/iMolpro/iMolpro ${prefix}/bin/iMolpro" >> ${builddir}/postinstall
-    echo version=$version
-    if [[ "$version" =~ "[0-9]*\.[0-9]*\.[0-9]*" ]] ; then true ; else version="0.0.0" ; fi
+    if [[ $version =~ ^[0-9]*\.[0-9]*\.[0-9]*$ ]] ; then true ; else version="0.0.0" ; fi
     echo version=$version
     for type in deb rpm ; do
       rm -f dist/iMolpro-"${descriptor}".${type}
