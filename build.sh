@@ -58,6 +58,7 @@ PATH=/usr/bin:$PATH pyi-makespec \
   $pyinstaller_opt \
   iMolpro.py || exit 1
 sed -i -e '$d' iMolpro.spec
+sed -i -e "s/hiddenimports=\[\]/hiddenimports=['scipy._cyutility', 'scipy.sparse._csparsetools', 'scipy._lib.messagestream']/" iMolpro.spec
 cat << 'EOF' >> iMolpro.spec
     info_plist={
       'NSPrincipalClass' : 'NSApplication',

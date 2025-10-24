@@ -10,7 +10,6 @@ from WindowManager import WindowManager
 import os
 import platform
 import logging
-import scipy._cyutility # for pyinstaller packaging
 
 if __name__ == '__main__':
 
