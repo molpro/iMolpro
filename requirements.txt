@@ -4,7 +4,6 @@ pyinstaller >=6
 pymolpro >=1.15.8
 pubchempy >=1
 chemspipy >=2
-scipy < 1.13
 git == 2.49
 libboost >= 1.84.0
 certifi >= 2024.8.30
