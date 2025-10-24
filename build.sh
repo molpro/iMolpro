@@ -136,7 +136,9 @@ else
   mv "${builddir}"/dist .
   mkdir -p ./dist/iMolpro/_internal/pymolpro
   cp -p $CONDA_PREFIX/lib/python$(python --version|sed -e 's/.* //' -e 's/\.[0-9]*$//')/site-packages/pymolpro/molpro_input.json ./dist/iMolpro/_internal/pymolpro
-  cp -p $(find ${CONDA_PREFIX} -name libcrypto.so.3) $(find dist/iMolpro/_internal -name libcrypto.so.3) # because, somehow, pyinstaller picks up the system libcrypto
+  for l in libcrypto.so.3 libssl.so.3 ; do
+    cp -p $(find ${CONDA_PREFIX} -name $l) $(find dist/iMolpro/_internal -name $l) # because, somehow, pyinstaller picks up the system libcrypto
+  done
   if [ ! -z "$tar" ]; then
   tar cjf dist/iMolpro-"${descriptor}".tar.bz2 -C dist iMolpro
   fi
@@ -153,12 +155,15 @@ else
     echo '#!/bin/sh' > ${builddir}/postinstall
 #    echo 'env' >> ${builddir}/postinstall
     echo "ln -sf ${prefix}/libexec/iMolpro/iMolpro ${prefix}/bin/iMolpro" >> ${builddir}/postinstall
+    echo '#!/bin/sh' > ${builddir}/postremove
+    echo "rm -rf ${prefix}/libexec/iMolpro ${prefix}/bin/iMolpro" >> ${builddir}/postremove
+    echo version=$version
     if [[ $version =~ ^[0-9]*\.[0-9]*\.[0-9]*$ ]] ; then true ; else version="0.0.0" ; fi
     echo version=$version
     for type in deb rpm ; do
       rm -f dist/iMolpro-"${descriptor}".${type}
       dash='-'; if [ $type = rpm ]; then dash='_'; fi
-      fpm -s dir -C dist -t ${type} -p dist/imolpro-"${descriptor}".${type} -v "${version}" -n imolpro --prefix=${prefix}/libexec --before-install ${builddir}/preinstall --after-install ${builddir}/postinstall iMolpro
+      fpm -s dir -C dist -t ${type} -p dist/imolpro-"${descriptor}".${type} -v "${version}" -n imolpro --prefix=${prefix}/libexec --before-install ${builddir}/preinstall --after-install ${builddir}/postinstall --after-remove ${builddir}/postremove iMolpro
     done
   fi
 fi
