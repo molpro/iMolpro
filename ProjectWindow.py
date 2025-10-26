@@ -132,6 +132,10 @@ class ProjectWindow(QMainWindow):
     def __init__(self, filename, window_manager, latency=1000):
         super().__init__(None)
         self.window_manager = window_manager
+        if 'project_window_width' not in settings:
+            settings['project_window_width'] = 1311
+        if 'project_window_height' not in settings:
+            settings['project_window_height'] = 576
         if 'project_window_width' in settings and 'project_window_height' in settings:
             self.resize(settings['project_window_width'], settings['project_window_height'])
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
