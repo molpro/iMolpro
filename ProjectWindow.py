@@ -81,9 +81,12 @@ class ViewProjectOutput(ViewFile):
         self.refresh_output_file_timer.start(filename_latency)  # find a better way
 
     def refresh_output_file(self):
-        latest_filename = self.project.filename(self.suffix, run=self.instance)
-        if latest_filename != self.filename:
-            self.reset(latest_filename)
+        try:
+            latest_filename = self.project.filename(self.suffix, run=self.instance)
+            if latest_filename != self.filename:
+                self.reset(latest_filename)
+        except:
+            pass
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
@@ -444,24 +447,27 @@ class ProjectWindow(QMainWindow):
                 self.output_tabs.removeTab(i)
 
     def refresh_output_tabs(self, force=False):
-        index = self.output_tabs.currentIndex()
-        # logger.debug('refresh output tabs')
-        self.old_output_menu.refresh()
-        if force or len(self.output_tabs) != len(
-                [tab_name for tab_name, pane in self.output_panes.items() if
-                 os.path.exists(self.project.filename(re.sub(r'.*\.', '', tab_name)))]) + len(self.vods):
-            # logger.debug('rebuilding output tabs')
-            for suffix, pane in self.output_panes.items():
-                if os.path.exists(self.project.filename(suffix)) and not suffix in self.output_tabs.tab_names:
-                    self.output_tabs.addTab(pane, suffix)
-            for title, vod in self.vods.items():
-                if not title in self.output_tabs.tab_names:
-                    self.output_tabs.addTab(vod, title)
-        if 'stderr' not in self.output_panes.keys() and self.project.status == 'completed' and not (
-                os.path.exists(self.project.filename('out')) and self.project.out):
-            self.add_output_tab(0, suffix='stderr', name='stderr')
-        self.output_tabs.setCurrentIndex(index)
-        # print('end refresh output tabs')
+        try:
+            index = self.output_tabs.currentIndex()
+            # logger.debug('refresh output tabs')
+            self.old_output_menu.refresh()
+            if force or len(self.output_tabs) != len(
+                    [tab_name for tab_name, pane in self.output_panes.items() if
+                     os.path.exists(self.project.filename(re.sub(r'.*\.', '', tab_name)))]) + len(self.vods):
+                # logger.debug('rebuilding output tabs')
+                for suffix, pane in self.output_panes.items():
+                    if os.path.exists(self.project.filename(suffix)) and not suffix in self.output_tabs.tab_names:
+                        self.output_tabs.addTab(pane, suffix)
+                for title, vod in self.vods.items():
+                    if not title in self.output_tabs.tab_names:
+                        self.output_tabs.addTab(vod, title)
+            if 'stderr' not in self.output_panes.keys() and self.project.status == 'completed' and not (
+                    os.path.exists(self.project.filename('out')) and self.project.out):
+                self.add_output_tab(0, suffix='stderr', name='stderr')
+            self.output_tabs.setCurrentIndex(index)
+            # print('end refresh output tabs')
+        except:
+            pass
 
     def add_output_tab(self, run: int, suffix='out', name=None):
         tab_name = os.path.basename(self.project.filename(suffix, run=run)) if name is None else name
