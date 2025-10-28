@@ -24,20 +24,23 @@ class OldOutputMenu(QMenu):
         self.refresh()
 
     def refresh(self, max_items=9):
-        project = self.project_window.project
-        run_directories = project.property_get('run_directories')
-        if run_directories and 'run_directories' in run_directories:
-            ndir = len(run_directories['run_directories'].strip().split(' '))
-        else:
-            ndir = 0
-        nitems = min(max_items, ndir - 1)
-        if nitems != len(self.old_outputs):
-            self.old_outputs.clear()
-            self.clear()
-            for i in range(nitems ):
-                run = ndir - 1 - i
-                filename = project.filename('out', run=run)
-                if filename != project.filename('out'):
-                    action = OldOutputMenuAction(self, run)
-                    self.old_outputs.append((run, action))
-                    self.addAction(action)
+        try:
+            project = self.project_window.project
+            run_directories = project.property_get('run_directories')
+            if run_directories and 'run_directories' in run_directories:
+                ndir = len(run_directories['run_directories'].strip().split(' '))
+            else:
+                ndir = 0
+            nitems = min(max_items, ndir - 1)
+            if nitems != len(self.old_outputs):
+                self.old_outputs.clear()
+                self.clear()
+                for i in range(nitems ):
+                    run = ndir - 1 - i
+                    filename = project.filename('out', run=run)
+                    if filename != project.filename('out'):
+                        action = OldOutputMenuAction(self, run)
+                        self.old_outputs.append((run, action))
+                        self.addAction(action)
+        except:
+            pass
