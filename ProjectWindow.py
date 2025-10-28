@@ -51,14 +51,16 @@ class StatusBar(QLabel):
         self.refresh_timer.start(latency)
 
     def refresh(self):
-        self.setText('Status: ' + ('run ' + pathlib.Path(
-            self.project.filename()).stem + ' ' if self.project.filename() != self.project.filename(
-            run=-1) else '') + self.project.status)
-        for run_action in self.run_actions:
-            run_action.setDisabled(not self.project.run_needed())
-        for kill_action in self.kill_actions:
-            kill_action.setDisabled(self.project.status != 'running' and self.project.status != 'waiting')
-
+        try:
+            self.setText('Status: ' + ('run ' + pathlib.Path(
+                self.project.filename()).stem + ' ' if self.project.filename() != self.project.filename(
+                run=-1) else '') + self.project.status)
+            for run_action in self.run_actions:
+                run_action.setDisabled(not self.project.run_needed())
+            for kill_action in self.kill_actions:
+                kill_action.setDisabled(self.project.status != 'running' and self.project.status != 'waiting')
+        except:
+            pass
 
 class ViewProjectOutput(ViewFile):
     def __init__(self, project, suffix='out', width=132, latency=100, filename_latency=500, point_size=8, instance=0):
