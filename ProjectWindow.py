@@ -49,6 +49,7 @@ class StatusBar(QLabel):
         self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self.refresh)
         self.refresh_timer.start(latency)
+        self.force_initial_structure_tab = False
 
     def refresh(self):
         try:
@@ -119,7 +120,7 @@ class ProjectWindow(QMainWindow):
             # if vod not in ['builder', 'initial structure', 'inp']:
             if vod in self.vods:
                 del self.vods[vod]
-            self.rebuild_vod_selector()
+        self.rebuild_vod_selector()
         self.refresh_output_tabs(force=True)
 
     def changeEvent(self, event):
@@ -459,8 +460,9 @@ class ProjectWindow(QMainWindow):
                     if os.path.exists(self.project.filename(suffix)) and not suffix in self.output_tabs.tab_names:
                         self.output_tabs.addTab(pane, suffix)
                 for title, vod in self.vods.items():
-                    if not title in self.output_tabs.tab_names:
+                    if title not in self.output_tabs.tab_names or (self.force_initial_structure_tab and title == 'initial structure'):
                         self.output_tabs.addTab(vod, title)
+                        self.force_initial_structure_tab = False
             if 'stderr' not in self.output_panes.keys() and self.project.status == 'completed' and not (
                     os.path.exists(self.project.filename('out')) and self.project.out):
                 self.add_output_tab(0, suffix='stderr', name='stderr')
@@ -1014,6 +1016,7 @@ Jmol.jmolHtml("</p>")
             settings['geometry_directory'] = os.path.dirname(filename)
             self.adopt_structure_file(filename)
             self.show_initial_structure()
+            self.force_initial_structure_tab = True
             return filename
 
     def adopt_structure_file(self, filename):
@@ -1045,6 +1048,7 @@ Jmol.jmolHtml("</p>")
             os.remove(filename)
             os.rmdir(os.path.dirname(filename))
             self.show_initial_structure()
+            self.force_initial_structure_tab = True
 
             return filename
 
