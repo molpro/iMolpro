@@ -39,12 +39,14 @@ if [ ! -r $molpro_script_gz ]; then
   wget ${MOLPRO_TEACH_URL}/$molpro_script_gz || echo WARNING molpro-teach not available
 fi
 if [ -r $molpro_script_gz ]; then
-gunzip -k -f $molpro_script_gz
-molpro_script=$(basename $molpro_script_gz .gz)
-sh $molpro_script -batch -prefix $builddir/molpro
-ls -lR $builddir/molpro/bin
-rm $molpro_script
-sed -i -e 's@MOLPRO_PREFIX=.*$@me=$(realpath $0 2>/dev/null) || me=$0; MOLPRO_PREFIX=$(dirname $(dirname $me))@' $builddir/molpro/bin/molpro
+  gunzip -k -f $molpro_script_gz
+  molpro_script=$(basename $molpro_script_gz .gz)
+  sh $molpro_script -batch -prefix $builddir/molpro
+  ls -lR $builddir/molpro/bin
+  rm $molpro_script
+  sed -i -e 's@MOLPRO_PREFIX=.*$@me=$(realpath $0 2>/dev/null) || me=$0; MOLPRO_PREFIX=$(dirname $(dirname $me))@' $builddir/molpro/bin/molpro
+else
+  mkdir $builddir/molpro
 fi
 
 
