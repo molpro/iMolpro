@@ -36,14 +36,16 @@ echo molpro_version=$molpro_version
 molpro_script_gz=molpro-teach-$molpro_version.$(uname|tr '[:upper:]' '[:lower:]')_$(uname -m|sed -e 's/arm64/aarch64/').sh.gz
 echo molpro_script_gz=$molpro_script_gz
 if [ ! -r $molpro_script_gz ]; then
-  wget ${MOLPRO_TEACH_URL}/$molpro_script_gz
+  wget ${MOLPRO_TEACH_URL}/$molpro_script_gz || echo WARNING molpro-teach not available
 fi
+if [ -r $molpro_script_gz ]; then
 gunzip -k -f $molpro_script_gz
 molpro_script=$(basename $molpro_script_gz .gz)
 sh $molpro_script -batch -prefix $builddir/molpro
 ls -lR $builddir/molpro/bin
 rm $molpro_script
 sed -i -e 's@MOLPRO_PREFIX=.*$@me=$(realpath $0 2>/dev/null) || me=$0; MOLPRO_PREFIX=$(dirname $(dirname $me))@' $builddir/molpro/bin/molpro
+fi
 
 
 PATH=/usr/bin:$PATH pyi-makespec \

@@ -10,7 +10,7 @@ curl -O $full_url
 7z -o"${molpro_root}" x -- ${molpro_zip}
 
 
-cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis python=3.9
+cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis
 
 $versionfile = ( $env:TMP, "\VERSION") -join ""
 $PWD = (Get-Item .).FullName
