@@ -46,7 +46,7 @@ if [ -r $molpro_script_gz ]; then
   rm $molpro_script
   sed -i -e 's@MOLPRO_PREFIX=.*$@me=$(realpath $0 2>/dev/null) || me=$0; MOLPRO_PREFIX=$(dirname $(dirname $me))@' $builddir/molpro/bin/molpro
 else
-  mkdir $builddir/molpro
+  mkdir -p $builddir/molpro
 fi
 
 
