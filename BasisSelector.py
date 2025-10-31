@@ -1,6 +1,7 @@
 import copy
 from typing import Callable, Optional, Dict, List, Any
 from functools import partial
+from pymolpro.defbas import periodic_table
 
 from PyQt5.QtWidgets import QComboBox, QWidget, QLabel, QInputDialog, QGridLayout, QPushButton
 
@@ -92,3 +93,21 @@ class BasisSelector(QWidget):
                     self.current_spec['elements'] = {}
                 self.current_spec['elements'][code] = selected_text
             self.changed_action(self.current_spec)
+
+def mixed_correlation_core_valence_only(element_range:str) -> bool:
+    """
+    Determine whether the given range of chemical elements is entirely within the set of elements for which in the 'mixed' core correlation model, core correlation is active.
+    """
+    small_core_ranges = [
+        (1,4),
+        (11,12),
+        (19,30),
+        (37,48),
+        (55,80),
+        (87,112),
+    ]
+    if '-' in element_range:
+        start, end = element_range.split('-')
+        return mixed_correlation_core_valence_only(start) and mixed_correlation_core_valence_only(end)
+    else:
+        return element_range in periodic_table
