@@ -927,10 +927,13 @@ Jmol.jmolHtml("</p>")
         geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
         geometry_directory.mkdir(exist_ok=True)
         xyz_file = str(geometry_directory / pathlib.Path(self.project.filename(run=-1)).stem) + '.xyz'
-        if not os.path.isfile(xyz_file) or os.path.getmtime(xyz_file) < os.path.getmtime(
+        geom = self.input_specification.get('geometry', "")
+        if '.xyz' in geom and (not os.path.isfile(self.project.filename('',geom,run=-1)) or os.path.getsize(self.project.filename('',geom,run=-1)) <=1):
+           geom = ''
+        if geom and (not os.path.isfile(xyz_file) or os.path.getmtime(xyz_file) < os.path.getmtime(
                 self.project.filename('inp', run=-1)) or any(
             [os.path.getmtime(xyz_file) < os.path.getmtime(self.project.filename('', gfile[1], run=-1)) for gfile in
-             self.geometry_files()]):
+             self.geometry_files()])):
             with tempfile.TemporaryDirectory() as tmpdirname:
                 path = pathlib.Path(tmpdirname) / 'input_geometries'
                 os.makedirs(str(path), exist_ok=True)
@@ -981,7 +984,7 @@ Jmol.jmolHtml("</p>")
                         f.write('\n')
         if external_path:
             subprocess.Popen([external_path, xyz_file])
-        elif 'builder' not in self.vods and 'initial structure' not in self.vods:
+        elif geom and 'builder' not in self.vods and 'initial structure' not in self.vods:
             self.embedded_vod(xyz_file, command='', title='initial structure')
 
     def closeEvent(self, a0, QCloseEvent=None):
