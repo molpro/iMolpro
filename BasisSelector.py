@@ -1,7 +1,7 @@
 import copy
 from typing import Callable, Optional, Dict, List, Any
 from functools import partial
-from utilities import mixed_core_correlation_assert
+from pymolpro.defbas import mixed_core_correlation_assert
 
 from PyQt5.QtWidgets import QComboBox, QWidget, QLabel, QInputDialog, QGridLayout, QPushButton
 
