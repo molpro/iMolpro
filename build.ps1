@@ -43,6 +43,7 @@ pyinstaller --noconfirm `
             --add-data=$cp\Library\rsync:.\rsync `
               $pyinstaller_opt iMolpro.py
 
+sed -i -e "s/hiddenimports=\[\]/hiddenimports=['pymolpro', 'scipy._cyutility', 'scipy.sparse._csparsetools', 'scipy._lib.messagestream']/" iMolpro.spec
 
 $descriptor = ($version, 'Windows', $( uname -m )) -join "."
 echo descriptor $descriptor
