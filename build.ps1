@@ -9,7 +9,7 @@ if (-not(Test-Path -path $molpro_zip)) {
   $full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_zip
   curl -O $full_url
 }
-7z -o"${molpro_root}" x -- ${molpro_zip}
+7z -o"${molpro_root}" -aoa x -- ${molpro_zip}
 
 
 cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis
@@ -40,7 +40,7 @@ pyinstaller --noconfirm `
             --add-data=$cp\Library\usr\bin\mkdir.exe:. `
             --add-data=$cp\Library\usr\bin\dirname.exe:. `
             --add-data=$cp\Library\usr\bin\ps.exe:. `
-            --add-data=$cp\rsync:.\rsync `
+            --add-data=$cp\Library\rsync:.\rsync `
               $pyinstaller_opt iMolpro.py
 
 
