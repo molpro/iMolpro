@@ -5,8 +5,10 @@ get-content ENV | foreach {
 
 $molpro_root='molpro-teach-' + $env:molpro_version + '.windows_x64'
 $molpro_zip=${molpro_root} + '.exe'
-$full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_zip
-curl -O $full_url
+if (-not(Test-Path -path $molpro_zip)) {
+  $full_url = $env:MOLPRO_TEACH_URL + '/' + $molpro_zip
+  curl -O $full_url
+}
 7z -o"${molpro_root}" x -- ${molpro_zip}
 
 
