@@ -5,7 +5,7 @@ pymolpro >=1.16.8
 pysjef >=1.41.2
 pubchempy >=1
 chemspipy >=2
-git == 2.49
+git >= 2.49
 libboost >= 1.84.0
 certifi >= 2024.8.30
 jsonschema >= 4
