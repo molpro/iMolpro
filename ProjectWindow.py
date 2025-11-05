@@ -1273,7 +1273,7 @@ class BasisAndHamiltonianChooser(QWidget):
                                            or core_correlation == 'large'
                                    )
                                    ]
-            self.basis_selector.reload(self.input_specification['basis'], possible_basis_sets)
+            self.basis_selector.reload(self.input_specification['basis'], possible_basis_sets, core_correlation == 'mixed')
             self.basis_selector.show()
 
             self.guided_combo_basis_quality.setCurrentText(self.basis_qualities[self.desired_basis_quality])
