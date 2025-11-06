@@ -1,6 +1,7 @@
 import copy
 from typing import Callable, Optional, Dict, List, Any
 from functools import partial
+from utilities import mixed_core_correlation_assert
 
 from PyQt5.QtWidgets import QComboBox, QWidget, QLabel, QInputDialog, QGridLayout, QPushButton
 
@@ -23,8 +24,11 @@ class BasisSelector(QWidget):
         layout.setSpacing(0)
         self.current_spec: Dict[str, Any] = {}
         self.possible_basis_sets: List[str] = []
+        self.mixed_core_correlation = False
 
-    def reload(self, current_spec: Optional[Dict[str, Any]] = None, possible_basis_sets: Optional[List[str]] = None):
+    def reload(self, current_spec: Optional[Dict[str, Any]] = None, possible_basis_sets: Optional[List[str]] = None, mixed_core_correlation: Optional[bool] = None):
+        if mixed_core_correlation is not None:
+            self.mixed_core_correlation = mixed_core_correlation
         if possible_basis_sets is not None:
             self.possible_basis_sets = possible_basis_sets
         if current_spec is not None:
@@ -56,8 +60,12 @@ class BasisSelector(QWidget):
         for k, v in elements.items():
             self.layout().addWidget(QLabel(k), count, 0)
             code_selector = QComboBox(self)
-            code_selector.addItems([self.null_prompt] + self.possible_basis_sets + [self.delete_elementRange])
-            select_ = v if v in self.possible_basis_sets else self.null_prompt
+            possible_basis_sets = [set for set in self.possible_basis_sets if
+                                   not self.mixed_core_correlation or (mixed_core_correlation_assert(
+                                       k) and ('CV' in set)) or (
+                                               mixed_core_correlation_assert(k, False) and ('CV' not in set))]
+            code_selector.addItems([self.null_prompt] + possible_basis_sets + [self.delete_elementRange])
+            select_ = v if v in possible_basis_sets else self.null_prompt
             code_selector.setCurrentText(select_)
             code_selector.currentTextChanged.connect(partial(self.changed_code, code_selector, k))
             self.layout().addWidget(code_selector, count, 1)
