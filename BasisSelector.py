@@ -1,7 +1,7 @@
 import copy
 from typing import Callable, Optional, Dict, List, Any
 from functools import partial
-from utilities import mixed_core_correlation_only_valence
+from utilities import mixed_core_correlation_assert
 
 from PyQt5.QtWidgets import QComboBox, QWidget, QLabel, QInputDialog, QGridLayout, QPushButton
 
@@ -60,8 +60,10 @@ class BasisSelector(QWidget):
         for k, v in elements.items():
             self.layout().addWidget(QLabel(k), count, 0)
             code_selector = QComboBox(self)
-            possible_basis_sets = [set for set in self.possible_basis_sets if mixed_core_correlation_only_valence(
-                k) or self.mixed_core_correlation != 'mixed' or 'CV' not in set]
+            possible_basis_sets = [set for set in self.possible_basis_sets if
+                                   not self.mixed_core_correlation or (mixed_core_correlation_assert(
+                                       k) and ('CV' in set)) or (
+                                               mixed_core_correlation_assert(k, False) and ('CV' not in set))]
             code_selector.addItems([self.null_prompt] + possible_basis_sets + [self.delete_elementRange])
             select_ = v if v in possible_basis_sets else self.null_prompt
             code_selector.setCurrentText(select_)

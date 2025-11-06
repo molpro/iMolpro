@@ -554,9 +554,11 @@ class FileBackedDictionary(MutableMapping):
         return f"{type(self).__name__}({self.data})"
 
 
-def mixed_core_correlation_only_valence(element_range: str) -> bool:
+def mixed_core_correlation_assert(element_range: str, core_correlation:bool = True) -> bool:
     """
-    Determine whether the given range of chemical elements is entirely within the set of elements for which in the 'mixed' core correlation model, core correlation is active.
+    Determine whether the given range of chemical elements is overlaps with the set of elements for which in the 'mixed' core correlation model, core correlation is active or inactive, depending on option.
+    :param element_range: A single element symbol, or a range given as, e.g., Li-Ne
+    :param core_correlation: If True, then the function answers the question whether in the range of elements, core correlation is active in mixed core; if false, then the function answers the question whether in the range of elements, core correlation is inactive in mixed core
     """
     small_core_ranges = [
         (1, 4),
@@ -566,13 +568,20 @@ def mixed_core_correlation_only_valence(element_range: str) -> bool:
         (55, 80),
         (87, 112),
     ]
+    def atomic_number(given):
+        if type(given) is int:
+            return given
+        elif isinstance(given, str):
+            return periodic_table.index(given[0].upper()+given[1:].lower()) + 1
+        raise ValueError
+
     if isinstance(element_range, str) and '-' in element_range:
         start, end = element_range.split('-')
-        start = periodic_table.index(start) + 1
-        end = periodic_table.index(end) + 1
+        start = atomic_number(start)
+        end = atomic_number(end)
         if start > end:
             return False
-        return all([mixed_core_correlation_only_valence(element) for element in range(start, end + 1)])
+        return any([mixed_core_correlation_assert(element, core_correlation) for element in range(start, end + 1)])
     else:
-        element = element_range if type(element_range) is int else periodic_table.index(element_range) + 1
-        return not any([element >= range[0] and element <= range[1] for range in small_core_ranges])
+        element = atomic_number(element_range)
+        return not core_correlation ^ any([element >= range[0] and element <= range[1] for range in small_core_ranges])
