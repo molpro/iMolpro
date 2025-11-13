@@ -1,7 +1,8 @@
 import copy
 from typing import Callable, Optional, Dict, List, Any
 from functools import partial
-from pymolpro.defbas import mixed_core_correlation_assert
+
+from pymolpro.elements import mixed_core_correlation_assert
 
 from PyQt5.QtWidgets import QComboBox, QWidget, QLabel, QInputDialog, QGridLayout, QPushButton
 
@@ -26,7 +27,8 @@ class BasisSelector(QWidget):
         self.possible_basis_sets: List[str] = []
         self.mixed_core_correlation = False
 
-    def reload(self, current_spec: Optional[Dict[str, Any]] = None, possible_basis_sets: Optional[List[str]] = None, mixed_core_correlation: Optional[bool] = None):
+    def reload(self, current_spec: Optional[Dict[str, Any]] = None, possible_basis_sets: Optional[List[str]] = None,
+               mixed_core_correlation: Optional[bool] = None):
         if mixed_core_correlation is not None:
             self.mixed_core_correlation = mixed_core_correlation
         if possible_basis_sets is not None:
@@ -60,10 +62,15 @@ class BasisSelector(QWidget):
         for k, v in elements.items():
             self.layout().addWidget(QLabel(k), count, 0)
             code_selector = QComboBox(self)
+            try:
+                core_correlation_wanted = mixed_core_correlation_assert(k)
+                core_correlation_not_wanted = mixed_core_correlation_assert(k, False)
+            except ValueError:
+                core_correlation_wanted = k.lower() == 'heavy'
+                core_correlation_not_wanted = k.lower() != 'heavy'
             possible_basis_sets = [set for set in self.possible_basis_sets if
-                                   not self.mixed_core_correlation or (mixed_core_correlation_assert(
-                                       k) and ('CV' in set)) or (
-                                               mixed_core_correlation_assert(k, False) and ('CV' not in set))]
+                                   not self.mixed_core_correlation or (core_correlation_wanted and ('CV' in set)) or (
+                                           core_correlation_not_wanted and ('CV' not in set))]
             code_selector.addItems([self.null_prompt] + possible_basis_sets + [self.delete_elementRange])
             select_ = v if v in possible_basis_sets else self.null_prompt
             code_selector.setCurrentText(select_)
