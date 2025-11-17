@@ -625,7 +625,6 @@ class ProjectWindow(QMainWindow):
             if len(fields) == 1 and re.match(regex, fields[0], re.IGNORECASE):
                 result.append(
                     (re.sub(regex, r'\2', fields[0]), re.sub(regex, r'\1.\2', fields[0], flags=re.IGNORECASE)))
-                self.discover_elements(result[-1][1])
         return result
 
     def run(self, force=False):
@@ -1028,7 +1027,6 @@ Jmol.jmolHtml("</p>")
     def adopt_structure_file(self, filename):
         if os.path.exists(filename):
             self.project.import_file(filename)
-            self.discover_elements(filename)
             text = self.input_pane.toPlainText()
             if re.search(r'geometry *= *[-_./\w]+ *[;\n]', text, flags=re.IGNORECASE):
                 self.input_pane.setPlainText(
@@ -1038,17 +1036,6 @@ Jmol.jmolHtml("</p>")
                 self.input_pane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
             self.xyz_to_zmat_activate_or_not(True)
 
-    def discover_elements(self, filename, force=False):
-        if force or not hasattr(self,'elements') or not self.elements:
-            try:
-                with open(self.project.filename('', filename, -1), 'r') as f:
-                    self.elements = pymolpro.elements.elements_from_xyz(f.read())
-                logger.debug('calling basis chooser refresh'+str(self))
-                self.guided_pane.basis_and_hamiltonian_chooser.refresh()
-                logger.debug('discover_elements succeeded')
-            except:
-                logger.debug('discover_elements failed')
-                pass
 
     def show_initial_structure(self):
         self.destroy_vod('initial structure')
@@ -1265,7 +1252,6 @@ class BasisAndHamiltonianChooser(QWidget):
         }, title='Hamiltonian and basis', alignment=Qt.AlignCenter | Qt.AlignTop))
 
     def refresh(self):
-        logger.debug('in basis chooser refresh')
         while True:
             if not 'basis' in self.input_specification or not 'default' in self.input_specification['basis'] or not \
                     self.input_specification['basis']['default']:
@@ -1290,20 +1276,8 @@ class BasisAndHamiltonianChooser(QWidget):
                                            or core_correlation == 'large'
                                    )
                                    ]
-            if core_correlation == 'mixed':
-                try:
-                    if 'elements' not in self.input_specification['basis']:
-                        self.input_specification['basis']['elements'] = {}
-                    if 'heavy' not in self.input_specification['basis']['elements']:
-                        elements = self.parent.parent.elements
-                        logger.debug('looking for heavy '+str(elements))
-                        if pymolpro.elements.elements_include_heavy(elements):
-                            self.input_specification['basis']['elements']['Heavy'] = ''
-                            logger.debug('set heavy')
-                        if not self.input_specification['basis']['elements']:
-                            del self.input_specification['basis']['elements']
-                except:
-                    pass
+            if core_correlation == 'mixed' and 'heavy' not in self.input_specification['basis']['elements']:
+                    self.input_specification['basis']['elements']['Heavy'] = ''
             self.basis_selector.reload(self.input_specification['basis'], possible_basis_sets,
                                        core_correlation == 'mixed')
             self.basis_selector.show()
