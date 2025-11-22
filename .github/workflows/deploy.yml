@@ -5,6 +5,8 @@ on:
   push:
     tags:
       - '*'
+    branches:
+      'licence-prompt'
 jobs:
   deploy:
     name: Deploy on Unix

@@ -13,14 +13,7 @@ import settings
 from help import help_dialog
 
 
-def sanitise_backends(parent):
-    logger = logging.getLogger(__name__)
-    if hasattr(sys, '_MEIPASS'):
-        s = str(pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin')
-        if s not in os.environ['PATH']:
-            os.environ['PATH'] += os.pathsep + s
-            logger.debug(f'PATH appended with {s}')
-            logger.debug(f'new PATH {os.environ["PATH"]}')
+
 
 def configure_backend(parent):
     class BackendDialog(QDialog):
