@@ -3,7 +3,6 @@ name: Tag latest
 on:
   push:
     branches:
-      - 'master'
       - 'licence-prompt'
 
 jobs:
@@ -13,10 +12,10 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout branch "master"
+      - name: Checkout branch "licence-prompt"
         uses: actions/checkout@v4
         with:
-          ref: 'master'
+          ref: 'licence-prompt'
           token: ${{ secrets.PAT }}
       - name: tag
         id: tag
