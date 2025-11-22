@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'master'
+      - 'licence-prompt'
 
 jobs:
   tag:
