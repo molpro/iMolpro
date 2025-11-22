@@ -1,7 +1,7 @@
 #!/bin/sh
 
-pkgbuild=1
-#dmg=1
+#pkgbuild=1
+dmg=1
 #tar=1
 sh=1
 
