@@ -290,41 +290,47 @@ class ProjectWindow(QMainWindow):
         if not pathlib.Path(self.project.filename('xml')).exists():
             self.show_initial_structure()
 
-    def ensure_local_molpro(parent):
+    def ensure_local_molpro(self):
         for path in os.environ['PATH'].split(':'):
             path_ = pathlib.Path(path) / 'molpro'
             if path_.is_file():
                 return
+
         if hasattr(sys, '_MEIPASS'):
-            licence_accepted_file = pathlib.Path.home() / '.molpro' / 'teaching_molpro_licence_accepted'
-            try:
-                user_name = pwd.getpwuid(os.getuid())[4].split(',')[0]
-            except:
-                user_name = 'User'
-            licence_text = '1. Only educational use is permitted.\n2. Molpro, together with its documentation, is a copyrighted work of authorship,  and is licensed for use  by the user only. It may not be rented, leased, sub-licensed, sold or otherwise transferred to a third party.'
-            licence_acceptance_text = user_name + ' has accepted the following conditions\n'+licence_text
-            logger.debug(licence_acceptance_text)
-            if licence_accepted_file.is_file():
-                logger.debug('\n'.join(open(licence_accepted_file).readlines()))
-            while not licence_accepted_file.is_file() or ''.join(open(licence_accepted_file).readlines()[1:]) != licence_acceptance_text:
-                dlg = QMessageBox()
-                dlg.setWindowTitle("Teaching Molpro licence")
-                dlg.setText("Molpro is necessary to use this program. You do not have a full copy of Molpro in your PATH. You can instead use the teaching version of Molpro embedded in this program, with limited functionality, but you must first agree to the following conditions.\n\n"+licence_text)
-                dlg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                dlg.setIcon(QMessageBox.Question)
-                button = dlg.exec()
-                if button != QMessageBox.Yes:
-                    logger.debug('licence not accepted; exiting')
-                    exit(1)
-                with open(licence_accepted_file, 'w') as f:
-                    logger.debug('licence accepted: '+licence_acceptance_text)
-                    f.write(str(datetime.datetime.now())+'\n')
-                    f.write(licence_acceptance_text)
+            self.ensure_teaching_licence_accepted()
+
             s = str(pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin')
             if s not in os.environ['PATH']:
                 os.environ['PATH'] += os.pathsep + s
                 logger.debug(f'PATH appended with {s}')
                 logger.debug(f'new PATH {os.environ["PATH"]}')
+
+    def ensure_teaching_licence_accepted(self):
+        licence_accepted_file = pathlib.Path.home() / '.molpro' / 'teaching_molpro_licence_accepted'
+        try:
+            user_name = pwd.getpwuid(os.getuid())[4].split(',')[0]
+        except:
+            user_name = 'User'
+        licence_text = '1. Only educational use is permitted.\n2. Molpro, together with its documentation, is a copyrighted work of authorship,  and is licensed for use  by the user only. It may not be rented, leased, sub-licensed, sold or otherwise transferred to a third party.'
+        licence_acceptance_text = user_name + ' has accepted the following conditions\n' + licence_text
+        while not licence_accepted_file.is_file() or ''.join(
+                open(licence_accepted_file).readlines()[1:]) != licence_acceptance_text:
+            dlg = QMessageBox()
+            dlg.setWindowTitle("Teaching Molpro licence")
+            dlg.setText(
+                "Molpro is necessary to use this program. You do not have a full copy of Molpro in your PATH. You can instead use the teaching version of Molpro embedded in this program, with limited functionality, but you must first agree to the following conditions.\n\n" + licence_text)
+            dlg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            dlg.setIcon(QMessageBox.Question)
+            button = dlg.exec()
+            if button != QMessageBox.Yes:
+                logger.debug('licence not accepted; exiting')
+                exit(1)
+            with open(licence_accepted_file, 'w') as f:
+                logger.debug('licence accepted: ' + licence_acceptance_text)
+                f.write(str(datetime.datetime.now()) + '\n')
+                f.write(licence_acceptance_text)
+        logger.debug('Contents of ' + licence_accepted_file.as_posix() + ': ' + ''.join(
+            open(licence_accepted_file).readlines()))
 
     def discover_external_viewer_commands(self):
         external_command_stems = [
