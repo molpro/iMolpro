@@ -159,7 +159,7 @@ else
     for type in deb rpm ; do
       rm -f dist/iMolpro-"${descriptor}".${type}
       dash='-'; if [ $type = rpm ]; then dash='_'; fi
-      fpm -s dir -C dist -t ${type} -p dist/imolpro-"${descriptor}".${type} -v "${version}" -n imolpro --prefix=${prefix}/libexec --after-install ${builddir}/postinstall --after-remove ${builddir}/postremove iMolpro --licence GPLv3 --description "$(cat Package-README.md)" --provides iMolpro --url https://github.com/molpro/iMolpro --vendor molpro -f
+      fpm -s dir -C dist -t ${type} -p dist/imolpro-"${descriptor}".${type} -v "${version}" -n imolpro --prefix=${prefix}/libexec --after-install ${builddir}/postinstall --after-remove ${builddir}/postremove --licence GPLv3 --description "$(cat Package-README.md)" --provides iMolpro --url https://github.com/molpro/iMolpro --vendor molpro -f iMolpro
     done
   fi
 fi
