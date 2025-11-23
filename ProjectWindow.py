@@ -329,7 +329,7 @@ class ProjectWindow(QMainWindow):
                 logger.debug('licence accepted: ' + licence_acceptance_text)
                 f.write(str(datetime.datetime.now()) + '\n')
                 f.write(licence_acceptance_text)
-        logger.debug('Contents of ' + licence_accepted_file.as_posix() + ': ' + ''.join(
+        logger.debug('Contents of ' + licence_accepted_file.as_posix() + ':\n' + ''.join(
             open(licence_accepted_file).readlines()))
 
     def discover_external_viewer_commands(self):
