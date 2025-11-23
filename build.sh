@@ -168,7 +168,7 @@ else
     for type in deb rpm ; do
       rm -f dist/iMolpro-"${descriptor}".${type}
       dash='-'; if [ $type = rpm ]; then dash='_'; fi
-      fpm -s dir -C dist -t ${type} -p dist/imolpro-"${descriptor}".${type} -v "${version}" -n imolpro --prefix=${prefix}/libexec --before-install ${builddir}/preinstall --after-install ${builddir}/postinstall --after-remove ${builddir}/postremove iMolpro
+      fpm -s dir -C dist -t ${type} -p dist/imolpro-"${descriptor}".${type} -v "${version}" -n imolpro --prefix=${prefix}/libexec --after-install ${builddir}/postinstall --after-remove ${builddir}/postremove iMolpro
     done
   fi
 fi
