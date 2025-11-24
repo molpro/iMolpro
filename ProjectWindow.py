@@ -5,7 +5,10 @@ import difflib
 import glob
 import os
 import pathlib
-import pwd
+try:
+    import pwd
+except:
+    pass
 import shutil
 import subprocess
 import sys
