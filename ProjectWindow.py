@@ -7,7 +7,7 @@ import os
 import pathlib
 try:
     import pwd
-except:
+except ImportError:
     pass
 import shutil
 import subprocess
