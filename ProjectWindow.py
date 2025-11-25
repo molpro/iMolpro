@@ -327,7 +327,7 @@ class ProjectWindow(QMainWindow):
             button = dlg.exec()
             if button != QMessageBox.Yes:
                 logger.debug('licence not accepted; exiting')
-                QCoreApplication.quit()
+                sys.exit(1)
             else:
                 with open(licence_accepted_file, 'w') as f:
                     logger.debug('licence accepted: ' + licence_acceptance_text)
