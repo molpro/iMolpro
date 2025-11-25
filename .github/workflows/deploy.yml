@@ -12,8 +12,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-#        os: [ ubuntu-24.04, ubuntu-24.04-arm, macos-latest, macos-15-intel ]
-        os: [ macos-latest]
+        os: [ ubuntu-24.04, ubuntu-24.04-arm, macos-latest, macos-15-intel ]
         include:
           - os: macos-latest
             mac: 1
@@ -33,11 +32,6 @@ jobs:
         with:
           p12-file-base64: ${{ secrets.CERTIFICATES_P12 }}
           p12-password: ${{ secrets.CERTIFICATES_P12_PW }}
-      - name: information on certificates
-        if: ${{ matrix.mac }}
-        run: |
-          security find-identity -v
-          security find-certificate -a
       - name: Build
         env:
           MOLPRO_TEACH_URL: ${{ secrets.MOLPRO_TEACH_URL }}
@@ -61,7 +55,6 @@ jobs:
           prerelease: true
   deploy-windows:
     name:  Deploy on Windows
-    if: false
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
