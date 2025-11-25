@@ -87,7 +87,7 @@ descriptor=${version}.$(uname).$(uname -m)
 if [ "$(uname)" = Darwin ]; then
   (cd "${builddir}"/dist/iMolpro.app/Contents/Resources||exit 1; for i in PyQt5/Qt/resources/* ; do ln -s "$i" . ; done)
   (cd "${builddir}"/dist/iMolpro.app/Contents||exit 1; ln -s MacOS/Resources/PyQt5/Qt/translations .)
-  codesign -s"LMLY9RHMA3" --deep --force --options runtime "${builddir}"/dist/iMolpro.app
+  codesign -s"Developer ID Application: Peter Knowles (LMLY9RHMA3)" --deep --force --options runtime "${builddir}"/dist/iMolpro.app
   rm -rf "${builddir}"/dist/iMolpro
   cp -p doc/INSTALL_macOS_binary.md "${builddir}"/dist/INSTALL
   cp -p Package-license.md "${builddir}"/dist/
