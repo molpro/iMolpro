@@ -1,7 +1,7 @@
 #!/bin/sh
 
-pkgbuild=1
-#dmg=1
+#pkgbuild=1
+dmg=1
 #tar=1
 sh=1
 
@@ -9,7 +9,7 @@ if [ -z "$NOCONDA" ]; then
 #conda install -c conda-forge -c defaults -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
 #conda remove -y pubchempy
 #pip install -I https://github.com/molpro/PubChemPy/archive/refs/heads/main.zip
-conda install -c conda-forge -c defaults -y --file=requirements.txt || exit
+conda install -c conda-forge -c defaults -y --file=requirements.txt 'setuptools=80.9' || exit
 gem install --user-install -n~/bin fpm
 PATH=~/bin:$PATH
 #conda list
@@ -89,6 +89,7 @@ if [ "$(uname)" = Darwin ]; then
   (cd "${builddir}"/dist/iMolpro.app/Contents||exit 1; ln -s MacOS/Resources/PyQt5/Qt/translations .)
   rm -rf "${builddir}"/dist/iMolpro
   cp -p doc/INSTALL_macOS_binary.md "${builddir}"/dist/INSTALL
+  cp -p Package-license.md "${builddir}"/dist/
   (cd "${builddir}"/dist||exit 1; ln -s /Applications .)
   rm -f iMolpro-"${descriptor}".dmg
   if [ -r /Volumes/iMolpro-"${descriptor}" ]; then umount /Volumes/iMolpro-"${descriptor}" ; fi
@@ -149,16 +150,7 @@ else
   fi
   if [ ! -z "$sh" ]; then
     prefix='/usr'
-    echo '#!/bin/sh' > ${builddir}/preinstall
-    echo "more <<'EOF'" >> ${builddir}/preinstall
-    cat ./Package-README.md ./Package-license.md | sed -e 's/^##* *//' -e 's/\[//g' -e 's/\] *(/, /g' -e 's/))/@@/g' -e 's/)//g' -e 's/@@/)/g' -e 's/\*//g' >> ${builddir}/preinstall
-    echo "EOF" >> ${builddir}/preinstall
-    echo "echo 'Accept license[yN]?'" >> ${builddir}/preinstall
-    echo "exec 0</dev/tty" >> ${builddir}/preinstall
-    echo "read response" >> ${builddir}/preinstall
-    echo 'if [ x"$response" != xy -a x"$response" != xY ]; then kill $$ ; fi' >> ${builddir}/preinstall
     echo '#!/bin/sh' > ${builddir}/postinstall
-#    echo 'env' >> ${builddir}/postinstall
     echo "ln -sf ${prefix}/libexec/iMolpro/iMolpro ${prefix}/bin/iMolpro" >> ${builddir}/postinstall
     echo '#!/bin/sh' > ${builddir}/postremove
     echo "rm -rf ${prefix}/libexec/iMolpro ${prefix}/bin/iMolpro" >> ${builddir}/postremove
@@ -168,7 +160,7 @@ else
     for type in deb rpm ; do
       rm -f dist/iMolpro-"${descriptor}".${type}
       dash='-'; if [ $type = rpm ]; then dash='_'; fi
-      fpm -s dir -C dist -t ${type} -p dist/imolpro-"${descriptor}".${type} -v "${version}" -n imolpro --prefix=${prefix}/libexec --before-install ${builddir}/preinstall --after-install ${builddir}/postinstall --after-remove ${builddir}/postremove iMolpro
+      fpm -s dir -C dist -t ${type} -p dist/imolpro-"${descriptor}".${type} -v "${version}" -n imolpro --prefix=${prefix}/libexec --after-install ${builddir}/postinstall --after-remove ${builddir}/postremove --license GPLv3 --description "$(cat Package-README.md)" --provides iMolpro --url https://github.com/molpro/iMolpro --vendor molpro -f iMolpro
     done
   fi
 fi

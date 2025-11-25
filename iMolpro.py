@@ -31,18 +31,20 @@ if __name__ == '__main__':
     if 'LOGGING_LEVEL' in os.environ and os.environ['LOGGING_LEVEL'] == 'ERROR': log_level = logging.ERROR
     if 'LOGGING_LEVEL' in os.environ and os.environ['LOGGING_LEVEL'] == 'CRITICAL': log_level = logging.CRITICAL
     if hasattr(sys, '_MEIPASS'):
+        tmpdir = pathlib.Path('/tmp')
         for env in ['TMPDIR', 'TMP', 'TEMP', 'SCRATCH']:
             if env in os.environ and os.access(os.environ[env], os.W_OK):
-                filename = str(pathlib.Path(os.environ[env]) / 'iMolpro.log')
-                if os.path.exists(filename):
-                    os.remove(filename)
-                logging.basicConfig(filename=filename,
-                                    level=log_level,
-                                    format='%(asctime)s %(levelname)-8s %(name)s %(funcName)s() %(pathname)s:%(lineno)d %(message)s',
-                                    datefmt='%Y-%m-%d %H:%M:%S')
-                sys.stdout = open(str(pathlib.Path(os.environ[env]) / 'iMolpro.stdout'), 'w')
-                sys.stderr = open(str(pathlib.Path(os.environ[env]) / 'iMolpro.stderr'), 'w')
+                tmpdir = pathlib.Path(os.environ[env])
                 break
+        filename = str(tmpdir / 'iMolpro.log')
+        if os.path.exists(filename):
+            os.remove(filename)
+        logging.basicConfig(filename=filename,
+                            level=log_level,
+                            format='%(asctime)s %(levelname)-8s %(name)s %(funcName)s() %(pathname)s:%(lineno)d %(message)s',
+                            datefmt='%Y-%m-%d %H:%M:%S')
+        sys.stdout = open(str(tmpdir / 'iMolpro.stdout'), 'w')
+        sys.stderr = open(str(tmpdir / 'iMolpro.stderr'), 'w')
     else:
         logging.basicConfig(level=log_level,
                             format='%(asctime)s %(levelname)-8s %(name)s %(funcName)s() %(pathname)s:%(lineno)d %(message)s',
