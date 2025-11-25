@@ -33,6 +33,7 @@ jobs:
           p12-file-base64: ${{ secrets.CERTIFICATES_P12 }}
           p12-password: ${{ secrets.CERTIFICATES_P12_PW }}
       - name: information on certificates
+        if: ${{ matrix.mac }}
         run: |
           security find-identity -v
           security find-certificate -a
@@ -59,6 +60,7 @@ jobs:
           prerelease: true
   deploy-windows:
     name:  Deploy on Windows
+    if: false
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
