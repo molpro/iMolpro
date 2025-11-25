@@ -328,12 +328,13 @@ class ProjectWindow(QMainWindow):
             if button != QMessageBox.Yes:
                 logger.debug('licence not accepted; exiting')
                 QCoreApplication.quit()
-            with open(licence_accepted_file, 'w') as f:
-                logger.debug('licence accepted: ' + licence_acceptance_text)
-                f.write(str(datetime.datetime.now()) + '\n')
-                f.write(licence_acceptance_text)
-        logger.debug('Contents of ' + licence_accepted_file.as_posix() + ':\n' + ''.join(
-            open(licence_accepted_file).readlines()))
+            else:
+                with open(licence_accepted_file, 'w') as f:
+                    logger.debug('licence accepted: ' + licence_acceptance_text)
+                    f.write(str(datetime.datetime.now()) + '\n')
+                    f.write(licence_acceptance_text)
+                logger.debug('Contents of ' + licence_accepted_file.as_posix() + ':\n' + ''.join(
+                    open(licence_accepted_file).readlines()))
 
     def discover_external_viewer_commands(self):
         external_command_stems = [
