@@ -36,7 +36,7 @@ echo molpro_version=$molpro_version
 molpro_script_gz=molpro-teach-$molpro_version.$(uname|tr '[:upper:]' '[:lower:]')_$(uname -m|sed -e 's/arm64/aarch64/').sh.gz
 echo molpro_script_gz=$molpro_script_gz
 if [ ! -r $molpro_script_gz ]; then
-  wget ${MOLPRO_TEACH_URL}/$molpro_script_gz || echo WARNING molpro-teach not available
+  wget -q ${MOLPRO_TEACH_URL}/$molpro_script_gz || echo WARNING molpro-teach not available
 fi
 if [ -r $molpro_script_gz ]; then
   gunzip -k -f $molpro_script_gz
@@ -87,7 +87,7 @@ descriptor=${version}.$(uname).$(uname -m)
 if [ "$(uname)" = Darwin ]; then
   (cd "${builddir}"/dist/iMolpro.app/Contents/Resources||exit 1; for i in PyQt5/Qt/resources/* ; do ln -s "$i" . ; done)
   (cd "${builddir}"/dist/iMolpro.app/Contents||exit 1; ln -s MacOS/Resources/PyQt5/Qt/translations .)
-  codesign -s"Apple Distribution: Molpro (LMLY9RHMA3)" --deep --force --options runtime "${builddir}"/dist/iMolpro.app
+  codesign -s"Developer ID Application: Peter Knowles (LMLY9RHMA3)" --deep --force --options runtime "${builddir}"/dist/iMolpro.app
   rm -rf "${builddir}"/dist/iMolpro
   cp -p doc/INSTALL_macOS_binary.md "${builddir}"/dist/INSTALL
   cp -p Package-license.md "${builddir}"/dist/
