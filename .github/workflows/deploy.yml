@@ -49,7 +49,7 @@ jobs:
       - name: Notarize
         if: ${{ matrix.mac }}
         run: |
-          for f in dist/*dmg dist/*pkg ; do xcrun notarytool submit $f --apple-id ${{ secrets.APPLE_NOTARYTOOL_APPLE_ID }} --team-id ${{ secrets.APPLE_NOTARYTOOL_TEAM_ID }} --password ${{ secrets.APPLE_NOTARYTOOL_PASSWORD }} --wait ; done
+          for f in $(find dist -name '*.pkg' -o -name '*.dmg') ; do xcrun notarytool submit $f --apple-id ${{ secrets.APPLE_NOTARYTOOL_APPLE_ID }} --team-id ${{ secrets.APPLE_NOTARYTOOL_TEAM_ID }} --password ${{ secrets.APPLE_NOTARYTOOL_PASSWORD }} --wait ; done
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
