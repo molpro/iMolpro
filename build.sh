@@ -90,6 +90,7 @@ if [ "$(uname)" = Darwin ]; then
 #  find dist/iMolpro.app -type l ! -exec test -e {} \; -exec rm {} \;
   application_signing_identity="Developer ID Application: Peter Knowles (LMLY9RHMA3)"
   codesign -s "$application_signing_identity"--deep --force --options runtime "${builddir}"/dist/iMolpro.app
+  codesign -dv "${builddir}"/dist/iMolpro.app
   rm -rf "${builddir}"/dist/iMolpro
   cp -p doc/INSTALL_macOS_binary.md "${builddir}"/dist/INSTALL
   cp -p Package-license.md "${builddir}"/dist/

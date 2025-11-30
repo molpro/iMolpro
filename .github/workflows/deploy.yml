@@ -30,8 +30,8 @@ jobs:
         uses: apple-actions/import-codesign-certs@v4
         if: ${{ matrix.mac }}
         with:
-          p12-file-base64: ${{ secrets.NEW_CERTIFICATES_P12 }}
-          p12-password: ${{ secrets.NEW_CERTIFICATES_P12_PW }}
+          p12-file-base64: ${{ secrets.CERTIFICATES_P12 }}
+          p12-password: ${{ secrets.CERTIFICATES_P12_PW }}
       - name: Information on certificates
         if: ${{ matrix.mac }}
         run: |
