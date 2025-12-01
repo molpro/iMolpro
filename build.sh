@@ -22,6 +22,7 @@ fi
 . ./ENV
 
 if [ "$(uname)" = Darwin ]; then
+  application_signing_identity="Developer ID Application: Peter Knowles (LMLY9RHMA3)"
   pyinstaller_opt="--windowed --osx-bundle-identifier=net.molpro.iMolpro --icon=molpro.icns"
 fi
 builddir=${TMPDIR:-/tmp}/iMolpro
@@ -50,6 +51,7 @@ else
 fi
 
 
+rm -f iMolpro.spec
 PATH=/usr/bin:$PATH pyi-makespec \
   --add-data JSmol.min.js:. \
   --add-data j2s:./j2s \
@@ -88,9 +90,23 @@ if [ "$(uname)" = Darwin ]; then
 #  (cd "${builddir}"/dist/iMolpro.app/Contents/Resources||exit 1; for i in PyQt5/Qt/resources/* ; do ln -s "$i" . ; done)
 #  (cd "${builddir}"/dist/iMolpro.app/Contents||exit 1; ln -s MacOS/Resources/PyQt5/Qt/translations .)
 #  find dist/iMolpro.app -type l ! -exec test -e {} \; -exec rm {} \;
-  application_signing_identity="Developer ID Application: Peter Knowles (LMLY9RHMA3)"
   codesign -s "$application_signing_identity" --deep --force --options runtime "${builddir}"/dist/iMolpro.app
+# https://stackoverflow.com/questions/55897337/qtwebbrowser-macos-signing-issue
+  cat > QtWebEngineProcess.entitlements <<EOF
+  <?xml version="1.0" encoding="UTF-8"?>
+  <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+  <plist version="1.0">
+  <dict>
+      <key>com.apple.security.cs.disable-executable-page-protection</key>
+      <true/>
+  </dict>
+  </plist>
+EOF
+  codesign --force --verify --verbose --sign "$application_signing_identity" --entitlements QtWebEngineProcess.entitlements --options runtime "${builddir}"/dist/iMolpro.app/Contents/Frameworks/PyQt5/Qt5/libexec/QtWebEngineProcess
+  codesign -s "$application_signing_identity" --force --options runtime "${builddir}"/dist/iMolpro.app
+
   codesign -dv "${builddir}"/dist/iMolpro.app
+
   rm -rf "${builddir}"/dist/iMolpro
   cp -p doc/INSTALL_macOS_binary.md "${builddir}"/dist/INSTALL
   cp -p Package-license.md "${builddir}"/dist/
