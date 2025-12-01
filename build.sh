@@ -9,7 +9,7 @@ if [ -z "$NOCONDA" ]; then
 #conda install -c conda-forge -c defaults -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
 #conda remove -y pubchempy
 #pip install -I https://github.com/molpro/PubChemPy/archive/refs/heads/main.zip
-conda install -q -c conda-forge -c defaults -y --file=requirements.txt 'setuptools=80.9' || exit
+conda install -q -c conda-forge -c defaults -y --file=requirements.txt 'setuptools=80.9' pandoc || exit
 gem install --user-install -n~/bin fpm
 PATH=~/bin:$PATH
 #conda list
@@ -108,8 +108,9 @@ EOF
   codesign -dv "${builddir}"/dist/iMolpro.app
 
   rm -rf "${builddir}"/dist/iMolpro
-  cp -p doc/INSTALL_macOS_binary.md "${builddir}"/dist/INSTALL
-  cp -p Package-license.md "${builddir}"/dist/
+#  cp -p doc/INSTALL_macOS_binary.md "${builddir}"/dist/INSTALL
+  pandoc -f markdown -s Package-license.md -o "${builddir}"/dist/Package-license.rtf
+#  cp -p Package-license.md "${builddir}"/dist/
   (cd "${builddir}"/dist||exit 1; ln -s /Applications .)
   rm -f iMolpro-"${descriptor}".dmg
   if [ -r /Volumes/iMolpro-"${descriptor}" ]; then umount /Volumes/iMolpro-"${descriptor}" ; fi
