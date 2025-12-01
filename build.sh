@@ -89,7 +89,7 @@ if [ "$(uname)" = Darwin ]; then
 #  (cd "${builddir}"/dist/iMolpro.app/Contents||exit 1; ln -s MacOS/Resources/PyQt5/Qt/translations .)
 #  find dist/iMolpro.app -type l ! -exec test -e {} \; -exec rm {} \;
   application_signing_identity="Developer ID Application: Peter Knowles (LMLY9RHMA3)"
-  codesign -s "$application_signing_identity"--deep --force --options runtime "${builddir}"/dist/iMolpro.app
+  codesign -s "$application_signing_identity" --deep --force --options runtime "${builddir}"/dist/iMolpro.app
   codesign -dv "${builddir}"/dist/iMolpro.app
   rm -rf "${builddir}"/dist/iMolpro
   cp -p doc/INSTALL_macOS_binary.md "${builddir}"/dist/INSTALL
