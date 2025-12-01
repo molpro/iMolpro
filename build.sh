@@ -9,7 +9,7 @@ if [ -z "$NOCONDA" ]; then
 #conda install -c conda-forge -c defaults -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
 #conda remove -y pubchempy
 #pip install -I https://github.com/molpro/PubChemPy/archive/refs/heads/main.zip
-conda install -c conda-forge -c defaults -y --file=requirements.txt 'setuptools=80.9' || exit
+conda install -q -c conda-forge -c defaults -y --file=requirements.txt 'setuptools=80.9' pandoc || exit
 gem install --user-install -n~/bin fpm
 PATH=~/bin:$PATH
 #conda list
@@ -22,6 +22,7 @@ fi
 . ./ENV
 
 if [ "$(uname)" = Darwin ]; then
+  application_signing_identity="Developer ID Application: Peter Knowles (LMLY9RHMA3)"
   pyinstaller_opt="--windowed --osx-bundle-identifier=net.molpro.iMolpro --icon=molpro.icns"
 fi
 builddir=${TMPDIR:-/tmp}/iMolpro
@@ -36,7 +37,7 @@ echo molpro_version=$molpro_version
 molpro_script_gz=molpro-teach-$molpro_version.$(uname|tr '[:upper:]' '[:lower:]')_$(uname -m|sed -e 's/arm64/aarch64/').sh.gz
 echo molpro_script_gz=$molpro_script_gz
 if [ ! -r $molpro_script_gz ]; then
-  wget ${MOLPRO_TEACH_URL}/$molpro_script_gz || echo WARNING molpro-teach not available
+  wget -q ${MOLPRO_TEACH_URL}/$molpro_script_gz || echo WARNING molpro-teach not available
 fi
 if [ -r $molpro_script_gz ]; then
   gunzip -k -f $molpro_script_gz
@@ -50,6 +51,7 @@ else
 fi
 
 
+rm -f iMolpro.spec
 PATH=/usr/bin:$PATH pyi-makespec \
   --add-data JSmol.min.js:. \
   --add-data j2s:./j2s \
@@ -85,11 +87,30 @@ PATH=/usr/bin:$PATH pyinstaller \
 
 descriptor=${version}.$(uname).$(uname -m)
 if [ "$(uname)" = Darwin ]; then
-  (cd "${builddir}"/dist/iMolpro.app/Contents/Resources||exit 1; for i in PyQt5/Qt/resources/* ; do ln -s "$i" . ; done)
-  (cd "${builddir}"/dist/iMolpro.app/Contents||exit 1; ln -s MacOS/Resources/PyQt5/Qt/translations .)
+#  (cd "${builddir}"/dist/iMolpro.app/Contents/Resources||exit 1; for i in PyQt5/Qt/resources/* ; do ln -s "$i" . ; done)
+#  (cd "${builddir}"/dist/iMolpro.app/Contents||exit 1; ln -s MacOS/Resources/PyQt5/Qt/translations .)
+#  find dist/iMolpro.app -type l ! -exec test -e {} \; -exec rm {} \;
+  codesign -s "$application_signing_identity" --deep --force --options runtime "${builddir}"/dist/iMolpro.app
+# https://stackoverflow.com/questions/55897337/qtwebbrowser-macos-signing-issue
+  cat > QtWebEngineProcess.entitlements <<EOF
+  <?xml version="1.0" encoding="UTF-8"?>
+  <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+  <plist version="1.0">
+  <dict>
+      <key>com.apple.security.cs.disable-executable-page-protection</key>
+      <true/>
+  </dict>
+  </plist>
+EOF
+  codesign --force --verify --verbose --sign "$application_signing_identity" --entitlements QtWebEngineProcess.entitlements --options runtime "${builddir}"/dist/iMolpro.app/Contents/Frameworks/PyQt5/Qt5/libexec/QtWebEngineProcess
+  codesign -s "$application_signing_identity" --force --options runtime "${builddir}"/dist/iMolpro.app
+
+  codesign -dv "${builddir}"/dist/iMolpro.app
+
   rm -rf "${builddir}"/dist/iMolpro
-  cp -p doc/INSTALL_macOS_binary.md "${builddir}"/dist/INSTALL
-  cp -p Package-license.md "${builddir}"/dist/
+#  cp -p doc/INSTALL_macOS_binary.md "${builddir}"/dist/INSTALL
+  pandoc -f markdown -s Package-license.md -o "${builddir}"/dist/LICENSE.rtf
+#  cp -p Package-license.md "${builddir}"/dist/
   (cd "${builddir}"/dist||exit 1; ln -s /Applications .)
   rm -f iMolpro-"${descriptor}".dmg
   if [ -r /Volumes/iMolpro-"${descriptor}" ]; then umount /Volumes/iMolpro-"${descriptor}" ; fi
