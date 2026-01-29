@@ -1407,11 +1407,11 @@ class GuidedPane(QWidget):
             lambda text: self.input_specification_change('orientation', text))
 
         self.charge_line = ChargeSelector()
-        self.charge_line.textChanged.connect(lambda text: self.input_specification_variable_change('charge', text))
+        self.charge_line.textChanged.connect(lambda text: self.input_specification_change('charge', text))
 
         self.spin_line = SpinComboBox(self, 0, 14)
         self.spin_line.spin_changed.connect(
-            lambda ms2: self.input_specification_variable_change('spin', str(ms2) if ms2 >= 0 else ''))
+            lambda ms2: self.input_specification_change('spin', str(ms2) if ms2 >= 0 else ''))
 
         self.guided_combo_wave_fct_symm = QComboBox(self)
         self.guided_combo_wave_fct_symm.addItems(molpro_input.symmetry_commands().keys())
@@ -1503,8 +1503,8 @@ class GuidedPane(QWidget):
     def refresh(self):
         self.guided_combo_orientation.setCurrentText(self.input_specification.with_defaults['orientation'])
         self.guided_combo_wave_fct_symm.setCurrentText(self.input_specification.with_defaults['symmetry'])
-        if 'variables' in self.input_specification and 'charge' in self.input_specification['variables']:
-            self.charge_line.setText(self.input_specification['variables']['charge'])
+        if 'charge' in self.input_specification:
+            self.charge_line.setText(self.input_specification['charge'])
         else:
             self.charge_line.setText('0')
 
@@ -1591,6 +1591,7 @@ class GuidedPane(QWidget):
         if value is None or (
                 key in self.input_specification and str(self.input_specification[key]).lower() == str(value).lower()):
             return
+        value_ = str(int(value) if value.isdigit() else value if value else '0')
         if key == 'method':
             self.input_specification.method = value
             if 'ks' in value.lower():
@@ -1603,6 +1604,21 @@ class GuidedPane(QWidget):
             self.input_specification.set_job_type([k for k, v in molpro_input.job_types().items() if v == value][0])
         elif key == 'density_functional':
             self.input_specification.density_functional = value
+        elif key == 'charge':
+            if value == '-': return
+            try:
+                old_charge = int(self.input_specification['charge'])
+            except:
+                old_charge = 0
+            self.input_specification['charge'] = int(value_)
+            if int(value_) != old_charge and 'spin' in self.input_specification:
+                self.input_specification.pop('spin')
+        elif key == 'spin':
+            if int(value_) >= 0 and value is not None:
+                print('setting input_specification spin to', int(value_))
+                self.input_specification['spin'] = int(value_)
+            else:
+                if 'spin' in self.input_specification: self.input_specification.pop('spin')
         else:
             self.input_specification[key] = value
             if key == 'properties':
@@ -1615,23 +1631,11 @@ class GuidedPane(QWidget):
         value_ = value
         if 'variables' not in self.input_specification:
             self.input_specification['variables'] = {}
-        if key == 'charge':
-            if value == '-': return
-            try:
-                old_charge = int(self.input_specification['variables']['charge'])
-            except:
-                old_charge = 0
-            value_ = str(int(value_) if value_.isdigit() else value_ if value_ else '0')
-            if int(value_) != old_charge:
-                self.input_specification.spin = None
+
         self.input_specification['variables'][key] = value_
         if key == 'charge':
             self.refresh()
-        if key == 'spin':
-            if value_:
-                self.input_specification.spin = value_
-            else:
-                self.input_specification.spin = None
+
         self.refresh_input_from_specification()
 
     def refresh_input_from_specification(self):
