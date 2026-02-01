@@ -303,10 +303,17 @@ class ProjectWindow(QMainWindow):
             self.ensure_teaching_licence_accepted()
 
             s = str(pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin')
-            if s not in os.environ['PATH']:
+            if s not in os.environ['PATH'].split():
                 os.environ['PATH'] += os.pathsep + s
                 logger.debug(f'PATH appended with {s}')
                 logger.debug(f'new PATH {os.environ["PATH"]}')
+                self.ensure_local_molpro()
+                return
+
+        msg = QMessageBox()
+        msg.setText(f'Local molpro not found')
+        msg.setDetailedText(f'PATH={os.environ["PATH"]}\nGuided mode will not work correctly.')
+        msg.exec()
 
     def ensure_teaching_licence_accepted(self):
         licence_accepted_file = pathlib.Path.home() / '.molpro' / 'teaching_molpro_licence_accepted'
