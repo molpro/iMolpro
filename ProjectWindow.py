@@ -1433,7 +1433,7 @@ class GuidedPane(QWidget):
 
         self.guided_combo_method = QComboBox(self)
 
-        logger.debug('molpro_input.supported_methods(): '+ molpro_input.supported_methods())
+        logger.debug('molpro_input.supported_methods(): '+ str(molpro_input.supported_methods()))
         self.guided_combo_method.addItems(molpro_input.supported_methods())
         # print('input specification',self.input_specification)
         # print('input specification method',self.input_specification['method'])
