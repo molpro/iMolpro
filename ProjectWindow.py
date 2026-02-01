@@ -1398,6 +1398,7 @@ class GuidedPane(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        logger.debug('ProjectWindow.__init__')
         self.parent = parent
         self.project = self.parent.project
         self.input_pane = self.parent.input_pane
