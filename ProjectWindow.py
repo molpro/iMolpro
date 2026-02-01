@@ -1398,7 +1398,6 @@ class GuidedPane(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        logger.debug('ProjectWindow.__init__')
         self.parent = parent
         self.project = self.parent.project
         self.input_pane = self.parent.input_pane
@@ -1408,7 +1407,6 @@ class GuidedPane(QWidget):
         self.guided_layout = QVBoxLayout()
         self.guided_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.guided_layout)
-        logger.debug('ProjectWindow.__init__ 2')
 
         self.guided_combo_orientation = QComboBox(self)
         self.guided_combo_orientation.addItems(molpro_input.orientation_options().keys())
@@ -1417,7 +1415,6 @@ class GuidedPane(QWidget):
 
         self.charge_line = ChargeSelector()
         self.charge_line.textChanged.connect(lambda text: self.input_specification_change('charge', text))
-        logger.debug('ProjectWindow.__init__ 3')
 
         self.spin_line = SpinComboBox(self, 0, 14)
         self.spin_line.spin_changed.connect(
@@ -1427,7 +1424,6 @@ class GuidedPane(QWidget):
         self.guided_combo_wave_fct_symm.addItems(molpro_input.symmetry_commands().keys())
         self.guided_combo_wave_fct_symm.currentTextChanged.connect(
             lambda text: self.input_specification_change('symmetry', text))
-        logger.debug('ProjectWindow.__init__ 4')
 
         self.guided_combo_job_type = QComboBox(self)
         self.guided_combo_job_type.setMaximumWidth(180)
@@ -1435,11 +1431,9 @@ class GuidedPane(QWidget):
         self.guided_combo_job_type.currentTextChanged.connect(
             lambda text: self.input_specification_change('job_type', text))
 
-        logger.debug('ProjectWindow.__init__ 5')
         self.guided_combo_method = QComboBox(self)
-        logger.debug('ProjectWindow.__init__ 6')
 
-        logger.debug('molpro_input.supported_methods():', molpro_input.supported_methods())
+        logger.debug('molpro_input.supported_methods(): '+ molpro_input.supported_methods())
         self.guided_combo_method.addItems(molpro_input.supported_methods())
         # print('input specification',self.input_specification)
         # print('input specification method',self.input_specification['method'])
