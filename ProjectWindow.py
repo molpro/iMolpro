@@ -293,21 +293,21 @@ class ProjectWindow(QMainWindow):
         if not pathlib.Path(self.project.filename('xml')).exists():
             self.show_initial_structure()
 
-    def ensure_local_molpro(self):
+    def ensure_local_molpro(self,search_MEIPASS=True):
         for path in os.environ['PATH'].split(':'):
             path_ = pathlib.Path(path) / 'molpro'
             if path_.is_file():
                 return
 
-        if hasattr(sys, '_MEIPASS'):
+        if hasattr(sys, '_MEIPASS') and search_MEIPASS:
             self.ensure_teaching_licence_accepted()
 
             s = str(pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin')
-            if s not in os.environ['PATH'].split():
+            if s not in os.environ['PATH'].split(':'):
                 os.environ['PATH'] += os.pathsep + s
                 logger.debug(f'PATH appended with {s}')
                 logger.debug(f'new PATH {os.environ["PATH"]}')
-                self.ensure_local_molpro()
+                self.ensure_local_molpro(search_MEIPASS=False)
                 return
 
         msg = QMessageBox()
