@@ -1599,7 +1599,6 @@ class GuidedPane(QWidget):
         if value is None or (
                 key in self.input_specification and str(self.input_specification[key]).lower() == str(value).lower()):
             return
-        value_ = str(int(value) if value.isdigit() else value if value else '0')
         if key == 'method':
             self.input_specification.method = value
             if 'ks' in value.lower():
@@ -1618,13 +1617,13 @@ class GuidedPane(QWidget):
                 old_charge = int(self.input_specification['charge'])
             except:
                 old_charge = 0
-            self.input_specification['charge'] = int(value_)
-            if int(value_) != old_charge and 'spin' in self.input_specification:
+            self.input_specification['charge'] = int(value)
+            if int(value) != old_charge and 'spin' in self.input_specification:
                 self.input_specification.pop('spin')
         elif key == 'spin':
-            if int(value_) >= 0 and value is not None:
-                print('setting input_specification spin to', int(value_))
-                self.input_specification['spin'] = int(value_)
+            if value is not None and int(value) >= 0:
+                print('setting input_specification spin to', int(value))
+                self.input_specification['spin'] = int(value)
             else:
                 if 'spin' in self.input_specification: self.input_specification.pop('spin')
         else:
@@ -1636,11 +1635,10 @@ class GuidedPane(QWidget):
 
     def input_specification_variable_change(self, key, value):
         # print('input_specification_variable_change',key,value)
-        value_ = value
         if 'variables' not in self.input_specification:
             self.input_specification['variables'] = {}
 
-        self.input_specification['variables'][key] = value_
+        self.input_specification['variables'][key] = value
         if key == 'charge':
             self.refresh()
 
