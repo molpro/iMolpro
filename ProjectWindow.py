@@ -1358,7 +1358,7 @@ class BasisAndHamiltonianChooser(QWidget):
             self.refresh()
 
     def default_basis_for_hamiltonian(self, desired_basis_quality=0):
-        quality = self.desired_basis_quality if desired_basis_quality > 0 else 3
+        quality = desired_basis_quality if desired_basis_quality > 0 else 3
         return {'default': 'cc-pV(' + self.basis_qualities[quality][0] + '+d)Z' +
                            molpro_input.hamiltonians()[self.input_specification['hamiltonian']]['basis_string'],
                 'elements': {}, 'quality': quality}
@@ -1622,7 +1622,6 @@ class GuidedPane(QWidget):
                 self.input_specification.pop('spin')
         elif key == 'spin':
             if value is not None and int(value) >= 0:
-                print('setting input_specification spin to', int(value))
                 self.input_specification['spin'] = int(value)
             else:
                 if 'spin' in self.input_specification: self.input_specification.pop('spin')
@@ -1634,7 +1633,6 @@ class GuidedPane(QWidget):
         self.refresh()
 
     def input_specification_variable_change(self, key, value):
-        # print('input_specification_variable_change',key,value)
         if 'variables' not in self.input_specification:
             self.input_specification['variables'] = {}
 
