@@ -219,7 +219,7 @@ class Chooser(QMainWindow):
         _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir
         if platform.system() == 'Darwin':
             filename, filter = QFileDialog.getOpenFileName(self, 'Open existing project...', _dir,
-                                                           filter='Molpro projects (*.molpro)')
+                                                           filter='Molpro projects (*.molpro *.out *.inp *.xml)')
         else:
             filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', _dir))
         if filename:
