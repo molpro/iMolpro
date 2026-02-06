@@ -142,6 +142,7 @@ class ProjectWindow(QMainWindow):
             settings['project_window_height'] = self.normal_geometry.height()
 
     def __init__(self, filename, window_manager, latency=1000):
+        logger.debug('Initializing ProjectWindow with filename {}'.format(filename))
         super().__init__(None)
         self.window_manager = window_manager
         if 'project_window_width' not in settings:
@@ -157,7 +158,11 @@ class ProjectWindow(QMainWindow):
 
         assert filename is not None
         try:
-            self.project = Project(filename)
+            if pathlib.Path(filename).suffix == '.molpro':
+                self.project = Project(filename)
+            else:
+                self.project = Project(pathlib.Path(filename).with_suffix('.molpro').as_posix(), files=[filename])
+            logger.debug('Initialised Project input filename {}. Project bundle at {}'.format(filename,self.project.filename('','',-1)))
         except Exception as e:
             msg = QMessageBox()
             msg.setText('Project ' + filename + ' cannot be opened')
@@ -184,7 +189,7 @@ class ProjectWindow(QMainWindow):
         self.discover_external_viewer_commands()
 
         self.input_pane = EditFile(self.project.filename('inp', run=-1), latency)
-        self.setWindowTitle(filename)
+        self.setWindowTitle(self.project.filename(run=-1))
 
         self.input_specification = InputSpecification(self.input_pane.toPlainText(), directory=self.project.filename())
 

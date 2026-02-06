@@ -61,7 +61,6 @@ PATH=/usr/bin:$PATH pyi-makespec \
   --add-data "${versionfile}":. \
   --add-data $builddir/molpro:./molpro \
   --add-data $CONDA_PREFIX/lib/python$(python --version|sed -e 's/.* //' -e 's/\.[0-9]*$//')/site-packages/pymolpro/molpro_input.json:./pymolpro \
-  --add-data $CONDA_PREFIX/bin/molpro_project:. \
   $pyinstaller_opt \
   iMolpro.py || exit 1
 sed -i -e '$d' iMolpro.spec
@@ -77,6 +76,20 @@ cat << 'EOF' >> iMolpro.spec
           'CFBundleTypeIconFile': 'molpro.icns',
           'CFBundleTypeRole': 'Editor',
           'CFBundleTypeName': 'Molpro Project'
+        },
+        {
+          'CFBundleTypeExtensions': ['inp'],
+          'LSTypeIsPackage': False,
+          'CFBundleTypeIconFile': 'molpro.icns',
+          'CFBundleTypeRole': 'Viewer',
+          'CFBundleTypeName': 'Molpro Input'
+        },
+        {
+          'CFBundleTypeExtensions': ['out'],
+          'LSTypeIsPackage': False,
+          'CFBundleTypeIconFile': 'molpro.icns',
+          'CFBundleTypeRole': 'Viewer',
+          'CFBundleTypeName': 'Molpro Output'
         }
       ]
     }
@@ -150,7 +163,7 @@ EOF
 
   if [ ! -z "$dmg" ]; then
 #  create-dmg --app-drop-link 25 35 --volname iMolpro-"${descriptor}"  --volicon 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png' dist/iMolpro-"${descriptor}".dmg "${builddir}"/dist
-  hdiutil create ./iMolpro.dmg -ov -fs HFS+ -srcfolder "${builddir}"/dist
+  hdiutil create ./iMolpro.dmg -ov -fs HFS+ -srcfolder "${builddir}"/dist -volname iMolpro-"${descriptor}"
   echo after first hdiutil
   hdiutil convert ./iMolpro.dmg -format UDZO -o dist/iMolpro-"${descriptor}".dmg
   cp Molpro_Logo_Molpro_Quantum_Chemistry_Software.png "${builddir}"
