@@ -161,7 +161,18 @@ class ProjectWindow(QMainWindow):
             if pathlib.Path(filename).suffix == '.molpro':
                 self.project = Project(filename)
             else:
-                self.project = Project(pathlib.Path(filename).with_suffix('.molpro').as_posix(), files=[filename])
+                path = pathlib.Path(filename)
+                dir = path.parent
+                try:
+                    test_ = (dir / '.iMolpro_test')
+                    test_.mkdir()
+                    test_.unlink()
+                except:
+                    for env in ['TMPDIR', 'TMP', 'TEMP', 'SCRATCH']:
+                        if env in os.environ and os.access(os.environ[env], os.W_OK):
+                            dir = pathlib.Path(os.environ[env])
+                            break
+                self.project = Project(path.stem+'.molpro', location=dir, files=[filename])
             logger.debug('Initialised Project input filename {}. Project bundle at {}'.format(filename,self.project.filename('','',-1)))
         except Exception as e:
             msg = QMessageBox()
