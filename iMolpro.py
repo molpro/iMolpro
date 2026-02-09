@@ -11,6 +11,8 @@ import os
 import platform
 import logging
 
+from utilities import writable_directory
+
 if __name__ == '__main__':
 
     class App(QApplication):
@@ -31,11 +33,7 @@ if __name__ == '__main__':
     if 'LOGGING_LEVEL' in os.environ and os.environ['LOGGING_LEVEL'] == 'ERROR': log_level = logging.ERROR
     if 'LOGGING_LEVEL' in os.environ and os.environ['LOGGING_LEVEL'] == 'CRITICAL': log_level = logging.CRITICAL
     if hasattr(sys, '_MEIPASS'):
-        tmpdir = pathlib.Path('/tmp')
-        for env in ['TMPDIR', 'TMP', 'TEMP', 'SCRATCH']:
-            if env in os.environ and os.access(os.environ[env], os.W_OK):
-                tmpdir = pathlib.Path(os.environ[env])
-                break
+        tmpdir = writable_directory()
         filename = str(tmpdir / 'iMolpro.log')
         if os.path.exists(filename):
             os.remove(filename)

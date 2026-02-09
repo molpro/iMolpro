@@ -35,7 +35,8 @@ from OldOutputMenu import OldOutputMenu
 from RecentMenu import RecentMenu
 from database import database_choose_structure
 from help import HelpManager
-from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set, factory_coordinate_set
+from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set, factory_coordinate_set, \
+    writable_directory
 from backend import configure_backend, BackendConfigurationEditor
 from settings import settings, settings_edit
 from OptionsDialog import OptionsDialog
@@ -156,27 +157,16 @@ class ProjectWindow(QMainWindow):
 
         self.normal_geometry = self.normalGeometry()
 
-        assert filename is not None
         try:
             if pathlib.Path(filename).suffix == '.molpro':
                 self.project = Project(filename)
             else:
-                path = pathlib.Path(filename)
-                dir = path.parent
-                try:
-                    test_ = (dir / '.iMolpro_test')
-                    test_.mkdir()
-                    test_.unlink()
-                except:
-                    for env in ['TMPDIR', 'TMP', 'TEMP', 'SCRATCH']:
-                        if env in os.environ and os.access(os.environ[env], os.W_OK):
-                            dir = pathlib.Path(os.environ[env])
-                            break
-                self.project = Project(path.stem+'.molpro', location=dir, files=[filename])
+                self.project = Project(pathlib.Path(filename).stem + '.molpro', location=(
+                    writable_directory(preferred=pathlib.Path(filename).parent)), files=[filename])
             logger.debug('Initialised Project input filename {}. Project bundle at {}'.format(filename,self.project.filename('','',-1)))
         except Exception as e:
             msg = QMessageBox()
-            msg.setText('Project ' + filename + ' cannot be opened')
+            msg.setText('Project ' + str(filename) + ' cannot be opened')
             msg.setDetailedText(str(e))
             msg.exec()
             self.invalid = True

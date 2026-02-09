@@ -1,4 +1,6 @@
 import os
+import pathlib
+
 from pymolpro.defbas import periodic_table
 import json
 from collections.abc import MutableMapping
@@ -552,3 +554,13 @@ class FileBackedDictionary(MutableMapping):
 
     def __repr__(self):
         return f"{type(self).__name__}({self.data})"
+
+def writable_directory(preferred:str=None) -> pathlib.Path:
+    if preferred is not None and os.access(preferred, os.W_OK):
+        return preferred
+    tmpdir = pathlib.Path('/tmp')
+    for env in ['TMPDIR', 'TMP', 'TEMP', 'SCRATCH', 'HOME', 'USERPROFILE']:
+        if env in os.environ and os.access(os.environ[env], os.W_OK):
+            tmpdir = pathlib.Path(os.environ[env])
+            break
+    return tmpdir
