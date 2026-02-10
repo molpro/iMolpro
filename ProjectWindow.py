@@ -157,6 +157,9 @@ class ProjectWindow(QMainWindow):
 
         self.normal_geometry = self.normalGeometry()
 
+        import ssl
+        ssl._create_default_https_context = ssl._create_stdlib_context
+
         try:
             if isinstance(filename, list):
                 if re.match('https://|http://|file://', filename[0]):
