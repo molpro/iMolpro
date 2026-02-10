@@ -291,13 +291,14 @@ class ProjectWindow(QMainWindow):
             self.input_pane.setPlainText(
                 'geometry={0}.xyz\nbasis=cc-pV(T+d)Z-PP\ndf-rhf'.format(
                     os.path.basename(self.project.name).replace(' ', '-')))
-            import_structure = ''
-            if QMessageBox.question(self, '',
-                                    'Would you like to import the molecular geometry from a file?',
-                                    defaultButton=QMessageBox.Yes) == QMessageBox.Yes:
-                import_structure = self.import_structure()
-            if not import_structure:
-                import_structure = self.database_import_structure()
+            if not os.path.exists(self.project.filename('xyz')):
+                import_structure = ''
+                if QMessageBox.question(self, '',
+                                        'Would you like to import the molecular geometry from a file?',
+                                        defaultButton=QMessageBox.Yes) == QMessageBox.Yes:
+                    import_structure = self.import_structure()
+                if not import_structure:
+                    import_structure = self.database_import_structure()
 
         self.input_tabs.setCurrentIndex(1 if self.guided_possible() else 0)
         self.initialised_from_input = True
