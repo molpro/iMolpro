@@ -158,11 +158,19 @@ class ProjectWindow(QMainWindow):
         self.normal_geometry = self.normalGeometry()
 
         try:
-            if pathlib.Path(filename).suffix == '.molpro':
+            if isinstance(filename, list):
+                if re.match('https://|http://|file://', filename[0]):
+                    self.project = Project(files=filename)
+                else:
+                    self.project = Project(location=(writable_directory(preferred=pathlib.Path(filename[0]).parent)),
+                                           files=filename)
+            elif pathlib.Path(filename).suffix == '.molpro':
                 self.project = Project(filename)
             else:
-                self.project = Project(pathlib.Path(filename).stem + '.molpro', location=(
-                    writable_directory(preferred=pathlib.Path(filename).parent)), files=[filename])
+                self.project = Project(
+                    # pathlib.Path(filename).stem + '.molpro',
+                    location=(writable_directory(preferred=pathlib.Path(filename).parent)),
+                    files=[filename])
             logger.debug('Initialised Project input filename {}. Project bundle at {}'.format(filename,self.project.filename('','',-1)))
         except Exception as e:
             msg = QMessageBox()
