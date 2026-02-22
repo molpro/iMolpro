@@ -1,6 +1,6 @@
 ## Configuration of backends
 Local and remote jobs are placed through the definition of one or more
-backends that are defined in a configuration file located at `~/.sjef/molpro/backends.xml` and/or `/usr/local/etc/sjef/molpro/backends.xml`.
+backends that are defined in [yaml](https://yaml.org) configuration file located at `~/.sjef/molpro/backends.yaml`. Historically, the configuration was specified using [xml](https://www.w3.org/TR/xml/) in the file `~/.sjef/molpro/backends.xml`, and this can still be used if preferred; both file formats are kept synchronised.
 The following fields normally need to be specified in order to define the backend.
 
 - `name` The name to be used as a handle for the backend
@@ -36,30 +36,62 @@ If the backend is not correctly configured, it can sometimes be difficult to dia
 - Further information might be obtainable using the [sjef](https://github.com/molpro/sjef/blob/master/README.md) command-line tool, with verbosity options enabled (`sjef run -b my-backend -f -v -v project.molpro`)
 
 ## Example:
-```xml
-<backends>
-  <!-- there is a default template backend always added to the configuration file by the library
-    if it does not yet exist.  If not specified, it is  constructed automatically as
-    <backend name="local" run_command="molpro"/>
-  -->
-  <backend name="local" host="localhost"
-           run_command="molpro {-n %n!MPI size} {-M %M!Total memory} {-m %m!Memory per process} {-G %G!GA memory}"
-  />
-  <!-- local backend with special options -->
-  <backend name="special_local" host="localhost" run_command="molpro {-n %n:2!MPI size} {-m %m:100M!Memory} {-G %G!GA memory}"/>
-  <!-- informal immediate launching of Molpro on a neighbouring workstation -->
-    <backend name="linux" host="user@host" cache="/tmp/sjef-backend" run_command="molpro"/>
-    <backend name="linux2" host="linux2" cache="/tmp/peter/sjef-backend" run_command="myMolpro/bin/molpro"/>
-  <!-- an example of a Slurm system, with qmolpro a wrapper that constructs a Molpro job script,
-       and submits with srun -->
-    <backend name="slurmcluster"
-             host="{%user}@slurmcluster.somewhere.edu"
-             cache="/scratch/{%user}/sjef-project"
-             run_command="/software/molpro/release/bin/qmolpro {-t %t!time limit in seconds} {-n %n!number of MPI processes} {-m %m!memory} {-G %G!Global Arrays memory} {-q %q:compute!batch queue}"
-             run_jobnumber="Submitted batch job *([0-9]+)"
-             kill_command="scancel"
-             status_command="squeue -j"
-             status_running=" (CF|CG|R|ST|S) *[0-9]" status_waiting=" (PD|SE) *[0-9]"
-    />
-</backends>
+```yaml
+# there is a default template backend always added to the configuration file by the library
+#    if it does not yet exist.  If not specified, it is  constructed automatically as
+# name: local
+#   run_command: molpro
+local:
+  host: localhost
+  run_command: >
+    molpro {-n %n!MPI size} {-M %M!Total memory}
+    {-m %m!Memory per process} {-G %G!GA memory}
+    
+# local backend with special options
+special_local:
+  host: localhost
+  run_command: >
+    molpro {-n %n:2!MPI size} {-m %m:100M!Memory} {-G %G!GA memory}
+  cache: .sjef/cache
+  status_command: /bin/ps -o pid,state -p
+  status_running:  ^ *[0-9][0-9]* *[DIRSTUtWx]
+  status_waiting:   [Tt]
+  kill_command: pkill -P
+
+# informal immediate launching of Molpro on neighbouring workstations
+linux:
+  host: user@host
+  run_command: molpro
+  cache: /tmp/sjef-backend
+  run_jobnumber: Submitted batch job *([0-9]+)
+  status_command: /bin/ps -o pid,state -p
+  status_running:  ^ *[0-9][0-9]* *[DIRSTUtWx]
+  status_waiting:   [Tt]
+  kill_command: pkill -P
+
+linux2:
+  host: linux2
+  run_command: myMolpro/bin/molpro
+  cache: /tmp/peter/sjef-backend
+  run_jobnumber: Submitted batch job *([0-9]+)
+  status_command: /bin/ps -o pid,state -p
+  status_running:  ^ *[0-9][0-9]* *[DIRSTUtWx]
+  status_waiting:   [Tt]
+  kill_command: pkill -P
+
+# an example of a Slurm system, with qmolpro a wrapper that constructs a Molpro job script,
+# and submits with srun
+slurmcluster:
+  host: {%user}@slurmcluster.somewhere.edu
+  run_command: >
+    /software/molpro/release/bin/qmolpro
+    {-t %t!time limit in seconds} {-n %n!number of MPI processes}
+    {-m %m!memory} {-G %G!Global Arrays memory}
+    {-q %q:compute!batch queue}
+  cache: /scratch/{%user}/sjef-project
+  run_jobnumber: Submitted batch job *([0-9]+) # captures the job number from srun output
+  status_command: squeue -j
+  status_running:   (CF|CG|R|ST|S) *[0-9] # slurm squeue
+  status_waiting:   (PD|SE) *[0-9] # slurm squeue
+  kill_command: scancel
 ```

@@ -183,6 +183,7 @@ class ProjectWindow(QMainWindow):
             self.invalid = True
             return
 
+        self.project.refresh_backends()
         self.ensure_local_molpro()
 
         settings['project_directory'] = os.path.dirname(self.project.filename(run=-1))

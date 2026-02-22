@@ -211,6 +211,7 @@ class BackendEditor(QDialog):
             elif backend_node.get(field):
                 del backend_node.attrib[field]
         root.write(self.parent.file, pretty_print=True, xml_declaration=True, encoding='utf-8')
+        self.parent.parent.project.refresh_backends()
         self.parent.reset(self.parent.choose)
         self.close()
 
@@ -222,6 +223,7 @@ class BackendEditor(QDialog):
                 node = root.xpath('//backend[@name="' + self.backend + '"]')[0]
                 node.getparent().remove(node)
                 root.write(self.parent.file, pretty_print=True, xml_declaration=True, encoding='utf-8')
+                self.parent.parent.project.refresh_backends()
                 self.parent.reset(self.parent.choose)
                 self.close()
         elif button == self.buttons.button(QDialogButtonBox.Help):
