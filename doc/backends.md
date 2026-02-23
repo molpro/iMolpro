@@ -82,7 +82,7 @@ linux2:
 # an example of a Slurm system, with qmolpro a wrapper that constructs a Molpro job script,
 # and submits with srun
 slurmcluster:
-  host: {%user}@slurmcluster.somewhere.edu
+  host: '{%user}@slurmcluster.somewhere.edu' # note that leading { is a yaml special, so the string needs quote protection
   run_command: >
     /software/molpro/release/bin/qmolpro
     {-t %t!time limit in seconds} {-n %n!number of MPI processes}
