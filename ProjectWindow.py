@@ -314,8 +314,9 @@ class ProjectWindow(QMainWindow):
 
     def ensure_local_molpro(self,search_MEIPASS=True):
         for path in os.environ['PATH'].split(':'):
-            path_ = pathlib.Path(path) / 'molpro'
-            if path_.is_file():
+            if (pathlib.Path(path) / 'molpro').is_file():
+                return
+            if platform.uname().system == 'Windows' and (pathlib.Path(path) / 'molpro.bat').is_file():
                 return
 
         if hasattr(sys, '_MEIPASS') and search_MEIPASS:
