@@ -5,6 +5,9 @@ import difflib
 import glob
 import os
 import pathlib
+
+from RunDirectoryMenu import RunDirectoryMenu
+
 try:
     import pwd
 except ImportError:
@@ -475,6 +478,8 @@ class ProjectWindow(QMainWindow):
             (self.output_tabs.currentIndex() - 1) % len(self.output_tabs)), 'Alt+[')
         self.old_output_menu = OldOutputMenu(self)
         menubar.addSubmenu(self.old_output_menu, 'View')
+        self.run_directory_menu = RunDirectoryMenu(self, self.window_manager)
+        menubar.addSubmenu(self.run_directory_menu, 'View')
         menubar.addSeparator('View')
         menubar.addAction('Job stdout', 'View', lambda: self.add_output_tab(0, 'stdout', name='stdout'))
         menubar.addAction('Job stderr', 'View', lambda: self.add_output_tab(0, 'stderr', name='stderr'))
@@ -528,6 +533,7 @@ class ProjectWindow(QMainWindow):
             index = self.output_tabs.currentIndex()
             # logger.debug('refresh output tabs')
             self.old_output_menu.refresh()
+            self.run_directory_menu.refresh()
             if force or len(self.output_tabs) != len(
                     [tab_name for tab_name, pane in self.output_panes.items() if
                      os.path.exists(self.project.filename(re.sub(r'.*\.', '', tab_name)))]) + len(self.vods):
