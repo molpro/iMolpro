@@ -145,7 +145,7 @@ class ProjectWindow(QMainWindow):
             settings['project_window_width'] = self.normal_geometry.width()
             settings['project_window_height'] = self.normal_geometry.height()
 
-    def __init__(self, filename, window_manager, latency=1000):
+    def __init__(self, filename, window_manager, latency=1000, **kwargs):
         logger.debug('Initializing ProjectWindow with filename {}'.format(filename))
         super().__init__(None)
         self.window_manager = window_manager
@@ -166,17 +166,17 @@ class ProjectWindow(QMainWindow):
         try:
             if isinstance(filename, list):
                 if re.match('https://|http://|file://', filename[0]):
-                    self.project = Project(files=filename)
+                    self.project = Project(files=filename,**kwargs)
                 else:
                     self.project = Project(location=(writable_directory(preferred=pathlib.Path(filename[0]).parent)),
-                                           files=filename)
+                                           files=filename,**kwargs)
             elif pathlib.Path(filename).suffix == '.molpro':
-                self.project = Project(filename)
+                self.project = Project(filename,**kwargs)
             else:
                 self.project = Project(
                     # pathlib.Path(filename).stem + '.molpro',
                     location=(writable_directory(preferred=pathlib.Path(filename).parent)),
-                    files=[filename])
+                    files=[filename],**kwargs)
             logger.debug('Initialised Project input filename {}. Project bundle at {}'.format(filename,self.project.filename('','',-1)))
         except Exception as e:
             msg = QMessageBox()

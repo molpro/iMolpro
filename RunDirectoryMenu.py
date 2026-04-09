@@ -19,7 +19,7 @@ class RunDirectoryMenuAction(QAction):
         # msg.setText('Open Run Directory: ' + filename)
         # msg.exec()
         from ProjectWindow import ProjectWindow
-        self.window_manager.register(ProjectWindow(filename, self.window_manager))
+        self.window_manager.register(ProjectWindow(filename, self.window_manager, record_as_recent=False))
         self.parent.refresh()
 
 
@@ -27,7 +27,7 @@ class RunDirectoryMenuAction(QAction):
 class RunDirectoryMenu(QMenu):
     def __init__(self, project_window, window_manager):
         super().__init__()
-        self.setTitle('Open Run Directory...')
+        self.setTitle('Old Runs')
         self.old_outputs = []
         self.project_window = project_window
         self.window_manager = window_manager
