@@ -681,7 +681,7 @@ class ProjectWindow(QMainWindow):
                 # self.visualise_output(file, '', 'Orbitals '+str(index+1))
                 title = (str(label)+' orbitals') if label else 'Orbitals'
                 if title not in self.vods:
-                    self.embedded_vod(file, command='mo HOMO', title=title)
+                    self.embedded_vod(file, command='mo HOMO', title=title+' '+str(index+1))
                 # self.vod_selector_action(file)
         except:
             pass
