@@ -15,7 +15,7 @@ class RunDirectoryMenuAction(QAction):
 
     def process(self):
         msg = QMessageBox()
-        filename = self.parent.project_window.project.filename('out', run=self.run)
+        filename = pathlib.Path(self.parent.project_window.project.filename('out', run=self.run)).parent.as_posix()
         # msg.setText('Open Run Directory: ' + filename)
         # msg.exec()
         from ProjectWindow import ProjectWindow
