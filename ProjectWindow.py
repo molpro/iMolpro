@@ -680,8 +680,9 @@ class ProjectWindow(QMainWindow):
                 # print('got molden file from xml: ' + file, os.path.getsize(file), label)
                 # self.visualise_output(file, '', 'Orbitals '+str(index+1))
                 title = (str(label)+' orbitals') if label else 'Orbitals'
+                title += ' '+str(index+1)
                 if title not in self.vods:
-                    self.embedded_vod(file, command='mo HOMO', title=title+' '+str(index+1))
+                    self.embedded_vod(file, command='mo HOMO', title=title)
                 # self.vod_selector_action(file)
         except:
             pass
