@@ -149,6 +149,7 @@ class ProjectWindow(QMainWindow):
         logger.debug('Initializing ProjectWindow with filename {}'.format(filename))
         super().__init__(None)
         self.window_manager = window_manager
+        self.latency = latency
         if 'project_window_width' not in settings:
             settings['project_window_width'] = 1311
         if 'project_window_height' not in settings:
@@ -1244,8 +1245,8 @@ Jmol.jmolHtml("</p>")
                                                          'Molpro project (*.molpro)', )
         if file_name:
             self.project.move(file_name)
-            self.window_manager.register(ProjectWindow(file_name, self.window_manager))
             self.close()
+            self.__init__(file_name, self.window_manager,self.latency)
 
     def copy_to(self):
         file_name, filter_ = QFileDialog.getSaveFileName(self, 'Copy project to...',
