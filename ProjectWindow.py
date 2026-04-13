@@ -5,6 +5,7 @@ import difflib
 import glob
 import os
 import pathlib
+import time
 
 from RunDirectoryMenu import RunDirectoryMenu
 
@@ -556,10 +557,12 @@ class ProjectWindow(QMainWindow):
 
     def add_output_tab(self, run: int, suffix='out', name=None):
         tab_name = os.path.basename(self.project.filename(suffix, run=run)) if name is None else name
+        print('add_output_tab',i,tab_name)
         self.output_panes[tab_name] = ViewProjectOutput(self.project, suffix, instance=run)
         self.output_tabs.addTab(self.output_panes[tab_name], tab_name)
         for i in range(len(self.output_tabs)):
             if self.output_tabs.tabText(i) == tab_name:
+                print('add_output_tab setting current Index',i,tab_name)
                 self.output_tabs.setCurrentIndex(i)
 
     def guided_toggle(self):
@@ -740,6 +743,8 @@ class ProjectWindow(QMainWindow):
             return False
         if ld_library_path is not None:
             os.environ['LD_LIBRARY_PATH'] = ld_library_path
+        time.sleep(0.4)
+        self.refresh_output_tabs()
         for i in range(len(self.output_tabs)):
             if self.output_tabs.tabText(i) == 'out':
                 self.output_tabs.setCurrentIndex(i)
