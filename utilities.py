@@ -253,10 +253,14 @@ class ViewFile(QPlainTextEdit):
         scrollbar_at_bottom = scrollbar.value() >= (scrollbar.maximum() - 1)
         scrollbar_prev_value = scrollbar.value()
         if os.path.isfile(self.filename):
-            if os.path.getmtime(self.filename) > self.modtime:
-                self.modtime = os.path.getmtime(self.filename)
+            modtime = os.path.getmtime(self.filename)
+            if modtime > self.modtime:
+                self.modtime = modtime
                 with open(self.filename, 'r') as f:
-                    self.setPlainText(f.read())
+                    contents = f.read()
+                    self.clear()
+                    self.setPlainText(contents)
+                    contents=self.toPlainText() # seems to be needed to ensure sync
             if scrollbar_at_bottom:
                 self.verticalScrollBar().setValue(scrollbar.maximum())
             else:
