@@ -1261,9 +1261,9 @@ Jmol.jmolHtml("</p>")
                                       'Are you sure you want to erase project ' + self.project.filename(run=-1))
         if result == QMessageBox.Yes:
             current_dir = os.path.dirname(self.project.filename(run=-1))
+            self.close()
             self.project.trash()
             settings['project_directory'] = current_dir
-            self.close()
 
     def show_input_specification(self):
         QMessageBox.information(self, 'Input specification', 'Input specification:\r\n' +
