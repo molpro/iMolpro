@@ -1040,9 +1040,11 @@ Jmol.jmolHtml("</p>")
 
                 ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
                 project.run(wait=True, force=True, backend='local')
+                time.sleep(.1) # not clear why this is needed
                 if ld_library_path is not None:
                     os.environ['LD_LIBRARY_PATH'] = ld_library_path
-                if not project.xpath_search('//*/cml:atomArray'):
+                geometry = project.geometry()
+                if not geometry:
                     detail = ''
                     for suffix in ['stdout', 'stderr', 'out']:
                         try:
@@ -1062,7 +1064,6 @@ Jmol.jmolHtml("</p>")
                     msg.setDetailedText(detail)
                     msg.exec_()
                     return
-                geometry = project.geometry()
                 current_dir = os.path.dirname(self.project.filename(run=-1))
                 project.trash()
                 settings['project_directory'] = current_dir
