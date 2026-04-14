@@ -1040,7 +1040,7 @@ Jmol.jmolHtml("</p>")
 
                 ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
                 project.run(wait=True, force=True, backend='local')
-                time.sleep(.1) # not clear why this is needed
+                time.sleep(.3) # not clear why this is needed
                 if ld_library_path is not None:
                     os.environ['LD_LIBRARY_PATH'] = ld_library_path
                 geometry = project.geometry()
