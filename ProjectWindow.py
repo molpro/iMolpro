@@ -51,8 +51,6 @@ logger = logging.getLogger(__name__)
 
 class Project(BaseProject):
     run_directory = 0
-    def set_run_directory(self, run_directory):
-        self.run_directory = run_directory
     def filename(self, suffix="", name="", run=0):
         return super().filename(suffix, name, self.run_directory if run == 0 else run)
 
