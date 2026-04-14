@@ -5,6 +5,8 @@ on:
   push:
     tags:
       - '*'
+    branches:
+      - '*candidate*'
 jobs:
   deploy:
     name: Deploy on Unix
@@ -46,6 +48,17 @@ jobs:
           . $(dirname $CONDA_EXE)/../etc/profile.d/conda.sh
           conda activate iMolpro-github
           bash build.sh
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
+        with:
+          name: iMolpro
+          path: |
+            dist/*bz2
+            dist/*dmg
+            dist/*pkg
+            dist/*.deb
+            dist/*.rpm
       - name: Notarize
         if: ${{ matrix.mac }}
         run: |
@@ -65,6 +78,7 @@ jobs:
   deploy-windows:
     name:  Deploy on Windows
     runs-on: windows-latest
+    if: ${{ github.ref_name == 'master' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
