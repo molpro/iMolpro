@@ -52,14 +52,13 @@ jobs:
         uses: actions/upload-artifact@v4
         if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
         with:
-          name: iMolpro
+          name: iMolpro-${{ matrix.os }}
           path: |
             dist/*bz2
             dist/*dmg
             dist/*pkg
             dist/*.deb
             dist/*.rpm
-          overwrite: true
       - name: Notarize
         if: ${{ matrix.mac }}
         run: |
