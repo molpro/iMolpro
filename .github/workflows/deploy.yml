@@ -67,6 +67,7 @@ jobs:
   deploy-windows:
     name:  Deploy on Windows
     runs-on: windows-latest
+    if: ${{ github.ref_name == 'master' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
