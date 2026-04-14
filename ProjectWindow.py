@@ -26,7 +26,7 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBo
     QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
     QToolButton, QAction
 from PyQt5.QtGui import QFont, QDesktopServices
-from pymolpro import Project
+from pymolpro import Project as BaseProject
 
 from pymolpro import molpro_input
 from BasisSelector import BasisSelector
@@ -49,6 +49,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class Project(BaseProject):
+    pass
 
 class StatusBar(QLabel):
     def __init__(self, project: Project, run_actions: list, kill_actions: list, latency=1000):
