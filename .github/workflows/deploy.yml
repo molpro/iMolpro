@@ -59,6 +59,7 @@ jobs:
             dist/*pkg
             dist/*.deb
             dist/*.rpm
+          overwrite: true
       - name: Notarize
         if: ${{ matrix.mac }}
         run: |
