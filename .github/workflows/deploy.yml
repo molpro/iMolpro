@@ -19,8 +19,8 @@ jobs:
         include:
           - os: macos-latest
             mac: 1
-          - os: macos-15-intel
-            mac: 1
+#          - os: macos-15-intel
+#            mac: 1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -55,7 +55,7 @@ jobs:
           for f in $(find dist -name '*.pkg' -o -name '*.dmg') ; do xcrun notarytool submit $f --apple-id ${{ secrets.APPLE_NOTARYTOOL_APPLE_ID }} --team-id ${{ secrets.APPLE_NOTARYTOOL_TEAM_ID }} --password ${{ secrets.APPLE_NOTARYTOOL_PASSWORD }} --wait ; done
       - name: Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+#        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             dist/*bz2
