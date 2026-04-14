@@ -54,8 +54,7 @@ class Project(BaseProject):
     def set_run_directory(self, run_directory):
         self.run_directory = run_directory
     def filename(self, suffix="", name="", run=0):
-        _run = self.run_directory if run == 0 else run
-        return super().filename(suffix, name, _run)
+        return super().filename(suffix, name, self.run_directory if run == 0 else run)
 
 class StatusBar(QLabel):
     def __init__(self, project: Project, run_actions: list, kill_actions: list, latency=1000):
