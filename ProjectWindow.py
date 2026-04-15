@@ -7,7 +7,7 @@ import os
 import pathlib
 import time
 
-from RunDirectoryMenu import RunDirectoryMenu
+from RunDirectoryMenu import RunDirectoryMenu, RunDirectoryMenuActionOpenRun, RunDirectoryMenuActionOldOutputs
 
 try:
     import pwd
@@ -35,7 +35,6 @@ from draggabletabwidget import DraggableTabWidget
 from pymolpro.molpro_input import InputSpecification
 from CheckableComboBox import CheckableComboBox
 from MenuBar import MenuBar
-from OldOutputMenu import OldOutputMenu
 from RecentMenu import RecentMenu
 from database import database_choose_structure
 from help import HelpManager
@@ -53,6 +52,14 @@ class Project(BaseProject):
     run_directory = 0
     def filename(self, suffix="", name="", run=0):
         return super().filename(suffix, name, self.run_directory if run == 0 else run)
+
+    @property
+    def run_directory_names(self) -> list[str]:
+        result = []
+        dirs = self.property_get('run_directories')
+        if dirs and 'run_directories' in dirs:
+            result = [''] + dirs['run_directories'].strip().split(' ')
+        return result
 
 class StatusBar(QLabel):
     def __init__(self, project: Project, run_actions: list, kill_actions: list, latency=1000):
@@ -482,10 +489,12 @@ class ProjectWindow(QMainWindow):
             (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+]')
         menubar.addAction('Previous output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
             (self.output_tabs.currentIndex() - 1) % len(self.output_tabs)), 'Alt+[')
-        self.old_output_menu = OldOutputMenu(self)
-        menubar.addSubmenu(self.old_output_menu, 'View')
-        self.run_directory_menu = RunDirectoryMenu(self, self.window_manager)
-        menubar.addSubmenu(self.run_directory_menu, 'View')
+        self.old_output_menu=RunDirectoryMenu('Old outputs...', RunDirectoryMenuActionOldOutputs, self)
+        menubar.addSubmenu(self.old_output_menu, 'Runs')
+        self.run_directory_menu = RunDirectoryMenu('Open Run as Project...',
+                                                    RunDirectoryMenuActionOpenRun,
+                                                   self)
+        menubar.addSubmenu(self.run_directory_menu, 'Runs')
         menubar.addSeparator('View')
         menubar.addAction('Job stdout', 'View', lambda: self.add_output_tab(0, 'stdout', name='stdout'))
         menubar.addAction('Job stderr', 'View', lambda: self.add_output_tab(0, 'stderr', name='stderr'))
@@ -561,13 +570,13 @@ class ProjectWindow(QMainWindow):
 
     def add_output_tab(self, run: int, suffix='out', name=None):
         tab_name = os.path.basename(self.project.filename(suffix, run=run)) if name is None else name
-        print('add_output_tab',i,tab_name)
+        print('add_output_tab',run,tab_name)
         self.output_panes[tab_name] = ViewProjectOutput(self.project, suffix, instance=run)
         self.output_tabs.addTab(self.output_panes[tab_name], tab_name)
         for i in range(len(self.output_tabs)):
-            if self.output_tabs.tabText(i) == tab_name:
-                print('add_output_tab setting current Index',i,tab_name)
-                self.output_tabs.setCurrentIndex(i)
+            if self.output_tabs.tabText(run) == tab_name:
+                print('add_output_tab setting current Index',run,tab_name)
+                self.output_tabs.setCurrentIndex(run)
 
     def guided_toggle(self):
         # logger.debug('guided_toggle')

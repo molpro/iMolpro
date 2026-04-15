@@ -1,56 +1,49 @@
-import os
+import logging
+logger = logging.getLogger(__name__)
 import pathlib
 
 from PyQt5.QtWidgets import QMenu, QAction, QMessageBox
 
 
 class RunDirectoryMenuAction(QAction):
-    def __init__(self, parent, run: int, window_manager=None):
+    def __init__(self, project_window, run: int):
         super().__init__()
         self.run = run
-        self.parent = parent
-        self.window_manager = window_manager
-        self.setText(pathlib.Path(parent.project_window.project.filename('', run=run)).stem)
+        self.project_window = project_window
+        self.setText(pathlib.Path(project_window.project.filename('', run=run)).stem)
         self.triggered.connect(self.process)
 
-    def process(self):
-        msg = QMessageBox()
-        filename = pathlib.Path(self.parent.project_window.project.filename('out', run=self.run)).parent.as_posix()
-        # msg.setText('Open Run Directory: ' + filename)
-        # msg.exec()
-        from ProjectWindow import ProjectWindow
-        self.window_manager.register(ProjectWindow(filename, self.window_manager, record_as_recent=False))
-        self.parent.refresh()
 
+class RunDirectoryMenuActionOpenRun(RunDirectoryMenuAction):
+    def process(self):
+        filename = pathlib.Path(self.project_window.project.filename('out', run=self.run)).parent.as_posix()
+        from ProjectWindow import ProjectWindow
+        self.project_window.window_manager.register(ProjectWindow(filename, self.project_window.window_manager, record_as_recent=False))
+
+class RunDirectoryMenuActionOldOutputs(RunDirectoryMenuAction):
+    def process(self):
+        self.project_window.add_output_tab(self.run)
 
 
 class RunDirectoryMenu(QMenu):
-    def __init__(self, project_window, window_manager):
+    def __init__(self, title: str, action_class: RunDirectoryMenuAction, project_window):
         super().__init__()
-        self.setTitle('Old Runs')
-        self.old_outputs = []
+        self.setTitle(title)
+        self.action_class = action_class
         self.project_window = project_window
-        self.window_manager = window_manager
+        self.run_directories = []
         self.refresh()
 
     def refresh(self, max_items=9):
         try:
-            project = self.project_window.project
-            run_directories = project.property_get('run_directories')
-            if run_directories and 'run_directories' in run_directories:
-                ndir = len(run_directories['run_directories'].strip().split(' '))
-            else:
-                ndir = 0
-            nitems = min(max_items, ndir - 1)
-            if nitems != len(self.old_outputs):
-                self.old_outputs.clear()
-                self.clear()
-                for i in range(nitems ):
-                    run = ndir - 1 - i
-                    filename = project.filename('out', run=run)
-                    if filename != project.filename('out'):
-                        action = RunDirectoryMenuAction(self, run, self.window_manager)
-                        self.old_outputs.append((run, action))
-                        self.addAction(action)
+            run_directories = self.project_window.project.run_directory_names
+            if run_directories == self.run_directories: return
+            self.run_directories = run_directories
+            self.clear()
+            self.action_buffer = []
+            for run in range(len(run_directories) - 1, 0, -1):
+                action = self.action_class(self.project_window, run)
+                self.action_buffer.append((run, action))
+                self.addAction(action)
         except:
-            pass
+            logger.debug('exception in RunDirectoryMenu refresh')
