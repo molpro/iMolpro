@@ -7,7 +7,7 @@ import os
 import pathlib
 import time
 
-from RunDirectoryMenu import RunDirectoryMenu, RunDirectoryMenuActionOpenRun, RunDirectoryMenuActionOldOutputs
+from RunDirectoryMenu import RunDirectoryMenus
 
 try:
     import pwd
@@ -48,10 +48,19 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class Project(BaseProject):
-    run_directory = 0
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.run_directory = 0
+
     def filename(self, suffix="", name="", run=0):
-        return super().filename(suffix, name, self.run_directory if run == 0 else run)
+        if type(self.run_directory) != int:
+            raise Exception('run_directory must be an integer ' + str(self.run_directory))
+        # print('filename', suffix, 'name=',name, 'run=', run, 'self.run_directory=',self.run_directory)
+        filename = super().filename(suffix, name, self.run_directory if run == 0 else run)
+        # print('evaluated filename',filename)
+        return filename
 
     @property
     def run_directory_names(self) -> list[str]:
@@ -60,6 +69,7 @@ class Project(BaseProject):
         if dirs and 'run_directories' in dirs:
             result = [''] + dirs['run_directories'].strip().split(' ')
         return result
+
 
 class StatusBar(QLabel):
     def __init__(self, project: Project, run_actions: list, kill_actions: list, latency=1000):
@@ -91,6 +101,7 @@ class ViewProjectOutput(ViewFile):
         self.suffix = suffix
         self.instance = -1 if suffix == 'inp' else instance
         minimum_point_size = point_size - 2
+        # print('ViewProjectOutput',suffix,self.instance,self.project.filename(suffix,run=self.instance))
         self.character_width = width
         super().__init__(self.project.filename(suffix, run=self.instance), latency=latency, point_size=point_size)
         target_width = self.fontMetrics().size(0, ''.join(['M' for k in range(width)])).width()
@@ -179,18 +190,21 @@ class ProjectWindow(QMainWindow):
         try:
             if isinstance(filename, list):
                 if re.match('https://|http://|file://', filename[0]):
-                    self.project = Project(files=filename,**kwargs)
+                    self.project = Project(files=filename, **kwargs)
                 else:
                     self.project = Project(location=(writable_directory(preferred=pathlib.Path(filename[0]).parent)),
-                                           files=filename,**kwargs)
+                                           files=filename, **kwargs)
             elif pathlib.Path(filename).suffix == '.molpro':
-                self.project = Project(filename,**kwargs)
+                self.project = Project(filename, **kwargs)
             else:
                 self.project = Project(
                     # pathlib.Path(filename).stem + '.molpro',
                     location=(writable_directory(preferred=pathlib.Path(filename).parent)),
-                    files=[filename],**kwargs)
-            logger.debug('Initialised Project input filename {}. Project bundle at {}'.format(filename,self.project.filename('','',-1)))
+                    files=[filename], **kwargs)
+            logger.debug('Initialised Project input filename {}. Project bundle at {}'.format(filename,
+                                                                                              self.project.filename('',
+                                                                                                                    '',
+                                                                                                                    -1)))
         except Exception as e:
             msg = QMessageBox()
             msg.setText('Project ' + str(filename) + ' cannot be opened')
@@ -222,14 +236,7 @@ class ProjectWindow(QMainWindow):
 
         self.input_specification = InputSpecification(self.input_pane.toPlainText(), directory=self.project.filename())
 
-        self.output_panes = {
-            suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 9,
-                                      width=80 if suffix == 'inp' else 132) for suffix in
-            [
-                'out',
-                'log',
-                'inp'
-            ]}
+        self.setup_output_panes()
 
         self.vods = {}
         self.setup_menubar()
@@ -328,7 +335,27 @@ class ProjectWindow(QMainWindow):
         if not pathlib.Path(self.project.filename('xml')).exists():
             self.show_initial_structure()
 
-    def ensure_local_molpro(self,search_MEIPASS=True):
+    def setup_output_panes(self):
+        self.output_panes = {
+            suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 9,
+                                      width=80 if suffix == 'inp' else 132) for suffix in
+            [
+                'out',
+                'log',
+                'inp'
+            ]}
+
+    def switch_run_directory(self, run: int):
+        for title in list(self.vods.keys()):
+            self.destroy_vod(title)
+        self.refresh_output_tabs(force=True)
+        self.output_tabs.clear()
+        self.project.run_directory = run
+        self.setup_output_panes()
+        self.rebuild_vod_selector()
+        self.restart_vods()
+
+    def ensure_local_molpro(self, search_MEIPASS=True):
         for path in os.environ['PATH'].split(':'):
             if (pathlib.Path(path) / 'molpro').is_file():
                 return
@@ -442,6 +469,9 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Export file', 'Files', self.export_file, 'Ctrl+E',
                           tooltip='Export one or more files from the project')
         menubar.addAction('Clean', 'Files', self.clean, tooltip='Remove old runs from the project')
+
+        self.run_directory_menus = RunDirectoryMenus(self, menubar, 'Runs')
+
         menubar.addAction('Settings', 'Edit',
                           lambda arg, parent=self: settings_edit(parent, {'orbital_transparency': self.restart_vods}),
                           tooltip='Edit settings')
@@ -489,12 +519,7 @@ class ProjectWindow(QMainWindow):
             (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+]')
         menubar.addAction('Previous output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
             (self.output_tabs.currentIndex() - 1) % len(self.output_tabs)), 'Alt+[')
-        self.old_output_menu=RunDirectoryMenu('Old outputs...', RunDirectoryMenuActionOldOutputs, self)
-        menubar.addSubmenu(self.old_output_menu, 'Runs')
-        self.run_directory_menu = RunDirectoryMenu('Open Run as Project...',
-                                                    RunDirectoryMenuActionOpenRun,
-                                                   self)
-        menubar.addSubmenu(self.run_directory_menu, 'Runs')
+
         menubar.addSeparator('View')
         menubar.addAction('Job stdout', 'View', lambda: self.add_output_tab(0, 'stdout', name='stdout'))
         menubar.addAction('Job stderr', 'View', lambda: self.add_output_tab(0, 'stderr', name='stderr'))
@@ -544,20 +569,23 @@ class ProjectWindow(QMainWindow):
                 self.output_tabs.removeTab(i)
 
     def refresh_output_tabs(self, force=False):
+        # print('refresh_output_tabs',force,self.output_tabs.tab_names)
         try:
             index = self.output_tabs.currentIndex()
             # logger.debug('refresh output tabs')
-            self.old_output_menu.refresh()
-            self.run_directory_menu.refresh()
+            self.run_directory_menus.refresh()
             if force or len(self.output_tabs) != len(
                     [tab_name for tab_name, pane in self.output_panes.items() if
                      os.path.exists(self.project.filename(re.sub(r'.*\.', '', tab_name)))]) + len(self.vods):
                 # logger.debug('rebuilding output tabs')
                 for suffix, pane in self.output_panes.items():
+                    # print('examining',suffix,self.project.filename(suffix))
                     if os.path.exists(self.project.filename(suffix)) and not suffix in self.output_tabs.tab_names:
+                        # print('adding',suffix,self.project.filename(suffix))
                         self.output_tabs.addTab(pane, suffix)
                 for title, vod in self.vods.items():
-                    if title not in self.output_tabs.tab_names or (self.force_initial_structure_tab and title == 'initial structure'):
+                    if title not in self.output_tabs.tab_names or (
+                            self.force_initial_structure_tab and title == 'initial structure'):
                         self.output_tabs.addTab(vod, title)
                         self.force_initial_structure_tab = False
             if 'stderr' not in self.output_panes.keys() and self.project.status == 'completed' and not (
@@ -570,12 +598,12 @@ class ProjectWindow(QMainWindow):
 
     def add_output_tab(self, run: int, suffix='out', name=None):
         tab_name = os.path.basename(self.project.filename(suffix, run=run)) if name is None else name
-        print('add_output_tab',run,tab_name)
+        # print('add_output_tab',run,tab_name)
         self.output_panes[tab_name] = ViewProjectOutput(self.project, suffix, instance=run)
         self.output_tabs.addTab(self.output_panes[tab_name], tab_name)
         for i in range(len(self.output_tabs)):
             if self.output_tabs.tabText(run) == tab_name:
-                print('add_output_tab setting current Index',run,tab_name)
+                # print('add_output_tab setting current Index',run,tab_name)
                 self.output_tabs.setCurrentIndex(run)
 
     def guided_toggle(self):
@@ -683,7 +711,7 @@ class ProjectWindow(QMainWindow):
         if self.project.status == 'completed' or (
                 os.path.isfile(self.project.filename('xml')) and open(self.project.filename('xml'),
                                                                       'r').read().rstrip()[
-                                                                 -9:] == '</molpro>'):
+            -9:] == '</molpro>'):
             self.vod_selector_action('Final structure')
             for t, f in self.putfiles():
                 if f.replace('.molden', '') in molpro_input.local_orbital_types():
@@ -696,14 +724,13 @@ class ProjectWindow(QMainWindow):
                 assert os.path.isfile(file)
                 # print('got molden file from xml: ' + file, os.path.getsize(file), label)
                 # self.visualise_output(file, '', 'Orbitals '+str(index+1))
-                title = (str(label)+' orbitals') if label else 'Orbitals'
-                title += ' '+str(index+1)
+                title = (str(label) + ' orbitals') if label else 'Orbitals'
+                title += ' ' + str(index + 1)
                 if title not in self.vods:
                     self.embedded_vod(file, command='mo HOMO', title=title)
                 # self.vod_selector_action(file)
         except:
             pass
-
 
     def putfiles(self):
         result = []
@@ -757,6 +784,7 @@ class ProjectWindow(QMainWindow):
         if ld_library_path is not None:
             os.environ['LD_LIBRARY_PATH'] = ld_library_path
         time.sleep(0.4)
+        self.switch_run_directory(len(self.project.run_directory_names) - 1)
         self.refresh_output_tabs()
         for i in range(len(self.output_tabs)):
             if self.output_tabs.tabText(i) == 'out':
@@ -1053,7 +1081,7 @@ Jmol.jmolHtml("</p>")
 
                 ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
                 project.run(wait=True, force=True, backend='local')
-                time.sleep(.3) # not clear why this is needed
+                time.sleep(.3)  # not clear why this is needed
                 if ld_library_path is not None:
                     os.environ['LD_LIBRARY_PATH'] = ld_library_path
                 geometry = project.geometry()
@@ -1066,8 +1094,8 @@ Jmol.jmolHtml("</p>")
                         except:
                             pass
                     # try:
-                        # logger.debug('visualise_input project input file contents\n' + open(project.filename('inp'),'r').read())
-                        # logger.debug('visualise_input project output file contents\n' + open(project.filename('out'),'r').read())
+                    # logger.debug('visualise_input project input file contents\n' + open(project.filename('inp'),'r').read())
+                    # logger.debug('visualise_input project output file contents\n' + open(project.filename('out'),'r').read())
                     # except:
                     #     pass
                     msg = QMessageBox()
@@ -1137,7 +1165,6 @@ Jmol.jmolHtml("</p>")
             else:
                 self.input_pane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
             self.xyz_to_zmat_activate_or_not(True)
-
 
     def show_initial_structure(self):
         self.destroy_vod('initial structure')
@@ -1265,7 +1292,7 @@ Jmol.jmolHtml("</p>")
         if file_name:
             self.project.move(file_name)
             self.close()
-            self.__init__(file_name, self.window_manager,self.latency)
+            self.__init__(file_name, self.window_manager, self.latency)
 
     def copy_to(self):
         file_name, filter_ = QFileDialog.getSaveFileName(self, 'Copy project to...',
@@ -1379,7 +1406,7 @@ class BasisAndHamiltonianChooser(QWidget):
                                    )
                                    ]
             if core_correlation == 'mixed' and 'heavy' not in self.input_specification['basis']['elements']:
-                    self.input_specification['basis']['elements']['Heavy'] = ''
+                self.input_specification['basis']['elements']['Heavy'] = ''
             self.basis_selector.reload(self.input_specification['basis'], possible_basis_sets,
                                        core_correlation == 'mixed')
             self.basis_selector.show()
@@ -1480,7 +1507,7 @@ class GuidedPane(QWidget):
 
         self.guided_combo_method = QComboBox(self)
 
-        logger.debug('molpro_input.supported_methods(): '+ str(molpro_input.supported_methods()))
+        logger.debug('molpro_input.supported_methods(): ' + str(molpro_input.supported_methods()))
         self.guided_combo_method.addItems(molpro_input.supported_methods())
         # print('input specification',self.input_specification)
         # print('input specification method',self.input_specification['method'])
@@ -1590,7 +1617,8 @@ class GuidedPane(QWidget):
 
         self.step_options_combo.clear()
         self.step_options_combo.addItem('- Select job step -')
-        self.step_options_combo.addItems([step.command.upper() for step in self.input_specification.job_steps if step.command.lower() != self.input_specification.procname.lower()])
+        self.step_options_combo.addItems([step.command.upper() for step in self.input_specification.job_steps if
+                                          step.command.lower() != self.input_specification.procname.lower()])
         self.step_options_combo.setCurrentIndex(0)
         try:
             registry_df = pymolpro.procedures_registry()[self.input_specification.method.upper()][
@@ -1842,7 +1870,7 @@ class InputCombo(CheckableComboBox):
         super().__init__(parent, null_text='None')
         self.parent = parent
         self.identity = identity
-        self.addItems(getattr(molpro_input,self.identity).keys())
+        self.addItems(getattr(molpro_input, self.identity).keys())
         if identity in self.parent.input_specification:
             for o in self.parent.input_specification[identity]:
                 for i in range(self.model().rowCount()):
@@ -1851,17 +1879,20 @@ class InputCombo(CheckableComboBox):
         self.model().dataChanged.connect(self.refresh)
 
     def refresh(self, text):
-        self.parent.input_specification[self.identity] = [k for k, v in getattr(molpro_input,self.identity).items() for t in
-                                                       self.currentData() if t == k]
+        self.parent.input_specification[self.identity] = [k for k, v in getattr(molpro_input, self.identity).items() for
+                                                          t in
+                                                          self.currentData() if t == k]
         self.parent.input_specification.polish()
         self.parent.refresh_input_from_specification()
+
 
 class PropertyInput(InputCombo):
     r"""
     Helper for constructing input for properties
     """
+
     def __init__(self, parent=None):
-        super().__init__('properties',parent)
+        super().__init__('properties', parent)
 
 
 class ChargeSelector(QWidget):
@@ -1897,12 +1928,17 @@ class ChargeSelector(QWidget):
         self.label.setText(str(int(self.label.text()) + amount))
         self.textChanged.emit(self.label.text())
 
+
 class MyTabWidget(DraggableTabWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.tab_names=set()
+        self.tab_names = set()
 
     def addTab(self, widget, QWidget=None, *args, **kwargs):
         super().addTab(widget, QWidget, *args, **kwargs)
         if type(QWidget) is str:
             self.tab_names.add(QWidget)
+
+    def clear(self):
+        self.tab_names.clear()
+        super().clear()
