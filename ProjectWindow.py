@@ -576,13 +576,19 @@ class ProjectWindow(QMainWindow):
             self.run_directory_menus.refresh()
             if force or len(self.output_tabs) != len(
                     [tab_name for tab_name, pane in self.output_panes.items() if
-                     os.path.exists(self.project.filename(re.sub(r'.*\.', '', tab_name)))]) + len(self.vods):
+                     os.path.exists(
+                         # self.project.filename(re.sub(r'.*\.', '', tab_name))
+                         pane.filename
+                     )
+                     ]) + len(self.vods):
                 # logger.debug('rebuilding output tabs')
                 for suffix, pane in self.output_panes.items():
                     # print('examining',suffix,self.project.filename(suffix))
-                    if os.path.exists(self.project.filename(suffix)) and not suffix in self.output_tabs.tab_names:
+                    tab_name = os.path.basename(pane.filename)
+                    # print('suffix',suffix,'tab_name',tab_name,pane.filename)
+                    if os.path.exists(pane.filename) and not tab_name in self.output_tabs.tab_names:
                         # print('adding',suffix,self.project.filename(suffix))
-                        self.output_tabs.addTab(pane, suffix)
+                        self.output_tabs.addTab(pane, tab_name)
                 for title, vod in self.vods.items():
                     if title not in self.output_tabs.tab_names or (
                             self.force_initial_structure_tab and title == 'initial structure'):
