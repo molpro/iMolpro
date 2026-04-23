@@ -7,6 +7,7 @@ on:
       - '*'
     branches:
       - '*candidate*'
+      - choose-run
 jobs:
   deploy:
     name: Deploy on Unix
