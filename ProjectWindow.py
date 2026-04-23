@@ -99,7 +99,7 @@ class ViewProjectOutput(ViewFile):
     def __init__(self, project, suffix='out', width=132, latency=100, filename_latency=500, point_size=8, instance=0):
         self.project = project
         self.suffix = suffix
-        self.instance = -1 if suffix == 'inp' else instance
+        self.instance = instance
         minimum_point_size = point_size - 2
         # print('ViewProjectOutput',suffix,self.instance,self.project.filename(suffix,run=self.instance))
         self.character_width = width
