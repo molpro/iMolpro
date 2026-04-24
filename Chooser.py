@@ -153,6 +153,7 @@ class Chooser(QMainWindow):
         help_manager.register('Overview', 'README')
         help_manager.register('Example', 'doc/example.md')
         help_manager.register('Backends', 'doc/backends.md')
+        help_manager.register('Runs', 'doc/runs.md')
         help_manager.register('Display', 'doc/display.md')
 
         if platform.system() == 'Darwin':
