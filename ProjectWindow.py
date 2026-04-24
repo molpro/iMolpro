@@ -37,7 +37,7 @@ from CheckableComboBox import CheckableComboBox
 from MenuBar import MenuBar
 from RecentMenu import RecentMenu
 from database import database_choose_structure
-from help import HelpManager
+from help import help_manager_default
 from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set, factory_coordinate_set, \
     writable_directory
 from backend import configure_backend, BackendConfigurationEditor
@@ -532,14 +532,7 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Backend', 'Job', lambda: configure_backend(self), 'Ctrl+B', 'Configure backend')
         menubar.addAction('Edit backend configuration file', 'Job', self.edit_backend_configuration, 'Ctrl+Shift+B',
                           'Edit backend configuration file')
-        help_manager = HelpManager(menubar)
-        help_manager.register('Overview', 'README')
-        help_manager.register('Example', 'doc/example.md')
-        help_manager.register('Backends', 'doc/backends.md')
-        help_manager.register('Runs', 'doc/runs.md')
-        help_manager.register('Display', 'doc/display.md')
-        menubar.addAction('Jmol reference', 'Help',
-                          lambda: QDesktopServices.openUrl(QUrl('https://jmol.sourceforge.net/docs')))
+        help_manager = help_manager_default(menubar)
         menubar.show()
 
     def edit_backend_configuration(self):
