@@ -35,15 +35,41 @@ class RunDirectoryMenuActionShow(RunDirectoryMenuAction):
 
 class RunDirectoryMenuActionDelete(RunDirectoryMenuAction):
     def process(self):
-        self.project_window.project.run_delete(self.run)
+        if QMessageBox.question(self.project_window, 'Delete run?', 'Are you sure you want to delete run ' +
+                                                                    self.project_window.project.run_directory_names[
+                                                                        self.run] + '?', ) == QMessageBox.Yes:
+            self.project_window.project.run_delete(self.run)
 
+
+class RunDirectoryMenuActionInput(RunDirectoryMenuAction):
+    def process(self):
+        try:
+            with open(self.project_window.project.filename('inp', run=self.run), 'r') as f:
+                run_input = f.read()
+            with open(self.project_window.project.filename('inp', run=-1), 'r') as f:
+                working_input = f.read()
+            if run_input == working_input: return
+
+            if QMessageBox.question(self.project_window, 'Adopt input from run?',
+                                    'Are you sure you want to overwrite the working input with that from run ' +
+                                    self.project_window.project.run_directory_names[
+                                        self.run] + '?', ) == QMessageBox.Yes:
+                with open(self.project_window.project.filename('inp', run=-1), 'w') as f:
+                    f.write(run_input)
+                self.project_window.input_text_changed_consequence()
+                self.project_window.input_tabs.setCurrentIndex(0)
+                self.project_window.guided_action.setChecked(False)
+        except:
+            logger.debug('exception in RunDirectoryMenuActionInput')
+            return
 
 class RunDirectoryMenus:
     menu_items = {
         'Show Run...': RunDirectoryMenuActionShow,
         'Open Run as Project...': RunDirectoryMenuActionOpenRun,
         'Erase Run...': RunDirectoryMenuActionDelete,
-        'Show Run Output...': RunDirectoryMenuActionOldOutputs,
+        'Adopt input from Run...': RunDirectoryMenuActionInput,
+        # 'Show Run Output...': RunDirectoryMenuActionOldOutputs,
     }
 
     def __init__(self, project_window, menubar, menu_name='Runs'):
