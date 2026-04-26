@@ -44,18 +44,13 @@ class RunDirectoryMenuActionDelete(RunDirectoryMenuAction):
 class RunDirectoryMenuActionInput(RunDirectoryMenuAction):
     def process(self):
         try:
-            with open(self.project_window.project.filename('inp', run=self.run), 'r') as f:
-                run_input = f.read()
-            with open(self.project_window.project.filename('inp', run=-1), 'r') as f:
-                working_input = f.read()
-            if run_input == working_input: return
+            if not self.project_window.project.input_from_run(self.run, False): return
 
             if QMessageBox.question(self.project_window, 'Adopt input from run?',
                                     'Are you sure you want to overwrite the working input with that from run ' +
                                     self.project_window.project.run_directory_names[
                                         self.run] + '?', ) == QMessageBox.Yes:
-                with open(self.project_window.project.filename('inp', run=-1), 'w') as f:
-                    f.write(run_input)
+                self.project_window.project.input_from_run(self.run, True)
                 self.project_window.input_text_changed_consequence()
                 self.project_window.input_tabs.setCurrentIndex(0)
                 self.project_window.guided_action.setChecked(False)
