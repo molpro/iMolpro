@@ -58,6 +58,14 @@ class RunDirectoryMenuActionInput(RunDirectoryMenuAction):
             logger.debug('exception in RunDirectoryMenuActionInput')
             return
 
+class RunDirectoryMenuActionOptimisedGeometry(RunDirectoryMenuAction):
+    def process(self):
+        self.project_window.database_import_optimised(run=self.run, file='optimised.xyz')
+
+class RunDirectoryMenuActionOptimisedGeometryChoose(RunDirectoryMenuAction):
+    def process(self):
+        self.project_window.database_import_optimised(run=self.run)
+
 class RunDirectoryMenus:
     menu_items = {
         'Show Run...': RunDirectoryMenuActionShow,
@@ -65,6 +73,8 @@ class RunDirectoryMenus:
         'Erase Run...': RunDirectoryMenuActionDelete,
         'Adopt input from Run...': RunDirectoryMenuActionInput,
         # 'Show Run Output...': RunDirectoryMenuActionOldOutputs,
+        'Adopt optimised geometry from Run...': RunDirectoryMenuActionOptimisedGeometry,
+        'Select a structure from geometry optimisation...': RunDirectoryMenuActionOptimisedGeometryChoose,
     }
 
     def __init__(self, project_window, menubar, menu_name='Runs'):

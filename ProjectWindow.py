@@ -454,12 +454,12 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Search external databases for structure', 'Files', self.database_import_structure,
                           'Ctrl+Shift+Alt+I',
                           tooltip='Search PubChem and ChemSpider for a molecule and use it as the source of molecular structure in the input for the project')
-        menubar.addAction('Adopt optimised structure from the most recent run', 'Files',
-                          lambda dum, self=self: self.database_import_optimised(run=0, file='Optimised.xyz'),
-                          tooltip='Adopt structure from the most recent geometry optimisation')
-        menubar.addAction('Select a structure from a previous geometry optimisation...', 'Files',
-                          self.database_import_optimised,
-                          tooltip='Select a structure from a previous geometry optimisation')
+        # menubar.addAction('Adopt optimised structure from the most recent run', 'Files',
+        #                   lambda dum, self=self: self.database_import_optimised(run=0, file='optimised.xyz'),
+        #                   tooltip='Adopt structure from the most recent geometry optimisation')
+        # menubar.addAction('Select a structure from a previous geometry optimisation...', 'Files',
+        #                   self.database_import_optimised,
+        #                   tooltip='Select a structure from a previous geometry optimisation')
         menubar.addAction('Convert xyz geometry to Z-matrix', 'Files',
                           self.convert_xyz_to_zmat,
                           tooltip='Convert xyz geometry to Z-matrix')
@@ -1239,7 +1239,7 @@ Jmol.jmolHtml("</p>")
         run_directory_ = self.project.filename('', '', run)
         files = glob.glob('[Oo]ptimised*.xyz', root_dir=run_directory_)
         files_ = {}
-        if 'Optimised.xyz' in files: files_['final'] = 'Optimised.xyz'
+        if 'optimised.xyz' in files: files_['final'] = 'optimised.xyz'
         files.sort(reverse=True)
         for fn in files:
             if 'optimised_' in fn:
