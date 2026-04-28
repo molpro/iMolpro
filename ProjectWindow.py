@@ -51,8 +51,8 @@ logger = logging.getLogger(__name__)
 
 class Project(BaseProject):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         self.run_directory = 0
+        super().__init__(*args, **kwargs)
 
     def filename(self, suffix="", name="", run=0):
         if type(self.run_directory) != int:
@@ -198,7 +198,6 @@ class ProjectWindow(QMainWindow):
                 self.project = Project(filename, **kwargs)
             else:
                 self.project = Project(
-                    # pathlib.Path(filename).stem + '.molpro',
                     location=(writable_directory(preferred=pathlib.Path(filename).parent)),
                     files=[filename], **kwargs)
             logger.debug('Initialised Project input filename {}. Project bundle at {}'.format(filename,
