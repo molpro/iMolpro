@@ -1,56 +1,113 @@
-import os
+import logging
+
+logger = logging.getLogger(__name__)
 import pathlib
 
 from PyQt5.QtWidgets import QMenu, QAction, QMessageBox
 
 
 class RunDirectoryMenuAction(QAction):
-    def __init__(self, parent, run: int, window_manager=None):
+    def __init__(self, project_window, run: int):
         super().__init__()
         self.run = run
-        self.parent = parent
-        self.window_manager = window_manager
-        self.setText(pathlib.Path(parent.project_window.project.filename('', run=run)).stem)
+        self.project_window = project_window
+        self.setText(pathlib.Path(project_window.project.filename('', run=run)).stem)
         self.triggered.connect(self.process)
 
-    def process(self):
-        msg = QMessageBox()
-        filename = pathlib.Path(self.parent.project_window.project.filename('out', run=self.run)).parent.as_posix()
-        # msg.setText('Open Run Directory: ' + filename)
-        # msg.exec()
-        from ProjectWindow import ProjectWindow
-        self.window_manager.register(ProjectWindow(filename, self.window_manager, record_as_recent=False))
-        self.parent.refresh()
 
+class RunDirectoryMenuActionOpenRun(RunDirectoryMenuAction):
+    def process(self):
+        filename = pathlib.Path(self.project_window.project.filename('out', run=self.run)).parent.as_posix()
+        from ProjectWindow import ProjectWindow
+        self.project_window.window_manager.register(
+            ProjectWindow(filename, self.project_window.window_manager, record_as_recent=False))
+
+
+class RunDirectoryMenuActionOldOutputs(RunDirectoryMenuAction):
+    def process(self):
+        self.project_window.add_output_tab(self.run)
+
+
+class RunDirectoryMenuActionShow(RunDirectoryMenuAction):
+    def process(self):
+        self.project_window.switch_run_directory(self.run)
+
+
+class RunDirectoryMenuActionDelete(RunDirectoryMenuAction):
+    def process(self):
+        if QMessageBox.question(self.project_window, 'Delete run?', 'Are you sure you want to delete run ' +
+                                                                    self.project_window.project.run_directory_names[
+                                                                        self.run] + '?', ) == QMessageBox.Yes:
+            self.project_window.project.run_delete(self.run)
+
+
+class RunDirectoryMenuActionInput(RunDirectoryMenuAction):
+    def process(self):
+        try:
+            if not self.project_window.project.input_from_run(self.run, False): return
+
+            if QMessageBox.question(self.project_window, 'Adopt input from run?',
+                                    'Are you sure you want to overwrite the working input with that from run ' +
+                                    self.project_window.project.run_directory_names[
+                                        self.run] + '?', ) == QMessageBox.Yes:
+                self.project_window.project.input_from_run(self.run, True)
+                self.project_window.input_text_changed_consequence()
+                self.project_window.input_tabs.setCurrentIndex(0)
+                self.project_window.guided_action.setChecked(False)
+        except:
+            logger.debug('exception in RunDirectoryMenuActionInput')
+            return
+
+class RunDirectoryMenuActionOptimisedGeometry(RunDirectoryMenuAction):
+    def process(self):
+        self.project_window.database_import_optimised(run=self.run, file='optimised.xyz')
+
+class RunDirectoryMenuActionOptimisedGeometryChoose(RunDirectoryMenuAction):
+    def process(self):
+        self.project_window.database_import_optimised(run=self.run)
+
+class RunDirectoryMenus:
+    menu_items = {
+        'Show Run...': RunDirectoryMenuActionShow,
+        'Open Run as Project...': RunDirectoryMenuActionOpenRun,
+        'Erase Run...': RunDirectoryMenuActionDelete,
+        'Adopt input from Run...': RunDirectoryMenuActionInput,
+        # 'Show Run Output...': RunDirectoryMenuActionOldOutputs,
+        'Adopt optimised geometry from Run...': RunDirectoryMenuActionOptimisedGeometry,
+        'Select a structure from geometry optimisation...': RunDirectoryMenuActionOptimisedGeometryChoose,
+    }
+
+    def __init__(self, project_window, menubar, menu_name='Runs'):
+        self.project_window = project_window
+        self.menus = {}
+        for menu_item_name, action_class in self.menu_items.items():
+            self.menus[menu_item_name] = RunDirectoryMenu(menu_item_name, action_class, project_window)
+            menubar.addSubmenu(self.menus[menu_item_name], menu_name)
+
+    def refresh(self):
+        for menu in self.menus.values():
+            menu.refresh()
 
 
 class RunDirectoryMenu(QMenu):
-    def __init__(self, project_window, window_manager):
+    def __init__(self, title: str, action_class: RunDirectoryMenuAction, project_window):
         super().__init__()
-        self.setTitle('Old Runs')
-        self.old_outputs = []
+        self.setTitle(title)
+        self.action_class = action_class
         self.project_window = project_window
-        self.window_manager = window_manager
+        self.run_directories = []
         self.refresh()
 
     def refresh(self, max_items=9):
         try:
-            project = self.project_window.project
-            run_directories = project.property_get('run_directories')
-            if run_directories and 'run_directories' in run_directories:
-                ndir = len(run_directories['run_directories'].strip().split(' '))
-            else:
-                ndir = 0
-            nitems = min(max_items, ndir - 1)
-            if nitems != len(self.old_outputs):
-                self.old_outputs.clear()
-                self.clear()
-                for i in range(nitems ):
-                    run = ndir - 1 - i
-                    filename = project.filename('out', run=run)
-                    if filename != project.filename('out'):
-                        action = RunDirectoryMenuAction(self, run, self.window_manager)
-                        self.old_outputs.append((run, action))
-                        self.addAction(action)
+            run_directories = self.project_window.project.run_directory_names
+            if run_directories == self.run_directories: return
+            self.run_directories = run_directories
+            self.clear()
+            self.action_buffer = []
+            for run in range(len(run_directories) - 1, 0, -1):
+                action = self.action_class(self.project_window, run)
+                self.action_buffer.append((run, action))
+                self.addAction(action)
         except:
-            pass
+            logger.debug('exception in RunDirectoryMenu refresh')

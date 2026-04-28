@@ -6,3 +6,8 @@ molpro-*sh.gz
 .idea/
 __pycache__/
 .DS_Store
+.ipynb_checkpoints
+.ninja.*
+*.molpro
+test.html
+test.inp

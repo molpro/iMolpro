@@ -7,7 +7,7 @@ from PyQt5.QtCore import QCoreApplication, Qt, QUrl
 
 from MenuBar import MenuBar
 from RecentMenu import RecentMenu
-from help import HelpManager
+from help import help_manager_default
 from utilities import force_suffix
 
 import pymolpro
@@ -149,11 +149,7 @@ class Chooser(QMainWindow):
                           tooltip='Quit')
         menubar.addAction('Settings', 'Edit', lambda arg, parent=self: settings_edit(parent), tooltip='Edit settings')
 
-        help_manager = HelpManager(menubar)
-        help_manager.register('Overview', 'README')
-        help_manager.register('Example', 'doc/example.md')
-        help_manager.register('Backends', 'doc/backends.md')
-        help_manager.register('Display', 'doc/display.md')
+        help_manager = help_manager_default(menubar)
 
         if platform.system() == 'Darwin':
             self.setMenuBar(menubar)

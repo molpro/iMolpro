@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
     QTextBrowser, QMainWindow, QShortcut, QWidget, QHBoxLayout, QDialog, QVBoxLayout, QDialogButtonBox
 )
 from PyQt5.QtCore import Qt, QUrl
-from PyQt5.QtGui import QKeySequence
+from PyQt5.QtGui import QKeySequence, QDesktopServices
 from MenuBar import MenuBar
 
 
@@ -47,6 +47,10 @@ class HelpManager:
 
     def register(self, name: str, content: str):
         self.menubar.addAction(name, 'Help', lambda: self.show(name, content))
+
+    def register_url(self, name: str, url: str):
+        self.menubar.addAction(name, 'Help',
+                          lambda: QDesktopServices.openUrl(QUrl(url)))
 
     def show(self, name: str, content: str):
         base_path = pathlib.Path(__file__).parent
@@ -98,3 +102,13 @@ def help_dialog(file: str, parent=None):
     layout.addWidget(button_box)
     button_box.accepted.connect(help_window.close)
     help_window.exec()
+
+def help_manager_default(menubar: MenuBar):
+    help_manager = HelpManager(menubar)
+    help_manager.register('Overview', 'README')
+    help_manager.register('Example', 'doc/example.md')
+    help_manager.register('Backends', 'doc/backends.md')
+    help_manager.register('Runs', 'doc/runs.md')
+    help_manager.register('Display', 'doc/display.md')
+    help_manager.register_url('Jmol reference', 'https://jmol.sourceforge.net/docs')
+    return help_manager
