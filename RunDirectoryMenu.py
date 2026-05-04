@@ -44,16 +44,16 @@ class RunDirectoryMenuActionDelete(RunDirectoryMenuAction):
 class RunDirectoryMenuActionInput(RunDirectoryMenuAction):
     def process(self):
         try:
-            if not self.project_window.project.input_from_run(self.run, False): return
-
-            if QMessageBox.question(self.project_window, 'Adopt input from run?',
-                                    'Are you sure you want to overwrite the working input with that from run ' +
-                                    self.project_window.project.run_directory_names[
-                                        self.run] + '?', ) == QMessageBox.Yes:
-                self.project_window.project.input_from_run(self.run, True)
-                self.project_window.input_text_changed_consequence()
-                self.project_window.input_tabs.setCurrentIndex(0)
-                self.project_window.guided_action.setChecked(False)
+            if self.project_window.project.input_from_run(self.run, False):
+                if QMessageBox.question(self.project_window, 'Adopt input from run?',
+                                        'Are you sure you want to overwrite the working input with that from run ' +
+                                        self.project_window.project.run_directory_names[
+                                            self.run] + '?', ) == QMessageBox.Yes:
+                    self.project_window.project.input_from_run(self.run, True)
+                    self.project_window.input_text_changed_consequence()
+                    self.project_window.input_tabs.setCurrentIndex(0)
+                    self.project_window.guided_action.setChecked(False)
+            self.project_window.switch_run_directory(self.run)
         except:
             logger.debug('exception in RunDirectoryMenuActionInput')
             return
@@ -68,10 +68,10 @@ class RunDirectoryMenuActionOptimisedGeometryChoose(RunDirectoryMenuAction):
 
 class RunDirectoryMenus:
     menu_items = {
+        'Adopt input from, and show, Run...': RunDirectoryMenuActionInput,
         'Show Run...': RunDirectoryMenuActionShow,
         'Open Run as Project...': RunDirectoryMenuActionOpenRun,
         'Erase Run...': RunDirectoryMenuActionDelete,
-        'Adopt input from Run...': RunDirectoryMenuActionInput,
         # 'Show Run Output...': RunDirectoryMenuActionOldOutputs,
         'Adopt optimised geometry from Run...': RunDirectoryMenuActionOptimisedGeometry,
         'Select a structure from geometry optimisation...': RunDirectoryMenuActionOptimisedGeometryChoose,
