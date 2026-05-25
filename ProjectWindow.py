@@ -43,6 +43,7 @@ from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital
 from backend import configure_backend, BackendConfigurationEditor
 from settings import settings, settings_edit
 from OptionsDialog import OptionsDialog
+from vtk_molecule_widget import OrbitalsWidget, MoleculeWidget
 
 import logging
 
@@ -726,10 +727,22 @@ class ProjectWindow(QMainWindow):
                 title = (str(label) + ' orbitals') if label else 'Orbitals'
                 title += ' ' + str(index + 1)
                 if title not in self.vods:
-                    self.embedded_vod(file, command='mo HOMO', title=title)
+                    self.embedded_vod_jmol(file, command='mo HOMO', title=title)
                 # self.vod_selector_action(file)
         except:
             pass
+        orbitals = None
+        try:
+            for index in range(10):
+                orbitals = self.project.orbitals(index)
+                print('index',index,orbitals)
+                label = 'orbitals ' + str(index)
+                print('label',label)
+                self.vods[label] = OrbitalsWidget(orbitals,self)
+                print('MoleculeWidget',self.vods[label])
+        except Exception as e:
+            print('MoleculeWidget Exception',e)
+
 
     def putfiles(self):
         result = []
@@ -810,9 +823,9 @@ class ProjectWindow(QMainWindow):
             elif title == os.path.splitext(os.path.basename(self.project.filename()))[0]:
                 title = 'final structure'
             if title not in self.vods:
-                self.embedded_vod(filename, command='mo HOMO', title=title)
+                self.embedded_vod_jmol(filename, command='mo HOMO', title=title)
 
-    def embedded_vod(self, file, command='', title='structure', **kwargs):
+    def embedded_vod_jmol(self, file, command='', title='structure', **kwargs):
         height, width = self.embedded_geometry(280)
         # logger.debug('embedded_vod ' + file + ', ' + command + ', ' + title + ', ' + str(height) + ', ' + str(width))
         firstvib = 1
@@ -1116,7 +1129,7 @@ Jmol.jmolHtml("</p>")
         if external_path:
             subprocess.Popen([external_path, xyz_file])
         elif geom and 'builder' not in self.vods and 'initial structure' not in self.vods:
-            self.embedded_vod(xyz_file, command='', title='initial structure')
+            self.embedded_vod_jmol(xyz_file, command='', title='initial structure')
 
     def closeEvent(self, a0, QCloseEvent=None):
         self.close_signal.emit(self)

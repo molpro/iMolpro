@@ -12,6 +12,7 @@ import platform
 import logging
 
 from utilities import writable_directory
+from settings import settings
 
 if __name__ == '__main__':
 
@@ -24,6 +25,8 @@ if __name__ == '__main__':
             return True
 
 
+    if 'vtk' not in settings: settings['vtk']=False #TODO eventually True
+    if 'IMOLPRO_VTK' in os.environ: settings['vtk']=True
     logger = logging.getLogger(__name__)
     log_level = logging.INFO
     if 'LOGGING_LEVEL' in os.environ and os.environ['LOGGING_LEVEL'] == 'NOTSET': log_level = logging.NOTSET
