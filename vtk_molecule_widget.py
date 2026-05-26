@@ -47,10 +47,12 @@ class StyledWidget(Qt.QWidget):
 
 
 class OrbitalsWidget(Qt.QWidget):
-    def get_cube(self):
-        key = self.orbital,self.resolution
+    def get_cube(self,contour_value=None):
+        # print('get_cube',self.orbital.ID,self.resolution,contour_value,'')
+        key = self.orbital,self.resolution,contour_value
         if key not in self.cubes:
-            self.cubes[key] = self.orbital.cube_data(resolution=self.resolution)
+            # print('get_cube',self.orbital.ID,self.resolution,contour_value,'creating')
+            self.cubes[key] = self.orbital.cube_data(resolution=self.resolution,threshold=contour_value*.1)
         return self.cubes[key]
     def __init__(self, orbitals: list, parent=None, axes: bool = False,
                  background_colour: tuple | ColourScheme = ColourScheme.dark,
@@ -67,8 +69,8 @@ class OrbitalsWidget(Qt.QWidget):
         self.orbitals = orbitals
         self.resolution = resolution
         self.orbital = orbitals[-1]
-        cube_data = self.get_cube()  # eventually need an orbital selector
-        self.orbital_display = MoleculeWidget(cube_data, self, sliders=False, )
+        cube_data = self.get_cube(contour_value=contour_value)
+        self.orbital_display = MoleculeWidget(cube_data, self, sliders=False, contour_value=contour_value, contour_opacity=contour_opacity )
         layout.addWidget(self.orbital_display)
 
         right_layout = Qt.QVBoxLayout()
@@ -92,6 +94,12 @@ class OrbitalsWidget(Qt.QWidget):
         orbital_selector.setMinimumWidth(orbital_selector.minimumSizeHint().width())
         control_layout.addWidget(Qt.QLabel('Orbital:'),row,0)
         control_layout.addWidget(orbital_selector,row,1)
+        row += 1
+
+        occupation_label = Qt.QLabel('Occupation:')
+        occupation_label.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Fixed)
+        if hasattr(self.orbital,'occupation'):
+            control_layout.addWidget(occupation_label,row,0)
         row += 1
 
         # control_layout.addWidget(Qt.QLabel('Contour:'), row, 0)
@@ -136,22 +144,32 @@ class OrbitalsWidget(Qt.QWidget):
         resolution_layout = Qt.QHBoxLayout()
         # resolution_layout.setContentsMargins(0,0,0,0)
         # resolution_layout.setSpacing(0)
-        finer_button = Qt.QPushButton('Finer')
+        finer_button = Qt.QPushButton('+')
         resolution_layout.addWidget(finer_button)
         finer_button.clicked.connect(lambda: self.set_resolution('+'))
-        coarser_button = Qt.QPushButton('Coarser')
+        coarser_button = Qt.QPushButton('-')
         resolution_layout.addWidget(coarser_button)
         coarser_button.clicked.connect(lambda: self.set_resolution('-'))
         control_layout.addLayout(resolution_layout, row, 1)
         row += 1
 
+        atom_labels_label = Qt.QLabel('Atom labels:')
+        atom_labels_label.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Fixed)
+        control_layout.addWidget(atom_labels_label,row,0)
+        atom_labels_checkbox = Qt.QCheckBox()
+        control_layout.addWidget(atom_labels_checkbox,row,1)
+        atom_labels_checkbox.clicked.connect(lambda: self.set_atom_labels(atom_labels_checkbox.isChecked()))
+
 
         # control_layout.addStretch()
 
+    def set_atom_labels(self, atom_labels: bool):
+        pass # TODO implement
+
     def set_orbital(self, orbital_id):
-        print('set_orbital', orbital_id)
+        # print('set_orbital', orbital_id)
         self.orbital = self.orbitals[[orbital.ID for orbital in self.orbitals].index(orbital_id)]
-        cube_data = self.get_cube()
+        cube_data = self.get_cube(self.orbital_display.model.contour_value)
         # print(str(cube_data)[:100] + '...')
         self.orbital_display.refresh_model(cube_data)
         pass

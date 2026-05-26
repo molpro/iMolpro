@@ -735,13 +735,11 @@ class ProjectWindow(QMainWindow):
         try:
             for index in range(10):
                 orbitals = self.project.orbitals(index)
-                print('index',index,orbitals)
-                label = 'orbitals ' + str(index)
-                print('label',label)
-                self.vods[label] = OrbitalsWidget(orbitals,self)
-                print('MoleculeWidget',self.vods[label])
+                orbitals_node = orbitals[0].node.getparent()
+                label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals ' + str(index)
+                self.vods[label] = OrbitalsWidget(orbitals, self)
         except Exception as e:
-            print('MoleculeWidget Exception',e)
+            pass
 
 
     def putfiles(self):
