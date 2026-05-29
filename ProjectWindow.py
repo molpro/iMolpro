@@ -739,6 +739,7 @@ class ProjectWindow(QMainWindow):
                 label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals ' + str(index)
                 self.vods[label] = OrbitalsWidget(orbitals, self)
         except Exception as e:
+            print('Orbitals except',str(e))
             pass
 
 

@@ -3,6 +3,8 @@ import math
 import vtk
 import numpy as np
 from jupyter_client.kernelspec import find_kernel_specs
+from numpy.ma.core import right_shift
+from prompt_toolkit.key_binding.bindings.named_commands import self_insert
 from pymolpro.cube_data import CubeData
 from ase.data import colors, covalent_radii, chemical_symbols
 from vtkmodules.vtkFiltersCore import vtkGlyph3D
@@ -46,20 +48,44 @@ class StyledWidget(Qt.QWidget):
             self.setStyleSheet("* { color: rgb(0,0,0); font-size: 10px }\n")
 
 
+class FixedLabel(Qt.QLabel):
+    def __init__(self, text, parent=None):
+        Qt.QLabel.__init__(self, text, parent)
+        self.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Fixed)
+
+
+class ItemLayout(Qt.QGridLayout):
+    def __init__(self, parent=None):
+        Qt.QGridLayout.__init__(self, parent)
+        self.setContentsMargins(0, 0, 0, 0)
+        # self.setSpacing(0)
+        self.row = 0
+
+    def add(self, title, content):
+        self.addWidget(FixedLabel(title + ':'), self.row, 0)
+        if isinstance(content, Qt.QWidget):
+            self.addWidget(content, self.row, 1)
+        elif isinstance(content, Qt.QLayout):
+            self.addLayout(content, self.row, 1, )
+        self.row += 1
+        return self.row-1
+
+
 class OrbitalsWidget(Qt.QWidget):
-    def get_cube(self,contour_value=None):
+    def get_cube(self, contour_value=None):
         # print('get_cube',self.orbital.ID,self.resolution,contour_value,'')
-        key = self.orbital,self.resolution,contour_value
+        key = self.orbital, self.resolution, contour_value
         if key not in self.cubes:
             # print('get_cube',self.orbital.ID,self.resolution,contour_value,'creating')
-            self.cubes[key] = self.orbital.cube_data(resolution=self.resolution,threshold=contour_value*.1)
+            self.cubes[key] = self.orbital.cube_data(resolution=self.resolution, threshold=contour_value * .1)
         return self.cubes[key]
+
     def __init__(self, orbitals: list, parent=None, axes: bool = False,
                  background_colour: tuple | ColourScheme = ColourScheme.dark,
                  contour_value=.05, contour_opacity=.7,
-                 resolution:float = .5,
+                 resolution: float = .5,
                  ):
-        print('OrbitalsWidget', orbitals)
+        # print('OrbitalsWidget', orbitals)
         Qt.QWidget.__init__(self, parent)
         layout = Qt.QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -70,127 +96,135 @@ class OrbitalsWidget(Qt.QWidget):
         self.resolution = resolution
         self.orbital = orbitals[-1]
         cube_data = self.get_cube(contour_value=contour_value)
-        self.orbital_display = MoleculeWidget(cube_data, self, sliders=False, contour_value=contour_value, contour_opacity=contour_opacity )
+        self.orbital_display = MoleculeWidget(cube_data, self, sliders=False, contour_value=contour_value,
+                                              contour_opacity=contour_opacity)
         layout.addWidget(self.orbital_display)
 
-        right_layout = Qt.QVBoxLayout()
-        layout.addLayout(right_layout)
-        control_layout = Qt.QGridLayout()
-        row = 0
-        right_layout.addLayout(control_layout)
-        right_layout.addStretch()
-        # control_layout.addWidget(Qt.QLabel('Orbitals'),0,0)
+        if True:
+            self.right_panel = ControlPanel(self)
+            layout.addWidget(self.right_panel)
+        else: #legacy kept till working
+            right_panel = Qt.QWidget()
+            # layout.addWidget(right_panel)
+            right_panel.setContentsMargins(0, 0, 0, 0)
+            right_panel.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Preferred)
+            right_layout = Qt.QVBoxLayout()
+            right_panel.setLayout(right_layout)
+            # layout.addLayout(right_layout)
 
-        orbital_selector = Qt.QComboBox()
-        for orbital in orbitals[::-1]:
-            orbital_selector.addItem(str(orbital.ID))
-        orbital_selector.currentTextChanged.connect(self.set_orbital)
-        # orbital_selector.setBackgroundColor(Qt.QColor(*self.background_colour))
-        # palette = self.palette()
-        # palette.setColor(Qt.QPalette.Base, Qt.QColor(*self.background_colour))
-        # palette.setColor(Qt.QPalette.Base, Qt.QColor('Red'))
-        # orbital_selector.setPalette(palette)
-        # orbital_selector.setAutoFillBackground(True)
-        orbital_selector.setMinimumWidth(orbital_selector.minimumSizeHint().width())
-        control_layout.addWidget(Qt.QLabel('Orbital:'),row,0)
-        control_layout.addWidget(orbital_selector,row,1)
-        row += 1
+            # test
+            if False:
+                index = layout.indexOf(right_panel)
+                print('index',index)
+                print('right_panel',right_panel)
+                print(layout.itemAt(index).widget())
+                layout.removeWidget(layout.itemAt(index).widget())
+                layout.addWidget(right_panel)
+            #end test
 
-        occupation_label = Qt.QLabel('Occupation:')
-        occupation_label.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Fixed)
-        if hasattr(self.orbital,'occupation'):
-            control_layout.addWidget(occupation_label,row,0)
-        row += 1
+            control_layout = ItemLayout()
+            right_layout.addLayout(control_layout)
+            right_layout.addStretch()
+            # control_layout.addWidget(Qt.QLabel('Orbitals'),0,0)
 
-        # control_layout.addWidget(Qt.QLabel('Contour:'), row, 0)
-        contour_slider = mySlider(self)
-        self.contour_slider_minimum = 0.003
-        self.contour_slider_maximum = 0.5
-        contour_slider.valueChanged.connect(self.orbital_display.set_contour_value)
-        contour_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
-        contour_slider.setValue(
-            int(100 * math.log(self.orbital_display.model.contour_value / self.contour_slider_minimum) / math.log(
-                self.contour_slider_maximum / self.contour_slider_minimum)))
-        contour_label = Qt.QLabel('Contour value:')
-        control_layout.addWidget(contour_label, row, 0)
-        contour_label.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Fixed)
-        control_layout.addWidget(contour_slider, row, 1)
-        row += 1
+            orbital_selector = Qt.QComboBox()
+            for orbital in orbitals[::-1]:
+                orbital_selector.addItem(str(orbital.ID))
+            orbital_selector.currentTextChanged.connect(self.set_orbital)
+            # orbital_selector.setBackgroundColor(Qt.QColor(*self.background_colour))
+            # palette = self.palette()
+            # palette.setColor(Qt.QPalette.Base, Qt.QColor(*self.background_colour))
+            # palette.setColor(Qt.QPalette.Base, Qt.QColor('Red'))
+            # orbital_selector.setPalette(palette)
+            # orbital_selector.setAutoFillBackground(True)
+            orbital_selector.setMinimumWidth(orbital_selector.minimumSizeHint().width())
+            control_layout.add('Orbital', orbital_selector)
 
-        opacity_slider = mySlider(self)
-        opacity_slider.valueChanged.connect(self.orbital_display.set_contour_opacity)
-        opacity_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
-        opacity_slider.setValue(int(self.orbital_display.model.contour.opacity * 100))
-        opacity_label = Qt.QLabel('Opacity:')
-        opacity_label.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Fixed)
-        control_layout.addWidget(opacity_label, row, 0)
-        control_layout.addWidget(opacity_slider, row, 1)
-        row += 1
+            if hasattr(self.orbital, 'occupation'):
+                self.occupation_row = control_layout.add('Occupation', Qt.QLabel(str(self.orbital.occupation)))
 
-        if False:
-            resolution_slider = mySlider(self)
-            resolution_slider.valueChanged.connect(self.set_resolution)
-            resolution_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
-            resolution_slider.setValue(int(self.resolution * 100))
-            resolution_label = Qt.QLabel('Resolution:')
-            resolution_label.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Fixed)
-            control_layout.addWidget(resolution_label, row, 0)
-            control_layout.addWidget(resolution_slider, row, 1)
-            row += 1
+            if hasattr(self.orbital, 'energy'):
+                self.energy_row = control_layout.add('Energy', Qt.QLabel(str(self.orbital.energy)))
 
-        resolution_label = Qt.QLabel('Resolution:')
-        resolution_label.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Fixed)
-        control_layout.addWidget(resolution_label, row, 0)
-        resolution_layout = Qt.QHBoxLayout()
-        # resolution_layout.setContentsMargins(0,0,0,0)
-        # resolution_layout.setSpacing(0)
-        finer_button = Qt.QPushButton('+')
-        resolution_layout.addWidget(finer_button)
-        finer_button.clicked.connect(lambda: self.set_resolution('+'))
-        coarser_button = Qt.QPushButton('-')
-        resolution_layout.addWidget(coarser_button)
-        coarser_button.clicked.connect(lambda: self.set_resolution('-'))
-        control_layout.addLayout(resolution_layout, row, 1)
-        row += 1
+            # control_layout.addWidget(FixedLabel('Contour:'), row, 0)
+            contour_slider = mySlider(self)
+            self.contour_slider_minimum = 0.003
+            self.contour_slider_maximum = 0.5
+            contour_slider.valueChanged.connect(self.orbital_display.set_contour_value)
+            contour_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
+            contour_slider.setValue(
+                int(100 * math.log(self.orbital_display.model.contour_value / self.contour_slider_minimum) / math.log(
+                    self.contour_slider_maximum / self.contour_slider_minimum)))
+            control_layout.add('Contour value', contour_slider)
 
-        atom_labels_label = Qt.QLabel('Atom labels:')
-        atom_labels_label.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Fixed)
-        control_layout.addWidget(atom_labels_label,row,0)
-        atom_labels_checkbox = Qt.QCheckBox()
-        control_layout.addWidget(atom_labels_checkbox,row,1)
-        atom_labels_checkbox.clicked.connect(lambda: self.set_atom_labels(atom_labels_checkbox.isChecked()))
+            opacity_slider = mySlider(self)
+            opacity_slider.valueChanged.connect(self.orbital_display.set_contour_opacity)
+            opacity_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
+            opacity_slider.setValue(int(self.orbital_display.model.contour.opacity * 100))
+            control_layout.add('Opacity', opacity_slider)
 
+            if False:
+                resolution_slider = mySlider(self)
+                resolution_slider.valueChanged.connect(self.set_resolution)
+                resolution_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
+                resolution_slider.setValue(int(self.resolution * 100))
+                resolution_label = FixedLabel('Resolution:')
+                control_layout.addWidget(resolution_label, row, 0)
+                control_layout.addWidget(resolution_slider, row, 1)
+                row += 1
 
-        # control_layout.addStretch()
+            resolution_label = FixedLabel('Resolution:')
+            resolution_layout = Qt.QHBoxLayout()
+            # resolution_layout.setContentsMargins(0,0,0,0)
+            # resolution_layout.setSpacing(0)
+            coarser_button = Qt.QPushButton('-')
+            resolution_layout.addWidget(coarser_button)
+            coarser_button.clicked.connect(lambda: self.set_resolution('-'))
+            finer_button = Qt.QPushButton('+')
+            resolution_layout.addWidget(finer_button)
+            finer_button.clicked.connect(lambda: self.set_resolution('+'))
+            control_layout.add('Resolution', resolution_layout)
+
+            atom_labels_checkbox = Qt.QCheckBox()
+            control_layout.add('Atom labels', atom_labels_checkbox)
+            atom_labels_checkbox.clicked.connect(lambda: self.set_atom_labels(atom_labels_checkbox.isChecked()))
+
+            control_layout.add('Background colour', FixedLabel('To Do'))
+
+            control_layout.add('Export image', FixedLabel('To Do'))
+
+            # control_layout.addStretch()
 
     def set_atom_labels(self, atom_labels: bool):
-        pass # TODO implement
+        pass  # TODO implement
 
     def set_orbital(self, orbital_id):
         # print('set_orbital', orbital_id)
         self.orbital = self.orbitals[[orbital.ID for orbital in self.orbitals].index(orbital_id)]
         cube_data = self.get_cube(self.orbital_display.model.contour_value)
         # print(str(cube_data)[:100] + '...')
+        self.right_panel.refresh()
         self.orbital_display.refresh_model(cube_data)
         pass
 
     def set_resolution(self, resolution):
+        shift_factor = 0.8
         if type(resolution) is int:
             resolution = resolution / 100.0
         elif type(resolution) is str and resolution == '+':
-            resolution = self.resolution * 0.9
+            resolution = self.resolution * shift_factor
         elif type(resolution) is str and resolution == '-':
-            resolution = self.resolution / 0.9
+            resolution = self.resolution / shift_factor
 
-        print('set_resolution', resolution)
+        # print('set_resolution', resolution)
         self.resolution = resolution
         self.set_orbital(self.orbital.ID)
 
 
 class MoleculeWidget(StyledWidget):
     def refresh_model(self, source):
-        print('refresh_model',type(source))
-        print('self.model',type(self.model))
+        # print('refresh_model', type(source))
+        # print('self.model', type(self.model))
         self.scene.Remove(self.model.contour)
         self.model = MolecularModel(source, )
         self.scene.Add(self.model.contour)
@@ -199,7 +233,7 @@ class MoleculeWidget(StyledWidget):
     def __init__(self, source, parent=None, axes: bool = False,
                  background_colour: tuple | ColourScheme = ColourScheme.dark,
                  contour_value=.05, contour_opacity=.7,
-                 sliders:bool=True,
+                 sliders: bool = True,
                  ):
         StyledWidget.__init__(self, parent, background_colour=background_colour)
 
@@ -280,6 +314,111 @@ class MoleculeWidget(StyledWidget):
         axes.DrawZGridlinesOn()
         scene.Add(axes)
 
+class ControlPanel(Qt.QWidget):
+    def __init__(self, parent):
+        # print('ControlPanel __init__')
+        super().__init__(parent)
+        self.parent = parent
+        self.setContentsMargins(0, 0, 0, 0)
+        self.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Preferred)
+        self.layout = Qt.QVBoxLayout()
+        self.setLayout(self.layout)
+        self.setup()
+        self.refresh()
+
+    def refresh(self):
+        if hasattr(self,'energy_widget'):
+            if hasattr(self.parent.orbital,'energy') :
+                self.energy_widget.setText(str(self.parent.orbital.energy))
+            else:
+                self.energy_widget.setText('None')
+        if hasattr(self,'occupation_widget'):
+            if hasattr(self.parent.orbital,'occupation') :
+                self.occupation_widget.setText(str(self.parent.orbital.occupation))
+            else:
+                self.occupation_widget.setText('None')
+        pass
+
+    def setup(self):
+
+        while w:= self.findChild(Qt.QWidget):
+            w.setParent(None)
+
+        self.control_layout = ItemLayout()
+        self.layout.addLayout(self.control_layout)
+        self.layout.addStretch()
+        # self.control_layout.addWidget(Qt.QLabel('Orbitals'),0,0)
+
+        orbital_selector = Qt.QComboBox()
+        for orbital in self.parent.orbitals[::-1]:
+            orbital_selector.addItem(str(orbital.ID))
+        orbital_selector.currentTextChanged.connect(self.parent.set_orbital)
+        # orbital_selector.setBackgroundColor(Qt.QColor(*self.background_colour))
+        # palette = self.palette()
+        # palette.setColor(Qt.QPalette.Base, Qt.QColor(*self.background_colour))
+        # palette.setColor(Qt.QPalette.Base, Qt.QColor('Red'))
+        # orbital_selector.setPalette(palette)
+        # orbital_selector.setAutoFillBackground(True)
+        orbital_selector.setMinimumWidth(orbital_selector.minimumSizeHint().width())
+        self.control_layout.add('Orbital', orbital_selector)
+
+
+        if hasattr(self.parent.orbital, 'occupation'):
+            row = self.control_layout.add('Occupation', Qt.QLabel(str(self.parent.orbital.occupation)))
+            self.occupation_widget = self.control_layout.itemAtPosition(row, 1).widget()
+
+        if hasattr(self.parent.orbital, 'energy'):
+            row = self.control_layout.add('Energy', Qt.QLabel(str(self.parent.orbital.energy)))
+            self.energy_widget = self.control_layout.itemAtPosition(row, 1).widget()
+
+        # self.control_layout.addWidget(FixedLabel('Contour:'), row, 0)
+        contour_slider = mySlider(self)
+        self.contour_slider_minimum = 0.003
+        self.contour_slider_maximum = 0.5
+        contour_slider.valueChanged.connect(self.parent.orbital_display.set_contour_value)
+        contour_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
+        contour_slider.setValue(
+            int(100 * math.log(self.parent.orbital_display.model.contour_value / self.contour_slider_minimum) / math.log(
+                self.contour_slider_maximum / self.contour_slider_minimum)))
+        self.control_layout.add('Contour value', contour_slider)
+
+        opacity_slider = mySlider(self)
+        opacity_slider.valueChanged.connect(self.parent.orbital_display.set_contour_opacity)
+        opacity_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
+        opacity_slider.setValue(int(self.parent.orbital_display.model.contour.opacity * 100))
+        self.control_layout.add('Opacity', opacity_slider)
+
+        if False:
+            resolution_slider = mySlider(self)
+            resolution_slider.valueChanged.connect(self.set_resolution)
+            resolution_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
+            resolution_slider.setValue(int(self.resolution * 100))
+            resolution_label = FixedLabel('Resolution:')
+            self.control_layout.addWidget(resolution_label, row, 0)
+            self.control_layout.addWidget(resolution_slider, row, 1)
+            row += 1
+
+        resolution_label = FixedLabel('Resolution:')
+        resolution_layout = Qt.QHBoxLayout()
+        # resolution_layout.setContentsMargins(0,0,0,0)
+        # resolution_layout.setSpacing(0)
+        coarser_button = Qt.QPushButton('-')
+        resolution_layout.addWidget(coarser_button)
+        coarser_button.clicked.connect(lambda: self.parent.set_resolution('-'))
+        finer_button = Qt.QPushButton('+')
+        resolution_layout.addWidget(finer_button)
+        finer_button.clicked.connect(lambda: self.parent.set_resolution('+'))
+        self.control_layout.add('Resolution', resolution_layout)
+
+        atom_labels_checkbox = Qt.QCheckBox()
+        self.control_layout.add('Atom labels', atom_labels_checkbox)
+        atom_labels_checkbox.clicked.connect(lambda: self.parent.set_atom_labels(atom_labels_checkbox.isChecked()))
+
+        self.control_layout.add('Background colour', FixedLabel('To Do'))
+
+        self.control_layout.add('Export image', FixedLabel('To Do'))
+
+        # self.control_layout.addStretch()
 
 class MoleculeScene(QVTKRenderWindowInteractor):
 
@@ -298,7 +437,7 @@ class MoleculeScene(QVTKRenderWindowInteractor):
             for actor in source:
                 self.renderer.AddActor(actor)
 
-    def Remove(self, source:vtk.vtkActor):
+    def Remove(self, source: vtk.vtkActor):
         self.renderer.RemoveActor(source)
 
     def SetBackground(self, r, g, b):
