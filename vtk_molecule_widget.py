@@ -4,7 +4,8 @@ from PyQt5 import Qt, QtCore
 import math
 import vtk
 import numpy as np
-from PyQt5.QtWidgets import QFileDialog, QPushButton
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QFileDialog, QPushButton, QColorDialog
 from jupyter_client.kernelspec import find_kernel_specs
 from numba.pycc.decorators import export_registry
 from numpy.ma.core import right_shift
@@ -20,8 +21,9 @@ from enum import Enum
 
 
 class ColourScheme(Enum):
-    dark = 20, 20, 30,
-    light = 255, 255, 255,
+    # dark = 20, 20, 30,
+    dark = 0, 4, 0x35,
+    light = 255, 248, 220,
     black = 0, 0, 0,
     white = 255, 255, 255,
     red = 255, 0, 0,
@@ -102,7 +104,7 @@ class OrbitalsWidget(Qt.QWidget):
         self.resolution = resolution
         self.orbital = orbitals[-1]
         cube_data = self.get_cube(contour_value=contour_value)
-        self.orbital_display = MoleculeWidget(cube_data, self, sliders=False, contour_value=contour_value,
+        self.orbital_display = MoleculeWidget(cube_data, self, background_colour=background_colour, sliders=False, contour_value=contour_value,
                                               contour_opacity=contour_opacity)
         layout.addWidget(self.orbital_display)
 
@@ -156,6 +158,7 @@ class MoleculeWidget(StyledWidget):
         StyledWidget.__init__(self, parent, background_colour=background_colour)
 
         layout = Qt.QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
         self.scene = MoleculeScene(self)
         self.model = MolecularModel(source, contour_value=contour_value, contour_opacity=contour_opacity,
@@ -210,6 +213,22 @@ class MoleculeWidget(StyledWidget):
         contour_value = self.contour_slider_minimum * math.exp(
             value * 0.01 * math.log(self.contour_slider_maximum / self.contour_slider_minimum))
         self.model.set_contour_value(contour_value)
+        self.scene.GetRenderWindow().GetInteractor().Render()
+
+    def set_background_colour(self, colour: QColor|int|tuple[float, float, float]):
+        # print('set_background_colour', colour,type(colour))
+        if type(colour) is int:
+            colour = QColor(colour)
+        if type(colour) is QColor:
+            if not colour.isValid(): return
+            rgb = colour.rgb()
+            blue = rgb & 0xFF
+            green = (rgb >> 8) & 0xFF
+            red = (rgb >> 16) & 0xFF
+            # print('set_background_colour', rgb,red,green,blue)
+            return self.set_background_colour((red,green,blue))
+        self.background_colour = colour
+        self.scene.SetBackground(*[c / 255.0 for c in self.background_colour])
         self.scene.GetRenderWindow().GetInteractor().Render()
 
     def add_axes(self, scene: MoleculeScene):
@@ -335,7 +354,27 @@ class ControlPanel(Qt.QWidget):
         self.control_layout.add('Atom labels', atom_labels_checkbox)
         atom_labels_checkbox.clicked.connect(lambda: self.parent.set_atom_labels(atom_labels_checkbox.isChecked()))
 
-        self.control_layout.add('Background colour', FixedLabel('To Do'))
+        colour_selection = FixedLabel('To Do')
+        colour_selection = Qt.QWidget(self)
+        colour_selection_layout = Qt.QVBoxLayout()
+        colour_selection_layout.setContentsMargins(0, 0, 0, 0)
+        colour_selection.setLayout(colour_selection_layout)
+        colour_selection_layout2 = Qt.QHBoxLayout()
+        colour_selection_layout2.setContentsMargins(0, 0, 0, 0)
+        colour_selection_layout.addLayout(colour_selection_layout2)
+        for i,name in enumerate(['dark','black','white','light']):
+            # print('ColourScheme', name, ': ', ColourScheme[name].value)
+            # button = Qt.QPushButton('')
+            button = Qt.QToolButton(self)
+            button.setMaximumSize(QtCore.QSize(15, 15))
+            button.setStyleSheet(f'background-color: rgb{str(ColourScheme[name].value)}; border:none;')
+            colour_selection_layout2.addWidget(button)
+            button.clicked.connect(lambda checked, name=name: self.parent.orbital_display.set_background_colour(ColourScheme[name].value))
+        button = Qt.QPushButton('Other...')
+        i+=1
+        colour_selection_layout.addWidget(button)
+        button.clicked.connect(lambda: self.parent.orbital_display.set_background_colour(QColorDialog.getColor(initial=QColor(*self.parent.orbital_display.background_colour), parent=self, title='Choose background colour')))
+        self.control_layout.add('Background colour', colour_selection)
 
         export_button = QPushButton('Choose file')
         self.control_layout.add('Export image', export_button)
