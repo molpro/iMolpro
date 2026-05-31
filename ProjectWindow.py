@@ -736,7 +736,7 @@ class ProjectWindow(QMainWindow):
             for index in range(10000):
                 orbitals = self.project.orbitals(index)
                 orbitals_node = orbitals[0].node.getparent()
-                label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals ' + str(index)
+                label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals ' + str(index+1)
                 self.vods[label] = OrbitalsWidget(orbitals, self)
         except Exception as e:
             # print('Orbitals except',str(e))
