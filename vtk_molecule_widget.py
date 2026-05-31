@@ -1,12 +1,18 @@
+import os
+
 from PyQt5 import Qt, QtCore
 import math
 import vtk
 import numpy as np
+from PyQt5.QtWidgets import QFileDialog, QPushButton
 from jupyter_client.kernelspec import find_kernel_specs
+from numba.pycc.decorators import export_registry
 from numpy.ma.core import right_shift
 from prompt_toolkit.key_binding.bindings.named_commands import self_insert
 from pymolpro.cube_data import CubeData
 from ase.data import colors, covalent_radii, chemical_symbols
+from pymolpro.elements import periodic_table
+from vtkmodules.vtkCommonDataModel import vtkPolyData
 from vtkmodules.vtkFiltersCore import vtkGlyph3D
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
@@ -100,103 +106,11 @@ class OrbitalsWidget(Qt.QWidget):
                                               contour_opacity=contour_opacity)
         layout.addWidget(self.orbital_display)
 
-        if True:
-            self.right_panel = ControlPanel(self)
-            layout.addWidget(self.right_panel)
-        else: #legacy kept till working
-            right_panel = Qt.QWidget()
-            # layout.addWidget(right_panel)
-            right_panel.setContentsMargins(0, 0, 0, 0)
-            right_panel.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Preferred)
-            right_layout = Qt.QVBoxLayout()
-            right_panel.setLayout(right_layout)
-            # layout.addLayout(right_layout)
-
-            # test
-            if False:
-                index = layout.indexOf(right_panel)
-                print('index',index)
-                print('right_panel',right_panel)
-                print(layout.itemAt(index).widget())
-                layout.removeWidget(layout.itemAt(index).widget())
-                layout.addWidget(right_panel)
-            #end test
-
-            control_layout = ItemLayout()
-            right_layout.addLayout(control_layout)
-            right_layout.addStretch()
-            # control_layout.addWidget(Qt.QLabel('Orbitals'),0,0)
-
-            orbital_selector = Qt.QComboBox()
-            for orbital in orbitals[::-1]:
-                orbital_selector.addItem(str(orbital.ID))
-            orbital_selector.currentTextChanged.connect(self.set_orbital)
-            # orbital_selector.setBackgroundColor(Qt.QColor(*self.background_colour))
-            # palette = self.palette()
-            # palette.setColor(Qt.QPalette.Base, Qt.QColor(*self.background_colour))
-            # palette.setColor(Qt.QPalette.Base, Qt.QColor('Red'))
-            # orbital_selector.setPalette(palette)
-            # orbital_selector.setAutoFillBackground(True)
-            orbital_selector.setMinimumWidth(orbital_selector.minimumSizeHint().width())
-            control_layout.add('Orbital', orbital_selector)
-
-            if hasattr(self.orbital, 'occupation'):
-                self.occupation_row = control_layout.add('Occupation', Qt.QLabel(str(self.orbital.occupation)))
-
-            if hasattr(self.orbital, 'energy'):
-                self.energy_row = control_layout.add('Energy', Qt.QLabel(str(self.orbital.energy)))
-
-            # control_layout.addWidget(FixedLabel('Contour:'), row, 0)
-            contour_slider = mySlider(self)
-            self.contour_slider_minimum = 0.003
-            self.contour_slider_maximum = 0.5
-            contour_slider.valueChanged.connect(self.orbital_display.set_contour_value)
-            contour_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
-            contour_slider.setValue(
-                int(100 * math.log(self.orbital_display.model.contour_value / self.contour_slider_minimum) / math.log(
-                    self.contour_slider_maximum / self.contour_slider_minimum)))
-            control_layout.add('Contour value', contour_slider)
-
-            opacity_slider = mySlider(self)
-            opacity_slider.valueChanged.connect(self.orbital_display.set_contour_opacity)
-            opacity_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
-            opacity_slider.setValue(int(self.orbital_display.model.contour.opacity * 100))
-            control_layout.add('Opacity', opacity_slider)
-
-            if False:
-                resolution_slider = mySlider(self)
-                resolution_slider.valueChanged.connect(self.set_resolution)
-                resolution_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
-                resolution_slider.setValue(int(self.resolution * 100))
-                resolution_label = FixedLabel('Resolution:')
-                control_layout.addWidget(resolution_label, row, 0)
-                control_layout.addWidget(resolution_slider, row, 1)
-                row += 1
-
-            resolution_label = FixedLabel('Resolution:')
-            resolution_layout = Qt.QHBoxLayout()
-            # resolution_layout.setContentsMargins(0,0,0,0)
-            # resolution_layout.setSpacing(0)
-            coarser_button = Qt.QPushButton('-')
-            resolution_layout.addWidget(coarser_button)
-            coarser_button.clicked.connect(lambda: self.set_resolution('-'))
-            finer_button = Qt.QPushButton('+')
-            resolution_layout.addWidget(finer_button)
-            finer_button.clicked.connect(lambda: self.set_resolution('+'))
-            control_layout.add('Resolution', resolution_layout)
-
-            atom_labels_checkbox = Qt.QCheckBox()
-            control_layout.add('Atom labels', atom_labels_checkbox)
-            atom_labels_checkbox.clicked.connect(lambda: self.set_atom_labels(atom_labels_checkbox.isChecked()))
-
-            control_layout.add('Background colour', FixedLabel('To Do'))
-
-            control_layout.add('Export image', FixedLabel('To Do'))
-
-            # control_layout.addStretch()
+        self.right_panel = ControlPanel(self)
+        layout.addWidget(self.right_panel)
 
     def set_atom_labels(self, atom_labels: bool):
-        pass  # TODO implement
+        self.orbital_display.show_nucleus_labels(atom_labels)
 
     def set_orbital(self, orbital_id):
         # print('set_orbital', orbital_id)
@@ -230,6 +144,10 @@ class MoleculeWidget(StyledWidget):
         self.scene.Add(self.model.contour)
         self.scene.GetRenderWindow().GetInteractor().Render()
 
+    def show_nucleus_labels(self, show:bool):
+        self.nucleus_labels.SetVisibility(show)
+        self.scene.GetRenderWindow().GetInteractor().Render()
+
     def __init__(self, source, parent=None, axes: bool = False,
                  background_colour: tuple | ColourScheme = ColourScheme.dark,
                  contour_value=.05, contour_opacity=.7,
@@ -243,6 +161,9 @@ class MoleculeWidget(StyledWidget):
         self.model = MolecularModel(source, contour_value=contour_value, contour_opacity=contour_opacity,
                                     bond_colour=(0.8, 0.8, 0.8) if self.dark else (0.6, 0.6, 0.6))
         self.scene.Add(self.model)
+        self.nucleus_labels = NucleusLabelsActor(source)
+        self.show_nucleus_labels(False)
+        self.scene.Add(self.nucleus_labels)
         self.scene.SetBackground(*[c / 255.0 for c in self.background_colour])
         if axes:
             self.add_axes(self.scene)
@@ -416,7 +337,9 @@ class ControlPanel(Qt.QWidget):
 
         self.control_layout.add('Background colour', FixedLabel('To Do'))
 
-        self.control_layout.add('Export image', FixedLabel('To Do'))
+        export_button = QPushButton('Choose file')
+        self.control_layout.add('Export image', export_button)
+        export_button.clicked.connect(lambda: self.parent.orbital_display.scene.export_image())
 
         # self.control_layout.addStretch()
 
@@ -431,11 +354,13 @@ class MoleculeScene(QVTKRenderWindowInteractor):
         self.GetRenderWindow().GetInteractor().Initialize()
 
     def Add(self, source):
-        if isinstance(source, vtk.vtkActor):
+        if isinstance(source, vtk.vtkActor2D):
+            self.renderer.AddActor2D(source)
+        elif isinstance(source, vtk.vtkActor):
             self.renderer.AddActor(source)
         elif isinstance(source, vtk.vtkActorCollection):
             for actor in source:
-                self.renderer.AddActor(actor)
+                self.Add(actor)
 
     def Remove(self, source: vtk.vtkActor):
         self.renderer.RemoveActor(source)
@@ -447,6 +372,18 @@ class MoleculeScene(QVTKRenderWindowInteractor):
         self.renderer.ResetCamera()
         self.GetRenderWindow().GetInteractor().Initialize()
         self.GetRenderWindow().GetInteractor().Start()
+        self.GetRenderWindow().Render()
+
+    def export_image(self, filename: str = None):
+        pdf_exporter = vtk.vtkGL2PSExporter()
+        pdf_exporter.SetRenderWindow(self.GetRenderWindow())
+        pdf_exporter.SetFileFormatToPDF()
+        if filename is None:
+            filename = os.path.splitext(QFileDialog.getSaveFileName(self, 'Export image', '', 'PDF (*.pdf)')[0])[0]
+            if filename is None or filename == '':
+                return
+        pdf_exporter.SetFilePrefix(filename)
+        pdf_exporter.Write()
 
 
 class mySlider(Qt.QSlider):
@@ -581,16 +518,9 @@ class NucleiActor(vtk.vtkActor):
         if isinstance(source, CubeData):
             self.set_source(source.atoms, atomic_number=atomic_number)
             return
-        self.atoms = source
-        points = vtk.vtkPoints()
+        atoms = source
         angstrom = 1.8897161646321
-        for i, atom in enumerate(self.atoms):
-            if atomic_number is not None and atom['atomic_number'] != atomic_number:
-                continue
-            points.InsertNextPoint(atom['xyz'])
-        polydata = vtk.vtkPolyData()
-        polydata.SetPoints(points)
-        # _colours=[colors.cpk_colors[atom['atomic_number']] for atom in self.atoms]
+        polydata = atoms_to_polydata(atoms, atomic_number)
         sphere_source = vtk.vtkSphereSource(phi_resolution=50, theta_resolution=50)
         sphere_source.SetRadius(0.3)
         if atomic_number is not None:
@@ -607,6 +537,48 @@ class NucleiActor(vtk.vtkActor):
             self.GetProperty().SetColor(colors.cpk_colors[atomic_number])
         self.SetOrigin(0.0, 0.0, 0.0)
         # self.GetProperty().SetOpacity(.1)
+
+class NucleusLabelsActor(vtk.vtkActor2D):
+    def __init__(self, source: list[dict] | CubeData, radius_scale=.5, bond_radius=.1):
+        vtk.vtkActor2D.__init__(self)
+        self.radius_scale = radius_scale
+        self.set_source(source)
+
+    def set_source(self, source: list[dict] | CubeData):
+        if isinstance(source, CubeData):
+            self.set_source(source.atoms)
+            return
+        polydata = atoms_to_polydata(source)
+        labels = vtk.vtkStringArray(name='labels')
+        labels.SetNumberOfValues(len(source))
+        for i, atom in enumerate(source):
+            labels.SetValue(i, periodic_table[atom['atomic_number']-1]+str(i+1))
+        polydata.GetPointData().AddArray(labels)
+        sizes = vtk.vtkIntArray(name='sizes')
+        sizes.SetNumberOfValues(len(source))
+        for i, atom in enumerate(source):
+            sizes.SetValue(i, 1)
+        polydata.GetPointData().AddArray(sizes)
+        point_set_to_label_hierarchy_filter = vtk.vtkPointSetToLabelHierarchy(
+            label_array_name='labels',
+            size_array_name='sizes',
+        )
+        point_set_to_label_hierarchy_filter.SetInputData(polydata)
+        mapper = vtk.vtkLabelPlacementMapper()
+        mapper.SetInputConnection(point_set_to_label_hierarchy_filter.GetOutputPort())
+        self.SetMapper(mapper)
+        self.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Salmon'))
+        # self.GetProperty().SetOpacity(.1)
+
+def atoms_to_polydata(atoms: list[dict], atomic_number=None) -> vtkPolyData:
+    points = vtk.vtkPoints()
+    for i, atom in enumerate(atoms):
+        if atomic_number is not None and atom['atomic_number'] != atomic_number:
+            continue
+        points.InsertNextPoint(atom['xyz'])
+    polydata = vtk.vtkPolyData()
+    polydata.SetPoints(points)
+    return polydata
 
 
 class BondActorCollection(vtk.vtkActorCollection):
