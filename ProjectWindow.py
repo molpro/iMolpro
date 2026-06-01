@@ -476,7 +476,8 @@ class ProjectWindow(QMainWindow):
                           lambda arg, parent=self: settings_edit(parent, {'orbital_transparency': self.restart_vods}),
                           tooltip='Edit settings')
         menubar.addSeparator('Edit')
-        menubar.addAction('Structure', 'Edit', self.edit_input_structure, 'Ctrl+D', 'Edit molecular geometry')
+        if settings['use_jmol']:
+            menubar.addAction('Structure', 'Edit', self.edit_input_structure, 'Ctrl+D', 'Edit molecular geometry')
         menubar.addAction('Cut', 'Edit', self.input_pane.cut, 'Ctrl+X', 'Cut')
         menubar.addAction('Copy', 'Edit', lambda: QApplication.focusWidget().copy(), 'Ctrl+C', 'Copy')
         menubar.addAction('Paste', 'Edit', self.input_pane.paste, 'Ctrl+V', 'Paste')
@@ -541,19 +542,20 @@ class ProjectWindow(QMainWindow):
         self.backend_configuration_editor.exec()
 
     def edit_input_structure(self):
-        f = self.geometry_files()
-        if f:
-            filename = self.project.filename('', f[-1][1], run=-1)
-            if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
-                with open(filename, 'w') as f:
-                    f.write('1\n\nC 0.0 0.0 0.0\n')
-            self.destroy_vod('initial structure')
-            self.destroy_vod('builder')
-            self.embedded_builder(filename)
-            self.refresh_output_tabs()
-            for i in range(len(self.output_tabs)):
-                if self.output_tabs.tabText(i) == 'builder':
-                    self.output_tabs.setCurrentIndex(i)
+        if settings['use_jmol']:
+            f = self.geometry_files()
+            if f:
+                filename = self.project.filename('', f[-1][1], run=-1)
+                if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
+                    with open(filename, 'w') as f:
+                        f.write('1\n\nC 0.0 0.0 0.0\n')
+                self.destroy_vod('initial structure')
+                self.destroy_vod('builder')
+                self.embedded_builder(filename)
+                self.refresh_output_tabs()
+                for i in range(len(self.output_tabs)):
+                    if self.output_tabs.tabText(i) == 'builder':
+                        self.output_tabs.setCurrentIndex(i)
 
     def destroy_vod(self, title):
         if title in self.vods:
@@ -705,42 +707,51 @@ class ProjectWindow(QMainWindow):
     def rebuild_vod_selector(self):
         # logger.debug('rebuild_vod_selector')
         self.vods.clear()
-        for t, f in self.geometry_files():
-            self.vod_selector_action('Edit ' + f)
-        self.vod_selector_action('Initial structure')
-        if self.project.status == 'completed' or (
-                os.path.isfile(self.project.filename('xml')) and open(self.project.filename('xml'),
-                                                                      'r').read().rstrip()[
-            -9:] == '</molpro>'):
-            self.vod_selector_action('Final structure')
-            for t, f in self.putfiles():
-                if f.replace('.molden', '') in molpro_input.local_orbital_types():
-                    self.vod_selector_action(
-                        molpro_input.local_orbital_types()[f.replace('.molden', '')]['text'] + ' orbitals')
-        try:
-            for index in range(10000):
-                molden_file_stem = self.project.filename('molden', 'xml_orbitals').replace('.molden', '')
-                file, label = self.project.orbitals_to_molden(molden_file_stem, index)
-                assert os.path.isfile(file)
-                # print('got molden file from xml: ' + file, os.path.getsize(file), label)
-                # self.visualise_output(file, '', 'Orbitals '+str(index+1))
-                title = (str(label) + ' orbitals') if label else 'Orbitals'
-                title += ' ' + str(index + 1)
-                if title not in self.vods:
-                    self.embedded_vod_jmol(file, command='mo HOMO', title=title)
-                # self.vod_selector_action(file)
-        except:
-            pass
-        orbitals = None
-        try:
-            for index in range(10000):
-                orbitals = self.project.orbitals(index)
-                orbitals_node = orbitals[0].node.getparent()
-                label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals: ' + str(index+1)
-                self.vods[label] = OrbitalsWidget(orbitals, self)
-        except Exception as e:
-            # print('Orbitals except',str(e))
-            pass
+        if settings['use_jmol']:
+            for t, f in self.geometry_files():
+                self.vod_selector_action('Edit ' + f)
+            self.vod_selector_action('Initial structure')
+            if self.project.status == 'completed' or (
+                    os.path.isfile(self.project.filename('xml')) and open(self.project.filename('xml'),
+                                                                          'r').read().rstrip()[
+                -9:] == '</molpro>'):
+                self.vod_selector_action('Final structure')
+                for t, f in self.putfiles():
+                    if f.replace('.molden', '') in molpro_input.local_orbital_types():
+                        self.vod_selector_action(
+                            molpro_input.local_orbital_types()[f.replace('.molden', '')]['text'] + ' orbitals')
+            try:
+                for index in range(10000):
+                    molden_file_stem = self.project.filename('molden', 'xml_orbitals').replace('.molden', '')
+                    file, label = self.project.orbitals_to_molden(molden_file_stem, index)
+                    assert os.path.isfile(file)
+                    # print('got molden file from xml: ' + file, os.path.getsize(file), label)
+                    # self.visualise_output(file, '', 'Orbitals '+str(index+1))
+                    title = (str(label) + ' orbitals') if label else 'Orbitals'
+                    title += ' ' + str(index + 1)
+                    if title not in self.vods:
+                        self.embedded_vod_jmol(file, command='mo HOMO', title=title)
+                    # self.vod_selector_action(file)
+            except:
+                pass
+
+        if settings['use_vtk']:
+            orbitals = None
+            labels = {}
+            try:
+                for index in range(10000):
+                    orbitals = self.project.orbitals(index)
+                    orbitals_node = orbitals[0].node.getparent()
+                    label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals'
+                    if label in labels:
+                        labels[label] += 1
+                        label= label+': ' + str(labels[label])
+                    else:
+                        labels[label]=0
+                    self.vods[label] = OrbitalsWidget(orbitals, self)
+            except Exception as e:
+                # print('Orbitals except',str(e))
+                pass
 
 
     def putfiles(self):
