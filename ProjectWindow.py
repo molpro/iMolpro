@@ -745,10 +745,13 @@ class ProjectWindow(QMainWindow):
                     label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals'
                     if label in labels:
                         labels[label] += 1
-                        label= label+': ' + str(labels[label])
+                        label = label + ': ' + str(labels[label])
                     else:
-                        labels[label]=0
-                    self.vods[label] = OrbitalsWidget(orbitals, self)
+                        labels[label] = 0
+                    self.vods[label] = OrbitalsWidget(orbitals, self,
+                                                      metadata=orbitals_node.attrib,
+                                                      )
+                    self.vod_selector_action(label)
             except Exception as e:
                 # print('Orbitals except',str(e))
                 pass

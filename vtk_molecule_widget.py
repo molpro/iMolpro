@@ -92,12 +92,14 @@ class OrbitalsWidget(Qt.QWidget):
                  background_colour: tuple | ColourScheme = ColourScheme.dark,
                  contour_value=.05, contour_opacity=.7,
                  resolution: float = .5,
+                 metadata: dict = {},
                  ):
         # print('OrbitalsWidget', orbitals)
         Qt.QWidget.__init__(self, parent)
         layout = Qt.QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
+        self.parent = parent
 
         self.cubes = {}
         self.orbitals = orbitals
@@ -108,7 +110,7 @@ class OrbitalsWidget(Qt.QWidget):
                                               contour_opacity=contour_opacity)
         layout.addWidget(self.orbital_display)
 
-        self.right_panel = ControlPanel(self)
+        self.right_panel = ControlPanel(self,metadata=metadata)
         layout.addWidget(self.right_panel)
 
     def set_atom_labels(self, atom_labels: bool):
@@ -255,15 +257,15 @@ class MoleculeWidget(StyledWidget):
         scene.Add(axes)
 
 class ControlPanel(Qt.QWidget):
-    def __init__(self, parent):
-        # print('ControlPanel __init__')
+    def __init__(self, parent,metadata={}):
+        print('ControlPanel __init__',metadata)
         super().__init__(parent)
         self.parent = parent
         self.setContentsMargins(0, 0, 0, 0)
         self.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Preferred)
         self.layout = Qt.QVBoxLayout()
         self.setLayout(self.layout)
-        self.setup()
+        self.setup(metadata=metadata)
         self.refresh()
 
     def refresh(self):
@@ -279,10 +281,20 @@ class ControlPanel(Qt.QWidget):
                 self.occupation_widget.setText('None')
         pass
 
-    def setup(self):
+    def setup(self,metadata={}):
 
         while w:= self.findChild(Qt.QWidget):
             w.setParent(None)
+
+        if 'method' in metadata and 'type' in metadata:
+            self.layout.addWidget(Qt.QLabel(f'{metadata["method"]}/{metadata["type"]} orbitals'),
+                                  alignment=Qt.Qt.AlignCenter)
+            if 'state_symmetry' in metadata and 'stateID' in metadata:
+                title = 'State ' + metadata['state_symmetry'] + '.' + str(metadata['stateID'])
+                if 'state_ms2' in metadata:
+                    title = title + ', spin multiplicity ' + str(int(metadata['state_ms2'])+1)
+                self.layout.addWidget(Qt.QLabel(title), alignment=Qt.Qt.AlignCenter)
+
 
         self.control_layout = ItemLayout()
         self.layout.addLayout(self.control_layout)
