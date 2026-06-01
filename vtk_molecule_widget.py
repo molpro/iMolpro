@@ -6,10 +6,6 @@ import vtk
 import numpy as np
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QFileDialog, QPushButton, QColorDialog
-from jupyter_client.kernelspec import find_kernel_specs
-from numba.pycc.decorators import export_registry
-from numpy.ma.core import right_shift
-from prompt_toolkit.key_binding.bindings.named_commands import self_insert
 from pymolpro.cube_data import CubeData
 from ase.data import colors, covalent_radii, chemical_symbols
 from pymolpro.elements import periodic_table
