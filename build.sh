@@ -12,7 +12,7 @@ if [ -z "$NOCONDA" ]; then
 conda install -q -c conda-forge -c defaults -y --file=requirements.txt 'setuptools=80.9' pandoc || exit
 gem install --user-install -n~/bin fpm
 PATH=~/bin:$PATH
-#conda list
+conda list
 fi
 
 #if [ "$(uname)" = Darwin -a $(uname -m) = x86_64 ]; then

@@ -254,7 +254,6 @@ class MoleculeWidget(StyledWidget):
 
 class ControlPanel(Qt.QWidget):
     def __init__(self, parent,metadata={}):
-        print('ControlPanel __init__',metadata)
         super().__init__(parent)
         self.parent = parent
         self.setContentsMargins(0, 0, 0, 0)
@@ -288,7 +287,8 @@ class ControlPanel(Qt.QWidget):
             if 'state_symmetry' in metadata and 'stateID' in metadata:
                 title = 'State ' + metadata['state_symmetry'] + '.' + str(metadata['stateID'])
                 if 'state_ms2' in metadata:
-                    title = title + ', spin multiplicity ' + str(int(metadata['state_ms2'])+1)
+                    ms2 = int(metadata['state_ms2'])
+                    title = title + ', spin ' + (str(ms2 // 2) if ms2%2==0 else str(ms2)+'/2')
                 self.layout.addWidget(Qt.QLabel(title), alignment=Qt.Qt.AlignCenter)
 
 
