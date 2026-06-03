@@ -5,7 +5,7 @@ import sys
 import platform
 
 from lxml import etree
-from PyQt5.QtWidgets import QDialog, QComboBox, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
+from PySide6.QtWidgets import QDialog, QComboBox, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
     QGridLayout, QFormLayout, QMessageBox
 from pysjef import Project
 

@@ -1,7 +1,7 @@
 import webbrowser
 from typing import Dict, List, Optional, Any
 
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QTableWidget, QComboBox, QLabel, QDialogButtonBox,
     QTableWidgetItem, QLineEdit, QPushButton, QHeaderView
 )

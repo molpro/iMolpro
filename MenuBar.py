@@ -1,14 +1,19 @@
-from PyQt5.QtWidgets import QMenuBar, QMenu
+from PySide6.QtWidgets import QMenuBar, QMenu
 
 
 class MenuBar(QMenuBar):
-    def addAction(self, name: str, menu_name: str, slot=None, shortcut: str = None, tooltip: str = None, checkable=None):
-        menu = None
-        for a in self.actions():
-            if a.menu().title() == menu_name:
-                menu = a.menu()
-        if not menu:
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.__menus = dict()
+
+    def addAction(self, name: str, menu_name: str, slot=None, shortcut: str = None, tooltip: str = None,
+                  checkable=None):
+        # print('adding action',name,menu_name,slot,shortcut,tooltip,checkable)
+        if menu_name in self.__menus.keys():
+            menu = self.__menus[menu_name]
+        else:
             menu = self.addMenu(menu_name)
+            self.__menus[menu_name] = menu
             menu.setToolTipsVisible(True)
 
         action = menu.addAction(name)
@@ -21,17 +26,15 @@ class MenuBar(QMenuBar):
         action.setObjectName(name)
         return action
 
-    def addSubmenu(self, submenu:QMenu, menu_name: str):
-        menu = None
-        for a in self.actions():
-            if a.menu().title() == menu_name:
-                menu = a.menu()
-        if not menu:
+    def addSubmenu(self, submenu: QMenu, menu_name: str):
+        if menu_name in self.__menus.keys():
+            menu = self.__menus[menu_name]
+        else:
             menu = self.addMenu(menu_name)
+            self.__menus[menu_name] = menu
             menu.setToolTipsVisible(True)
         menu.addMenu(submenu)
 
     def addSeparator(self, menu_name: str):
-        for a in self.actions():
-            if a.menu().title() == menu_name:
-                a.menu().addSeparator()
+        if menu_name in self.__menus.keys():
+            self.__menus[menu_name].addSeparator()

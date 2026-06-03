@@ -4,7 +4,7 @@ from functools import partial
 
 from pymolpro.elements import mixed_core_correlation_assert
 
-from PyQt5.QtWidgets import QComboBox, QWidget, QLabel, QInputDialog, QGridLayout, QPushButton
+from PySide6.QtWidgets import QComboBox, QWidget, QLabel, QInputDialog, QGridLayout, QPushButton
 
 
 class BasisSelector(QWidget):

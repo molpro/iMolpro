@@ -7,7 +7,7 @@ from settings import settings
 import pubchempy
 from chemspipy import ChemSpider
 import tempfile
-from PyQt5.QtWidgets import QVBoxLayout, QDialog, QDialogButtonBox, QLabel, QComboBox, QLineEdit, QCheckBox, \
+from PySide6.QtWidgets import QVBoxLayout, QDialog, QDialogButtonBox, QLabel, QComboBox, QLineEdit, QCheckBox, \
     QHBoxLayout, QInputDialog
 
 

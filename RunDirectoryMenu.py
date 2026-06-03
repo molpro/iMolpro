@@ -3,7 +3,8 @@ import logging
 logger = logging.getLogger(__name__)
 import pathlib
 
-from PyQt5.QtWidgets import QMenu, QAction, QMessageBox
+from PySide6.QtWidgets import QMenu, QMessageBox
+from PySide6.QtGui import QAction
 
 
 class RunDirectoryMenuAction(QAction):

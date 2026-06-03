@@ -20,12 +20,13 @@ import re
 import platform
 
 import pymolpro
-from PyQt5.QtCore import QTimer, pyqtSignal, QUrl, QCoreApplication, Qt, QSize, QEvent
-from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
-from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
+from PySide6.QtCore import QTimer, Signal as pyqtSignal, QUrl, QCoreApplication, Qt, QSize, QEvent
+from PySide6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWebEngineCore import QWebEnginePage
+from PySide6.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
-    QToolButton, QAction
-from PyQt5.QtGui import QFont, QDesktopServices
+    QToolButton
+from PySide6.QtGui import QFont, QDesktopServices, QAction
 from pymolpro import Project as BaseProject
 
 from pymolpro import molpro_input
@@ -170,6 +171,7 @@ class ProjectWindow(QMainWindow):
             settings['project_window_height'] = self.normal_geometry.height()
 
     def __init__(self, filename, window_manager, latency=1000, **kwargs):
+        print('ProjectWindow.__init__ entered')
         logger.debug('Initializing ProjectWindow with filename {}'.format(filename))
         super().__init__(None)
         self.window_manager = window_manager
@@ -221,11 +223,11 @@ class ProjectWindow(QMainWindow):
         self.jsmol_min_js = str(pathlib.Path(__file__).parent / "JSmol.min.js")
         if hasattr(sys, '_MEIPASS') and platform.uname().system != 'Windows':
             os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
-                sys._MEIPASS, 'PyQt5', 'Qt', 'libexec', 'QtWebEngineProcess'
+                sys._MEIPASS, 'PySide6', 'Qt', 'libexec', 'QtWebEngineProcess'
             ))
         os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--no-sandbox'
         likely_qtwebengineprocess = os.path.normpath(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'PyQt5', 'Qt5', 'libexec', 'QtWebEngineProcess'))
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'PySide6', 'Qt5', 'libexec', 'QtWebEngineProcess'))
         if os.path.exists(likely_qtwebengineprocess):
             os.environ['QTWEBENGINEPROCESS_PATH'] = likely_qtwebengineprocess
 
@@ -753,7 +755,7 @@ class ProjectWindow(QMainWindow):
                                                       )
                     self.vod_selector_action(label)
             except Exception as e:
-                # print('Orbitals except',str(e))
+                print('Orbitals except',str(e))
                 pass
 
 
@@ -1974,3 +1976,6 @@ class MyTabWidget(DraggableTabWidget):
     def clear(self):
         self.tab_names.clear()
         super().clear()
+
+    def __len__(self):
+        return self.count()

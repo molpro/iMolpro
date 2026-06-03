@@ -1,10 +1,9 @@
 # Copyright (c) 2019 Akihito Takeuchi
 # Distributed under the MIT License : http://opensource.org/licenses/MIT
 
-from PyQt5 import QtWidgets, QtGui, QtCore
+from PySide6 import QtWidgets, QtGui, QtCore
+from PySide6.QtCore import Signal, Slot
 
-Signal = QtCore.pyqtSignal
-Slot = QtCore.pyqtSlot
 
 class TabInfo:
     def __init__(self, widget = None, text = None, icon = None,

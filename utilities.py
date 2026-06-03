@@ -6,10 +6,10 @@ import json
 from collections.abc import MutableMapping
 
 import numpy
-from PyQt5.Qt import Qt
-from PyQt5.QtCore import QTimer, QPoint, QCoreApplication
-from PyQt5.QtGui import QFont, QFontDatabase, QTextCursor, QCursor
-from PyQt5.QtWidgets import QPlainTextEdit, QMessageBox, QLabel, QMainWindow
+# from PySide6 import Qt
+from PySide6.QtCore import QTimer, QPoint, QCoreApplication
+from PySide6.QtGui import QFont, QFontDatabase, QTextCursor, QCursor
+from PySide6.QtWidgets import QPlainTextEdit, QMessageBox, QLabel, QMainWindow
 
 from enum import Enum
 

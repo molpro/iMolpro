@@ -1,16 +1,17 @@
 import os
 
-from PyQt5 import Qt, QtCore
 import math
 import vtk
 import numpy as np
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QFileDialog, QPushButton, QColorDialog
+from PySide6.QtGui import QColor, QPalette
+from PySide6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
+from PySide6 import QtCore
 from pymolpro.cube_data import CubeData
 from ase.data import colors, covalent_radii, chemical_symbols
 from pymolpro.elements import periodic_table
 from vtkmodules.vtkCommonDataModel import vtkPolyData
 from vtkmodules.vtkFiltersCore import vtkGlyph3D
+import vtk.qt
 from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from enum import Enum
@@ -33,17 +34,17 @@ class ColourScheme(Enum):
     brown = 165, 42, 42,
 
 
-class StyledWidget(Qt.QWidget):
+class StyledWidget(QWidget):
     def __init__(self, parent=None, background_colour: tuple | ColourScheme = ColourScheme.dark,
                  ):
-        Qt.QWidget.__init__(self, parent)
+        QWidget.__init__(self, parent)
         self.background_colour = background_colour.value if isinstance(background_colour,
                                                                        ColourScheme) else background_colour
         self.dark = sum(self.background_colour) / 3.0 < 128
         self.dark = (self.background_colour[0] * 0.299 + self.background_colour[1] * 0.587 + self.background_colour[
             2] * 0.114) / 255.0 < 0.5
-        palette = Qt.QPalette()
-        palette.setColor(Qt.QPalette.Window, Qt.QColor(*self.background_colour))
+        palette = QPalette()
+        palette.setColor(QPalette.Window, QColor(*self.background_colour))
         self.setAutoFillBackground(True)
         self.setPalette(palette)
         if self.dark:
@@ -52,30 +53,30 @@ class StyledWidget(Qt.QWidget):
             self.setStyleSheet("* { color: rgb(0,0,0); font-size: 10px }\n")
 
 
-class FixedLabel(Qt.QLabel):
+class FixedLabel(QLabel):
     def __init__(self, text, parent=None):
-        Qt.QLabel.__init__(self, text, parent)
-        self.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Fixed)
+        QLabel.__init__(self, text, parent)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
 
-class ItemLayout(Qt.QGridLayout):
+class ItemLayout(QGridLayout):
     def __init__(self, parent=None):
-        Qt.QGridLayout.__init__(self, parent)
+        QGridLayout.__init__(self, parent)
         self.setContentsMargins(0, 0, 0, 0)
         # self.setSpacing(0)
         self.row = 0
 
     def add(self, title, content):
         self.addWidget(FixedLabel(title + ':'), self.row, 0)
-        if isinstance(content, Qt.QWidget):
+        if isinstance(content, QWidget):
             self.addWidget(content, self.row, 1)
-        elif isinstance(content, Qt.QLayout):
+        elif isinstance(content, QLayout):
             self.addLayout(content, self.row, 1, )
         self.row += 1
         return self.row-1
 
 
-class OrbitalsWidget(Qt.QWidget):
+class OrbitalsWidget(QWidget):
     def get_cube(self, contour_value=None):
         # print('get_cube',self.orbital.ID,self.resolution,contour_value,'')
         key = self.orbital, self.resolution, contour_value
@@ -91,8 +92,8 @@ class OrbitalsWidget(Qt.QWidget):
                  metadata: dict = {},
                  ):
         # print('OrbitalsWidget', orbitals)
-        Qt.QWidget.__init__(self, parent)
-        layout = Qt.QHBoxLayout()
+        QWidget.__init__(self, parent)
+        layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
         self.parent = parent
@@ -155,7 +156,7 @@ class MoleculeWidget(StyledWidget):
                  ):
         StyledWidget.__init__(self, parent, background_colour=background_colour)
 
-        layout = Qt.QVBoxLayout()
+        layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
         self.scene = MoleculeScene(self)
@@ -174,13 +175,13 @@ class MoleculeWidget(StyledWidget):
         self.contour_slider_minimum = 0.003
         self.contour_slider_maximum = 0.5
         if sliders and hasattr(self.model, 'contour'):
-            slider_layout = Qt.QGridLayout()
-            slider_layout.addWidget(Qt.QLabel('Contour:'), 0, 0)
+            slider_layout = QGridLayout()
+            slider_layout.addWidget(QLabel('Contour:'), 0, 0)
             layout.addLayout(slider_layout)
             opacity_slider = mySlider(self)
             opacity_slider.valueChanged.connect(self.set_contour_opacity)
             opacity_slider.setValue(int(self.model.contour.opacity * 100))
-            slider_layout.addWidget(Qt.QLabel('Opacity'), 0, 1)
+            slider_layout.addWidget(QLabel('Opacity'), 0, 1)
             slider_layout.addWidget(opacity_slider, 0, 2)
 
             contour_slider = mySlider(self)
@@ -188,7 +189,7 @@ class MoleculeWidget(StyledWidget):
             contour_slider.setValue(
                 int(100 * math.log(self.model.contour_value / self.contour_slider_minimum) / math.log(
                     self.contour_slider_maximum / self.contour_slider_minimum)))
-            slider_layout.addWidget(Qt.QLabel('Value'), 0, 3)
+            slider_layout.addWidget(QLabel('Value'), 0, 3)
             slider_layout.addWidget(contour_slider, 0, 4)
 
         self.show()
@@ -252,13 +253,13 @@ class MoleculeWidget(StyledWidget):
         axes.DrawZGridlinesOn()
         scene.Add(axes)
 
-class ControlPanel(Qt.QWidget):
+class ControlPanel(QWidget):
     def __init__(self, parent,metadata={}):
         super().__init__(parent)
         self.parent = parent
         self.setContentsMargins(0, 0, 0, 0)
-        self.setSizePolicy(Qt.QSizePolicy.Fixed, Qt.QSizePolicy.Preferred)
-        self.layout = Qt.QVBoxLayout()
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+        self.layout = QVBoxLayout()
         self.setLayout(self.layout)
         self.setup(metadata=metadata)
         self.refresh()
@@ -278,33 +279,33 @@ class ControlPanel(Qt.QWidget):
 
     def setup(self,metadata={}):
 
-        while w:= self.findChild(Qt.QWidget):
+        while w:= self.findChild(QWidget):
             w.setParent(None)
 
         if 'method' in metadata and 'type' in metadata:
-            self.layout.addWidget(Qt.QLabel(f'{metadata["method"]}/{metadata["type"]} orbitals'),
-                                  alignment=Qt.Qt.AlignCenter)
+            self.layout.addWidget(QLabel(f'{metadata["method"]}/{metadata["type"]} orbitals'),
+                                  alignment=QtCore.Qt.AlignCenter)
             if 'state_symmetry' in metadata and 'stateID' in metadata:
                 title = 'State ' + metadata['state_symmetry'] + '.' + str(metadata['stateID'])
                 if 'state_ms2' in metadata:
                     ms2 = int(metadata['state_ms2'])
                     title = title + ', spin ' + (str(ms2 // 2) if ms2%2==0 else str(ms2)+'/2')
-                self.layout.addWidget(Qt.QLabel(title), alignment=Qt.Qt.AlignCenter)
+                self.layout.addWidget(QLabel(title), alignment=QtCore.Qt.AlignCenter)
 
 
         self.control_layout = ItemLayout()
         self.layout.addLayout(self.control_layout)
         self.layout.addStretch()
-        # self.control_layout.addWidget(Qt.QLabel('Orbitals'),0,0)
+        # self.control_layout.addWidget(QLabel('Orbitals'),0,0)
 
-        orbital_selector = Qt.QComboBox()
+        orbital_selector = QComboBox()
         for orbital in self.parent.orbitals[::-1]:
             orbital_selector.addItem(str(orbital.ID))
         orbital_selector.currentTextChanged.connect(self.parent.set_orbital)
-        # orbital_selector.setBackgroundColor(Qt.QColor(*self.background_colour))
+        # orbital_selector.setBackgroundColor(QColor(*self.background_colour))
         # palette = self.palette()
-        # palette.setColor(Qt.QPalette.Base, Qt.QColor(*self.background_colour))
-        # palette.setColor(Qt.QPalette.Base, Qt.QColor('Red'))
+        # palette.setColor(QPalette.Base, QColor(*self.background_colour))
+        # palette.setColor(QPalette.Base, QColor('Red'))
         # orbital_selector.setPalette(palette)
         # orbital_selector.setAutoFillBackground(True)
         orbital_selector.setMinimumWidth(orbital_selector.minimumSizeHint().width())
@@ -312,11 +313,11 @@ class ControlPanel(Qt.QWidget):
 
 
         if hasattr(self.parent.orbital, 'occupation'):
-            row = self.control_layout.add('Occupation', Qt.QLabel(str(self.parent.orbital.occupation)))
+            row = self.control_layout.add('Occupation', QLabel(str(self.parent.orbital.occupation)))
             self.occupation_widget = self.control_layout.itemAtPosition(row, 1).widget()
 
         if hasattr(self.parent.orbital, 'energy'):
-            row = self.control_layout.add('Energy', Qt.QLabel(str(self.parent.orbital.energy)))
+            row = self.control_layout.add('Energy', QLabel(str(self.parent.orbital.energy)))
             self.energy_widget = self.control_layout.itemAtPosition(row, 1).widget()
 
         # self.control_layout.addWidget(FixedLabel('Contour:'), row, 0)
@@ -347,38 +348,38 @@ class ControlPanel(Qt.QWidget):
             row += 1
 
         resolution_label = FixedLabel('Resolution:')
-        resolution_layout = Qt.QHBoxLayout()
+        resolution_layout = QHBoxLayout()
         # resolution_layout.setContentsMargins(0,0,0,0)
         # resolution_layout.setSpacing(0)
-        coarser_button = Qt.QPushButton('-')
+        coarser_button = QPushButton('-')
         resolution_layout.addWidget(coarser_button)
         coarser_button.clicked.connect(lambda: self.parent.set_resolution('-'))
-        finer_button = Qt.QPushButton('+')
+        finer_button = QPushButton('+')
         resolution_layout.addWidget(finer_button)
         finer_button.clicked.connect(lambda: self.parent.set_resolution('+'))
         self.control_layout.add('Resolution', resolution_layout)
 
-        atom_labels_checkbox = Qt.QCheckBox()
+        atom_labels_checkbox = QCheckBox()
         self.control_layout.add('Atom labels', atom_labels_checkbox)
         atom_labels_checkbox.clicked.connect(lambda: self.parent.set_atom_labels(atom_labels_checkbox.isChecked()))
 
         colour_selection = FixedLabel('To Do')
-        colour_selection = Qt.QWidget(self)
-        colour_selection_layout = Qt.QVBoxLayout()
+        colour_selection = QWidget(self)
+        colour_selection_layout = QVBoxLayout()
         colour_selection_layout.setContentsMargins(0, 0, 0, 0)
         colour_selection.setLayout(colour_selection_layout)
-        colour_selection_layout2 = Qt.QHBoxLayout()
+        colour_selection_layout2 = QHBoxLayout()
         colour_selection_layout2.setContentsMargins(0, 0, 0, 0)
         colour_selection_layout.addLayout(colour_selection_layout2)
         for i,name in enumerate(['dark','black','white','light']):
             # print('ColourScheme', name, ': ', ColourScheme[name].value)
-            # button = Qt.QPushButton('')
-            button = Qt.QToolButton(self)
+            # button = QPushButton('')
+            button = QToolButton(self)
             button.setMaximumSize(QtCore.QSize(15, 15))
             button.setStyleSheet(f'background-color: rgb{str(ColourScheme[name].value)}; border:none;')
             colour_selection_layout2.addWidget(button)
             button.clicked.connect(lambda checked, name=name: self.parent.orbital_display.set_background_colour(ColourScheme[name].value))
-        button = Qt.QPushButton('Other...')
+        button = QPushButton('Other...')
         i+=1
         colour_selection_layout.addWidget(button)
         button.clicked.connect(lambda: self.parent.orbital_display.set_background_colour(QColorDialog.getColor(initial=QColor(*self.parent.orbital_display.background_colour), parent=self, title='Choose background colour')))
@@ -433,9 +434,9 @@ class MoleculeScene(QVTKRenderWindowInteractor):
         pdf_exporter.Write()
 
 
-class mySlider(Qt.QSlider):
+class mySlider(QSlider):
     def __init__(self, parent=None):
-        Qt.QSlider.__init__(self, parent)
+        QSlider.__init__(self, parent)
         self.setMinimum(0)
         self.setMaximum(100)
         self.setOrientation(QtCore.Qt.Horizontal)

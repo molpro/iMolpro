@@ -1,6 +1,6 @@
-from PyQt5.QtCore import QEvent, Qt
-from PyQt5.QtGui import QPalette, QFontMetrics, QStandardItem
-from PyQt5.QtWidgets import QComboBox, QStyledItemDelegate, qApp
+from PySide6.QtCore import QEvent, Qt
+from PySide6.QtGui import QPalette, QFontMetrics, QStandardItem
+from PySide6.QtWidgets import QComboBox, QStyledItemDelegate
 
 
 class CheckableComboBox(QComboBox):
@@ -25,7 +25,7 @@ class CheckableComboBox(QComboBox):
         self.lineEdit().setReadOnly(True)
         self.lineEdit().setStyleSheet('padding-left: ' + str(padding) + 'px')
         # Make the lineedit the same color as QPushButton
-        palette = qApp.palette()
+        palette = QPalette()
         palette.setBrush(QPalette.Base, palette.button())
         self.lineEdit().setPalette(palette)
 

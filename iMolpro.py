@@ -1,7 +1,7 @@
 import pathlib
 
-from PyQt5.QtCore import QEvent
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
+from PySide6.QtCore import QEvent
+from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
 import sys
 
 from Chooser import Chooser
