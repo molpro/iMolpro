@@ -20,9 +20,7 @@ import re
 import platform
 
 import pymolpro
-from PySide6.QtCore import QTimer, Signal as pyqtSignal, QUrl, QCoreApplication, Qt, QSize, QEvent
-from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtWebEngineCore import QWebEnginePage
+from PySide6.QtCore import QTimer, Signal as pyqtSignal, QCoreApplication, Qt, QSize, QEvent
 from PySide6.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
     QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
     QToolButton
@@ -724,11 +722,9 @@ class ProjectWindow(QMainWindow):
                             molpro_input.local_orbital_types()[f.replace('.molden', '')]['text'] + ' orbitals')
             try:
                 for index in range(10000):
-                    print('index',index)
                     molden_file_stem = self.project.filename('molden', 'xml_orbitals').replace('.molden', '')
                     file, label = self.project.orbitals_to_molden(molden_file_stem, index)
                     assert os.path.isfile(file)
-                    print('got molden file from xml: ' + file, os.path.getsize(file), label)
                     # self.visualise_output(file, '', 'Orbitals '+str(index+1))
                     title = (str(label) + ' orbitals') if label else 'Orbitals'
                     title += ' ' + str(index + 1)
@@ -1055,6 +1051,7 @@ Jmol.jmolHtml("</p>")
         self.add_vod(html, title=title, **kwargs)
 
     def add_vod(self, *args, title='structure', **kwargs):
+        from web_engine import VOD
         # print('add_vod', title)
         if title in self.vods.keys():
             # print('duplicate vod',title)
@@ -1352,34 +1349,6 @@ Jmol.jmolHtml("</p>")
                                                                                                                   ',\n  '))
 
 
-class WebEnginePage(QWebEnginePage):
-    def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
-        if level != QWebEnginePage.JavaScriptConsoleMessageLevel.InfoMessageLevel and 'Synchronous XMLHttpRequest' not in message:
-            print('javaScriptConsoleMessage', level, message, lineNumber, sourceID, file=sys.stderr)
-
-
-class VOD(QWebEngineView):
-    def __init__(self, html, directory=None, width=800, height=420, verbosity=0, title='structure'):
-        if verbosity:
-            print(html)
-            open('test.html', 'w').write(html)
-        super().__init__()
-        self.directory_ = directory
-        self.title = title
-        self.page_ = WebEnginePage()
-        self.setPage(self.page_)
-        if self.directory_ is not None:
-            self.page().profile().downloadRequested.connect(self._download_requested)
-        self.setHtml(html, QUrl.fromLocalFile(str(pathlib.Path(__file__).resolve())))
-
-        self.setMinimumSize(width, height)
-
-    def _download_requested(self, item):
-        import re
-        if item.downloadFileName():
-            item.setDownloadFileName(re.sub(r' \(\d+\)\.', r'.', item.downloadFileName()))
-            item.setDownloadDirectory(self.directory_)
-            item.accept()
 
 
 class BasisAndHamiltonianChooser(QWidget):

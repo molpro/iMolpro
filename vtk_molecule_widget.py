@@ -12,7 +12,8 @@ from pymolpro.elements import periodic_table
 from vtkmodules.vtkCommonDataModel import vtkPolyData
 from vtkmodules.vtkFiltersCore import vtkGlyph3D
 import vtk.qt
-from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+# from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+from QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from enum import Enum
 
@@ -194,7 +195,7 @@ class MoleculeWidget(StyledWidget):
 
         self.show()
 
-        self.scene.Start()
+        self.scene.start()
 
     @property
     def contour_opacity(self):
@@ -416,11 +417,12 @@ class MoleculeScene(QVTKRenderWindowInteractor):
     def SetBackground(self, r, g, b):
         self.renderer.SetBackground(r, g, b)
 
-    def Start(self):
+    def start(self):
         self.renderer.ResetCamera()
         self.GetRenderWindow().GetInteractor().Initialize()
         self.GetRenderWindow().GetInteractor().Start()
         self.GetRenderWindow().Render()
+        self.Start()
 
     def export_image(self, filename: str = None):
         pdf_exporter = vtk.vtkGL2PSExporter()
