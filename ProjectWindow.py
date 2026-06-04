@@ -724,10 +724,11 @@ class ProjectWindow(QMainWindow):
                             molpro_input.local_orbital_types()[f.replace('.molden', '')]['text'] + ' orbitals')
             try:
                 for index in range(10000):
+                    print('index',index)
                     molden_file_stem = self.project.filename('molden', 'xml_orbitals').replace('.molden', '')
                     file, label = self.project.orbitals_to_molden(molden_file_stem, index)
                     assert os.path.isfile(file)
-                    # print('got molden file from xml: ' + file, os.path.getsize(file), label)
+                    print('got molden file from xml: ' + file, os.path.getsize(file), label)
                     # self.visualise_output(file, '', 'Orbitals '+str(index+1))
                     title = (str(label) + ' orbitals') if label else 'Orbitals'
                     title += ' ' + str(index + 1)
