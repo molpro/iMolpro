@@ -1353,7 +1353,7 @@ Jmol.jmolHtml("</p>")
 
 class WebEnginePage(QWebEnginePage):
     def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
-        if level > 0 and 'Synchronous XMLHttpRequest' not in message:
+        if level != QWebEnginePage.JavaScriptConsoleMessageLevel.InfoMessageLevel and 'Synchronous XMLHttpRequest' not in message:
             print('javaScriptConsoleMessage', level, message, lineNumber, sourceID, file=sys.stderr)
 
 
