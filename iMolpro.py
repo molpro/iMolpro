@@ -3,6 +3,8 @@ import pathlib
 from PySide6.QtCore import QEvent
 from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
 import sys
+import vtk
+import vtk.qt
 
 from Chooser import Chooser
 from ProjectWindow import ProjectWindow
@@ -13,7 +15,6 @@ import logging
 
 from utilities import writable_directory
 from settings import settings
-import vtk.qt
 
 if __name__ == '__main__':
 
