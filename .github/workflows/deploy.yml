@@ -18,8 +18,8 @@ jobs:
         include:
           - os: macos-latest
             mac: 1
-          - os: macos-15-intel
-            mac: 1
+#          - os: macos-15-intel
+#            mac: 1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
