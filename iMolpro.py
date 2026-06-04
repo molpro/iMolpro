@@ -13,6 +13,7 @@ import logging
 
 from utilities import writable_directory
 from settings import settings
+import vtk.qt
 
 if __name__ == '__main__':
 
