@@ -1349,6 +1349,14 @@ Jmol.jmolHtml("</p>")
                                                                                                                   ',\n  '))
 
 
+def force_render_vtk_widget(widget):
+    if isinstance(widget, OrbitalsWidget):
+        for w in QApplication.topLevelWidgets():
+            if isinstance(w, QMainWindow):
+                w.resize(w.width()+1, w.height())
+                w.repaint()
+                w.resize(w.width()-1, w.height())
+
 
 
 class BasisAndHamiltonianChooser(QWidget):
@@ -1937,6 +1945,7 @@ class MyTabWidget(DraggableTabWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tab_names = set()
+        self.currentChanged.connect(lambda : force_render_vtk_widget(self.currentWidget()))
 
     def addTab(self, widget, QWidget=None, *args, **kwargs):
         super().addTab(widget, QWidget, *args, **kwargs)

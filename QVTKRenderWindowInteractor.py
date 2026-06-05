@@ -467,6 +467,7 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
         self._Iren.Render()
 
     def resizeEvent(self, ev):
+        print("resizeEvent", ev.size())
         scale = self._getPixelRatio()
         w = int(round(scale*self.width()))
         h = int(round(scale*self.height()))

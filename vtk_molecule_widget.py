@@ -398,9 +398,8 @@ class MoleculeScene(QVTKRenderWindowInteractor):
         QVTKRenderWindowInteractor.__init__(self)  # , parent)
         self.renderer = vtk.vtkRenderer()
         self.GetRenderWindow().AddRenderer(self.renderer)
-        self.interactor = self.GetRenderWindow().GetInteractor()
-        self.interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
-        self.GetRenderWindow().GetInteractor().Initialize()
+        self.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
+        self.Initialize()
 
     def Add(self, source):
         if isinstance(source, vtk.vtkActor2D):
@@ -419,8 +418,6 @@ class MoleculeScene(QVTKRenderWindowInteractor):
 
     def start(self):
         self.renderer.ResetCamera()
-        self.GetRenderWindow().GetInteractor().Initialize()
-        self.GetRenderWindow().GetInteractor().Start()
         self.GetRenderWindow().Render()
         self.Start()
 

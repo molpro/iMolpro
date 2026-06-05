@@ -14,7 +14,8 @@ class TabInfo:
         self.tool_tip = tool_tip
         self.whats_this = whats_this
 
-class DraggableTabWidget(QtWidgets.QTabWidget):
+DraggableTabWidget = QtWidgets.QTabWidget
+class DraggableTabWidget_(QtWidgets.QTabWidget):
     tab_widget_instances_ = []
 
     def __init__(self, parent = None):
