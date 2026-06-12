@@ -2,9 +2,17 @@ import os
 import platform
 
 import pymolpro
-from PySide6.QtWidgets import QMenu
-from PySide6.QtGui import QAction
+
 from pysjef import recent_project
+try:
+    from PySide6.QtWidgets import QMenu
+    from PySide6.QtGui import QAction
+except ImportError:
+    try:
+        from PyQt6.QtWidgets import QMenu
+        from PyQt6.QtGui import QAction
+    except ImportError:
+        from PyQt5.QtWidgets import QMenu, QAction
 
 
 class RecentMenuAction(QAction):

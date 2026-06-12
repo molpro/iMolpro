@@ -1,7 +1,13 @@
 import os
 import shutil
 
-from PySide6.QtWidgets import QWidget, QFileDialog, QMessageBox
+try:
+    from PySide6.QtWidgets import QWidget, QFileDialog, QMessageBox
+except ImportError:
+    try:
+        from PyQt6.QtWidgets import QWidget, QFileDialog, QMessageBox
+    except ImportError:
+        from PyQt5.QtWidgets import QWidget, QFileDialog, QMessageBox
 from utilities import force_suffix
 from settings import settings
 

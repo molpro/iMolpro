@@ -1,21 +1,53 @@
 import os
 
 import math
-import vtk
+# import vtk
 import numpy as np
-from PySide6.QtGui import QColor, QPalette
-from PySide6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
-from PySide6 import QtCore
+
+try:
+    from PySide6.QtGui import QColor, QPalette
+    from PySide6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
+    from PySide6.QtCore import Qt, QSize
+except ImportError:
+    try:
+        from PyQt6.QtGui import QColor, QPalette
+        from PyQt6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
+        from PyQt6.QtCore import Qt, QSize
+    except ImportError:
+        from PyQt5.QtGui import QColor, QPalette
+        from PyQt5.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
+        from PyQt5.QtCore import Qt, QSize
+
+try:
+    ColorRole = QPalette.ColorRole
+except:
+    ColorRole = QPalette
+
 from pymolpro.cube_data import CubeData
 from ase.data import colors, covalent_radii, chemical_symbols
 from pymolpro.elements import periodic_table
-from vtkmodules.vtkCommonDataModel import vtkPolyData
-from vtkmodules.vtkFiltersCore import vtkGlyph3D
-import vtk.qt
+from vtkmodules.vtkCommonColor import vtkNamedColors
+from vtkmodules.vtkCommonCore import vtkStringArray, vtkIntArray, vtkPoints, vtkFloatArray, vtkMath, \
+    vtkMinimalStandardRandomSequence
+from vtkmodules.vtkCommonDataModel import vtkPolyData, vtkImageData
+from vtkmodules.vtkCommonMath import vtkMatrix4x4
+from vtkmodules.vtkCommonTransforms import vtkTransform
+from vtkmodules.vtkFiltersCore import vtkGlyph3D, vtkContourFilter
+from vtk import vtkActor
+# import vtk.qt
 # from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from enum import Enum
+
+from vtkmodules.vtkFiltersGeneral import vtkTransformPolyDataFilter
+from vtkmodules.vtkFiltersSources import vtkSphereSource, vtkCylinderSource
+from vtkmodules.vtkIOExportGL2PS import vtkGL2PSExporter
+from vtkmodules.vtkInteractionStyle import vtkInteractorStyleTrackballCamera
+from vtkmodules.vtkRenderingAnnotation import vtkCubeAxesActor
+from vtkmodules.vtkRenderingCore import vtkRenderer, vtkLightKit, vtkActor2D, vtkActorCollection, vtkPolyDataMapper, \
+    vtkColorTransferFunction
+from vtkmodules.vtkRenderingLabel import vtkPointSetToLabelHierarchy, vtkLabelPlacementMapper
 
 
 class ColourScheme(Enum):
@@ -45,7 +77,7 @@ class StyledWidget(QWidget):
         self.dark = (self.background_colour[0] * 0.299 + self.background_colour[1] * 0.587 + self.background_colour[
             2] * 0.114) / 255.0 < 0.5
         palette = QPalette()
-        palette.setColor(QPalette.Window, QColor(*self.background_colour))
+        palette.setColor(ColorRole.Window, QColor(*self.background_colour))
         self.setAutoFillBackground(True)
         self.setPalette(palette)
         if self.dark:
@@ -231,8 +263,8 @@ class MoleculeWidget(StyledWidget):
         self.scene.SetBackground(*[c / 255.0 for c in self.background_colour])
         self.scene.GetRenderWindow().GetInteractor().Render()
 
-    def add_axes(self, scene: MoleculeScene):
-        axes = vtk.vtkCubeAxesActor()
+    def add_axes(self, scene):
+        axes = vtkCubeAxesActor()
 
         # 2. Configure the bounds (e.g., -10 to 10 for X, Y, and Z)
         # This ensures the axes "pass through" the origin contextually
@@ -285,13 +317,13 @@ class ControlPanel(QWidget):
 
         if 'method' in metadata and 'type' in metadata:
             self.layout.addWidget(QLabel(f'{metadata["method"]}/{metadata["type"]} orbitals'),
-                                  alignment=QtCore.Qt.AlignCenter)
+                                  alignment=Qt.AlignCenter)
             if 'state_symmetry' in metadata and 'stateID' in metadata:
                 title = 'State ' + metadata['state_symmetry'] + '.' + str(metadata['stateID'])
                 if 'state_ms2' in metadata:
                     ms2 = int(metadata['state_ms2'])
                     title = title + ', spin ' + (str(ms2 // 2) if ms2%2==0 else str(ms2)+'/2')
-                self.layout.addWidget(QLabel(title), alignment=QtCore.Qt.AlignCenter)
+                self.layout.addWidget(QLabel(title), alignment=Qt.AlignCenter)
 
 
         self.control_layout = ItemLayout()
@@ -376,7 +408,7 @@ class ControlPanel(QWidget):
             # print('ColourScheme', name, ': ', ColourScheme[name].value)
             # button = QPushButton('')
             button = QToolButton(self)
-            button.setMaximumSize(QtCore.QSize(15, 15))
+            button.setMaximumSize(QSize(15, 15))
             button.setStyleSheet(f'background-color: rgb{str(ColourScheme[name].value)}; border:none;')
             colour_selection_layout2.addWidget(button)
             button.clicked.connect(lambda checked, name=name: self.parent.orbital_display.set_background_colour(ColourScheme[name].value))
@@ -396,21 +428,24 @@ class MoleculeScene(QVTKRenderWindowInteractor):
 
     def __init__(self, parent=None):
         QVTKRenderWindowInteractor.__init__(self)  # , parent)
-        self.renderer = vtk.vtkRenderer()
+        self.renderer = vtkRenderer()
+        light_kit = vtkLightKit()
+        light_kit.AddLightsToRenderer(self.renderer)
+        light_kit.SetKeyLightWarmth(0.5)
         self.GetRenderWindow().AddRenderer(self.renderer)
-        self.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
+        self.SetInteractorStyle(vtkInteractorStyleTrackballCamera())
         self.Initialize()
 
     def Add(self, source):
-        if isinstance(source, vtk.vtkActor2D):
+        if isinstance(source, vtkActor2D):
             self.renderer.AddActor2D(source)
-        elif isinstance(source, vtk.vtkActor):
+        elif isinstance(source, vtkActor):
             self.renderer.AddActor(source)
-        elif isinstance(source, vtk.vtkActorCollection):
+        elif isinstance(source, vtkActorCollection):
             for actor in source:
                 self.Add(actor)
 
-    def Remove(self, source: vtk.vtkActor):
+    def Remove(self, source: vtkActor):
         self.renderer.RemoveActor(source)
 
     def SetBackground(self, r, g, b):
@@ -422,7 +457,7 @@ class MoleculeScene(QVTKRenderWindowInteractor):
         self.Start()
 
     def export_image(self, filename: str = None):
-        pdf_exporter = vtk.vtkGL2PSExporter()
+        pdf_exporter = vtkGL2PSExporter()
         pdf_exporter.SetRenderWindow(self.GetRenderWindow())
         pdf_exporter.SetFileFormatToPDF()
         if filename is None:
@@ -438,7 +473,7 @@ class mySlider(QSlider):
         QSlider.__init__(self, parent)
         self.setMinimum(0)
         self.setMaximum(100)
-        self.setOrientation(QtCore.Qt.Horizontal)
+        self.setOrientation(Qt.Horizontal)
         self.setStyleSheet("""
         mySlider::groove:horizontal {
 border: 1px solid #bbb;
@@ -499,7 +534,7 @@ border-radius: 4px;
         """)
 
 
-class MolecularModel(vtk.vtkActorCollection):
+class MolecularModel(vtkActorCollection):
     r"""
     A collection of VTK Actors containing a representation of a molecular model. Always represented are the nuclei and connecting bonds; an optional additional Actor is a contour of an orbital or other data.
     """
@@ -555,9 +590,9 @@ class MolecularModel(vtk.vtkActorCollection):
         self.contour.contour_value = value
 
 
-class NucleiActor(vtk.vtkActor):
+class NucleiActor(vtkActor):
     def __init__(self, source: list[dict] | CubeData, atomic_number=None, radius_scale=.5, bond_radius=.1):
-        vtk.vtkActor.__init__(self)
+        vtkActor.__init__(self)
         self.radius_scale = radius_scale
         self.set_source(source, atomic_number=atomic_number)
 
@@ -568,7 +603,7 @@ class NucleiActor(vtk.vtkActor):
         atoms = source
         angstrom = 1.8897161646321
         polydata = atoms_to_polydata(atoms, atomic_number)
-        sphere_source = vtk.vtkSphereSource(phi_resolution=50, theta_resolution=50)
+        sphere_source = vtkSphereSource(phi_resolution=50, theta_resolution=50)
         sphere_source.SetRadius(0.3)
         if atomic_number is not None:
             sphere_source.SetRadius(self.radius_scale * angstrom * covalent_radii[atomic_number])
@@ -576,18 +611,18 @@ class NucleiActor(vtk.vtkActor):
         glyph.SetSourceConnection(sphere_source.GetOutputPort())
         glyph.SetInputData(polydata)
         glyph.Update()
-        mapper = vtk.vtkPolyDataMapper()
+        mapper = vtkPolyDataMapper()
         mapper.SetInputConnection(glyph.GetOutputPort())
         self.SetMapper(mapper)
-        self.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Salmon'))
+        self.GetProperty().SetColor(vtkNamedColors().GetColor3d('Salmon'))
         if atomic_number is not None:
             self.GetProperty().SetColor(colors.cpk_colors[atomic_number])
         self.SetOrigin(0.0, 0.0, 0.0)
         # self.GetProperty().SetOpacity(.1)
 
-class NucleusLabelsActor(vtk.vtkActor2D):
+class NucleusLabelsActor(vtkActor2D):
     def __init__(self, source: list[dict] | CubeData, radius_scale=.5, bond_radius=.1):
-        vtk.vtkActor2D.__init__(self)
+        vtkActor2D.__init__(self)
         self.radius_scale = radius_scale
         self.set_source(source)
 
@@ -596,39 +631,39 @@ class NucleusLabelsActor(vtk.vtkActor2D):
             self.set_source(source.atoms)
             return
         polydata = atoms_to_polydata(source)
-        labels = vtk.vtkStringArray(name='labels')
+        labels = vtkStringArray(name='labels')
         labels.SetNumberOfValues(len(source))
         for i, atom in enumerate(source):
             labels.SetValue(i, periodic_table[atom['atomic_number']-1]+str(i+1))
         polydata.GetPointData().AddArray(labels)
-        sizes = vtk.vtkIntArray(name='sizes')
+        sizes = vtkIntArray(name='sizes')
         sizes.SetNumberOfValues(len(source))
         for i, atom in enumerate(source):
             sizes.SetValue(i, 1)
         polydata.GetPointData().AddArray(sizes)
-        point_set_to_label_hierarchy_filter = vtk.vtkPointSetToLabelHierarchy(
+        point_set_to_label_hierarchy_filter = vtkPointSetToLabelHierarchy(
             label_array_name='labels',
             size_array_name='sizes',
         )
         point_set_to_label_hierarchy_filter.SetInputData(polydata)
-        mapper = vtk.vtkLabelPlacementMapper()
+        mapper = vtkLabelPlacementMapper()
         mapper.SetInputConnection(point_set_to_label_hierarchy_filter.GetOutputPort())
         self.SetMapper(mapper)
-        self.GetProperty().SetColor(vtk.vtkNamedColors().GetColor3d('Salmon'))
+        self.GetProperty().SetColor(vtkNamedColors().GetColor3d('Salmon'))
         # self.GetProperty().SetOpacity(.1)
 
 def atoms_to_polydata(atoms: list[dict], atomic_number=None) -> vtkPolyData:
-    points = vtk.vtkPoints()
+    points = vtkPoints()
     for i, atom in enumerate(atoms):
         if atomic_number is not None and atom['atomic_number'] != atomic_number:
             continue
         points.InsertNextPoint(atom['xyz'])
-    polydata = vtk.vtkPolyData()
+    polydata = vtkPolyData()
     polydata.SetPoints(points)
     return polydata
 
 
-class BondActorCollection(vtk.vtkActorCollection):
+class BondActorCollection(vtkActorCollection):
     def __init__(self, source: list[dict] | CubeData, bond_radius=.3, bond_colour=(1.0, 1.0, 1.0)):
         self.bond_colour = bond_colour
         self.bond_radius = bond_radius
@@ -649,18 +684,18 @@ class BondActorCollection(vtk.vtkActorCollection):
                                                            colour=self.bond_colour))
 
 
-class CubeActor(vtk.vtkActor):
+class CubeActor(vtkActor):
     def __init__(self, cube_data: CubeData, contour_value: float = .05,
                  colours: list[tuple[float, float, float]] = [(1.0, 0.0, 0.0), (0.0, 0.0, 1.0)], opacity: float = 0.7):
-        vtk.vtkActor.__init__(self)
-        self.SetMapper(vtk.vtkPolyDataMapper())
+        vtkActor.__init__(self)
+        self.SetMapper(vtkPolyDataMapper())
         self._contour_value = contour_value
         self.cube(cube_data)
         self.colours = colours
         self.opacity = opacity
 
     def cube(self, cube_data: CubeData):
-        self.contour_filter = vtk.vtkContourFilter()
+        self.contour_filter = vtkContourFilter()
         self.contour_filter.SetInputData(create_vtk_image_data(cube_data))
         self.update_contour_value()
         self.SetOrigin(0.0, 0.0, 0.0)
@@ -705,21 +740,21 @@ class CubeActor(vtk.vtkActor):
         self.update_colours()
 
     def update_colours(self):
-        color_tf = vtk.vtkColorTransferFunction()
+        color_tf = vtkColorTransferFunction()
         color_tf.AddRGBPoint(-0.000000001, *self.colours[0])
         if len(self.colours) > 1:
             color_tf.AddRGBPoint(0.000000001, *self.colours[1])
         self.GetMapper().SetLookupTable(color_tf)
 
 
-def create_vtk_image_data(cube_data: CubeData) -> vtk.vtkImageData:
-    vtk_image_data = vtk.vtkImageData()
+def create_vtk_image_data(cube_data: CubeData) -> vtkImageData:
+    vtk_image_data = vtkImageData()
     vtk_image_data.SetDimensions(*cube_data.dimensions)
     if np.any(cube_data.cells != np.diagflat(np.diagonal(cube_data.cells))):
         raise ValueError('Rotated or non-orthogonal cells not yet supported')
     vtk_image_data.SetSpacing(*np.diagonal(cube_data.cells))
     vtk_image_data.SetOrigin(*cube_data.origin)
-    scalars = vtk.vtkFloatArray()
+    scalars = vtkFloatArray()
     scalars.SetName(cube_data.title[0])
     data = np.asfortranarray(cube_data.data)
     scalars.SetNumberOfValues(cube_data.data.size)
@@ -736,12 +771,12 @@ def create_vtk_image_data(cube_data: CubeData) -> vtk.vtkImageData:
     return vtk_image_data
 
 
-class GeometryActorCollection(vtk.vtkActorCollection):
+class GeometryActorCollection(vtkActorCollection):
     def __init__(self, source: dict | CubeData, atomic_number=None, radius_scale=.5, bond_radius=.1,
                  bond_colour=(1.0, 1.0, 1.0)):
         geom = source.atoms if isinstance(source, CubeData) else source
         assert isinstance(geom, list)
-        vtk.vtkActorCollection.__init__(self)
+        vtkActorCollection.__init__(self)
         for atomic_number in {d['atomic_number'] for d in geom}:
             self.AddItem(NucleiActor(source, atomic_number=atomic_number, radius_scale=radius_scale))
         for actor in BondActorCollection(source, bond_radius=bond_radius, bond_colour=bond_colour):
@@ -759,7 +794,7 @@ def join_points_with_cylinder(startPoint: list[int], endPoint: list[int], radius
     :param resolution:
     :return:
     """
-    cylinderSource = vtk.vtkCylinderSource()
+    cylinderSource = vtkCylinderSource()
     cylinderSource.SetResolution(resolution)
     cylinderSource.SetRadius(radius)
     # Compute a basis
@@ -768,23 +803,23 @@ def join_points_with_cylinder(startPoint: list[int], endPoint: list[int], radius
     normalizedZ = [0] * 3
 
     # The X axis is a vector from start to end
-    vtk.vtkMath.Subtract(endPoint, startPoint, normalizedX)
-    length = vtk.vtkMath.Norm(normalizedX)
-    vtk.vtkMath.Normalize(normalizedX)
+    vtkMath.Subtract(endPoint, startPoint, normalizedX)
+    length = vtkMath.Norm(normalizedX)
+    vtkMath.Normalize(normalizedX)
 
     # The Z axis is an arbitrary vector cross X
     arbitrary = [0] * 3
-    rng = vtk.vtkMinimalStandardRandomSequence()
+    rng = vtkMinimalStandardRandomSequence()
     rng.SetSeed(8775070)  # For testing.
     for i in range(0, 3):
         rng.Next()
         arbitrary[i] = rng.GetRangeValue(-10, 10)
-    vtk.vtkMath.Cross(normalizedX, arbitrary, normalizedZ)
-    vtk.vtkMath.Normalize(normalizedZ)
+    vtkMath.Cross(normalizedX, arbitrary, normalizedZ)
+    vtkMath.Normalize(normalizedZ)
 
     # The Y axis is Z cross X
-    vtk.vtkMath.Cross(normalizedZ, normalizedX, normalizedY)
-    matrix = vtk.vtkMatrix4x4()
+    vtkMath.Cross(normalizedZ, normalizedX, normalizedY)
+    matrix = vtkMatrix4x4()
 
     # Create the direction cosine matrix
     matrix.Identity()
@@ -794,7 +829,7 @@ def join_points_with_cylinder(startPoint: list[int], endPoint: list[int], radius
         matrix.SetElement(i, 2, normalizedZ[i])
 
     # Apply the transforms
-    transform = vtk.vtkTransform()
+    transform = vtkTransform()
     transform.Translate(startPoint)  # translate to starting point
     transform.Concatenate(matrix)  # apply direction cosines
     transform.RotateZ(-90.0)  # align cylinder to x axis
@@ -802,13 +837,13 @@ def join_points_with_cylinder(startPoint: list[int], endPoint: list[int], radius
     transform.Translate(0, .5, 0)  # translate to start of cylinder
 
     # Transform the polydata
-    transformPD = vtk.vtkTransformPolyDataFilter()
+    transformPD = vtkTransformPolyDataFilter()
     transformPD.SetTransform(transform)
     transformPD.SetInputConnection(cylinderSource.GetOutputPort())
 
     # Create a mapper and actor for the arrow
-    mapper = vtk.vtkPolyDataMapper()
-    actor = vtk.vtkActor()
+    mapper = vtkPolyDataMapper()
+    actor = vtkActor()
     mapper.SetInputConnection(transformPD.GetOutputPort())
 
     actor.GetProperty().SetColor(colour)

@@ -1,10 +1,21 @@
 import pathlib
 
-from PySide6.QtCore import QEvent
-from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
+try:
+    from PySide6.QtCore import QEvent
+    from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
+except ImportError:
+    try:
+        from PyQt6.QtCore import QEvent
+        from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
+    except ImportError:
+        from PyQt5.QtCore import QEvent
+        from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
+
+try:
+    QEvent_Type = QEvent.Type
+except:
+    QEvent_Type = QEvent
 import sys
-import vtk
-import vtk.qt
 
 from Chooser import Chooser
 from ProjectWindow import ProjectWindow
@@ -20,7 +31,7 @@ if __name__ == '__main__':
 
     class App(QApplication):
         def event(self, e):
-            if e.type() == QEvent.FileOpen and os.path.splitext(e.file())[1] in ['.molpro','.out','.inp','.xml']:
+            if e.type() == QEvent_Type.FileOpen and os.path.splitext(e.file())[1] in ['.molpro','.out','.inp','.xml']:
                 window_manager.register(ProjectWindow(e.file(), window_manager))
             else:
                 return super().event(e)

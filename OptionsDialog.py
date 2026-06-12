@@ -1,10 +1,13 @@
 import webbrowser
 from typing import Dict, List, Optional, Any
 
-from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QTableWidget, QComboBox, QLabel, QDialogButtonBox,
-    QTableWidgetItem, QLineEdit, QPushButton, QHeaderView
-)
+try:
+    from PySide6.QtWidgets import QDialog, QVBoxLayout, QTableWidget, QComboBox, QLabel, QDialogButtonBox, QTableWidgetItem, QLineEdit, QPushButton, QHeaderView
+except ImportError:
+    try:
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QTableWidget, QComboBox, QLabel, QDialogButtonBox, QTableWidgetItem, QLineEdit, QPushButton, QHeaderView
+    except ImportError:
+        from PyQt5.QtWidgets import QDialog, QVBoxLayout, QTableWidget, QComboBox, QLabel, QDialogButtonBox, QTableWidgetItem, QLineEdit, QPushButton, QHeaderView
 
 
 class OptionsDialog(QDialog):

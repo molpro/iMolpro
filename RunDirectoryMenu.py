@@ -3,8 +3,15 @@ import logging
 logger = logging.getLogger(__name__)
 import pathlib
 
-from PySide6.QtWidgets import QMenu, QMessageBox
-from PySide6.QtGui import QAction
+try:
+    from PySide6.QtWidgets import QMenu, QMessageBox
+    from PySide6.QtGui import QAction
+except ImportError:
+    try:
+        from PyQt6.QtWidgets import QMenu, QMessageBox
+        from PyQt6.QtGui import QAction
+    except ImportError:
+        from PyQt5.QtWidgets import QMenu, QMessageBox, QAction
 
 
 class RunDirectoryMenuAction(QAction):

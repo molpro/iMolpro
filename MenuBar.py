@@ -1,4 +1,10 @@
-from PySide6.QtWidgets import QMenuBar, QMenu
+try:
+    from PySide6.QtWidgets import QMenuBar, QMenu
+except ImportError:
+    try:
+        from PyQt6.QtWidgets import QMenuBar, QMenu
+    except ImportError:
+        from PyQt5.QtWidgets import QMenuBar, QMenu
 
 
 class MenuBar(QMenuBar):

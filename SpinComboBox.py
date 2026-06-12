@@ -1,7 +1,15 @@
 import sys
 
-from PySide6.QtWidgets import QComboBox, QVBoxLayout
-from PySide6.QtCore import Signal as pyqtSignal
+try:
+    from PySide6.QtWidgets import QComboBox, QVBoxLayout
+    from PySide6.QtCore import Signal as pyqtSignal
+except ImportError:
+    try:
+        from PyQt6.QtWidgets import QComboBox, QVBoxLayout
+        from PyQt6.QtCore import pyqtSignal
+    except ImportError:
+        from PyQt5.QtWidgets import QComboBox, QVBoxLayout
+        from PyQt5.QtCore import pyqtSignal
 
 
 class SpinComboBox(QComboBox):

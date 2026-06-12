@@ -1,12 +1,13 @@
-pyside6
-qt6-webengine
+pyside6 <6.10
+#qt6-webengine
+qtwebengine
 pyinstaller >=6
 pymolpro >=1.19.0
-pysjef >=1.44.2
+pysjef >=1.44.7
 pubchempy >=1
 chemspipy >=2
-git >= 2.49
+git >= 2
 certifi >= 2024.8.30
 jsonschema >= 4
 openssl >= 3.5.3
-vtk >= 9.6
+vtk

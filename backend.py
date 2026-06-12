@@ -1,15 +1,15 @@
 import logging
-import os
 import pathlib
-import sys
-import platform
 
 from lxml import etree
-from PySide6.QtWidgets import QDialog, QComboBox, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, \
-    QGridLayout, QFormLayout, QMessageBox
-from pysjef import Project
+try:
+    from PySide6.QtWidgets import QDialog, QComboBox, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QGridLayout, QFormLayout, QMessageBox
+except ImportError:
+    try:
+        from PyQt6.QtWidgets import QDialog, QComboBox, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QGridLayout, QFormLayout, QMessageBox
+    except ImportError:
+        from PyQt5.QtWidgets import QDialog, QComboBox, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QGridLayout, QFormLayout, QMessageBox
 
-import settings
 from help import help_dialog
 
 

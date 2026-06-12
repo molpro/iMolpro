@@ -4,7 +4,6 @@ import platform
 import re
 import time
 
-from PySide6.QtCore import QCoreApplication, Qt, QUrl
 
 from MenuBar import MenuBar
 from RecentMenu import RecentMenu
@@ -12,10 +11,44 @@ from help import help_manager_default
 from utilities import force_suffix
 
 import pymolpro
-from PySide6 import QtCore
-from PySide6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen
-from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
+try:
+    from PySide6 import QtCore
+    from PySide6.QtCore import QCoreApplication, Qt, QUrl
+    from PySide6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen
+    from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
        QToolButton
+except ImportError:
+    try:
+        from PyQt6 import QtCore
+        from PyQt6.QtCore import QCoreApplication, Qt, QUrl
+        from PyQt6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen
+        from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
+            QToolButton
+    except ImportError:
+        from PyQt5 import QtCore
+        from PyQt5.QtCore import QCoreApplication, Qt, QUrl
+        from PyQt5.QtGui import QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen
+        from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
+            QToolButton, QShortcut, QAction
+try:
+    KeepAspectRatio = Qt.KeepAspectRatio
+    SmoothTransformation = Qt.SmoothTransformation
+    FramelessWindowHint = Qt.FramelessWindowHint
+except:
+    KeepAspectRatio = Qt.AspectRatioMode.KeepAspectRatio
+    SmoothTransformation = Qt.TransformationMode.SmoothTransformation
+    FramelessWindowHint = Qt.WindowType.FramelessWindowHint
+
+try:
+    AlignCenter = Qt.AlignCenter
+    AlignLeft = Qt.AlignLeft
+except:
+    AlignCenter = Qt.AlignmentFlag.AlignCenter
+    AlignLeft = Qt.AlignmentFlag.AlignLeft
+try:
+    HelpContents = QKeySequence.HelpContents
+except:
+    HelpContents = QKeySequence.StandardKey.HelpContents
 
 from ProjectWindow import ProjectWindow
 from WindowManager import WindowManager
@@ -69,11 +102,11 @@ class Chooser(QMainWindow):
             def __init__(self, image, url=None, width=250, height=250):
                 super().__init__()
                 ratio = QGuiApplication.primaryScreen().devicePixelRatio()
-                self.setPixmap(QPixmap(image).scaled(int(width * ratio), int(height * ratio), Qt.KeepAspectRatio,
-                                                     QtCore.Qt.SmoothTransformation))
+                self.setPixmap(QPixmap(image).scaled(int(width * ratio), int(height * ratio), KeepAspectRatio,
+                                                     SmoothTransformation))
                 self.pixmap().setDevicePixelRatio(ratio)
                 self.url = QUrl(url)
-                self.setAlignment(Qt.AlignCenter)
+                self.setAlignment(AlignCenter)
 
             def mousePressEvent(self, event):
                 if self.url is not None:
@@ -101,7 +134,7 @@ class Chooser(QMainWindow):
 
         helpButton = PushButton('Help', self)
         helpButton.clicked.connect(lambda: help_manager.show('Help', 'README'))
-        self.shortcutHelp = QShortcut(QKeySequence.HelpContents, self)
+        self.shortcutHelp = QShortcut(HelpContents, self)
         self.shortcutHelp.activated.connect(self.close)
         # helpButton.setStyleSheet(":hover {border: none ; background-color: #D0D0D0}  ")
         link_layout.addWidget(helpButton)
@@ -133,10 +166,10 @@ class Chooser(QMainWindow):
 
         version_label = LinkLabel("iMolpro version " + version_(), 'https://github.com/molpro/iMolpro/tree/'+re.sub('-.*','',version_())+'/README.md')
         version_label.setStyleSheet("font-size: 10px")
-        version_label.setAlignment(Qt.AlignCenter)
+        version_label.setAlignment(AlignCenter)
         rh_panel.addWidget(version_label)
 
-        self.setWindowFlag(Qt.FramelessWindowHint)
+        self.setWindowFlag(FramelessWindowHint)
         self.showNormal()
         self.menubar = MenuBar()
         self.menubar.addAction('New', 'Projects', slot=self.newProjectDialog, shortcut='Ctrl+N',
@@ -207,12 +240,12 @@ class Chooser(QMainWindow):
         for item in [layout.itemAt(i) for i in range(layout.count())]:
             self.recent_project_box.layout().removeItem(item)
             # item.widget().setParent(None)
-        self.recent_project_box.layout().addWidget(QLabel('Open a recently-used project:'), 0, QtCore.Qt.AlignLeft)
+        self.recent_project_box.layout().addWidget(QLabel('Open a recently-used project:'), 0, AlignLeft)
         for i in range(1, max_items):
             f = recent_project('molpro', i)
             if f:
                 button = RecentProjectButton(f, i, self)
-                self.recent_project_box.layout().addWidget(button, -1, QtCore.Qt.AlignLeft)
+                self.recent_project_box.layout().addWidget(button, -1, AlignLeft)
 
     def openProjectDialog(self):
         _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir

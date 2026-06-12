@@ -7,8 +7,16 @@ from settings import settings
 import pubchempy
 from chemspipy import ChemSpider
 import tempfile
-from PySide6.QtWidgets import QVBoxLayout, QDialog, QDialogButtonBox, QLabel, QComboBox, QLineEdit, QCheckBox, \
-    QHBoxLayout, QInputDialog
+try:
+    from PySide6.QtWidgets import QVBoxLayout, QDialog, QDialogButtonBox, QLabel, QComboBox, QLineEdit, QCheckBox, \
+        QHBoxLayout, QInputDialog
+except ImportError:
+    try:
+        from PyQt6.QtWidgets import QVBoxLayout, QDialog, QDialogButtonBox, QLabel, QComboBox, QLineEdit, QCheckBox, \
+            QHBoxLayout, QInputDialog
+    except ImportError:
+        from PyQt5.QtWidgets import QVBoxLayout, QDialog, QDialogButtonBox, QLabel, QComboBox, QLineEdit, QCheckBox, \
+            QHBoxLayout, QInputDialog
 
 
 class DatabaseSearchDialog(QDialog):

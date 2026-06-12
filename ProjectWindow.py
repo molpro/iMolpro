@@ -20,11 +20,50 @@ import re
 import platform
 
 import pymolpro
-from PySide6.QtCore import QTimer, Signal as pyqtSignal, QCoreApplication, Qt, QSize, QEvent
-from PySide6.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-    QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
-    QToolButton
-from PySide6.QtGui import QFont, QDesktopServices, QAction
+
+try:
+    from PySide6.QtCore import QTimer, Signal as pyqtSignal, QCoreApplication, Qt, QSize, QEvent
+    from PySide6.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
+        QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
+        QToolButton
+    from PySide6.QtGui import QFont, QDesktopServices, QAction
+    # from PySide6.QtCore.Qt.AlignmentFlag import Qt_AlignCenter, Qt_AlignTop
+except ImportError as e:
+    print('PySide6 not found. Trying PyQt6',str(e))
+    try:
+        from PyQt6.QtCore import QTimer, pyqtSignal, QCoreApplication, Qt, QSize, QEvent
+        from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
+        QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
+        QToolButton
+        from PyQt6.QtGui import QFont, QDesktopServices, QAction
+        import PyQt6.QtCore
+        # from Qt.AlignmentFlag import AlignVCenter as Qt_AlignCenter, AlignTop as Qt_AlignTop
+    except ImportError as e:
+        print('PyQt6 not found. Trying PyQt5',str(e))
+        from PyQt5.QtCore import QTimer, pyqtSignal, QCoreApplication, Qt, QSize, QEvent
+        from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
+            QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
+            QToolButton, QAction
+        from PyQt5.QtGui import QFont, QDesktopServices
+        # from PyQt5.QtCore.Qt import AlignCenter as Qt_AlignCenter, AlignTop as Qt_AlignTop
+
+try:
+    South = QTabWidget.TabPosition.South
+    UpArrow = Qt.ArrowType.UpArrow
+    DownArrow = Qt.ArrowType.DownArrow
+    CheckState = Qt.CheckState
+    Orientation = Qt.Orientation
+    MatchFlag = Qt.MatchFlag
+except:
+    South = QTabWidget.South
+    UpArrow = Qt.UpArrow
+    DownArrow = Qt.DownArrow
+    CheckState = Qt
+    Orientation = Qt
+    MatchFlag = Qt
+
+
+
 from pymolpro import Project as BaseProject
 
 from pymolpro import molpro_input
@@ -253,7 +292,7 @@ class ProjectWindow(QMainWindow):
         self.input_pane.textChanged.connect(lambda: self.thread_executor.submit(self.input_text_changed_consequence))
         self.input_tabs.setTabBarAutoHide(True)
         self.input_tabs.setDocumentMode(True)
-        self.input_tabs.setTabPosition(QTabWidget.South)
+        self.input_tabs.setTabPosition(South)
         self.input_tabs.currentChanged.connect(self.input_tab_changed_consequence)
         left_layout.addWidget(self.input_tabs)
         self.input_tabs.setMinimumHeight(300)
@@ -287,7 +326,7 @@ class ProjectWindow(QMainWindow):
         self.input_text_changed_consequence(0)
 
         top_layout = QHBoxLayout()
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = QSplitter(Orientation.Horizontal)
         top_layout.addWidget(splitter)
 
         left_widget = QWidget(self)
@@ -297,7 +336,7 @@ class ProjectWindow(QMainWindow):
         self.output_tabs = MyTabWidget(self)
         self.output_tabs.setTabBarAutoHide(True)
         self.output_tabs.setDocumentMode(True)
-        self.output_tabs.setTabPosition(QTabWidget.South)
+        self.output_tabs.setTabPosition(South)
         self.refresh_output_tabs()
         self.timer_output_tabs = QTimer(self)
         self.timer_output_tabs.timeout.connect(self.refresh_output_tabs)
@@ -752,7 +791,8 @@ class ProjectWindow(QMainWindow):
                                                       )
                     self.vod_selector_action(label)
             except Exception as e:
-                print('Orbitals except',str(e))
+                if not isinstance(e, (IndexError)):
+                    print('Orbitals except',str(e)+' '+str(type(e)))
                 pass
 
 
@@ -1390,7 +1430,7 @@ class BasisAndHamiltonianChooser(QWidget):
             'Hamiltonian': self.combo_hamiltonian,
             'Quality': self.guided_combo_basis_quality,
             'Basis': self.basis_selector,
-        }, title='Hamiltonian and basis', alignment=Qt.AlignCenter | Qt.AlignTop))
+        }, title='Hamiltonian and basis', alignment=Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignTop))
 
     def refresh(self):
         while True:
@@ -1608,7 +1648,7 @@ class GuidedPane(QWidget):
             if self.input_specification.method is None:
                 self.input_specification.method = 'rhf'
             method_index = self.guided_combo_method.findText(
-                re.sub('^df-', '', self.input_specification.method, flags=re.IGNORECASE).upper(), Qt.MatchFixedString)
+                re.sub('^df-', '', self.input_specification.method, flags=re.IGNORECASE).upper(), MatchFlag.MatchFixedString)
             self.guided_combo_method.setCurrentIndex(method_index)
             if re.match('[ru]ks', self.input_specification.method, flags=re.IGNORECASE):
                 self.method_row.ensure_not(['Core Correlation'])
@@ -1616,7 +1656,7 @@ class GuidedPane(QWidget):
                 if not self.input_specification.density_functional:
                     self.input_specification.density_functional = self.guided_combo_functional.itemText(0)
                 self.guided_combo_functional.setCurrentIndex(self.guided_combo_functional.findText(
-                    self.input_specification.density_functional, Qt.MatchFixedString))
+                    self.input_specification.density_functional, MatchFlag.MatchFixedString))
             elif re.match('[ru]hf', self.input_specification.method):
                 self.method_row.ensure_not(['Functional'])
                 self.method_row.ensure_not(['Core Correlation'])
@@ -1799,7 +1839,7 @@ class GuidedPane(QWidget):
 
 
 class RowOfTitledWidgets(QWidget):
-    def __init__(self, widgets, title=None, parent=None, alignment=Qt.AlignCenter):
+    def __init__(self, widgets, title=None, parent=None, alignment=Qt.AlignmentFlag.AlignCenter):
         super().__init__(parent)
         self.alignment = alignment
         self.setContentsMargins(0, 0, 0, 0)
@@ -1862,7 +1902,7 @@ class OrbitalInput(CheckableComboBox):
             for o in self.parent.input_specification['orbitals']:
                 for i in range(self.model().rowCount()):
                     if self.model().item(i).text() == molpro_input.local_orbital_types()[o]['text']:
-                        self.model().item(i).setCheckState(Qt.Checked)
+                        self.model().item(i).setCheckState(CheckState.Checked)
         self.updateText()
 
     def action(self, text):
@@ -1887,7 +1927,7 @@ class InputCombo(CheckableComboBox):
             for o in self.parent.input_specification[identity]:
                 for i in range(self.model().rowCount()):
                     if self.model().item(i).text() == o:
-                        self.model().item(i).setCheckState(Qt.Checked)
+                        self.model().item(i).setCheckState(CheckState.Checked)
         self.model().dataChanged.connect(self.refresh)
 
     def refresh(self, text):
@@ -1915,9 +1955,9 @@ class ChargeSelector(QWidget):
         self.layout = QHBoxLayout(self)
         self.label = QLabel('0')
         self.plus_button = QToolButton()
-        self.plus_button.setArrowType(Qt.UpArrow)
+        self.plus_button.setArrowType(UpArrow)
         self.minus_button = QToolButton()
-        self.minus_button.setArrowType(Qt.DownArrow)
+        self.minus_button.setArrowType(DownArrow)
         fontsize = self.fontInfo().pointSize()
         self.minus_button.setIconSize(QSize(fontsize // 2, fontsize * 2 // 3))
         self.plus_button.setIconSize(QSize(fontsize // 2, fontsize * 2 // 3))

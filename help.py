@@ -2,11 +2,19 @@ import os
 import pathlib
 from typing import Optional
 
-from PySide6.QtWidgets import (
-    QTextBrowser, QMainWindow, QWidget, QHBoxLayout, QDialog, QVBoxLayout, QDialogButtonBox
-)
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QKeySequence, QDesktopServices, QShortcut
+try:
+    from PySide6.QtWidgets import QTextBrowser, QMainWindow, QWidget, QHBoxLayout, QDialog, QVBoxLayout, QDialogButtonBox
+    from PySide6.QtCore import Qt, QUrl
+    from PySide6.QtGui import QKeySequence, QDesktopServices, QShortcut
+except ImportError:
+    try:
+        from PyQt6.QtWidgets import QTextBrowser, QMainWindow, QWidget, QHBoxLayout, QDialog, QVBoxLayout, QDialogButtonBox
+        from PyQt6.QtCore import Qt, QUrl
+        from PyQt6.QtGui import QKeySequence, QDesktopServices, QShortcut
+    except ImportError:
+        from PyQt5.QtWidgets import QTextBrowser, QMainWindow, QWidget, QHBoxLayout, QDialog, QVBoxLayout, QDialogButtonBox, QShortcut
+        from PyQt5.QtCore import Qt, QUrl
+        from PyQt5.QtGui import QKeySequence, QDesktopServices
 from MenuBar import MenuBar
 
 
