@@ -35,8 +35,8 @@ from vtkmodules.vtkCommonTransforms import vtkTransform
 from vtkmodules.vtkFiltersCore import vtkGlyph3D, vtkContourFilter
 from vtk import vtkActor
 # import vtk.qt
-# from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+# from QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from enum import Enum
 
