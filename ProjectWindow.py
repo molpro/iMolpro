@@ -338,9 +338,9 @@ class ProjectWindow(QMainWindow):
         self.output_tabs.setDocumentMode(True)
         self.output_tabs.setTabPosition(South)
         self.refresh_output_tabs()
-        self.timer_output_tabs = QTimer(self)
-        self.timer_output_tabs.timeout.connect(self.refresh_output_tabs)
-        self.timer_output_tabs.start(2000)
+        # self.timer_output_tabs = QTimer(self)
+        # self.timer_output_tabs.timeout.connect(self.refresh_output_tabs)
+        # self.timer_output_tabs.start(2000)
         splitter.addWidget(self.output_tabs)
         splitter.setStretchFactor(1, 2147483647)
 
@@ -1985,7 +1985,7 @@ class MyTabWidget(DraggableTabWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tab_names = set()
-        self.currentChanged.connect(lambda : force_render_vtk_widget(self.currentWidget()))
+        # self.currentChanged.connect(lambda : force_render_vtk_widget(self.currentWidget())) # might be needed in future PySide6
 
     def addTab(self, widget, QWidget=None, *args, **kwargs):
         super().addTab(widget, QWidget, *args, **kwargs)

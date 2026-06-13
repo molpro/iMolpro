@@ -53,7 +53,7 @@ from vtkmodules.vtkRenderingLabel import vtkPointSetToLabelHierarchy, vtkLabelPl
 class ColourScheme(Enum):
     # dark = 20, 20, 30,
     dark = 0, 4, 0x35,
-    light = 255, 248, 220,
+    light = 236, 236, 236,
     black = 0, 0, 0,
     white = 255, 255, 255,
     red = 255, 0, 0,
@@ -119,12 +119,14 @@ class OrbitalsWidget(QWidget):
         return self.cubes[key]
 
     def __init__(self, orbitals: list, parent=None, axes: bool = False,
-                 background_colour: tuple | ColourScheme = ColourScheme.dark,
+                 background_colour: tuple | ColourScheme | None = None,
                  contour_value=.05, contour_opacity=.7,
                  resolution: float = .5,
                  metadata: dict = {},
                  ):
         # print('OrbitalsWidget', orbitals)
+        if background_colour is None:
+            background_colour = ColourScheme.light
         QWidget.__init__(self, parent)
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
