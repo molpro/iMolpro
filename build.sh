@@ -99,12 +99,15 @@ PATH=/usr/bin:$PATH pyinstaller \
   --distpath "${builddir}"/dist \
   iMolpro.spec || exit 1
 
-(cd ${builddir}/dist/iMolpro/Contents/Resources/PySide6/Qt/lib && ln -sf ../resources  .)
-(cd ${builddir}/dist/iMolpro/Contents/Resources/PySide6/Qt && ln -sf ./lib/qt6 ./libexec)
-(cd ${builddir}/dist/iMolpro/Contents/Resources/PySide6/Qt/lib && ln -sf ../translations .)
+(cd ${builddir}/dist/iMolpro/_internal/PySide6/Qt/lib && ln -sf ../resources  .)
+(cd ${builddir}/dist/iMolpro/_internal/PySide6/Qt && ln -sf ./lib/qt6 ./libexec)
+(cd ${builddir}/dist/iMolpro/_internal/PySide6/Qt/lib && ln -sf ../translations .)
 
 descriptor=${version}.$(uname).$(uname -m)
 if [ "$(uname)" = Darwin ]; then
+(cd ${builddir}/dist/iMolpro.app/Contents/Resources/PySide6/Qt/lib && ln -sf ../resources  .)
+(cd ${builddir}/dist/iMolpro.app/Contents/Resources/PySide6/Qt && ln -sf ./lib/qt6 ./libexec)
+(cd ${builddir}/dist/iMolpro.app/Contents/Resources/PySide6/Qt/lib && ln -sf ../translations .)
 #  (cd "${builddir}"/dist/iMolpro.app/Contents/Resources||exit 1; for i in PyQt5/Qt/resources/* ; do ln -s "$i" . ; done)
 #  (cd "${builddir}"/dist/iMolpro.app/Contents||exit 1; ln -s MacOS/Resources/PyQt5/Qt/translations .)
 #  find dist/iMolpro.app -type l ! -exec test -e {} \; -exec rm {} \;
