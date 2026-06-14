@@ -99,9 +99,9 @@ PATH=/usr/bin:$PATH pyinstaller \
   --distpath "${builddir}"/dist \
   iMolpro.spec || exit 1
 
-(cd ${builddir}/dist/iMolpro/_internal/PySide6/Qt/lib && ln -sf ../resources  .)
-(cd ${builddir}/dist/iMolpro/_internal/PySide6/Qt && ln -sf ./lib/qt6 ./libexec)
-(cd ${builddir}/dist/iMolpro/_internal/PySide6/Qt/lib && ln -sf ../translations .)
+(cd ${builddir}/dist/iMolpro/Contents/Resources/PySide6/Qt/lib && ln -sf ../resources  .)
+(cd ${builddir}/dist/iMolpro/Contents/Resources/PySide6/Qt && ln -sf ./lib/qt6 ./libexec)
+(cd ${builddir}/dist/iMolpro/Contents/Resources/PySide6/Qt/lib && ln -sf ../translations .)
 
 descriptor=${version}.$(uname).$(uname -m)
 if [ "$(uname)" = Darwin ]; then
