@@ -6,6 +6,7 @@ import glob
 import os
 import pathlib
 import time
+from pymolpro.elements import periodic_table
 
 from RunDirectoryMenu import RunDirectoryMenus
 
@@ -29,7 +30,7 @@ try:
     from PySide6.QtGui import QFont, QDesktopServices, QAction
     # from PySide6.QtCore.Qt.AlignmentFlag import Qt_AlignCenter, Qt_AlignTop
 except ImportError as e:
-    print('PySide6 not found. Trying PyQt6',str(e))
+    # print('PySide6 not found. Trying PyQt6',str(e))
     try:
         from PyQt6.QtCore import QTimer, pyqtSignal, QCoreApplication, Qt, QSize, QEvent
         from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
@@ -39,7 +40,7 @@ except ImportError as e:
         import PyQt6.QtCore
         # from Qt.AlignmentFlag import AlignVCenter as Qt_AlignCenter, AlignTop as Qt_AlignTop
     except ImportError as e:
-        print('PyQt6 not found. Trying PyQt5',str(e))
+        # print('PyQt6 not found. Trying PyQt5',str(e))
         from PyQt5.QtCore import QTimer, pyqtSignal, QCoreApplication, Qt, QSize, QEvent
         from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
             QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
@@ -81,7 +82,7 @@ from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital
 from backend import configure_backend, BackendConfigurationEditor
 from settings import settings, settings_edit
 from OptionsDialog import OptionsDialog
-from vtk_molecule_widget import OrbitalsWidget, MoleculeWidget
+from vtk_molecule_widget import MoleculeDisplay, MoleculeWidget
 
 import logging
 
@@ -208,7 +209,7 @@ class ProjectWindow(QMainWindow):
             settings['project_window_height'] = self.normal_geometry.height()
 
     def __init__(self, filename, window_manager, latency=1000, **kwargs):
-        print('ProjectWindow.__init__ entered')
+        # print('ProjectWindow.__init__ entered')
         logger.debug('Initializing ProjectWindow with filename {}'.format(filename))
         super().__init__(None)
         self.window_manager = window_manager
@@ -774,7 +775,23 @@ class ProjectWindow(QMainWindow):
                 pass
 
         if settings['use_vtk']:
-            orbitals = None
+            initial_xyz = self.initial_xyz()
+            if initial_xyz:
+                try:
+                    angstrom = 1.8897161646321
+                    with open(initial_xyz,'r') as f:
+                        atoms=[]
+                        f.readline()
+                        f.readline()
+                        while line:=f.readline():
+                            linesplit=line.split()
+                            atom = {}
+                            atom['atomic_number']=int(periodic_table.index(linesplit[0]))+1
+                            atom['xyz'] = [float(x) * angstrom for x in linesplit[1:4]]
+                            atoms.append(atom)
+                    self.vods['initial structure'] = MoleculeDisplay(atoms, self )
+                except:
+                    raise Exception('Could not read initial xyz file')
             labels = {}
             try:
                 for index in range(10000):
@@ -786,9 +803,9 @@ class ProjectWindow(QMainWindow):
                         label = label + ': ' + str(labels[label])
                     else:
                         labels[label] = 0
-                    self.vods[label] = OrbitalsWidget(orbitals, self,
-                                                      metadata=orbitals_node.attrib,
-                                                      )
+                    self.vods[label] = MoleculeDisplay(orbitals, self,
+                                                       metadata=orbitals_node.attrib,
+                                                       )
                     self.vod_selector_action(label)
             except Exception as e:
                 if not isinstance(e, (IndexError)):
@@ -1118,6 +1135,14 @@ Jmol.jmolHtml("</p>")
 
     def visualise_input(self, external_path=None):
         # logger.debug('visualise_input' + str(self.vods.keys()))
+        xyz_file = self.initial_xyz()
+        if os.path.isfile(xyz_file):
+            if external_path:
+                subprocess.Popen([external_path, xyz_file])
+            elif 'builder' not in self.vods and 'initial structure' not in self.vods:
+                self.embedded_vod_jmol(xyz_file, command='', title='initial structure')
+
+    def initial_xyz(self) -> str:
         import tempfile
         geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
         geometry_directory.mkdir(exist_ok=True)
@@ -1169,20 +1194,18 @@ Jmol.jmolHtml("</p>")
                     msg.setText('Error in calculating input geometry')
                     msg.setDetailedText(detail)
                     msg.exec_()
-                    return
-                current_dir = os.path.dirname(self.project.filename(run=-1))
-                project.trash()
-                settings['project_directory'] = current_dir
-                with open(xyz_file, 'w') as f:
-                    f.write(str(len(geometry)) + '\n\n')
-                    for atom in geometry:
-                        f.write(atom['elementType'])
-                        for c in atom['xyz']: f.write(' ' + str(c * .529177210903))
-                        f.write('\n')
-        if external_path:
-            subprocess.Popen([external_path, xyz_file])
-        elif geom and 'builder' not in self.vods and 'initial structure' not in self.vods:
-            self.embedded_vod_jmol(xyz_file, command='', title='initial structure')
+                    xyz_file = ''
+                else:
+                    current_dir = os.path.dirname(self.project.filename(run=-1))
+                    project.trash()
+                    settings['project_directory'] = current_dir
+                    with open(xyz_file, 'w') as f:
+                        f.write(str(len(geometry)) + '\n\n')
+                        for atom in geometry:
+                            f.write(atom['elementType'])
+                            for c in atom['xyz']: f.write(' ' + str(c * .529177210903))
+                            f.write('\n')
+        return xyz_file
 
     def closeEvent(self, a0, QCloseEvent=None):
         self.close_signal.emit(self)
@@ -1390,7 +1413,7 @@ Jmol.jmolHtml("</p>")
 
 
 def force_render_vtk_widget(widget):
-    if isinstance(widget, OrbitalsWidget):
+    if isinstance(widget, MoleculeDisplay):
         for w in QApplication.topLevelWidgets():
             if isinstance(w, QMainWindow):
                 w.resize(w.width()+1, w.height())

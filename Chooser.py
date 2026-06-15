@@ -66,7 +66,6 @@ class PushButton(QPushButton):
 
 class Chooser(QMainWindow):
     def __init__(self, window_manager: WindowManager):
-        print('Chooser.__init__ entered')
         super().__init__()
         self.window_manager = window_manager
 
@@ -195,7 +194,6 @@ class Chooser(QMainWindow):
             self.shortcutNew.activated.connect(self.newProjectDialog)
             self.shortcutOpen = QShortcut(QKeySequence("Ctrl+O"), self)
             self.shortcutOpen.activated.connect(self.openProjectDialog)
-        print('Chooser.__init__ finished')
 
     def populate_recent_project_box(self, max_items=10):
 
