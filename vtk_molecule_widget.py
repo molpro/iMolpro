@@ -124,9 +124,9 @@ class OrbitalsWidget(QWidget):
                  resolution: float = .5,
                  metadata: dict = {},
                  ):
-        # print('OrbitalsWidget', orbitals)
         if background_colour is None:
-            background_colour = ColourScheme.light
+            rgb = parent.palette().color(QPalette.Window).rgb()
+            background_colour = (((rgb >> 16) & 0xFF), ((rgb >> 8) & 0xFF), (rgb & 0xFF))
         QWidget.__init__(self, parent)
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -431,9 +431,12 @@ class MoleculeScene(QVTKRenderWindowInteractor):
     def __init__(self, parent=None):
         QVTKRenderWindowInteractor.__init__(self)  # , parent)
         self.renderer = vtkRenderer()
+        self.renderer.AutomaticLightCreationOff()
         light_kit = vtkLightKit()
         light_kit.AddLightsToRenderer(self.renderer)
         light_kit.SetKeyLightWarmth(0.5)
+        light_kit.SetKeyLightIntensity(0.9)
+        # light_kit.SetKeyToFillRatio(2.0)
         self.GetRenderWindow().AddRenderer(self.renderer)
         self.SetInteractorStyle(vtkInteractorStyleTrackballCamera())
         self.Initialize()
@@ -606,7 +609,7 @@ class NucleiActor(vtkActor):
         angstrom = 1.8897161646321
         polydata = atoms_to_polydata(atoms, atomic_number)
         sphere_source = vtkSphereSource(phi_resolution=50, theta_resolution=50)
-        sphere_source.SetRadius(0.3)
+        sphere_source.SetRadius(0.2)
         if atomic_number is not None:
             sphere_source.SetRadius(self.radius_scale * angstrom * covalent_radii[atomic_number])
         glyph = vtkGlyph3D()
