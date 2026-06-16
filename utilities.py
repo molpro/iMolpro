@@ -4,6 +4,7 @@ import pathlib
 from pymolpro.defbas import periodic_table
 import json
 from collections.abc import MutableMapping
+from typing import Any
 
 import numpy
 try:
@@ -587,3 +588,17 @@ def writable_directory(preferred:str=None) -> pathlib.Path:
             tmpdir = pathlib.Path(os.environ[env])
             break
     return tmpdir
+
+def atoms_from_xyz(initial_xyz: str) -> list[Any]:
+    angstrom = 1.8897161646321
+    with open(initial_xyz, 'r') as f:
+        atoms = []
+        f.readline()
+        f.readline()
+        while line := f.readline():
+            linesplit = line.split()
+            atom = {}
+            atom['atomic_number'] = int(periodic_table.index(linesplit[0])) + 1
+            atom['xyz'] = [float(x) * angstrom for x in linesplit[1:4]]
+            atoms.append(atom)
+    return atoms

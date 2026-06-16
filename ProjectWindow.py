@@ -6,9 +6,12 @@ import glob
 import os
 import pathlib
 import time
+
 from pymolpro.elements import periodic_table
 
 from RunDirectoryMenu import RunDirectoryMenus
+from utilities import atoms_from_xyz
+from project import Project
 
 try:
     import pwd
@@ -65,7 +68,6 @@ except:
 
 
 
-from pymolpro import Project as BaseProject
 
 from pymolpro import molpro_input
 from BasisSelector import BasisSelector
@@ -89,26 +91,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class Project(BaseProject):
-    def __init__(self, *args, **kwargs):
-        self.run_directory = 0
-        super().__init__(*args, **kwargs)
-
-    def filename(self, suffix="", name="", run=0):
-        if type(self.run_directory) != int:
-            raise Exception('run_directory must be an integer ' + str(self.run_directory))
-        # print('filename', suffix, 'name=',name, 'run=', run, 'self.run_directory=',self.run_directory)
-        filename = super().filename(suffix, name, self.run_directory if run == 0 else run)
-        # print('evaluated filename',filename)
-        return filename
-
-    @property
-    def run_directory_names(self) -> list[str]:
-        result = []
-        dirs = self.property_get('run_directories')
-        if dirs and 'run_directories' in dirs:
-            result = [''] + dirs['run_directories'].strip().split(' ')
-        return result
 
 
 class StatusBar(QLabel):
@@ -778,17 +760,7 @@ class ProjectWindow(QMainWindow):
             initial_xyz = self.initial_xyz()
             if initial_xyz:
                 try:
-                    angstrom = 1.8897161646321
-                    with open(initial_xyz,'r') as f:
-                        atoms=[]
-                        f.readline()
-                        f.readline()
-                        while line:=f.readline():
-                            linesplit=line.split()
-                            atom = {}
-                            atom['atomic_number']=int(periodic_table.index(linesplit[0]))+1
-                            atom['xyz'] = [float(x) * angstrom for x in linesplit[1:4]]
-                            atoms.append(atom)
+                    atoms = atoms_from_xyz(initial_xyz)
                     self.vods['initial structure'] = MoleculeDisplay(atoms, self )
                 except:
                     raise Exception('Could not read initial xyz file')
@@ -1143,6 +1115,24 @@ Jmol.jmolHtml("</p>")
                 self.embedded_vod_jmol(xyz_file, command='', title='initial structure')
 
     def initial_xyz(self) -> str:
+        """
+        Generates or retrieves the XYZ file for the initial geometry configuration.
+
+        This method handles the creation or validation of an XYZ file containing the system's initial geometry.
+        It ensures that the file is either generated or updated as needed based on the current state of the
+        input geometry and its associated files. Temporary directories and auxiliary computations are used
+        where necessary to calculate or verify the geometric data. The method returns the path to the XYZ file,
+        or an empty string if an error occurs during processing.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        str
+            The file path to the generated or validated XYZ file. If an error occurs, an empty string is returned.
+        """
         import tempfile
         geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
         geometry_directory.mkdir(exist_ok=True)

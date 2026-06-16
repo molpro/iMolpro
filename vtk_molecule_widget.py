@@ -111,7 +111,7 @@ class ItemLayout(QGridLayout):
 
 
 class MoleculeDisplay(QWidget):
-    def __init__(self, source: list , parent=None, axes: bool = False,
+    def __init__(self, source: str | list , parent=None, axes: bool = False,
                  background_colour: tuple | ColourScheme | None = None,
                  contour_value=.05, contour_opacity=.7,
                  resolution: float = .5,
@@ -135,7 +135,7 @@ class MoleculeDisplay(QWidget):
             self.orbital = source[-1]
             data = self.get_cube(contour_value=contour_value)
         else:
-            raise ValueError('source must be a list of Orbitals or a dict of atoms')
+            raise ValueError('source must be a list of Orbitals or a dict of atoms or an xyz filename')
 
         self.orbital_display = MoleculeWidget(data, self, background_colour=background_colour, sliders=False,
                                               contour_value=contour_value,
