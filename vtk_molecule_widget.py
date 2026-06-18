@@ -5,18 +5,23 @@ import math
 import numpy as np
 from pymolpro import Orbital
 
+from project import Structure
+
 try:
     from PySide6.QtGui import QColor, QPalette
-    from PySide6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
+    from PySide6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
+        QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
     from PySide6.QtCore import Qt, QSize
 except ImportError:
     try:
         from PyQt6.QtGui import QColor, QPalette
-        from PyQt6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
+        from PyQt6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
+            QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
         from PyQt6.QtCore import Qt, QSize
     except ImportError:
         from PyQt5.QtGui import QColor, QPalette
-        from PyQt5.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
+        from PyQt5.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
+            QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
         from PyQt5.QtCore import Qt, QSize
 
 try:
@@ -107,11 +112,11 @@ class ItemLayout(QGridLayout):
         elif isinstance(content, QLayout):
             self.addLayout(content, self.row, 1, )
         self.row += 1
-        return self.row-1
+        return self.row - 1
 
 
 class MoleculeDisplay(QWidget):
-    def __init__(self, source: str | list , parent=None, axes: bool = False,
+    def __init__(self, source: Structure | str | list, parent=None, axes: bool = False,
                  background_colour: tuple | ColourScheme | None = None,
                  contour_value=.05, contour_opacity=.7,
                  resolution: float = .5,
@@ -126,9 +131,13 @@ class MoleculeDisplay(QWidget):
         self.setLayout(layout)
         self.parent = parent
 
-        if isinstance(source, list) and len(source)>0 and isinstance(source[-1],dict):
+        if isinstance(source, list) and len(source) > 0 and isinstance(source[-1], dict):
             data = source
-        elif isinstance(source,list) and len(source)>0 and isinstance(source[-1],Orbital):
+        elif isinstance(source, Structure):
+            data = source
+            if source.vibrations:
+                metadata['vibrations'] = source.vibrations
+        elif isinstance(source, list) and len(source) > 0 and isinstance(source[-1], Orbital):
             self.cubes = {}
             self.orbitals = source
             self.resolution = resolution
@@ -142,7 +151,7 @@ class MoleculeDisplay(QWidget):
                                               contour_opacity=contour_opacity)
         layout.addWidget(self.orbital_display)
 
-        self.right_panel = ControlPanel(self,metadata=metadata)
+        self.right_panel = ControlPanel(self, metadata=metadata)
         layout.addWidget(self.right_panel)
 
     def get_cube(self, contour_value=None):
@@ -188,7 +197,7 @@ class MoleculeWidget(StyledWidget):
         self.scene.Add(self.model.contour)
         self.scene.GetRenderWindow().GetInteractor().Render()
 
-    def show_nucleus_labels(self, show:bool):
+    def show_nucleus_labels(self, show: bool):
         self.nucleus_labels.SetVisibility(show)
         self.scene.GetRenderWindow().GetInteractor().Render()
 
@@ -206,7 +215,11 @@ class MoleculeWidget(StyledWidget):
         self.model = MolecularModel(source, contour_value=contour_value, contour_opacity=contour_opacity,
                                     bond_colour=(0.8, 0.8, 0.8) if self.dark else (0.6, 0.6, 0.6))
         self.scene.Add(self.model)
-        self.nucleus_labels = NucleusLabelsActor(source)
+        if isinstance(source, Structure):
+            source_ = source.atoms
+        else:
+            source_ = source
+        self.nucleus_labels = NucleusLabelsActor(source_)
         self.show_nucleus_labels(False)
         self.scene.Add(self.nucleus_labels)
         self.scene.SetBackground(*[c / 255.0 for c in self.background_colour])
@@ -257,7 +270,7 @@ class MoleculeWidget(StyledWidget):
         self.model.set_contour_value(contour_value)
         self.scene.GetRenderWindow().GetInteractor().Render()
 
-    def set_background_colour(self, colour: QColor|int|tuple[float, float, float]):
+    def set_background_colour(self, colour: QColor | int | tuple[float, float, float]):
         # print('set_background_colour', colour,type(colour))
         if type(colour) is int:
             colour = QColor(colour)
@@ -268,7 +281,7 @@ class MoleculeWidget(StyledWidget):
             green = (rgb >> 8) & 0xFF
             red = (rgb >> 16) & 0xFF
             # print('set_background_colour', rgb,red,green,blue)
-            return self.set_background_colour((red,green,blue))
+            return self.set_background_colour((red, green, blue))
         self.background_colour = colour
         self.scene.SetBackground(*[c / 255.0 for c in self.background_colour])
         self.scene.GetRenderWindow().GetInteractor().Render()
@@ -296,8 +309,9 @@ class MoleculeWidget(StyledWidget):
         axes.DrawZGridlinesOn()
         scene.Add(axes)
 
+
 class ControlPanel(QWidget):
-    def __init__(self, parent,metadata={}):
+    def __init__(self, parent, metadata={}):
         super().__init__(parent)
         self.parent = parent
         self.setContentsMargins(0, 0, 0, 0)
@@ -308,13 +322,13 @@ class ControlPanel(QWidget):
         self.refresh()
 
     def refresh(self):
-        if hasattr(self,'energy_widget'):
-            if hasattr(self.parent.orbital,'energy') :
+        if hasattr(self, 'energy_widget'):
+            if hasattr(self.parent.orbital, 'energy'):
                 self.energy_widget.setText(str(self.parent.orbital.energy))
             else:
                 self.energy_widget.setText('None')
-        if hasattr(self,'occupation_widget'):
-            if hasattr(self.parent.orbital,'occupation') :
+        if hasattr(self, 'occupation_widget'):
+            if hasattr(self.parent.orbital, 'occupation'):
                 self.occupation_widget.setText(str(self.parent.orbital.occupation))
             else:
                 self.occupation_widget.setText('None')
@@ -322,9 +336,12 @@ class ControlPanel(QWidget):
 
     def setup(self, metadata={}):
 
-        while w:= self.findChild(QWidget):
+        while w := self.findChild(QWidget):
             w.setParent(None)
 
+        if 'vibrations' in metadata:
+            self.layout.addWidget(QLabel('Vibrations'),
+                                  alignment=Qt.AlignCenter)
         if 'method' in metadata and 'type' in metadata:
             self.layout.addWidget(QLabel(f'{metadata["method"]}/{metadata["type"]} orbitals'),
                                   alignment=Qt.AlignCenter)
@@ -332,15 +349,20 @@ class ControlPanel(QWidget):
                 title = 'State ' + metadata['state_symmetry'] + '.' + str(metadata['stateID'])
                 if 'state_ms2' in metadata:
                     ms2 = int(metadata['state_ms2'])
-                    title = title + ', spin ' + (str(ms2 // 2) if ms2%2==0 else str(ms2)+'/2')
+                    title = title + ', spin ' + (str(ms2 // 2) if ms2 % 2 == 0 else str(ms2) + '/2')
                 self.layout.addWidget(QLabel(title), alignment=Qt.AlignCenter)
-
 
         self.control_layout = ItemLayout()
         self.layout.addLayout(self.control_layout)
         self.layout.addStretch()
         # self.control_layout.addWidget(QLabel('Orbitals'),0,0)
 
+        if 'vibrations' in metadata:
+            vibration_selector = QComboBox()
+            for i, mode in enumerate(metadata['vibrations'].modes):
+                vibration_selector.addItem(f'{i + 1}: {mode["wavenumber"]} cm-1')
+            # vibration_selector.currentIndexChanged.connect(self.parent.orbital_display.model.set_vibration)
+            self.control_layout.add('Normal mode', vibration_selector)
         if hasattr(self.parent, 'orbitals'):
             orbital_selector = QComboBox()
             for orbital in self.parent.orbitals[::-1]:
@@ -354,7 +376,6 @@ class ControlPanel(QWidget):
             # orbital_selector.setAutoFillBackground(True)
             orbital_selector.setMinimumWidth(orbital_selector.minimumSizeHint().width())
             self.control_layout.add('Orbital', orbital_selector)
-
 
             if hasattr(self.parent.orbital, 'occupation'):
                 row = self.control_layout.add('Occupation', QLabel(str(self.parent.orbital.occupation)))
@@ -371,7 +392,8 @@ class ControlPanel(QWidget):
             contour_slider.valueChanged.connect(self.parent.orbital_display.set_contour_value)
             contour_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
             contour_slider.setValue(
-                int(100 * math.log(self.parent.orbital_display.model.contour_value / self.contour_slider_minimum) / math.log(
+                int(100 * math.log(
+                    self.parent.orbital_display.model.contour_value / self.contour_slider_minimum) / math.log(
                     self.contour_slider_maximum / self.contour_slider_minimum)))
             self.control_layout.add('Contour value', contour_slider)
 
@@ -415,18 +437,21 @@ class ControlPanel(QWidget):
         colour_selection_layout2 = QHBoxLayout()
         colour_selection_layout2.setContentsMargins(0, 0, 0, 0)
         colour_selection_layout.addLayout(colour_selection_layout2)
-        for i,name in enumerate(['dark','black','white','light']):
+        for i, name in enumerate(['dark', 'black', 'white', 'light']):
             # print('ColourScheme', name, ': ', ColourScheme[name].value)
             # button = QPushButton('')
             button = QToolButton(self)
             button.setMaximumSize(QSize(15, 15))
             button.setStyleSheet(f'background-color: rgb{str(ColourScheme[name].value)}; border:none;')
             colour_selection_layout2.addWidget(button)
-            button.clicked.connect(lambda checked, name=name: self.parent.orbital_display.set_background_colour(ColourScheme[name].value))
+            button.clicked.connect(
+                lambda checked, name=name: self.parent.orbital_display.set_background_colour(ColourScheme[name].value))
         button = QPushButton('Other...')
-        i+=1
+        i += 1
         colour_selection_layout.addWidget(button)
-        button.clicked.connect(lambda: self.parent.orbital_display.set_background_colour(QColorDialog.getColor(initial=QColor(*self.parent.orbital_display.background_colour), parent=self, title='Choose background colour')))
+        button.clicked.connect(lambda: self.parent.orbital_display.set_background_colour(
+            QColorDialog.getColor(initial=QColor(*self.parent.orbital_display.background_colour), parent=self,
+                                  title='Choose background colour')))
         self.control_layout.add('Background colour', colour_selection)
 
         export_button = QPushButton('Choose file')
@@ -434,6 +459,7 @@ class ControlPanel(QWidget):
         export_button.clicked.connect(lambda: self.parent.orbital_display.scene.export_image())
 
         # self.control_layout.addStretch()
+
 
 class MoleculeScene(QVTKRenderWindowInteractor):
 
@@ -571,6 +597,8 @@ class MolecularModel(vtkActorCollection):
         source_ = source
         if isinstance(source, str):
             source_ = xyz_to_atoms(source)
+        if isinstance(source, Structure):
+            source_ = source.atoms
         self.geometry = GeometryActorCollection(source_, radius_scale=radius_scale, bond_radius=bond_radius,
                                                 bond_colour=bond_colour)
         for item in self.geometry:
@@ -634,6 +662,7 @@ class NucleiActor(vtkActor):
         self.SetOrigin(0.0, 0.0, 0.0)
         # self.GetProperty().SetOpacity(.1)
 
+
 class NucleusLabelsActor(vtkActor2D):
     def __init__(self, source: list[dict] | CubeData, radius_scale=.5, bond_radius=.1):
         vtkActor2D.__init__(self)
@@ -648,7 +677,7 @@ class NucleusLabelsActor(vtkActor2D):
         labels = vtkStringArray(name='labels')
         labels.SetNumberOfValues(len(source))
         for i, atom in enumerate(source):
-            labels.SetValue(i, periodic_table[atom['atomic_number']-1]+str(i+1))
+            labels.SetValue(i, periodic_table[atom['atomic_number'] - 1] + str(i + 1))
         polydata.GetPointData().AddArray(labels)
         sizes = vtkIntArray(name='sizes')
         sizes.SetNumberOfValues(len(source))
@@ -665,6 +694,7 @@ class NucleusLabelsActor(vtkActor2D):
         self.SetMapper(mapper)
         self.GetProperty().SetColor(vtkNamedColors().GetColor3d('Salmon'))
         # self.GetProperty().SetOpacity(.1)
+
 
 def atoms_to_polydata(atoms: list[dict], atomic_number=None) -> vtkPolyData:
     points = vtkPoints()

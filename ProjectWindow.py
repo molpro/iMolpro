@@ -11,7 +11,7 @@ from pymolpro.elements import periodic_table
 
 from RunDirectoryMenu import RunDirectoryMenus
 from utilities import atoms_from_xyz
-from project import Project
+from project import Project, Structure
 
 try:
     import pwd
@@ -761,9 +761,13 @@ class ProjectWindow(QMainWindow):
             if initial_xyz:
                 try:
                     atoms = atoms_from_xyz(initial_xyz)
+                    print('initial atoms',atoms)
                     self.vods['initial structure'] = MoleculeDisplay(atoms, self )
                 except:
                     raise Exception('Could not read initial xyz file')
+            final_structure = self.project.structure(True)
+            metadata={}
+            self.vods['final structure'] = MoleculeDisplay(final_structure, self)
             labels = {}
             try:
                 for index in range(10000):

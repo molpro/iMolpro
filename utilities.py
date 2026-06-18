@@ -454,8 +454,7 @@ class VibrationSet:
     """
 
     def __str__(self):
-        return 'VibrationSet ' + str(type(self)) + '\n' + str(self.modes) + str('\n\ncoordinateSet: ') + str(
-            self.coordinateSet)
+        return 'VibrationSet ' + str(type(self)) + '\n' + str(self.modes) + str('\n\ncoordinateSet: ') + str(self.coordinateSet)+ str('\n\natoms: ') + str(self.atoms)
 
     @property
     def frequencies(self):
@@ -518,6 +517,11 @@ class VibrationSetXML(VibrationSet):
         self.coordinateSet = 1 + len(
             vibrations_node[instance].xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
                                             namespaces=namespaces_))
+        coords = vibrations_node[instance].xpath('preceding::cml:atomArray[1]', namespaces=namespaces_)
+        self.atoms=[]
+        angstrom = 1.8897161646321
+        for coord in coords[0]:
+            self.atoms.append({'xyz': [angstrom*float(coord.attrib['x3']),angstrom*float(coord.attrib['y3']),angstrom*float(coord.attrib['z3'])],'atomic_number':periodic_table.index(coord.attrib['elementType'])+1})
         self.modes = [
             {
                 'vector': [float(v) for v in c.text.split()],
