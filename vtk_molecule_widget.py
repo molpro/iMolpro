@@ -636,29 +636,32 @@ class NucleiActor(vtkActor):
     def __init__(self, source: list[dict] | CubeData, atomic_number=None, radius_scale=.5, bond_radius=.1):
         vtkActor.__init__(self)
         self.radius_scale = radius_scale
-        self.set_source(source, atomic_number=atomic_number)
+        self.atomic_number = atomic_number
+        self.set_source(source)
 
-    def set_source(self, source: list[dict] | CubeData, atomic_number=None):
+    def update_data(self, source: list[dict] | CubeData):
         if isinstance(source, CubeData):
-            self.set_source(source.atoms, atomic_number=atomic_number)
+            self.update_data(source.atoms)
             return
-        atoms = source
+        polydata = atoms_to_polydata(source, self.atomic_number)
+        self.glyph.SetInputData(polydata)
+        self.glyph.Update()
+
+    def set_source(self, source: list[dict] | CubeData):
         angstrom = 1.8897161646321
-        polydata = atoms_to_polydata(atoms, atomic_number)
         sphere_source = vtkSphereSource(phi_resolution=50, theta_resolution=50)
         sphere_source.SetRadius(0.2)
-        if atomic_number is not None:
-            sphere_source.SetRadius(self.radius_scale * angstrom * covalent_radii[atomic_number])
-        glyph = vtkGlyph3D()
-        glyph.SetSourceConnection(sphere_source.GetOutputPort())
-        glyph.SetInputData(polydata)
-        glyph.Update()
+        if self.atomic_number is not None:
+            sphere_source.SetRadius(self.radius_scale * angstrom * covalent_radii[self.atomic_number])
+        self.glyph = vtkGlyph3D()
+        self.glyph.SetSourceConnection(sphere_source.GetOutputPort())
         mapper = vtkPolyDataMapper()
-        mapper.SetInputConnection(glyph.GetOutputPort())
+        self.update_data(source)
+        mapper.SetInputConnection(self.glyph.GetOutputPort())
         self.SetMapper(mapper)
         self.GetProperty().SetColor(vtkNamedColors().GetColor3d('Salmon'))
-        if atomic_number is not None:
-            self.GetProperty().SetColor(colors.cpk_colors[atomic_number])
+        if self.atomic_number is not None:
+            self.GetProperty().SetColor(colors.cpk_colors[self.atomic_number])
         self.SetOrigin(0.0, 0.0, 0.0)
         # self.GetProperty().SetOpacity(.1)
 
@@ -724,7 +727,7 @@ class BondActorCollection(vtkActorCollection):
                 distance = np.linalg.norm(np.array(iatom['xyz']) - np.array(jatom['xyz']))
                 if 0.9 * distance / angstrom < covalent_radii[iatom['atomic_number']] + covalent_radii[
                     jatom['atomic_number']]:
-                    self.AddItem(join_points_with_cylinder(iatom['xyz'], jatom['xyz'], radius=self.bond_radius,
+                    self.AddItem(BondActor(iatom['xyz'], jatom['xyz'], radius=self.bond_radius,
                                                            colour=self.bond_colour))
 
 
@@ -825,10 +828,26 @@ class GeometryActorCollection(vtkActorCollection):
             self.AddItem(NucleiActor(source, atomic_number=atomic_number, radius_scale=radius_scale))
         for actor in BondActorCollection(source, bond_radius=bond_radius, bond_colour=bond_colour):
             self.AddItem(actor)
+        for item in self:
+            print('GeometryActorCollection: ', type(item))
+            if isinstance(item, NucleiActor):
+                geom2 = [d for d in geom]
+                for d in geom2:
+                    d['xyz'] = [d['xyz'][i]*1.5 for i in range(3)]
+                item.update_data(geom2)
+            elif isinstance(item, BondActorCollection):
+                pass
 
+
+class BondActor(vtkActor):
+    def __init__(self, startPoint: list[int], endPoint: list[int], radius: float = 1.0,
+                               resolution: int = 15, colour=(1.0, 1.0, 1.0)):
+        self.GetProperty().SetColor(colour)
+        mapper = join_points_with_cylinder(startPoint, endPoint, radius=radius, resolution=resolution)
+        self.SetMapper(mapper)
 
 def join_points_with_cylinder(startPoint: list[int], endPoint: list[int], radius: float = 1.0,
-                              resolution: int = 15, colour=(1.0, 1.0, 1.0)) -> vtkActor:
+                              resolution: int = 15) -> vtkPolyDataMapper:
     """
     From https://examples.vtk.org/site/Python/GeometricObjects/OrientedCylinder
 
@@ -887,12 +906,8 @@ def join_points_with_cylinder(startPoint: list[int], endPoint: list[int], radius
 
     # Create a mapper and actor for the arrow
     mapper = vtkPolyDataMapper()
-    actor = vtkActor()
     mapper.SetInputConnection(transformPD.GetOutputPort())
-
-    actor.GetProperty().SetColor(colour)
-    actor.SetMapper(mapper)
-    return actor
+    return mapper
 
 
 def xyz_to_atoms(xyz: str | list[str]):

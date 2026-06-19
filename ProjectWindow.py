@@ -767,6 +767,8 @@ class ProjectWindow(QMainWindow):
                     raise Exception('Could not read initial xyz file')
             final_structure = self.project.structure(True)
             metadata={}
+            if final_structure.vibrations:
+                metadata['vibrations'] = final_structure.vibrations
             self.vods['final structure'] = MoleculeDisplay(final_structure, self)
             labels = {}
             try:
