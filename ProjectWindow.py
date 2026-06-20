@@ -761,7 +761,6 @@ class ProjectWindow(QMainWindow):
             if initial_xyz:
                 try:
                     atoms = atoms_from_xyz(initial_xyz)
-                    print('initial atoms',atoms)
                     self.vods['initial structure'] = MoleculeDisplay(atoms, self )
                 except:
                     raise Exception('Could not read initial xyz file')

@@ -42,7 +42,7 @@ if __name__ == '__main__':
     if 'use_vtk' not in settings: settings['use_vtk'] = False #TODO eventually True
     # if 'use_jmol' not in settings:
     settings['use_jmol'] = not settings['use_vtk'] #TODO eventually False
-    print('settings',settings)
+    # print('settings',settings)
     if 'IMOLPRO_VTK' in os.environ: settings['use_vtk'] = os.environ['IMOLPRO_VTK'] not in ['0', 'false']
     if 'IMOLPRO_JMOL' in os.environ: settings['use_jmol'] = os.environ['IMOLPRO_JMOL'] not in ['0', 'false']
     logger = logging.getLogger(__name__)

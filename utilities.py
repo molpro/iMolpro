@@ -7,6 +7,9 @@ from collections.abc import MutableMapping
 from typing import Any
 
 import numpy
+
+from cube_data import CubeData
+
 try:
     from PySide6.QtCore import QTimer, QPoint, QCoreApplication, Qt
     from PySide6.QtGui import QFont, QFontDatabase, QTextCursor, QCursor
@@ -463,6 +466,17 @@ class VibrationSet:
     @property
     def wavenumbers(self):
         return [mode['wavenumber'] for mode in self.modes]
+
+
+def displace_coordinate(source: list[dict] | CubeData, coordinate: list[float], displacement: float) -> list[dict]:
+    if isinstance(source, CubeData):
+        return displace_coordinate(source.atoms, coordinate, displacement)
+    result = []
+    for i, atom in enumerate(source):
+        result.append({'atomic_number': atom['atomic_number'],
+                       'xyz': [atom['xyz'][j] + displacement * coordinate[j] for j in range(3)]})
+    return result
+
 
 
 def factory_vibration_set(input: str, file_type=None, instance=-1):

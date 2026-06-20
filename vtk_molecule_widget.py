@@ -720,6 +720,7 @@ class BondActorCollection(vtkActorCollection):
         if isinstance(source, CubeData):
             self.set_source(source.atoms)
             return
+        self.bonds=[]
         self.atoms = source
         angstrom = 1.8897161646321
         for i, iatom in enumerate(self.atoms):
@@ -727,8 +728,16 @@ class BondActorCollection(vtkActorCollection):
                 distance = np.linalg.norm(np.array(iatom['xyz']) - np.array(jatom['xyz']))
                 if 0.9 * distance / angstrom < covalent_radii[iatom['atomic_number']] + covalent_radii[
                     jatom['atomic_number']]:
-                    self.AddItem(BondActor(iatom['xyz'], jatom['xyz'], radius=self.bond_radius,
-                                                           colour=self.bond_colour))
+                    actor = BondActor(iatom['xyz'], jatom['xyz'], radius=self.bond_radius, colour=self.bond_colour)
+                    self.AddItem(actor)
+                    self.bonds.append((iatom, jatom, actor))
+
+    def update(self, source: list[dict] | CubeData):
+        if isinstance(source, CubeData):
+            self.update(source.atoms)
+            return
+        for bond in self.bonds:
+            bond[2].update(bond[0]['xyz'], bond[1]['xyz'])
 
 
 class CubeActor(vtkActor):
@@ -826,25 +835,35 @@ class GeometryActorCollection(vtkActorCollection):
         vtkActorCollection.__init__(self)
         for atomic_number in {d['atomic_number'] for d in geom}:
             self.AddItem(NucleiActor(source, atomic_number=atomic_number, radius_scale=radius_scale))
-        for actor in BondActorCollection(source, bond_radius=bond_radius, bond_colour=bond_colour):
+        self.bond_actor_collection = BondActorCollection(source, bond_radius=bond_radius, bond_colour=bond_colour)
+        for actor in self.bond_actor_collection:
             self.AddItem(actor)
+        if False:
+            geom2 = [d for d in geom]
+            for d in geom2:
+                d['xyz'] = [d['xyz'][i]*1.5 for i in range(3)]
+            self.update(geom2)
+
+    def update(self, source: dict | CubeData):
+        geom = source.atoms if isinstance(source, CubeData) else source
         for item in self:
-            print('GeometryActorCollection: ', type(item))
             if isinstance(item, NucleiActor):
-                geom2 = [d for d in geom]
-                for d in geom2:
-                    d['xyz'] = [d['xyz'][i]*1.5 for i in range(3)]
-                item.update_data(geom2)
-            elif isinstance(item, BondActorCollection):
-                pass
+                item.update(geom)
+        if hasattr(self, 'bond_actor_collection'):
+            self.bond_actor_collection.update(geom)
 
 
 class BondActor(vtkActor):
     def __init__(self, startPoint: list[int], endPoint: list[int], radius: float = 1.0,
                                resolution: int = 15, colour=(1.0, 1.0, 1.0)):
         self.GetProperty().SetColor(colour)
-        mapper = join_points_with_cylinder(startPoint, endPoint, radius=radius, resolution=resolution)
-        self.SetMapper(mapper)
+        self.radius = radius
+        self.resolution = resolution
+        self.update(startPoint, endPoint)
+
+
+    def update(self, startPoint: list[int], endPoint: list[int]):
+        self.SetMapper(join_points_with_cylinder(startPoint, endPoint, radius=self.radius, resolution=self.resolution))
 
 def join_points_with_cylinder(startPoint: list[int], endPoint: list[int], radius: float = 1.0,
                               resolution: int = 15) -> vtkPolyDataMapper:
