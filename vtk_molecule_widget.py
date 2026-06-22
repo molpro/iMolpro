@@ -106,7 +106,7 @@ class ItemLayout(QGridLayout):
         self.row = 0
 
     def add(self, title, content):
-        self.addWidget(FixedLabel(title + ':'), self.row, 0)
+        self.addWidget(FixedLabel((title + ':') if title else ''), self.row, 0)
         if isinstance(content, QWidget):
             self.addWidget(content, self.row, 1)
         elif isinstance(content, QLayout):
@@ -146,10 +146,10 @@ class MoleculeDisplay(QWidget):
         else:
             raise ValueError('source must be a list of Orbitals or a dict of atoms or an xyz filename')
 
-        self.orbital_display = MoleculeWidget(data, self, background_colour=background_colour, sliders=False,
+        self.molecule_widget = MoleculeWidget(data, self, background_colour=background_colour, sliders=False,
                                               contour_value=contour_value,
                                               contour_opacity=contour_opacity)
-        layout.addWidget(self.orbital_display)
+        layout.addWidget(self.molecule_widget)
 
         self.right_panel = ControlPanel(self, metadata=metadata)
         layout.addWidget(self.right_panel)
@@ -163,16 +163,20 @@ class MoleculeDisplay(QWidget):
         return self.cubes[key]
 
     def set_atom_labels(self, atom_labels: bool):
-        self.orbital_display.show_nucleus_labels(atom_labels)
+        self.molecule_widget.show_nucleus_labels(atom_labels)
 
     def set_orbital(self, orbital_id):
         # print('set_orbital', orbital_id)
         self.orbital = self.orbitals[[orbital.ID for orbital in self.orbitals].index(orbital_id)]
-        cube_data = self.get_cube(self.orbital_display.model.contour_value)
+        cube_data = self.get_cube(self.molecule_widget.model.contour_value)
         # print(str(cube_data)[:100] + '...')
         self.right_panel.refresh()
-        self.orbital_display.refresh_model(cube_data)
+        self.molecule_widget.refresh_model(cube_data)
         pass
+
+    def set_vibration(self, mode_id):
+        self.vibrational_mode = mode_id
+        self.right_panel.refresh()
 
     def set_resolution(self, resolution):
         shift_factor = 0.8
@@ -361,7 +365,7 @@ class ControlPanel(QWidget):
             vibration_selector = QComboBox()
             for i, mode in enumerate(metadata['vibrations'].modes):
                 vibration_selector.addItem(f'{i + 1}: {mode["wavenumber"]} cm-1')
-            # vibration_selector.currentIndexChanged.connect(self.parent.orbital_display.model.set_vibration)
+            # vibration_selector.currentIndexChanged.connect(self.parent.molecule_widget.model.set_vibration)
             self.control_layout.add('Normal mode', vibration_selector)
         if hasattr(self.parent, 'orbitals'):
             orbital_selector = QComboBox()
@@ -389,18 +393,18 @@ class ControlPanel(QWidget):
             contour_slider = mySlider(self)
             self.contour_slider_minimum = 0.003
             self.contour_slider_maximum = 0.5
-            contour_slider.valueChanged.connect(self.parent.orbital_display.set_contour_value)
+            contour_slider.valueChanged.connect(self.parent.molecule_widget.set_contour_value)
             contour_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
             contour_slider.setValue(
                 int(100 * math.log(
-                    self.parent.orbital_display.model.contour_value / self.contour_slider_minimum) / math.log(
+                    self.parent.molecule_widget.model.contour_value / self.contour_slider_minimum) / math.log(
                     self.contour_slider_maximum / self.contour_slider_minimum)))
             self.control_layout.add('Contour value', contour_slider)
 
             opacity_slider = mySlider(self)
-            opacity_slider.valueChanged.connect(self.parent.orbital_display.set_contour_opacity)
+            opacity_slider.valueChanged.connect(self.parent.molecule_widget.set_contour_opacity)
             opacity_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
-            opacity_slider.setValue(int(self.parent.orbital_display.model.contour.opacity * 100))
+            opacity_slider.setValue(int(self.parent.molecule_widget.model.contour.opacity * 100))
             self.control_layout.add('Opacity', opacity_slider)
 
             if False:
@@ -425,11 +429,13 @@ class ControlPanel(QWidget):
             finer_button.clicked.connect(lambda: self.parent.set_resolution('+'))
             self.control_layout.add('Resolution', resolution_layout)
 
+        # self.control_layout.add('',None)
+        # print('adding stretch to row',self.control_layout.row)
+        # self.control_layout.setRowStretch(self.control_layout.row, 999)
         atom_labels_checkbox = QCheckBox()
         self.control_layout.add('Atom labels', atom_labels_checkbox)
         atom_labels_checkbox.clicked.connect(lambda: self.parent.set_atom_labels(atom_labels_checkbox.isChecked()))
 
-        colour_selection = FixedLabel('To Do')
         colour_selection = QWidget(self)
         colour_selection_layout = QVBoxLayout()
         colour_selection_layout.setContentsMargins(0, 0, 0, 0)
@@ -445,18 +451,18 @@ class ControlPanel(QWidget):
             button.setStyleSheet(f'background-color: rgb{str(ColourScheme[name].value)}; border:none;')
             colour_selection_layout2.addWidget(button)
             button.clicked.connect(
-                lambda checked, name=name: self.parent.orbital_display.set_background_colour(ColourScheme[name].value))
+                lambda checked, name=name: self.parent.molecule_widget.set_background_colour(ColourScheme[name].value))
         button = QPushButton('Other...')
         i += 1
         colour_selection_layout.addWidget(button)
-        button.clicked.connect(lambda: self.parent.orbital_display.set_background_colour(
-            QColorDialog.getColor(initial=QColor(*self.parent.orbital_display.background_colour), parent=self,
+        button.clicked.connect(lambda: self.parent.molecule_widget.set_background_colour(
+            QColorDialog.getColor(initial=QColor(*self.parent.molecule_widget.background_colour), parent=self,
                                   title='Choose background colour')))
         self.control_layout.add('Background colour', colour_selection)
 
         export_button = QPushButton('Choose file')
         self.control_layout.add('Export image', export_button)
-        export_button.clicked.connect(lambda: self.parent.orbital_display.scene.export_image())
+        export_button.clicked.connect(lambda: self.parent.molecule_widget.scene.export_image())
 
         # self.control_layout.addStretch()
 
