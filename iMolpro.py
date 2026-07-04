@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
 
 
-    if 'use_vtk' not in settings: settings['use_vtk'] = False #TODO eventually True
+    if 'use_vtk' not in settings: settings['use_vtk'] = True #TODO eventually True
     # if 'use_jmol' not in settings:
     settings['use_jmol'] = not settings['use_vtk'] #TODO eventually False
     # print('settings',settings)
