@@ -2,7 +2,7 @@ pyside6 <6.10
 qtwebengine
 pyinstaller >=6
 pymolpro >=1.19.0
-pysjef >=1.45.2
+pysjef >=1.45.3
 pubchempy >=1
 chemspipy >=2
 git >= 2
