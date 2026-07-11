@@ -1086,7 +1086,7 @@ Jmol.jmolHtml("</p>")
         self.add_vod(html, title=title, **kwargs)
 
     def add_vod(self, *args, title='structure', **kwargs):
-        from web_engine import VOD
+        from .web_engine import VOD
         # print('add_vod', title)
         if title in self.vods.keys():
             # print('duplicate vod',title)

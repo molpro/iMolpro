@@ -45,7 +45,7 @@ class WindowManager:
         self.fullAction = fun
 
     def new(self, data):
-        from ProjectWindow import ProjectWindow
+        from .ProjectWindow import ProjectWindow
         _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir
         while True:
             filename = force_suffix(QFileDialog.getSaveFileName(data, 'Save new project as ...', _dir,
