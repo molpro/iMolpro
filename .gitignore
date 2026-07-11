@@ -11,3 +11,4 @@ __pycache__/
 *.molpro
 test.html
 test.inp
+_pyinstaller_entry.py
