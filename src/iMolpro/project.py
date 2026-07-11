@@ -4,7 +4,7 @@ import lxml
 from pymolpro import Project as BaseProject
 from pymolpro.defbas import periodic_table
 
-from utilities import VibrationSetXML
+from .utilities import VibrationSetXML
 
 
 

@@ -9,9 +9,10 @@ import time
 
 from pymolpro.elements import periodic_table
 
-from RunDirectoryMenu import RunDirectoryMenus
-from utilities import atoms_from_xyz
-from project import Project, Structure
+from .RunDirectoryMenu import RunDirectoryMenus
+from .utilities import atoms_from_xyz
+from .project import Project, Structure
+from ._paths import app_root
 
 try:
     import pwd
@@ -70,21 +71,21 @@ except:
 
 
 from pymolpro import molpro_input
-from BasisSelector import BasisSelector
-from SpinComboBox import SpinComboBox
-from draggabletabwidget import DraggableTabWidget
+from .BasisSelector import BasisSelector
+from .SpinComboBox import SpinComboBox
+from .draggabletabwidget import DraggableTabWidget
 from pymolpro.molpro_input import InputSpecification
-from CheckableComboBox import CheckableComboBox
-from MenuBar import MenuBar
-from RecentMenu import RecentMenu
-from database import database_choose_structure
-from help import help_manager_default
-from utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set, factory_coordinate_set, \
+from .CheckableComboBox import CheckableComboBox
+from .MenuBar import MenuBar
+from .RecentMenu import RecentMenu
+from .database import database_choose_structure
+from .help import help_manager_default
+from .utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set, factory_coordinate_set, \
     writable_directory
-from backend import configure_backend, BackendConfigurationEditor
-from settings import settings, settings_edit
-from OptionsDialog import OptionsDialog
-from vtk_molecule_widget import MoleculeDisplay, MoleculeWidget
+from .backend import configure_backend, BackendConfigurationEditor
+from .settings import settings, settings_edit
+from .OptionsDialog import OptionsDialog
+from .vtk_molecule_widget import MoleculeDisplay, MoleculeWidget
 
 import logging
 
@@ -240,14 +241,14 @@ class ProjectWindow(QMainWindow):
 
         settings['project_directory'] = os.path.dirname(self.project.filename(run=-1))
 
-        self.jsmol_min_js = str(pathlib.Path(__file__).parent / "JSmol.min.js")
+        self.jsmol_min_js = str(app_root() / "JSmol.min.js")
         if hasattr(sys, '_MEIPASS') and platform.uname().system != 'Windows':
             os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
                 sys._MEIPASS, 'PySide6', 'Qt', 'libexec', 'QtWebEngineProcess'
             ))
         os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--no-sandbox'
         likely_qtwebengineprocess = os.path.normpath(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'PySide6', 'Qt5', 'libexec', 'QtWebEngineProcess'))
+            os.path.join(str(app_root()), 'PySide6', 'Qt5', 'libexec', 'QtWebEngineProcess'))
         if os.path.exists(likely_qtwebengineprocess):
             os.environ['QTWEBENGINEPROCESS_PATH'] = likely_qtwebengineprocess
 

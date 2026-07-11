@@ -10,6 +10,7 @@ if [ -z "$NOCONDA" ]; then
 #conda remove -y pubchempy
 #pip install -I https://github.com/molpro/PubChemPy/archive/refs/heads/main.zip
 conda install -q -c conda-forge -c defaults -y --file=requirements.txt 'setuptools=80.9' pandoc || exit
+pip install --no-build-isolation --no-deps . || exit
 gem install --user-install -n~/bin fpm
 PATH=~/bin:$PATH
 conda list

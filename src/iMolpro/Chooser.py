@@ -5,10 +5,11 @@ import re
 import time
 
 
-from MenuBar import MenuBar
-from RecentMenu import RecentMenu
-from help import help_manager_default
-from utilities import force_suffix
+from .MenuBar import MenuBar
+from .RecentMenu import RecentMenu
+from .help import help_manager_default
+from .utilities import force_suffix
+from ._paths import app_root
 
 import pymolpro
 try:
@@ -50,9 +51,9 @@ try:
 except:
     HelpContents = QKeySequence.StandardKey.HelpContents
 
-from ProjectWindow import ProjectWindow
-from WindowManager import WindowManager
-from settings import settings, settings_edit
+from .ProjectWindow import ProjectWindow
+from .WindowManager import WindowManager
+from .settings import settings, settings_edit
 from pysjef import recent_project
 
 
@@ -95,7 +96,7 @@ class Chooser(QMainWindow):
 
         rh_panel = QVBoxLayout()
         self.layout.addLayout(rh_panel)
-        cwd = pathlib.Path(__file__).resolve().parent
+        cwd = app_root()
 
         class LinkImage(QLabel):
             def __init__(self, image, url=None, width=250, height=250):
@@ -148,14 +149,14 @@ class Chooser(QMainWindow):
             import subprocess
             import os
             version = None
-            if os.path.exists(pathlib.Path(__file__).resolve().parent / '.git'):
+            if os.path.exists(app_root() / '.git'):
                 try:
-                    version = subprocess.check_output(['git', 'describe', '--tags', '--dirty']).decode('ascii').strip()
+                    version = subprocess.check_output(['git', '-C', str(app_root()), 'describe', '--tags', '--dirty']).decode('ascii').strip()
                 except Exception:
                     pass
                 if version:
                     return version
-            version_file = pathlib.Path(__file__).resolve().parent / 'VERSION'
+            version_file = app_root() / 'VERSION'
             if os.path.exists(version_file):
                 version = open(version_file, 'r').read().strip()
             if version:

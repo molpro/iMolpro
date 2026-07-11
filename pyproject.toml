@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iMolpro"
+description = "Graphical user interface to the Molpro quantum chemistry package"
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+requires-python = ">=3.9"
+dynamic = ["version"]
+dependencies = [
+    "pyside6<6.10",
+    "pymolpro>=1.19.5",
+    "pysjef>=1.45.7",
+    "pubchempy>=1",
+    "chemspipy>=2",
+    "jsonschema>=4",
+    "vtk",
+    "lxml",
+    "numpy",
+    "ase",
+]
+
+[project.scripts]
+iMolpro = "iMolpro.__main__:main"
+
+[tool.setuptools_scm]
+# Version is derived from git tags, matching the "git describe" logic
+# previously duplicated in build.sh/build.ps1 and Chooser.py's version_().
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

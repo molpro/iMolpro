@@ -5,7 +5,7 @@ import math
 import numpy as np
 from pymolpro import Orbital
 
-from project import Structure
+from .project import Structure
 
 try:
     from PySide6.QtGui import QColor, QPalette

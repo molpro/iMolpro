@@ -8,8 +8,8 @@ except ImportError:
         from PyQt6.QtWidgets import QWidget, QFileDialog, QMessageBox
     except ImportError:
         from PyQt5.QtWidgets import QWidget, QFileDialog, QMessageBox
-from utilities import force_suffix
-from settings import settings
+from .utilities import force_suffix
+from .settings import settings
 
 
 class WindowManager:
