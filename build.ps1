@@ -12,8 +12,8 @@ if (-not(Test-Path -path $molpro_zip)) {
 7z -o"${molpro_root}" -aoa x -- ${molpro_zip}
 
 
-cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis
-pip install --no-build-isolation --no-deps .
+cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis pip
+python -m pip install --no-build-isolation --no-deps .
 
 $versionfile = ( $env:TMP, "\VERSION") -join ""
 $PWD = (Get-Item .).FullName
