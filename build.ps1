@@ -40,6 +40,8 @@ if __name__ == '__main__':
 
 pyinstaller --noconfirm `
   --name iMolpro `
+  --paths=src `
+  --collect-submodules=iMolpro `
   --add-data=JSmol.min.js:. `
     --add-data=j2s:./j2s `
       --add-data=Molpro_Logo_Molpro_Quantum_Chemistry_Software.png:. `
