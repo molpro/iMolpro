@@ -461,15 +461,29 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
         super().showEvent(ev)
         # Without an explicit nudge here, some Qt/VTK/platform combinations
         # never paint anything until the first user interaction (e.g. a
-        # mouse click) happens to trigger a repaint. Deferred via
-        # singleShot so it runs once the native window is fully realized.
-        QTimer.singleShot(0, self.update)
+        # mouse click) happens to trigger a repaint. Go straight to VTK's
+        # own render rather than self.update(), since on platforms where
+        # paintEngine() returns None but WA_PaintOnScreen isn't set (see
+        # the Cocoa carve-out below), Qt has nothing to dispatch update()
+        # to and silently drops it. Deferred via singleShot so it runs
+        # once the native window is fully realized.
+        QTimer.singleShot(0, self._Iren.Render)
 
     def sizeHint(self):
         return QSize(400, 400)
 
     def paintEngine(self):
-        return None
+        # Only claim "no paint engine" on platforms where WA_PaintOnScreen
+        # is actually set (see the vtkCocoaRenderWindow carve-out in
+        # __init__): that combination is what tells Qt "this widget paints
+        # itself directly, don't try to composite it". Without
+        # WA_PaintOnScreen, unconditionally returning None here leaves Qt
+        # with no paint engine AND no expectation of on-screen painting,
+        # so it never dispatches a first paint until something external
+        # (e.g. a click) forces a native repaint.
+        if self.testAttribute(WidgetAttribute.WA_PaintOnScreen):
+            return None
+        return super().paintEngine()
 
     def paintEvent(self, ev):
         self._Iren.Render()
