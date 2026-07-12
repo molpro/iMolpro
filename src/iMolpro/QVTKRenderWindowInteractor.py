@@ -190,6 +190,28 @@ elif PyQtImpl == "PySide":
 else:
     raise ImportError("Unknown PyQt implementation " + repr(PyQtImpl))
 
+if PyQtImpl in ("PySide6", "PyQt6", "PyQt5", "PySide2"):
+    _qt_binding_module = {
+        "PySide6": "PySide6.QtCore",
+        "PyQt6": "PyQt6.QtCore",
+        "PyQt5": "PyQt5.QtCore",
+        "PySide2": "PySide2.QtCore",
+    }[PyQtImpl]
+    import importlib as _importlib
+    qVersion = _importlib.import_module(_qt_binding_module).qVersion
+    del _importlib, _qt_binding_module
+else:
+    # PyQt4/PySide (Qt4) predate the issue this version check exists for.
+    qVersion = lambda: "4.0.0"
+
+try:
+    _QT_RUNTIME_VERSION = tuple(int(p) for p in qVersion().split('.')[:3])
+except Exception:
+    # Be conservative if the version string can't be parsed: assume it's
+    # new enough to need the fix, since that's the actively-maintained,
+    # forward-looking case.
+    _QT_RUNTIME_VERSION = (9999, 0, 0)
+
 # Define types for base class, based on string
 if QVTKRWIBase == "QWidget":
     QVTKRWIBaseClass = QWidget
@@ -391,7 +413,13 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
         # do all the necessary qt setup
         self.setAttribute(WidgetAttribute.WA_OpaquePaintEvent)
         # PJK: because of https://gitlab.kitware.com/vtk/vtk/-/merge_requests/12956/diffs
-        if not self._RenderWindow.IsA("vtkCocoaRenderWindow"):
+        # That upstream fix targets a Qt >= 6.10.1 hang on Cocoa (every VTK
+        # render triggered a Qt paint event, which triggered another
+        # render, in a runaway loop). Gating it on the actual runtime Qt
+        # version -- rather than applying it unconditionally on Cocoa --
+        # avoids a different regression seen on older Qt with this same
+        # carve-out: VTK widgets don't render at all until the first click.
+        if not (self._RenderWindow.IsA("vtkCocoaRenderWindow") and _QT_RUNTIME_VERSION >= (6, 10, 1)):
             self.setAttribute(WidgetAttribute.WA_PaintOnScreen)
         self.setMouseTracking(True) # get all mouse events
         self.setFocusPolicy(FocusPolicy.WheelFocus)
