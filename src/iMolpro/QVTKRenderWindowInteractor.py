@@ -457,6 +457,14 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
     def closeEvent(self, evt):
         self.Finalize()
 
+    def showEvent(self, ev):
+        super().showEvent(ev)
+        # Without an explicit nudge here, some Qt/VTK/platform combinations
+        # never paint anything until the first user interaction (e.g. a
+        # mouse click) happens to trigger a repaint. Deferred via
+        # singleShot so it runs once the native window is fully realized.
+        QTimer.singleShot(0, self.update)
+
     def sizeHint(self):
         return QSize(400, 400)
 
@@ -467,7 +475,6 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
         self._Iren.Render()
 
     def resizeEvent(self, ev):
-        print("resizeEvent", ev.size())
         scale = self._getPixelRatio()
         w = int(round(scale*self.width()))
         h = int(round(scale*self.height()))
