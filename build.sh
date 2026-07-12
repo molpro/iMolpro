@@ -125,9 +125,13 @@ PATH=/usr/bin:$PATH pyinstaller \
   iMolpro.spec || exit 1
 rm -f "${entry_script}"
 
-(cd ${builddir}/dist/iMolpro/_internal/PySide6/Qt/lib && ln -sf ../resources  .)
-(cd ${builddir}/dist/iMolpro/_internal/PySide6/Qt && ln -sf ./lib/qt6 ./libexec)
-(cd ${builddir}/dist/iMolpro/_internal/PySide6/Qt/lib && ln -sf ../translations .)
+if [ -d "${builddir}/dist/iMolpro/_internal/PySide6/Qt/lib" ]; then
+  # Older PySide6 packaging nests libexec/resources/translations under Qt/lib;
+  # newer builds ship them directly under Qt/ and need no symlinking at all.
+  (cd ${builddir}/dist/iMolpro/_internal/PySide6/Qt/lib && ln -sf ../resources  .)
+  (cd ${builddir}/dist/iMolpro/_internal/PySide6/Qt && ln -sf ./lib/qt6 ./libexec)
+  (cd ${builddir}/dist/iMolpro/_internal/PySide6/Qt/lib && ln -sf ../translations .)
+fi
 
 descriptor=${version}.$(uname).$(uname -m)
 if [ "$(uname)" = Darwin ]; then
