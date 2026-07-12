@@ -501,17 +501,7 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
         return QSize(400, 400)
 
     def paintEngine(self):
-        # Only claim "no paint engine" on platforms where WA_PaintOnScreen
-        # is actually set (see the vtkCocoaRenderWindow carve-out in
-        # __init__): that combination is what tells Qt "this widget paints
-        # itself directly, don't try to composite it". Without
-        # WA_PaintOnScreen, unconditionally returning None here leaves Qt
-        # with no paint engine AND no expectation of on-screen painting,
-        # so it never dispatches a first paint until something external
-        # (e.g. a click) forces a native repaint.
-        if self.testAttribute(WidgetAttribute.WA_PaintOnScreen):
-            return None
-        return super().paintEngine()
+        return None
 
     def paintEvent(self, ev):
         self._Iren.Render()
