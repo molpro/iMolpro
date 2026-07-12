@@ -28,6 +28,18 @@ iMolpro = "iMolpro.__main__:main"
 [tool.setuptools_scm]
 # Version is derived from git tags, matching the "git describe" logic
 # previously duplicated in build.sh/build.ps1 and Chooser.py's version_().
+#
+# This repo has non-version tags lying around (e.g. "latest_2026_05_06_<hash>"
+# from the tag-latest.yml workflow, or ad hoc tags like "windows-test") that
+# git describe would otherwise pick up as the "nearest" tag and then fail to
+# parse as a version. tag.strict below excludes any tag without a literal dot
+# in it from consideration, which cleanly skips those. fallback_version is a
+# safety net for the rare case where no matching tag is reachable at all (e.g.
+# a very shallow clone).
+fallback_version = "0.0.0"
+
+[tool.setuptools_scm.tag]
+strict = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
