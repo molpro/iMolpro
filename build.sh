@@ -89,7 +89,7 @@ PATH=/usr/bin:$PATH pyi-makespec \
   $pyinstaller_opt \
   "${entry_script}" || exit 1
 sed -i -e '$d' iMolpro.spec
-sed -i -e "s/hiddenimports=\[\]/hiddenimports=['vtk', 'vtk.qt', 'vtk.qt.QVTKRenderWindowInteractor', 'vtkmodules','vtkmodules.all','vtkmodules.qt.QVTKRenderWindowInteractor','vtkmodules.util','vtkmodules.util.numpy_support','vtkmodules.numpy_interface', 'vtkmodules.numpy_interface.dataset_adapter', 'scipy._cyutility', 'scipy.sparse._csparsetools', 'scipy._lib.messagestream']/" iMolpro.spec
+sed -i -e "s/hiddenimports=\[/hiddenimports=['vtk', 'vtk.qt', 'vtk.qt.QVTKRenderWindowInteractor', 'vtkmodules','vtkmodules.all','vtkmodules.qt.QVTKRenderWindowInteractor','vtkmodules.util','vtkmodules.util.numpy_support','vtkmodules.numpy_interface', 'vtkmodules.numpy_interface.dataset_adapter', 'scipy._cyutility', 'scipy.sparse._csparsetools', 'scipy._lib.messagestream', /" iMolpro.spec
 cat << 'EOF' >> iMolpro.spec
     info_plist={
       'NSPrincipalClass' : 'NSApplication',
