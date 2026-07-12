@@ -158,7 +158,7 @@ if [ "$(uname)" = Darwin ]; then
   </dict>
   </plist>
 EOF
-  codesign --force --verify --verbose --sign "$application_signing_identity" --entitlements QtWebEngineProcess.entitlements --options runtime "${builddir}"/dist/iMolpro.app/Contents/Frameworks/PyQt5/Qt5/libexec/QtWebEngineProcess
+  codesign --force --verify --verbose --sign "$application_signing_identity" --entitlements QtWebEngineProcess.entitlements --options runtime "${builddir}"/dist/iMolpro.app/Contents/Frameworks/PySide6/Qt/lib/qt6/QtWebEngineProcess
   codesign -s "$application_signing_identity" --force --options runtime "${builddir}"/dist/iMolpro.app
 
   codesign -dv "${builddir}"/dist/iMolpro.app
