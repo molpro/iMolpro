@@ -109,6 +109,13 @@ jobs:
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
+        with:
+          name: iMolpro-windows
+          path: |
+            iMolpro*.exe
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
