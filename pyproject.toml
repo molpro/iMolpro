@@ -10,9 +10,9 @@ license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.9"
 dynamic = ["version"]
 dependencies = [
-    "pyside6<6.10",
+    "pyside6>=6.11.1",
     "pymolpro>=1.19.5",
-    "pysjef>=1.45.7",
+    "pysjef>=1.45.9",
     "pubchempy>=1",
     "chemspipy>=2",
     "jsonschema>=4",

@@ -1,7 +1,7 @@
-pyside6 >6.9
+pyside6 >=6.11.1
 pyinstaller >=6
 pymolpro >=1.19.5
-pysjef >=1.45.7
+pysjef >=1.45.9
 pubchempy >=1
 chemspipy >=2
 git >= 2
