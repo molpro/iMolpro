@@ -190,28 +190,6 @@ elif PyQtImpl == "PySide":
 else:
     raise ImportError("Unknown PyQt implementation " + repr(PyQtImpl))
 
-if PyQtImpl in ("PySide6", "PyQt6", "PyQt5", "PySide2"):
-    _qt_binding_module = {
-        "PySide6": "PySide6.QtCore",
-        "PyQt6": "PyQt6.QtCore",
-        "PyQt5": "PyQt5.QtCore",
-        "PySide2": "PySide2.QtCore",
-    }[PyQtImpl]
-    import importlib as _importlib
-    qVersion = _importlib.import_module(_qt_binding_module).qVersion
-    del _importlib, _qt_binding_module
-else:
-    # PyQt4/PySide (Qt4) predate the issue this version check exists for.
-    qVersion = lambda: "4.0.0"
-
-try:
-    _QT_RUNTIME_VERSION = tuple(int(p) for p in qVersion().split('.')[:3])
-except Exception:
-    # Be conservative if the version string can't be parsed: assume it's
-    # new enough to need the fix, since that's the actively-maintained,
-    # forward-looking case.
-    _QT_RUNTIME_VERSION = (9999, 0, 0)
-
 # Define types for base class, based on string
 if QVTKRWIBase == "QWidget":
     QVTKRWIBaseClass = QWidget
@@ -352,6 +330,7 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
         self.__saveModifiers = KeyboardModifier.NoModifier
         self.__saveButtons = MouseButton.NoButton
         self.__wheelDelta = 0
+        self.__doPaintEvent = True
 
         # do special handling of some keywords:
         # stereo, rw
@@ -412,15 +391,7 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
 
         # do all the necessary qt setup
         self.setAttribute(WidgetAttribute.WA_OpaquePaintEvent)
-        # PJK: because of https://gitlab.kitware.com/vtk/vtk/-/merge_requests/12956/diffs
-        # That upstream fix targets a Qt >= 6.10.1 hang on Cocoa (every VTK
-        # render triggered a Qt paint event, which triggered another
-        # render, in a runaway loop). Gating it on the actual runtime Qt
-        # version -- rather than applying it unconditionally on Cocoa --
-        # avoids a different regression seen on older Qt with this same
-        # carve-out: VTK widgets don't render at all until the first click.
-        if not (self._RenderWindow.IsA("vtkCocoaRenderWindow") and _QT_RUNTIME_VERSION >= (6, 10, 1)):
-            self.setAttribute(WidgetAttribute.WA_PaintOnScreen)
+        self.setAttribute(WidgetAttribute.WA_PaintOnScreen)
         self.setMouseTracking(True) # get all mouse events
         self.setFocusPolicy(FocusPolicy.WheelFocus)
         self.setSizePolicy(QSizePolicy(SizePolicy.Expanding, SizePolicy.Expanding))
@@ -485,18 +456,6 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
     def closeEvent(self, evt):
         self.Finalize()
 
-    def showEvent(self, ev):
-        super().showEvent(ev)
-        # Without an explicit nudge here, some Qt/VTK/platform combinations
-        # never paint anything until the first user interaction (e.g. a
-        # mouse click) happens to trigger a repaint. Go straight to VTK's
-        # own render rather than self.update(), since on platforms where
-        # paintEngine() returns None but WA_PaintOnScreen isn't set (see
-        # the Cocoa carve-out below), Qt has nothing to dispatch update()
-        # to and silently drops it. Deferred via singleShot so it runs
-        # once the native window is fully realized.
-        QTimer.singleShot(0, self._Iren.Render)
-
     def sizeHint(self):
         return QSize(400, 400)
 
@@ -504,7 +463,9 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
         return None
 
     def paintEvent(self, ev):
-        self._Iren.Render()
+        if self.__doPaintEvent:
+            self.__doPaintEvent = False
+            self._Iren.Render()
 
     def resizeEvent(self, ev):
         scale = self._getPixelRatio()
@@ -514,6 +475,7 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
         vtkRenderWindow.SetSize(self._RenderWindow, w, h)
         self._Iren.SetSize(w, h)
         self._Iren.ConfigureEvent()
+        self.__doPaintEvent = True
         self.update()
 
     def _GetKeyCharAndKeySym(self, ev):
@@ -669,6 +631,7 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
         return self._RenderWindow
 
     def Render(self):
+        self.__doPaintEvent = True
         self.update()
 
 
@@ -748,7 +711,7 @@ _keysyms = {
     Key.Key_Backspace: 'BackSpace',
     Key.Key_Tab: 'Tab',
     Key.Key_Backtab: 'Tab',
-    Key.Key_Clear : 'Clear',
+    # Key.Key_Clear : 'Clear',
     Key.Key_Return: 'Return',
     Key.Key_Enter: 'Return',
     Key.Key_Shift: 'Shift_L',
@@ -758,16 +721,14 @@ _keysyms = {
     Key.Key_CapsLock: 'Caps_Lock',
     Key.Key_Escape: 'Escape',
     Key.Key_Space: 'space',
-    Key.Key_PageUp: 'Prior',
-    Key.Key_PageDown: 'Next',
+    # Key.Key_Prior : 'Prior',
+    # Key.Key_Next : 'Next',
     Key.Key_End: 'End',
     Key.Key_Home: 'Home',
     Key.Key_Left: 'Left',
     Key.Key_Up: 'Up',
     Key.Key_Right: 'Right',
     Key.Key_Down: 'Down',
-    Key.Key_Select: 'Select',
-    Key.Key_Execute: 'Execute',
     Key.Key_SysReq: 'Snapshot',
     Key.Key_Insert: 'Insert',
     Key.Key_Delete: 'Delete',
@@ -810,7 +771,6 @@ _keysyms = {
     Key.Key_Z: 'z',
     Key.Key_Asterisk: 'asterisk',
     Key.Key_Plus: 'plus',
-    Key.Key_Bar: 'bar',
     Key.Key_Minus: 'minus',
     Key.Key_Period: 'period',
     Key.Key_Slash: 'slash',
