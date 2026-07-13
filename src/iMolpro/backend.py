@@ -10,7 +10,7 @@ except ImportError:
     except ImportError:
         from PyQt5.QtWidgets import QDialog, QComboBox, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QGridLayout, QFormLayout, QMessageBox
 
-from help import help_dialog
+from .help import help_dialog
 
 
 

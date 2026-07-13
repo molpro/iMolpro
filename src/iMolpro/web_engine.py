@@ -2,7 +2,8 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWebEngineCore import QWebEnginePage
 from PySide6.QtCore import QUrl
 import sys
-import pathlib
+
+from ._paths import app_root
 
 class WebEnginePage(QWebEnginePage):
     def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
@@ -22,7 +23,7 @@ class VOD(QWebEngineView):
         self.setPage(self.page_)
         if self.directory_ is not None:
             self.page().profile().downloadRequested.connect(self._download_requested)
-        self.setHtml(html, QUrl.fromLocalFile(str(pathlib.Path(__file__).resolve())))
+        self.setHtml(html, QUrl.fromLocalFile(str(app_root()) + '/'))
 
         self.setMinimumSize(width, height)
 

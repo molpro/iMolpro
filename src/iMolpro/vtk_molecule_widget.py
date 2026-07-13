@@ -5,7 +5,7 @@ import math
 import numpy as np
 from pymolpro import Orbital
 
-from project import Structure
+from .project import Structure
 
 try:
     from PySide6.QtGui import QColor, QPalette
@@ -40,9 +40,7 @@ from vtkmodules.vtkCommonMath import vtkMatrix4x4
 from vtkmodules.vtkCommonTransforms import vtkTransform
 from vtkmodules.vtkFiltersCore import vtkGlyph3D, vtkContourFilter
 from vtk import vtkActor
-# import vtk.qt
-from vtk.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-# from QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+from .QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from enum import Enum
 

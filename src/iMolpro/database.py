@@ -3,7 +3,7 @@ import os
 import pathlib
 import re
 
-from settings import settings
+from .settings import settings
 import pubchempy
 from chemspipy import ChemSpider
 import tempfile

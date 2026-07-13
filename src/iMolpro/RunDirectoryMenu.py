@@ -26,7 +26,7 @@ class RunDirectoryMenuAction(QAction):
 class RunDirectoryMenuActionOpenRun(RunDirectoryMenuAction):
     def process(self):
         filename = pathlib.Path(self.project_window.project.filename('out', run=self.run)).parent.as_posix()
-        from ProjectWindow import ProjectWindow
+        from .ProjectWindow import ProjectWindow
         self.project_window.window_manager.register(
             ProjectWindow(filename, self.project_window.window_manager, record_as_recent=False))
 

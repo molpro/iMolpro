@@ -330,6 +330,7 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
         self.__saveModifiers = KeyboardModifier.NoModifier
         self.__saveButtons = MouseButton.NoButton
         self.__wheelDelta = 0
+        self.__doPaintEvent = True
 
         # do special handling of some keywords:
         # stereo, rw
@@ -390,9 +391,7 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
 
         # do all the necessary qt setup
         self.setAttribute(WidgetAttribute.WA_OpaquePaintEvent)
-        # PJK: because of https://gitlab.kitware.com/vtk/vtk/-/merge_requests/12956/diffs
-        if not self._RenderWindow.IsA("vtkCocoaRenderWindow"):
-            self.setAttribute(WidgetAttribute.WA_PaintOnScreen)
+        self.setAttribute(WidgetAttribute.WA_PaintOnScreen)
         self.setMouseTracking(True) # get all mouse events
         self.setFocusPolicy(FocusPolicy.WheelFocus)
         self.setSizePolicy(QSizePolicy(SizePolicy.Expanding, SizePolicy.Expanding))
@@ -464,10 +463,11 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
         return None
 
     def paintEvent(self, ev):
-        self._Iren.Render()
+        if self.__doPaintEvent:
+            self.__doPaintEvent = False
+            self._Iren.Render()
 
     def resizeEvent(self, ev):
-        print("resizeEvent", ev.size())
         scale = self._getPixelRatio()
         w = int(round(scale*self.width()))
         h = int(round(scale*self.height()))
@@ -475,6 +475,7 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
         vtkRenderWindow.SetSize(self._RenderWindow, w, h)
         self._Iren.SetSize(w, h)
         self._Iren.ConfigureEvent()
+        self.__doPaintEvent = True
         self.update()
 
     def _GetKeyCharAndKeySym(self, ev):
@@ -630,6 +631,7 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
         return self._RenderWindow
 
     def Render(self):
+        self.__doPaintEvent = True
         self.update()
 
 
@@ -709,7 +711,7 @@ _keysyms = {
     Key.Key_Backspace: 'BackSpace',
     Key.Key_Tab: 'Tab',
     Key.Key_Backtab: 'Tab',
-    Key.Key_Clear : 'Clear',
+    # Key.Key_Clear : 'Clear',
     Key.Key_Return: 'Return',
     Key.Key_Enter: 'Return',
     Key.Key_Shift: 'Shift_L',
@@ -719,16 +721,14 @@ _keysyms = {
     Key.Key_CapsLock: 'Caps_Lock',
     Key.Key_Escape: 'Escape',
     Key.Key_Space: 'space',
-    Key.Key_PageUp: 'Prior',
-    Key.Key_PageDown: 'Next',
+    # Key.Key_Prior : 'Prior',
+    # Key.Key_Next : 'Next',
     Key.Key_End: 'End',
     Key.Key_Home: 'Home',
     Key.Key_Left: 'Left',
     Key.Key_Up: 'Up',
     Key.Key_Right: 'Right',
     Key.Key_Down: 'Down',
-    Key.Key_Select: 'Select',
-    Key.Key_Execute: 'Execute',
     Key.Key_SysReq: 'Snapshot',
     Key.Key_Insert: 'Insert',
     Key.Key_Delete: 'Delete',
@@ -771,7 +771,6 @@ _keysyms = {
     Key.Key_Z: 'z',
     Key.Key_Asterisk: 'asterisk',
     Key.Key_Plus: 'plus',
-    Key.Key_Bar: 'bar',
     Key.Key_Minus: 'minus',
     Key.Key_Period: 'period',
     Key.Key_Slash: 'slash',

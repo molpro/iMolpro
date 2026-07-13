@@ -8,7 +8,7 @@ from typing import Any
 
 import numpy
 
-from cube_data import CubeData
+from .cube_data import CubeData
 
 try:
     from PySide6.QtCore import QTimer, QPoint, QCoreApplication, Qt
@@ -36,7 +36,7 @@ except:
 
 from enum import Enum
 
-from MenuBar import MenuBar
+from .MenuBar import MenuBar
 
 
 class VimMode(Enum):

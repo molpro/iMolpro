@@ -25,7 +25,7 @@ class RecentMenuAction(QAction):
         self.window_manager = window_manager
 
     def process(self):
-        from ProjectWindow import ProjectWindow
+        from .ProjectWindow import ProjectWindow
         self.window_manager.register(ProjectWindow(self.filename, self.window_manager))
         self.parent.refresh()
 

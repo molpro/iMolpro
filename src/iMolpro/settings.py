@@ -1,8 +1,8 @@
 import logging
 import pathlib
 
-from OptionsDialog import OptionsDialog
-from utilities import FileBackedDictionary
+from .OptionsDialog import OptionsDialog
+from .utilities import FileBackedDictionary
 
 logger = logging.getLogger(__name__)
 

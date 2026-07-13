@@ -15,7 +15,8 @@ except ImportError:
         from PyQt5.QtWidgets import QTextBrowser, QMainWindow, QWidget, QHBoxLayout, QDialog, QVBoxLayout, QDialogButtonBox, QShortcut
         from PyQt5.QtCore import Qt, QUrl
         from PyQt5.QtGui import QKeySequence, QDesktopServices
-from MenuBar import MenuBar
+from .MenuBar import MenuBar
+from ._paths import app_root
 
 
 class HelpWindow(QWidget):
@@ -61,7 +62,7 @@ class HelpManager:
                           lambda: QDesktopServices.openUrl(QUrl(url)))
 
     def show(self, name: str, content: str):
-        base_path = pathlib.Path(__file__).parent
+        base_path = app_root()
         candidates = [content, content + '.md', content + '.html']
         file_path = None
         for candidate in candidates:
@@ -99,7 +100,7 @@ def help_dialog(file: str, parent=None):
     """
     help_window = QDialog(parent)
     help_pane = HelpWindow()
-    absfile = file if os.path.isabs(file) else str((pathlib.Path(__file__).parent / file).resolve())
+    absfile = file if os.path.isabs(file) else str((app_root() / file).resolve())
     help_pane.setSource(QUrl.fromLocalFile(absfile))
     help_pane.setWindowTitle('Backends')
     help_pane.show()

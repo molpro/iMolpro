@@ -1,6 +1,6 @@
 import os.path
 
-from utilities import EditFile
+from iMolpro.utilities import EditFile
 import time
 
 
