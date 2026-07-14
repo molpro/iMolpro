@@ -17,13 +17,14 @@ Once the input has been prepared, the job can be submitted either locally (defau
 Editing of input can be done in one of _guided_ or _freehand_ modes. In guided mode, the default for new projects, as well for old inputs that are sufficiently simple that their structure can be parsed, methods and options are specified through buttons and menus. In freehand mode, the text of the input is simply edited by hand. It is possible at any time to toggle between the two modes, and if guided mode becomes impossible, an attempt to toggle will show information on why. Most projects prepared previously with
 [gmolpro](https://www.molpro.net/manual/doku.php?id=gmolpro_graphical_user_interface) will open successfully in guided mode.
 ### License
-iMolpro is licensed under the [GNU GPL v3](https://www.gnu.org/licenses/licenses.html#GPL).
+iMolpro is
+licensed under the [GNU LGPL v3](https://opensource.org/license/lgpl-3-0).
 ### Acknowledgements
 The following libraries are used.
 
-* [PyQt5](https://riverbankcomputing.com/software/pyqt/intro), a set of Python bindings for [The Qt Company](https://www.qt.io/)'s Qt application framework,
-licensed under the [GNU GPL v3](https://www.gnu.org/licenses/licenses.html#GPL).
-* [Jmol](http://www.jmol.org/), an open-source Java viewer for chemical structures in 3D, licensed under the [GNU LGPL](https://www.gnu.org/licenses/licenses.html#LGPL).
+* [PySide6](https://doc.qt.io/qtforpython-6/), a set of Python bindings for [The Qt Company](https://www.qt.io/)'s Qt application framework,
+licensed under the [GNU LGPL v3](https://opensource.org/license/lgpl-3-0).
+* [VTK](https://vtk.org/), a software system for 3D computer graphics, image processing and visualization, licensed under the [BSD 3-Clause License](https://opensource.org/license/bsd-3-clause/).
 * [PyInstaller](https://pyinstaller.org/)
 * [pysjef](https://github.com/molpro/pysjef)
 * [pymolpro](https://github.com/molpro/pymolpro)
