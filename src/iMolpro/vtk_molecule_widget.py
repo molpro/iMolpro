@@ -468,7 +468,7 @@ class ControlPanel(QWidget):
 class MoleculeScene(QVTKRenderWindowInteractor):
 
     def __init__(self, parent=None):
-        QVTKRenderWindowInteractor.__init__(self)  # , parent)
+        QVTKRenderWindowInteractor.__init__(self, parent)
         self.renderer = vtkRenderer()
         self.renderer.AutomaticLightCreationOff()
         light_kit = vtkLightKit()
