@@ -1,4 +1,4 @@
-pyside6 >=6.11.1
+pyside6 <6.10
 qt6-webengine
 pyinstaller >=6
 pymolpro >=1.19.5
