@@ -71,6 +71,18 @@ try:
 except ImportError:
     pass
 
+# PJK: VTK's own default here is "QWidget", which relies on a native
+# (platform) top-level window created via WA_PaintOnScreen. On PySide6 6.11
+# that native window was not correctly embedded once this widget was
+# reparented into a layout after construction: VTK content appeared in a
+# separate floating window and painted over sibling widgets (e.g. a
+# containing tab bar). QOpenGLWidget instead renders into a framebuffer
+# object that Qt composites as a normal widget, avoiding a separate native
+# surface. This combination is already supported below (see the
+# PyQtImpl/QVTKRWIBase compatibility check), just not VTK's default.
+if QVTKRWIBase == "QWidget" and PyQtImpl in ("PySide6", "PyQt6", None):
+    QVTKRWIBase = "QOpenGLWidget"
+
 from vtkmodules.vtkRenderingCore import vtkRenderWindow
 from vtkmodules.vtkRenderingUI import vtkGenericRenderWindowInteractor
 
