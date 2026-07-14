@@ -78,11 +78,11 @@ PATH=/usr/bin:$PATH pyi-makespec \
   --name iMolpro \
   --paths="$PWD/src" \
   --collect-submodules=iMolpro \
-  --add-data JSmol.min.js:. \
-  --add-data j2s:./j2s \
-  --add-data Molpro_Logo_Molpro_Quantum_Chemistry_Software.png:. \
-  --add-data README.md:. \
-  --add-data doc:./doc \
+  --add-data src/iMolpro/data/JSmol.min.js:. \
+  --add-data src/iMolpro/data/j2s:./j2s \
+  --add-data src/iMolpro/data/Molpro_Logo_Molpro_Quantum_Chemistry_Software.png:. \
+  --add-data src/iMolpro/data/README.md:. \
+  --add-data src/iMolpro/data/doc:./doc \
   --add-data "${versionfile}":. \
   --add-data $builddir/molpro:./molpro \
   --add-data $CONDA_PREFIX/lib/python$(python --version|sed -e 's/.* //' -e 's/\.[0-9]*$//')/site-packages/pymolpro/molpro_input.json:./pymolpro \

@@ -161,7 +161,10 @@ class Chooser(QMainWindow):
                 version = open(version_file, 'r').read().strip()
             if version:
                 return version
-            else:
+            try:
+                from importlib.metadata import version as installed_version
+                return installed_version('iMolpro')
+            except Exception:
                 return 'unknown'
 
         version_label = LinkLabel("iMolpro version " + version_(), 'https://github.com/molpro/iMolpro/tree/'+re.sub('-.*','',version_())+'/README.md')

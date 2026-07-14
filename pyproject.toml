@@ -10,7 +10,7 @@ license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.9"
 dynamic = ["version"]
 dependencies = [
-    "pyside6>=6.11.1",
+    "pyside6<6.10",
     "pymolpro>=1.19.5",
     "pysjef>=1.45.9",
     "pubchempy>=1",
@@ -43,6 +43,9 @@ strict = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+iMolpro = ["data/**/*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
