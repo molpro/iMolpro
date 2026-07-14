@@ -78,8 +78,6 @@ PATH=/usr/bin:$PATH pyi-makespec \
   --name iMolpro \
   --paths="$PWD/src" \
   --collect-submodules=iMolpro \
-  --add-data src/iMolpro/data/JSmol.min.js:. \
-  --add-data src/iMolpro/data/j2s:./j2s \
   --add-data src/iMolpro/data/Molpro_Logo_Molpro_Quantum_Chemistry_Software.png:. \
   --add-data src/iMolpro/data/README.md:. \
   --add-data src/iMolpro/data/doc:./doc \
@@ -141,24 +139,6 @@ if [ "$(uname)" = Darwin ]; then
 #  (cd "${builddir}"/dist/iMolpro.app/Contents||exit 1; ln -s MacOS/Resources/PyQt5/Qt/translations .)
 #  find dist/iMolpro.app -type l ! -exec test -e {} \; -exec rm {} \;
   codesign -s "$application_signing_identity" --deep --force --options runtime "${builddir}"/dist/iMolpro.app
-# https://stackoverflow.com/questions/55897337/qtwebbrowser-macos-signing-issue
-  cat > QtWebEngineProcess.entitlements <<EOF
-  <?xml version="1.0" encoding="UTF-8"?>
-  <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-  <plist version="1.0">
-  <dict>
-  	  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-  	  <true/>
-  	  <key>com.apple.security.cs.disable-library-validation</key>
-  	  <true/>
-  	  <key>com.apple.security.cs.allow-jit</key>
-  	  <true/>
-      <key>com.apple.security.cs.disable-executable-page-protection</key>
-      <true/>
-  </dict>
-  </plist>
-EOF
-  codesign --force --verify --verbose --sign "$application_signing_identity" --entitlements QtWebEngineProcess.entitlements --options runtime "${builddir}"/dist/iMolpro.app/Contents/Frameworks/PySide6/Qt/lib/qt6/QtWebEngineProcess
   codesign -s "$application_signing_identity" --force --options runtime "${builddir}"/dist/iMolpro.app
 
   codesign -dv "${builddir}"/dist/iMolpro.app

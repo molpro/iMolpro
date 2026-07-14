@@ -12,7 +12,6 @@ from pymolpro.elements import periodic_table
 from .RunDirectoryMenu import RunDirectoryMenus
 from .utilities import atoms_from_xyz
 from .project import Project, Structure
-from ._paths import app_root
 
 try:
     import pwd
@@ -240,17 +239,6 @@ class ProjectWindow(QMainWindow):
         self.ensure_local_molpro()
 
         settings['project_directory'] = os.path.dirname(self.project.filename(run=-1))
-
-        self.jsmol_min_js = str(app_root() / "JSmol.min.js")
-        if hasattr(sys, '_MEIPASS') and platform.uname().system != 'Windows':
-            os.environ['QTWEBENGINEPROCESS_PATH'] = os.path.normpath(os.path.join(
-                sys._MEIPASS, 'PySide6', 'Qt', 'libexec', 'QtWebEngineProcess'
-            ))
-        os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--no-sandbox'
-        likely_qtwebengineprocess = os.path.normpath(
-            os.path.join(str(app_root()), 'PySide6', 'Qt5', 'libexec', 'QtWebEngineProcess'))
-        if os.path.exists(likely_qtwebengineprocess):
-            os.environ['QTWEBENGINEPROCESS_PATH'] = likely_qtwebengineprocess
 
         self.discover_external_viewer_commands()
 
@@ -730,65 +718,37 @@ class ProjectWindow(QMainWindow):
     def rebuild_vod_selector(self):
         # logger.debug('rebuild_vod_selector')
         self.vods.clear()
-        if settings['use_jmol']:
-            for t, f in self.geometry_files():
-                self.vod_selector_action('Edit ' + f)
-            self.vod_selector_action('Initial structure')
-            if self.project.status == 'completed' or (
-                    os.path.isfile(self.project.filename('xml')) and open(self.project.filename('xml'),
-                                                                          'r').read().rstrip()[
-                -9:] == '</molpro>'):
-                self.vod_selector_action('Final structure')
-                for t, f in self.putfiles():
-                    if f.replace('.molden', '') in molpro_input.local_orbital_types():
-                        self.vod_selector_action(
-                            molpro_input.local_orbital_types()[f.replace('.molden', '')]['text'] + ' orbitals')
+        initial_xyz = self.initial_xyz()
+        if initial_xyz:
             try:
-                for index in range(10000):
-                    molden_file_stem = self.project.filename('molden', 'xml_orbitals').replace('.molden', '')
-                    file, label = self.project.orbitals_to_molden(molden_file_stem, index)
-                    assert os.path.isfile(file)
-                    # self.visualise_output(file, '', 'Orbitals '+str(index+1))
-                    title = (str(label) + ' orbitals') if label else 'Orbitals'
-                    title += ' ' + str(index + 1)
-                    if title not in self.vods:
-                        self.embedded_vod_jmol(file, command='mo HOMO', title=title)
-                    # self.vod_selector_action(file)
+                atoms = atoms_from_xyz(initial_xyz)
+                self.vods['initial structure'] = MoleculeDisplay(atoms, self )
             except:
-                pass
-
-        if settings['use_vtk']:
-            initial_xyz = self.initial_xyz()
-            if initial_xyz:
-                try:
-                    atoms = atoms_from_xyz(initial_xyz)
-                    self.vods['initial structure'] = MoleculeDisplay(atoms, self )
-                except:
-                    raise Exception('Could not read initial xyz file')
-            final_structure = self.project.structure(True)
-            metadata={}
-            if final_structure.vibrations:
-                metadata['vibrations'] = final_structure.vibrations
-            self.vods['final structure'] = MoleculeDisplay(final_structure, self)
-            labels = {}
-            try:
-                for index in range(10000):
-                    orbitals = self.project.orbitals(index)
-                    orbitals_node = orbitals[0].node.getparent()
-                    label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals'
-                    if label in labels:
-                        labels[label] += 1
-                        label = label + ': ' + str(labels[label])
-                    else:
-                        labels[label] = 0
-                    self.vods[label] = MoleculeDisplay(orbitals, self,
-                                                       metadata=orbitals_node.attrib,
-                                                       )
-                    self.vod_selector_action(label)
-            except Exception as e:
-                if not isinstance(e, (IndexError)):
-                    print('Orbitals except',str(e)+' '+str(type(e)))
-                pass
+                raise Exception('Could not read initial xyz file')
+        final_structure = self.project.structure(True)
+        metadata={}
+        if final_structure.vibrations:
+            metadata['vibrations'] = final_structure.vibrations
+        self.vods['final structure'] = MoleculeDisplay(final_structure, self)
+        labels = {}
+        try:
+            for index in range(10000):
+                orbitals = self.project.orbitals(index)
+                orbitals_node = orbitals[0].node.getparent()
+                label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals'
+                if label in labels:
+                    labels[label] += 1
+                    label = label + ': ' + str(labels[label])
+                else:
+                    labels[label] = 0
+                self.vods[label] = MoleculeDisplay(orbitals, self,
+                                                   metadata=orbitals_node.attrib,
+                                                   )
+                self.vod_selector_action(label)
+        except Exception as e:
+            if not isinstance(e, (IndexError)):
+                print('Orbitals except',str(e)+' '+str(type(e)))
+            pass
 
 
     def putfiles(self):
@@ -863,237 +823,12 @@ class ProjectWindow(QMainWindow):
         if not os.path.exists(filename): return
         if external_path:
             subprocess.Popen([external_path, filename])
-        else:
-            title = os.path.splitext(os.path.basename(filename))[0]
-            if title in molpro_input.local_orbital_types().keys():
-                title = molpro_input.local_orbital_types()[title]['text']
-            elif title == os.path.splitext(os.path.basename(self.project.filename()))[0]:
-                title = 'final structure'
-            if title not in self.vods:
-                self.embedded_vod_jmol(filename, command='mo HOMO', title=title)
+        # else: JSmol-based fallback removed along with the WebEngine dependency. In
+        # practice 'final structure' and every orbital label are already populated by
+        # rebuild_vod_selector's MoleculeDisplay-based loop, so this rarely fired --
+        # but a not-yet-covered typ/name combination will now silently do nothing
+        # instead of falling back to an embedded viewer.
 
-    def embedded_vod_jmol(self, file, command='', title='structure', **kwargs):
-        height, width = self.embedded_geometry(280)
-        # logger.debug('embedded_vod ' + file + ', ' + command + ', ' + title + ', ' + str(height) + ', ' + str(width))
-        firstvib = 1
-        firstorb = 1
-        try:
-            firstmodel = factory_coordinate_set(file, **kwargs).coordinateSet
-        except:
-            firstmodel = None
-        try:
-            vibs = factory_vibration_set(file, **kwargs)
-            firstmodel = firstvib = vibs.coordinateSet
-        except:
-            vibs = None
-        try:
-            orbs = factory_orbital_set(file, **kwargs)
-            firstmodel = firstorb = orbs.coordinateSet
-        except:
-            orbs = None
-        if not 'orbital_transparency' in settings: settings['orbital_transparency'] = 0.3
-        html = """<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<script type="text/javascript" src=" """ + self.jsmol_min_js + """"> </script>
-</head>
-<body>
-<table>
-<tr valign="top"><td>
-<script>
-var Info = {
-  color: "#FFFFFF",
-  height: """ + str(height) + """,
-  width: """ + str(width) + """,
-  script: "load '""" + re.sub('\\\\', '\\\\\\\\',
-                              file) + """'; set antialiasDisplay ON; set showFrank OFF; model """ + str(
-            firstmodel) + """; """ + command + """; mo nomesh fill translucent """ + str(
-            settings['orbital_transparency']) + """; mo resolution 7; mo titleFormat ' '",
-  use: "HTML5",
-  j2sPath: "j2s",
-  serverURL: "php/jsmol.php",
-};
-
-Jmol.getApplet("myJmol", Info);
-</script>
-</td>
-<td>
-<p>
-<script>
-Jmol.jmolLink(myJmol,'menu','Jmol menu')
-</script>
-</p>
-<table><tr>
-"""
-
-        if orbs and orbs.energies:
-            html += """
-<script>
-Jmol.script(myJmol, 'frame  """
-            html += str(firstorb)
-            html += """')
-Jmol.jmolHtml('<td>Orbitals: ')
-Jmol.jmolBr()
-Jmol.jmolMenu(myJmol,[
-"""
-            for i in range(len(orbs.index)):
-                html += ('["model ' + str(firstorb) + '; vibration off; mo ' + str(orbs.index[i]) + '", "' +
-                         orbs.orbitals[i]['ID'] +
-                         (' occ=' + '{:.3f}'.format(orbs.orbitals[i]['occupation']) if 'occupation' in orbs.orbitals[
-                             i] else '') +
-                         (' ene=' + '{:.3f}'.format(orbs.orbitals[i]['energy']) if 'energy' in orbs.orbitals[
-                             i] else '') +
-                         '"],')
-            html += """
-],10);
-Jmol.jmolBr()
-
-
- var r = [
-    ["mo resolution 4","--"],
-    ["mo resolution 7","-",true],
-    ["mo resolution 10","10"],
-    ["mo resolution 13","+"],
-    ["mo resolution 16","++"]
- ];
-Jmol.jmolBr()
- Jmol.jmolHtml("Orbital resolution:<br>")
- Jmol.jmolRadioGroup(myJmol, r, " ", "Resolution");
-Jmol.jmolBr()
-
- var t = [
-    ['mo translucent  """ + str(float(settings['orbital_transparency']) - 0.2) + """',"--"],
-    ['mo translucent  """ + str(float(settings['orbital_transparency']) - 0.1) + """',"-"],
-    ['mo translucent  """ + str(float(settings['orbital_transparency'])) + """','""" + str(
-                float(settings['orbital_transparency'])) + """',true],
-    ['mo translucent  """ + str(float(settings['orbital_transparency']) + 0.1) + """',"+"],
-    ['mo translucent  """ + str(float(settings['orbital_transparency']) + 0.2) + """',"++"],
- ];
-Jmol.jmolBr()
- Jmol.jmolHtml("Orbital transparency:<br>")
- Jmol.jmolRadioGroup(myJmol, t, " ", "Orbital transparency");
-Jmol.jmolBr()
-
-Jmol.jmolBr()
-Jmol.jmolCheckbox(myJmol,'mo TITLEFORMAT "Model %M, MO %I/%N|Energy = %E %U|?Label = %S|?Occupancy = %O"', "mo TITLEFORMAT ' '","orbital info")
-
-Jmol.jmolBr()
-</script>
-             """
-        elif vibs and vibs.frequencies:
-            html += """
-        <script>
-        Jmol.jmolHtml('<td>Vibrations: ')
-        Jmol.jmolHtml(' ')
-        Jmol.jmolCheckbox(myJmol,"vibration on", "vibration off", "animate", 0)
-        Jmol.jmolHtml(' ')
-        Jmol.script(myJmol, 'color vectors yellow')
-        Jmol.jmolCheckbox(myJmol,"vectors on", "vectors off", "vectors")
-        Jmol.jmolHtml(' ')
-        Jmol.jmolBr()
-        Jmol.jmolMenu(myJmol,[
-              """
-            for frequency in vibs.frequencies:
-                if abs(frequency) > 1.0:
-                    html += '["frame ' + str(firstvib) + '", "' + str(frequency) + '"],'
-                firstvib += 1
-            html += """
-        ],10);
-        Jmol.jmolBr()
-        </script>
-                 """
-
-        html += """
-        <script>
-          Jmol.jmolCheckbox(myJmol,'label "%e%i"; color labels black', "label off","atom labels")
-        </script>
-        </td>
-        </tr>
-<script>
-Jmol.jmolHtml("<p>")
-Jmol.jmolCommandInput(myJmol,'&rarr; Jmol',25,1,'title')
-Jmol.jmolHtml("</p>")
-</script>
-</td>
-</tr>
-</table>
-</body>
-</html>"""
-        self.add_vod(html, title=title, **kwargs)
-
-    def embedded_geometry(self, right_margin=280):
-        self.show()
-        width = self.geometry().width() - self.input_tabs.geometry().width() - right_margin
-        height = self.output_tabs.geometry().height() - 40
-        width = min(width, height)
-        height = min(width, height)
-        return height, width
-
-    def embedded_builder(self, rawfile, title='builder', **kwargs):
-        file = pathlib.Path(rawfile).as_posix()
-        height, width = self.embedded_geometry(280)
-
-        html = """<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<script type="text/javascript" src=" """ + self.jsmol_min_js + """"> </script>
-</head>
-<body>
-<table>
-<tr valign="top"><td>
-<script>
-var Info = {
-  color: "#FFFFFF",
-  height: """ + str(height) + """,
-  width: """ + str(width) + """,
-  script: "set antialiasDisplay ON;"""
-        html += ' load \'' + re.sub('\\\\', '\\\\', file) + '\';'
-        html += """ set showFrank OFF; set modelKitMode on",
-  use: "HTML5",
-  j2sPath: "j2s",
-  serverURL: "php/jsmol.php",
-};
-
-Jmol.getApplet("myJmol", Info);
-</script>
-</td>
-<td>
-<p>
-Click in the top left corner of the display pane for options.<br/>
-</p>
-<p>
-<script>
-Jmol.jmolButton(myJmol, 'write """
-        filetype = os.path.splitext(file)[1][1:]
-        html += filetype + ' "' + file
-        html += """\"','Save structure')
-Jmol.jmolHtml("</p>")
-Jmol.jmolHtml("<p>")
-Jmol.jmolLink(myJmol,'menu','Jmol menu')
-Jmol.jmolHtml("</p>")
-Jmol.jmolHtml("<p>")
-Jmol.jmolCommandInput(myJmol,'&rarr; Jmol',25,1,'title')
-Jmol.jmolHtml("</p>")
-</script>
-</td>
-</tr>
-</table>
-</body>
-</html>"""
-
-        self.add_vod(html, title=title, **kwargs)
-
-    def add_vod(self, *args, title='structure', **kwargs):
-        from .web_engine import VOD
-        # print('add_vod', title)
-        if title in self.vods.keys():
-            # print('duplicate vod',title)
-            return
-        vod = VOD(*args, directory=self.project.filename(run=-1), title=title, **kwargs)
-        vod.hide()
-        self.vods[vod.title] = vod
 
     def show_xyz(self, instance=-1):
         for file in self.geometry_files():

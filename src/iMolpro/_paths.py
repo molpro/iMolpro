@@ -1,6 +1,6 @@
 """
 Resolve the directory containing iMolpro's bundled, non-package data files
-(JSmol.min.js, j2s/, README.md, doc/, the Molpro logo, etc).
+(README.md, doc/, the Molpro logo, etc).
 
 These files live in ``src/iMolpro/data`` so that they are actually part of
 the installable ``iMolpro`` package (setuptools only ships files that live

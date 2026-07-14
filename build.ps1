@@ -51,9 +51,7 @@ pyinstaller --noconfirm `
   --name iMolpro `
   --paths="$PWD\src" `
   --collect-submodules=iMolpro `
-  --add-data=src/iMolpro/data/JSmol.min.js:. `
-    --add-data=src/iMolpro/data/j2s:./j2s `
-      --add-data=src/iMolpro/data/Molpro_Logo_Molpro_Quantum_Chemistry_Software.png:. `
+  --add-data=src/iMolpro/data/Molpro_Logo_Molpro_Quantum_Chemistry_Software.png:. `
         --add-data=src/iMolpro/data/README.md:. `
           --add-data=src/iMolpro/data/doc:.\doc `
             --add-data="$versionfile":. `
