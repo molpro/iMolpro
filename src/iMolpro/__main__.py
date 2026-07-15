@@ -100,7 +100,8 @@ def main():
 
     app = App(sys.argv)
     from .theme import apply_theme
-    apply_theme(app, settings.get('theme', 'light'))
+    theme_name = os.environ.get('IMOLPRO_THEME', settings.get('theme', 'light'))
+    apply_theme(app, theme_name)
     if platform.uname().system == 'Windows':
         font = app.font()
         font.setPointSize(7)

@@ -26,8 +26,10 @@ except ImportError:
 
 try:
     ColorRole = QPalette.ColorRole
+    ColorGroup = QPalette.ColorGroup
 except AttributeError:
     ColorRole = QPalette
+    ColorGroup = QPalette
 
 # The traditional light-grey window background iMolpro has always shown
 # (e.g. via conda-forge's PySide6 on macOS), applied explicitly rather than
@@ -43,8 +45,43 @@ def build_light_palette():
     return palette
 
 
+def build_dark_palette():
+    """Construct a 'dark' palette.
+
+    This is the widely-used Fusion dark-palette recipe (the same handful of
+    colours that show up in most Qt dark-theme examples). Unlike the light
+    palette above, a dark theme needs most colour roles set explicitly:
+    Fusion's own defaults for any role you *don't* set are light-theme
+    colours, so e.g. leaving Text/WindowText unset here would give dark
+    (near-black) text on a dark background -- unreadable. The light palette
+    above gets away with only setting Window/Button because every other
+    role's Fusion default already looks fine against a light background.
+    """
+    palette = QPalette()
+    palette.setColor(ColorRole.Window, QColor(53, 53, 53))
+    palette.setColor(ColorRole.WindowText, QColor(255, 255, 255))
+    palette.setColor(ColorRole.Base, QColor(35, 35, 35))
+    palette.setColor(ColorRole.AlternateBase, QColor(53, 53, 53))
+    palette.setColor(ColorRole.ToolTipBase, QColor(255, 255, 255))
+    palette.setColor(ColorRole.ToolTipText, QColor(255, 255, 255))
+    palette.setColor(ColorRole.Text, QColor(255, 255, 255))
+    palette.setColor(ColorRole.Button, QColor(53, 53, 53))
+    palette.setColor(ColorRole.ButtonText, QColor(255, 255, 255))
+    palette.setColor(ColorRole.BrightText, QColor(255, 0, 0))
+    palette.setColor(ColorRole.Link, QColor(42, 130, 218))
+    palette.setColor(ColorRole.Highlight, QColor(42, 130, 218))
+    palette.setColor(ColorRole.HighlightedText, QColor(0, 0, 0))
+    # Without these, disabled widgets (e.g. a greyed-out button) would use
+    # the same white text as enabled ones and become unreadable.
+    palette.setColor(ColorGroup.Disabled, ColorRole.WindowText, QColor(127, 127, 127))
+    palette.setColor(ColorGroup.Disabled, ColorRole.Text, QColor(127, 127, 127))
+    palette.setColor(ColorGroup.Disabled, ColorRole.ButtonText, QColor(127, 127, 127))
+    return palette
+
+
 THEMES = {
     'light': build_light_palette,
+    'dark': build_dark_palette,
 }
 
 
