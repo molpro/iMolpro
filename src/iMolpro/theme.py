@@ -144,4 +144,28 @@ def apply_theme(app, name: str = 'light'):
     except KeyError:
         raise ValueError(f'Unknown theme {name!r}; available: {sorted(THEMES)}')
     app.setPalette(build_palette())
+    # Any widget that's ever had setStyleSheet() called on it -- even for
+    # something unrelated to colour, like a font-size tweak -- switches to
+    # CSS-based rendering internally and stops fully auto-updating with the
+    # setPalette() call above unless explicitly re-polished. Repolish every
+    # existing widget to force them all to recompute their appearance
+    # against the new palette.
+    #
+    # Each widget's polish/update is wrapped in its own try/except: some
+    # widget subclasses (e.g. QListView, used internally by QComboBox's
+    # popup) override update() with a required-argument overload
+    # (update(QModelIndex)) that shadows QWidget's plain update() in this
+    # binding, raising TypeError. Uncaught, that would silently abort this
+    # loop partway through on the first such widget encountered, leaving
+    # every widget after it in app.allWidgets()'s (unordered) iteration
+    # unprocessed -- which widgets that ended up being varied from one
+    # theme switch to the next, giving an inconsistent, seemingly-inverted
+    # appearance that had nothing to do with palette colours at all.
+    for widget in app.allWidgets():
+        try:
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
+            widget.update()
+        except TypeError:
+            pass
     theme_manager.themeChanged.emit(name)
