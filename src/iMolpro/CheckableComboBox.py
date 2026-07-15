@@ -12,6 +12,8 @@ except ImportError:
         from PyQt5.QtGui import QPalette, QFontMetrics, QStandardItem
         from PyQt5.QtWidgets import QComboBox, QStyledItemDelegate
 
+from .theme import theme_manager
+
 try:
     Base = QPalette.Base
     ItemFlag = Qt
@@ -33,6 +35,11 @@ class CheckableComboBox(QComboBox):
     https://gis.stackexchange.com/questions/350148/qcombobox-multiple-selection-pyqt5
     """
 
+    def _update_lineedit_palette(self):
+        palette = QPalette(self.palette())
+        palette.setBrush(Base, self.palette().button())
+        self.lineEdit().setPalette(palette)
+
     # Subclass Delegate to increase item height
     class Delegate(QStyledItemDelegate):
         def sizeHint(self, option, index):
@@ -49,10 +56,11 @@ class CheckableComboBox(QComboBox):
         self.padding = padding
         self.lineEdit().setReadOnly(True)
         self.lineEdit().setStyleSheet('padding-left: ' + str(padding) + 'px')
-        # Make the lineedit the same color as QPushButton
-        palette = QPalette()
-        palette.setBrush(Base, palette.button())
-        self.lineEdit().setPalette(palette)
+        # Make the lineedit the same color as QPushButton, and keep it that
+        # way if the app theme changes later (setPalette locks in an
+        # explicit palette that no longer follows QApplication.setPalette).
+        self._update_lineedit_palette()
+        theme_manager.themeChanged.connect(lambda name: self._update_lineedit_palette())
 
         # Use custom delegate
         self.setItemDelegate(CheckableComboBox.Delegate())

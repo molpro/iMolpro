@@ -18,11 +18,14 @@ later (e.g. a Theme menu offering additional palettes built the same way).
 """
 try:
     from PySide6.QtGui import QPalette, QColor
+    from PySide6.QtCore import QObject, Signal as pyqtSignal
 except ImportError:
     try:
         from PyQt6.QtGui import QPalette, QColor
+        from PyQt6.QtCore import QObject, pyqtSignal
     except ImportError:
         from PyQt5.QtGui import QPalette, QColor
+        from PyQt5.QtCore import QObject, pyqtSignal
 
 try:
     ColorRole = QPalette.ColorRole
@@ -86,6 +89,21 @@ THEMES = {
 }
 
 
+class _ThemeManager(QObject):
+    """Notifies subscribers when the app theme changes.
+
+    QApplication.setPalette() only updates widgets that haven't had their
+    own palette explicitly set -- any widget that calls setPalette() or
+    setStyleSheet() on itself (or a child) 'locks in' that appearance and
+    stops following the application palette. Such widgets should connect to
+    themeChanged and re-apply their own colours from the new theme.
+    """
+    themeChanged = pyqtSignal(str)
+
+
+theme_manager = _ThemeManager()
+
+
 def detect_system_theme(app, default: str = 'light') -> str:
     """Detect the OS's light/dark preference, falling back to `default`.
 
@@ -126,3 +144,4 @@ def apply_theme(app, name: str = 'light'):
     except KeyError:
         raise ValueError(f'Unknown theme {name!r}; available: {sorted(THEMES)}')
     app.setPalette(build_palette())
+    theme_manager.themeChanged.emit(name)

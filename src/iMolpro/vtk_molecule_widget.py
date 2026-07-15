@@ -6,7 +6,7 @@ import numpy as np
 from pymolpro import Orbital
 
 from .project import Structure
-from .theme import LIGHT_GREY_WINDOW, DARK_GREY_WINDOW, THEMES
+from .theme import LIGHT_GREY_WINDOW, DARK_GREY_WINDOW, THEMES, theme_manager
 
 try:
     from PySide6.QtGui import QColor, QPalette
@@ -73,10 +73,27 @@ class ColourScheme(Enum):
 
 class StyledWidget(QWidget):
     def __init__(self, parent=None, background_colour: tuple | ColourScheme = ColourScheme.dark,
+                 follow_theme: bool | None = None,
                  ):
         QWidget.__init__(self, parent)
-        self.background_colour = background_colour.value if isinstance(background_colour,
-                                                                       ColourScheme) else background_colour
+        # True if this widget's background should track the app theme.
+        # Defaults to auto-detecting from background_colour when not given
+        # explicitly: True only if it's a ColourScheme member whose name is
+        # itself a theme name (ColourScheme.dark/.light, as opposed to e.g.
+        # ColourScheme.black). Callers that derive a plain RGB tuple from
+        # some other theme-linked source (e.g. a snapshot of the parent's
+        # current palette colour) should instead pass follow_theme
+        # explicitly, since the tuple alone can't be told apart from a
+        # deliberately-chosen fixed colour that just happens to match.
+        if follow_theme is None:
+            follow_theme = isinstance(background_colour, ColourScheme) and background_colour.name in THEMES
+        self.follow_theme = follow_theme
+        colour = background_colour.value if isinstance(background_colour, ColourScheme) else background_colour
+        self._apply_background_colour(colour)
+        theme_manager.themeChanged.connect(self._on_theme_changed)
+
+    def _apply_background_colour(self, colour):
+        self.background_colour = colour
         self.dark = sum(self.background_colour) / 3.0 < 128
         self.dark = (self.background_colour[0] * 0.299 + self.background_colour[1] * 0.587 + self.background_colour[
             2] * 0.114) / 255.0 < 0.5
@@ -88,6 +105,10 @@ class StyledWidget(QWidget):
             self.setStyleSheet("* { color: rgb(255,255,255); font-size: 10px }\n")
         else:
             self.setStyleSheet("* { color: rgb(0,0,0); font-size: 10px }\n")
+
+    def _on_theme_changed(self, theme_name):
+        if self.follow_theme and theme_name in THEMES:
+            self._apply_background_colour(ColourScheme[theme_name].value)
 
 
 class FixedLabel(QLabel):
@@ -120,6 +141,7 @@ class MoleculeDisplay(QWidget):
                  resolution: float = .3,
                  metadata: dict = {},
                  ):
+        follow_theme = True if background_colour is None else None
         if background_colour is None:
             rgb = parent.palette().color(QPalette.Window).rgb()
             background_colour = (((rgb >> 16) & 0xFF), ((rgb >> 8) & 0xFF), (rgb & 0xFF))
@@ -146,7 +168,7 @@ class MoleculeDisplay(QWidget):
 
         self.molecule_widget = MoleculeWidget(data, self, background_colour=background_colour, sliders=False,
                                               contour_value=contour_value,
-                                              contour_opacity=contour_opacity)
+                                              contour_opacity=contour_opacity, follow_theme=follow_theme)
         layout.addWidget(self.molecule_widget)
 
         self.right_panel = ControlPanel(self, metadata=metadata)
@@ -191,6 +213,12 @@ class MoleculeDisplay(QWidget):
 
 
 class MoleculeWidget(StyledWidget):
+    def _on_theme_changed(self, theme_name):
+        super()._on_theme_changed(theme_name)
+        if self.follow_theme and theme_name in THEMES:
+            self.scene.SetBackground(*[c / 255.0 for c in self.background_colour])
+            self.scene.GetRenderWindow().GetInteractor().Render()
+
     def refresh_model(self, source):
         # print('refresh_model', type(source))
         # print('self.model', type(self.model))
@@ -206,9 +234,9 @@ class MoleculeWidget(StyledWidget):
     def __init__(self, source, parent=None, axes: bool = False,
                  background_colour: tuple | ColourScheme = ColourScheme.dark,
                  contour_value=.1, contour_opacity=.7,
-                 sliders: bool = True,
+                 sliders: bool = True, follow_theme: bool | None = None,
                  ):
-        StyledWidget.__init__(self, parent, background_colour=background_colour)
+        StyledWidget.__init__(self, parent, background_colour=background_colour, follow_theme=follow_theme)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -272,7 +300,7 @@ class MoleculeWidget(StyledWidget):
         self.model.set_contour_value(contour_value)
         self.scene.GetRenderWindow().GetInteractor().Render()
 
-    def set_background_colour(self, colour: QColor | int | tuple[float, float, float]):
+    def set_background_colour(self, colour: QColor | int | tuple[float, float, float], follow_theme: bool = False):
         # print('set_background_colour', colour,type(colour))
         if type(colour) is int:
             colour = QColor(colour)
@@ -283,7 +311,8 @@ class MoleculeWidget(StyledWidget):
             green = (rgb >> 8) & 0xFF
             red = (rgb >> 16) & 0xFF
             # print('set_background_colour', rgb,red,green,blue)
-            return self.set_background_colour((red, green, blue))
+            return self.set_background_colour((red, green, blue), follow_theme=follow_theme)
+        self.follow_theme = follow_theme
         self.background_colour = colour
         self.scene.SetBackground(*[c / 255.0 for c in self.background_colour])
         self.scene.GetRenderWindow().GetInteractor().Render()
@@ -455,7 +484,8 @@ class ControlPanel(QWidget):
                 f'border: 1px solid rgb({mid.red()},{mid.green()},{mid.blue()});')
             colour_selection_layout2.addWidget(button)
             button.clicked.connect(
-                lambda checked, name=name: self.parent.molecule_widget.set_background_colour(ColourScheme[name].value))
+                lambda checked, name=name: self.parent.molecule_widget.set_background_colour(
+                    ColourScheme[name].value, follow_theme=(name in THEMES)))
         button = QPushButton('Other...')
         i += 1
         colour_selection_layout.addWidget(button)
