@@ -99,12 +99,26 @@ class Chooser(QMainWindow):
         cwd = app_root()
 
         class LinkImage(QLabel):
+            # Render at a generous fixed multiplier rather than querying
+            # QGuiApplication.primaryScreen().devicePixelRatio() here: at
+            # construction time this widget isn't yet shown or positioned on
+            # any particular screen, so on a mixed-DPI multi-monitor setup
+            # that query can report the wrong screen's scale factor entirely
+            # -- producing a pixmap that's too low-resolution for the screen
+            # the window actually opens on, which Qt then has to upscale
+            # (blurry, and the softened edges can look like the image is
+            # spilling past its intended box). The source PNG is large
+            # (3139x3475), so rendering at a fixed high ratio and letting Qt
+            # scale down for lower-DPI screens stays sharp everywhere.
+            RENDER_RATIO = 3
+
             def __init__(self, image, url=None, width=250, height=250):
                 super().__init__()
-                ratio = QGuiApplication.primaryScreen().devicePixelRatio()
+                ratio = self.RENDER_RATIO
                 self.setPixmap(QPixmap(image).scaled(int(width * ratio), int(height * ratio), KeepAspectRatio,
                                                      SmoothTransformation))
                 self.pixmap().setDevicePixelRatio(ratio)
+                self.setFixedSize(width, height)
                 self.url = QUrl(url)
                 self.setAlignment(AlignCenter)
 
