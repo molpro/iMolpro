@@ -116,8 +116,8 @@ class ItemLayout(QGridLayout):
 class MoleculeDisplay(QWidget):
     def __init__(self, source: Structure | str | list, parent=None, axes: bool = False,
                  background_colour: tuple | ColourScheme | None = None,
-                 contour_value=.05, contour_opacity=.7,
-                 resolution: float = .5,
+                 contour_value=.1, contour_opacity=.7,
+                 resolution: float = .3,
                  metadata: dict = {},
                  ):
         if background_colour is None:
@@ -205,7 +205,7 @@ class MoleculeWidget(StyledWidget):
 
     def __init__(self, source, parent=None, axes: bool = False,
                  background_colour: tuple | ColourScheme = ColourScheme.dark,
-                 contour_value=.05, contour_opacity=.7,
+                 contour_value=.1, contour_opacity=.7,
                  sliders: bool = True,
                  ):
         StyledWidget.__init__(self, parent, background_colour=background_colour)
@@ -586,7 +586,7 @@ class MolecularModel(vtkActorCollection):
     def __init__(self, source: dict | CubeData | str | list[str],
                  radius_scale: float = 0.6, bond_radius: float = .25,
                  bond_colour: tuple[float, float, float] = (1.0, 1.0, 1.0),
-                 contour_value: float = .05,
+                 contour_value: float = .1,
                  contour_colours: list[tuple[float, float, float]] = [(1.0, 0.0, 0.0), (0.0, 0.0, 1.0)],
                  contour_opacity: float = 0.7):
         """
