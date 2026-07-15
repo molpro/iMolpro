@@ -487,7 +487,7 @@ class ProjectWindow(QMainWindow):
                           lambda arg, parent=self: settings_edit(parent, {'orbital_transparency': self.restart_vods}),
                           tooltip='Edit settings')
         menubar.addSeparator('Edit')
-        if settings['use_jmol']:
+        if False and settings['use_jmol']:
             menubar.addAction('Structure', 'Edit', self.edit_input_structure, 'Ctrl+D', 'Edit molecular geometry')
         menubar.addAction('Cut', 'Edit', self.input_pane.cut, 'Ctrl+X', 'Cut')
         menubar.addAction('Copy', 'Edit', lambda: QApplication.focusWidget().copy(), 'Ctrl+C', 'Copy')
@@ -553,7 +553,7 @@ class ProjectWindow(QMainWindow):
         self.backend_configuration_editor.exec()
 
     def edit_input_structure(self):
-        if settings['use_jmol']:
+        if False and settings['use_jmol']:
             f = self.geometry_files()
             if f:
                 filename = self.project.filename('', f[-1][1], run=-1)
