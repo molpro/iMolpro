@@ -30,7 +30,7 @@ try:
     from PySide6.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
         QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
         QToolButton
-    from PySide6.QtGui import QFont, QDesktopServices, QAction
+    from PySide6.QtGui import QFont, QDesktopServices, QAction, QActionGroup
     # from PySide6.QtCore.Qt.AlignmentFlag import Qt_AlignCenter, Qt_AlignTop
 except ImportError as e:
     # print('PySide6 not found. Trying PyQt6',str(e))
@@ -39,7 +39,7 @@ except ImportError as e:
         from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
         QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
         QToolButton
-        from PyQt6.QtGui import QFont, QDesktopServices, QAction
+        from PyQt6.QtGui import QFont, QDesktopServices, QAction, QActionGroup
         import PyQt6.QtCore
         # from Qt.AlignmentFlag import AlignVCenter as Qt_AlignCenter, AlignTop as Qt_AlignTop
     except ImportError as e:
@@ -47,7 +47,7 @@ except ImportError as e:
         from PyQt5.QtCore import QTimer, pyqtSignal, QCoreApplication, Qt, QSize, QEvent
         from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
             QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
-            QToolButton, QAction
+            QToolButton, QAction, QActionGroup
         from PyQt5.QtGui import QFont, QDesktopServices
         # from PyQt5.QtCore.Qt import AlignCenter as Qt_AlignCenter, AlignTop as Qt_AlignTop
 
@@ -83,6 +83,7 @@ from .utilities import EditFile, ViewFile, factory_vibration_set, factory_orbita
     writable_directory
 from .backend import configure_backend, BackendConfigurationEditor
 from .settings import settings, settings_edit
+from .theme import THEMES, apply_theme, detect_system_theme
 from .OptionsDialog import OptionsDialog
 from .vtk_molecule_widget import MoleculeDisplay, MoleculeWidget
 
@@ -509,6 +510,17 @@ class ProjectWindow(QMainWindow):
                           'Increase font size')
         menubar.addAction('Zoom Out', 'View', lambda: [p.zoomOut() for p in self.output_panes.values()], 'Alt+-',
                           'Decrease font size')
+        theme_menu = QMenu('Theme')
+        theme_action_group = QActionGroup(self)
+        theme_action_group.setExclusive(True)
+        current_theme = settings['theme'] if 'theme' in settings else detect_system_theme(QApplication.instance())
+        for theme_name in THEMES:
+            action = theme_menu.addAction(theme_name.capitalize())
+            action.setCheckable(True)
+            action.setChecked(theme_name == current_theme)
+            theme_action_group.addAction(action)
+            action.triggered.connect(lambda checked, theme_name=theme_name: self.set_theme(theme_name))
+        menubar.addSubmenu(theme_menu, 'View')
         menubar.addSeparator('View')
         menubar.addAction('Initial structure 3D', 'View', self.visualise_input,
                           tooltip='View the molecular structure in the job input')
@@ -618,6 +630,10 @@ class ProjectWindow(QMainWindow):
             if self.output_tabs.tabText(run) == tab_name:
                 # print('add_output_tab setting current Index',run,tab_name)
                 self.output_tabs.setCurrentIndex(run)
+
+    def set_theme(self, theme_name):
+        settings['theme'] = theme_name
+        apply_theme(QApplication.instance(), theme_name)
 
     def guided_toggle(self):
         # logger.debug('guided_toggle')
