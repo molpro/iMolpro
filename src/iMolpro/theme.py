@@ -35,6 +35,7 @@ except AttributeError:
 # (e.g. via conda-forge's PySide6 on macOS), applied explicitly rather than
 # left to whichever native theme integration happens to be present.
 LIGHT_GREY_WINDOW = QColor(0xec, 0xec, 0xec)
+DARK_GREY_WINDOW = QColor(53, 53, 53)
 
 
 def build_light_palette():
@@ -58,14 +59,14 @@ def build_dark_palette():
     role's Fusion default already looks fine against a light background.
     """
     palette = QPalette()
-    palette.setColor(ColorRole.Window, QColor(53, 53, 53))
+    palette.setColor(ColorRole.Window, DARK_GREY_WINDOW)
     palette.setColor(ColorRole.WindowText, QColor(255, 255, 255))
     palette.setColor(ColorRole.Base, QColor(35, 35, 35))
     palette.setColor(ColorRole.AlternateBase, QColor(53, 53, 53))
     palette.setColor(ColorRole.ToolTipBase, QColor(255, 255, 255))
     palette.setColor(ColorRole.ToolTipText, QColor(255, 255, 255))
     palette.setColor(ColorRole.Text, QColor(255, 255, 255))
-    palette.setColor(ColorRole.Button, QColor(53, 53, 53))
+    palette.setColor(ColorRole.Button, DARK_GREY_WINDOW)
     palette.setColor(ColorRole.ButtonText, QColor(255, 255, 255))
     palette.setColor(ColorRole.BrightText, QColor(255, 0, 0))
     palette.setColor(ColorRole.Link, QColor(42, 130, 218))

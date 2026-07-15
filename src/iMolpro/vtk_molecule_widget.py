@@ -6,6 +6,7 @@ import numpy as np
 from pymolpro import Orbital
 
 from .project import Structure
+from .theme import LIGHT_GREY_WINDOW, DARK_GREY_WINDOW
 
 try:
     from PySide6.QtGui import QColor, QPalette
@@ -55,9 +56,8 @@ from vtkmodules.vtkRenderingLabel import vtkPointSetToLabelHierarchy, vtkLabelPl
 
 
 class ColourScheme(Enum):
-    # dark = 20, 20, 30,
-    dark = 0, 4, 0x35,
-    light = 236, 236, 236,
+    dark = DARK_GREY_WINDOW.red(), DARK_GREY_WINDOW.green(), DARK_GREY_WINDOW.blue(),
+    light = LIGHT_GREY_WINDOW.red(), LIGHT_GREY_WINDOW.green(), LIGHT_GREY_WINDOW.blue(),
     black = 0, 0, 0,
     white = 255, 255, 255,
     red = 255, 0, 0,
