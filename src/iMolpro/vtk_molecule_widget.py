@@ -449,7 +449,10 @@ class ControlPanel(QWidget):
             # button = QPushButton('')
             button = QToolButton(self)
             button.setMaximumSize(QSize(15, 15))
-            button.setStyleSheet(f'background-color: rgb{str(ColourScheme[name].value)}; border: 1px solid palette(mid);')
+            mid = button.palette().color(ColorRole.Mid)
+            button.setStyleSheet(
+                f'background-color: rgb{str(ColourScheme[name].value)}; '
+                f'border: 1px solid rgb({mid.red()},{mid.green()},{mid.blue()});')
             colour_selection_layout2.addWidget(button)
             button.clicked.connect(
                 lambda checked, name=name: self.parent.molecule_widget.set_background_colour(ColourScheme[name].value))
