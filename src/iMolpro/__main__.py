@@ -99,8 +99,9 @@ def main():
                 ctypes.windll.user32.ShowWindow(console_window, 2)
 
     app = App(sys.argv)
-    from .theme import apply_theme
-    theme_name = os.environ.get('IMOLPRO_THEME', settings.get('theme', 'light'))
+    from .theme import apply_theme, detect_system_theme
+    default_theme = settings['theme'] if 'theme' in settings else detect_system_theme(app)
+    theme_name = os.environ.get('IMOLPRO_THEME', default_theme)
     apply_theme(app, theme_name)
     if platform.uname().system == 'Windows':
         font = app.font()

@@ -86,6 +86,32 @@ THEMES = {
 }
 
 
+def detect_system_theme(app, default: str = 'light') -> str:
+    """Detect the OS's light/dark preference, falling back to `default`.
+
+    Uses QGuiApplication.styleHints().colorScheme(), Qt's cross-platform
+    (Windows/macOS/Linux) way of reading this -- added in Qt 6.5, so this
+    falls back gracefully on older Qt, or on a binding (e.g. PyQt5) that
+    doesn't have it at all.
+    """
+    try:
+        from PySide6.QtCore import Qt as _Qt
+    except ImportError:
+        try:
+            from PyQt6.QtCore import Qt as _Qt
+        except ImportError:
+            return default
+    try:
+        scheme = app.styleHints().colorScheme()
+    except AttributeError:
+        return default
+    if scheme == _Qt.ColorScheme.Dark:
+        return 'dark'
+    if scheme == _Qt.ColorScheme.Light:
+        return 'light'
+    return default
+
+
 def apply_theme(app, name: str = 'light'):
     """Apply a named theme to the given QApplication.
 
