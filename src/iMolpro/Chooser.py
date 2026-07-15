@@ -141,7 +141,10 @@ class Chooser(QMainWindow):
         label = LinkImage(str(cwd / 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png'), 'https://www.molpro.net', 186,
                           217)  # predicated on 3139 x 3475 image
         label.setContentsMargins(0, 30, 0, 20)
+        margins = label.contentsMargins()
+        label.setFixedSize(186 + margins.left() + margins.right(), 217 + margins.top() + margins.bottom())
         rh_panel.addWidget(label)
+        rh_panel.setAlignment(label, AlignCenter)
         link_layout = QHBoxLayout()
         rh_panel.addLayout(link_layout)
 
