@@ -853,7 +853,8 @@ class ProjectWindow(QMainWindow):
             if external_path:
                 subprocess.Popen([external_path, xyz_file])
             elif 'builder' not in self.vods and 'initial structure' not in self.vods:
-                self.embedded_vod_jmol(xyz_file, command='', title='initial structure')
+                print('visualise_input', xyz_file)
+                # self.embedded_vod_jmol(xyz_file, command='', title='initial structure')
 
     def initial_xyz(self) -> str:
         """
