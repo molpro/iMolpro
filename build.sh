@@ -133,8 +133,10 @@ fi
 
 descriptor=${version}.$(uname).$(uname -m)
 if [ "$(uname)" = Darwin ]; then
-(cd ${builddir}/dist/iMolpro.app/Contents/Frameworks/PySide6/Qt/lib && ln -sf ../../../../Resources/PySide6/Qt/resources .&& ln -sf ../../../../Resources/PySide6/Qt/translations .)
-(cd ${builddir}/dist/iMolpro.app/Contents/Frameworks/PySide6/Qt && ln -sf ../../../Resources/PySide6/Qt/lib/qt6 ./libexec)
+if [ -d "${builddir}/dist/iMolpro.app/Contents/Frameworks/PySide6/Qt/lib" ]; then
+  (cd ${builddir}/dist/iMolpro.app/Contents/Frameworks/PySide6/Qt/lib && ln -sf ../../../../Resources/PySide6/Qt/resources .&& ln -sf ../../../../Resources/PySide6/Qt/translations .)
+  (cd ${builddir}/dist/iMolpro.app/Contents/Frameworks/PySide6/Qt && ln -sf ../../../Resources/PySide6/Qt/lib/qt6 ./libexec)
+fi
 #  (cd "${builddir}"/dist/iMolpro.app/Contents/Resources||exit 1; for i in PyQt5/Qt/resources/* ; do ln -s "$i" . ; done)
 #  (cd "${builddir}"/dist/iMolpro.app/Contents||exit 1; ln -s MacOS/Resources/PyQt5/Qt/translations .)
 #  find dist/iMolpro.app -type l ! -exec test -e {} \; -exec rm {} \;
@@ -188,7 +190,7 @@ EOF
   hdiutil create ./iMolpro.dmg -ov -fs HFS+ -srcfolder "${builddir}"/dist -volname iMolpro-"${descriptor}"
   echo after first hdiutil
   hdiutil convert ./iMolpro.dmg -format UDZO -o dist/iMolpro-"${descriptor}".dmg
-  cp Molpro_Logo_Molpro_Quantum_Chemistry_Software.png "${builddir}"
+  cp src/iMolpro/data/Molpro_Logo_Molpro_Quantum_Chemistry_Software.png "${builddir}"
   (cd "${builddir}" && sips -i Molpro_Logo_Molpro_Quantum_Chemistry_Software.png && DeRez -only icns Molpro_Logo_Molpro_Quantum_Chemistry_Software.png > tmp.rsrc)
   Rez -append "${builddir}"/tmp.rsrc -o dist/iMolpro-"${descriptor}".dmg
   SetFile -a C dist/iMolpro-"${descriptor}".dmg
