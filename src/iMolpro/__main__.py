@@ -99,6 +99,8 @@ def main():
                 ctypes.windll.user32.ShowWindow(console_window, 2)
 
     app = App(sys.argv)
+    from .theme import apply_theme
+    apply_theme(app, settings.get('theme', 'light'))
     if platform.uname().system == 'Windows':
         font = app.font()
         font.setPointSize(7)
