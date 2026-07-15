@@ -115,9 +115,15 @@ class Chooser(QMainWindow):
             def __init__(self, image, url=None, width=250, height=250):
                 super().__init__()
                 ratio = self.RENDER_RATIO
-                self.setPixmap(QPixmap(image).scaled(int(width * ratio), int(height * ratio), KeepAspectRatio,
-                                                     SmoothTransformation))
-                self.pixmap().setDevicePixelRatio(ratio)
+                # QLabel.pixmap() returns a copy of the internal pixmap, not
+                # a reference to it -- calling setDevicePixelRatio on that
+                # copy (as this used to do) is a silent no-op. Set the ratio
+                # on the QPixmap object itself before handing it to
+                # setPixmap, so the tagged pixmap is the one actually stored.
+                pix = QPixmap(image).scaled(int(width * ratio), int(height * ratio), KeepAspectRatio,
+                                            SmoothTransformation)
+                pix.setDevicePixelRatio(ratio)
+                self.setPixmap(pix)
                 self.setFixedSize(width, height)
                 self.url = QUrl(url)
                 self.setAlignment(AlignCenter)
