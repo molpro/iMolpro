@@ -6,7 +6,7 @@ import numpy as np
 from pymolpro import Orbital
 
 from .project import Structure
-from .theme import LIGHT_GREY_WINDOW, DARK_GREY_WINDOW
+from .theme import LIGHT_GREY_WINDOW, DARK_GREY_WINDOW, THEMES
 
 try:
     from PySide6.QtGui import QColor, QPalette
@@ -441,7 +441,10 @@ class ControlPanel(QWidget):
         colour_selection_layout2 = QHBoxLayout()
         colour_selection_layout2.setContentsMargins(0, 0, 0, 0)
         colour_selection_layout.addLayout(colour_selection_layout2)
-        for i, name in enumerate(['dark', 'black', 'white', 'light']):
+        # Every key in THEMES must have a matching ColourScheme member (see
+        # ColourScheme[name] below) -- adding a new theme to theme.py also
+        # needs a same-named entry added to ColourScheme.
+        for i, name in enumerate(list(THEMES.keys()) + ['black', 'white']):
             # print('ColourScheme', name, ': ', ColourScheme[name].value)
             # button = QPushButton('')
             button = QToolButton(self)
