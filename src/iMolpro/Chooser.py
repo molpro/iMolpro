@@ -3,8 +3,10 @@ import pathlib
 import platform
 import re
 import time
+import io
 
 import numpy as np
+from PIL import Image as PILImage
 
 
 from .MenuBar import MenuBar
@@ -127,11 +129,13 @@ class Chooser(QMainWindow):
                 # copy (as this used to do) is a silent no-op. Set the ratio
                 # on the QPixmap object itself before handing it to
                 # setPixmap, so the tagged pixmap is the one actually stored.
-                base_pix = QPixmap(image).scaled(int(width * ratio), int(height * ratio), KeepAspectRatio,
-                                                 SmoothTransformation)
-                self._light_pixmap = QPixmap(base_pix)
+                light_source = QPixmap(image)
+                dark_source = self._brighten(image)
+                self._light_pixmap = light_source.scaled(int(width * ratio), int(height * ratio), KeepAspectRatio,
+                                                         SmoothTransformation)
                 self._light_pixmap.setDevicePixelRatio(ratio)
-                self._dark_pixmap = self._brighten(base_pix)
+                self._dark_pixmap = dark_source.scaled(int(width * ratio), int(height * ratio), KeepAspectRatio,
+                                                       SmoothTransformation)
                 self._dark_pixmap.setDevicePixelRatio(ratio)
                 self.setFixedSize(width, height)
                 self.url = QUrl(url)
@@ -142,33 +146,37 @@ class Chooser(QMainWindow):
             def _update_pixmap(self):
                 current_theme = settings['theme'] if 'theme' in settings else detect_system_theme(
                     QApplication.instance())
-                print('LinkImage._update_pixmap: current_theme =', repr(current_theme))
                 self.setPixmap(self._dark_pixmap if current_theme == 'dark' else self._light_pixmap)
 
             @staticmethod
-            def _brighten(pixmap, blend=0.5):
+            def _brighten(image_path, blend=0.5):
                 """Brighten the logo's two exact colours by blending each
                 towards white, for legibility against a dark background.
-                Exact-colour replacement rather than a generic filter, since
-                the source image only ever uses these two colours."""
-                img = pixmap.toImage().convertToFormat(QImage.Format.Format_RGBA8888)
-                width, height = img.width(), img.height()
-                ptr = img.bits()
-                if hasattr(ptr, 'setsize'):
-                    ptr.setsize(img.sizeInBytes())
-                # Operate on a view into img's own buffer (no .copy()) so
-                # this mutates the QImage in place, rather than building a
-                # brand-new QImage from a raw numpy buffer afterward -- that
-                # reconstruction step didn't reliably take effect (arr's
-                # values were correct, but the final displayed image never
-                # changed), so avoid it entirely.
-                arr = np.frombuffer(ptr, dtype=np.uint8).reshape((height, width, 4))
+
+                Works on the original full-resolution file via PIL, rather
+                than manipulating an already-Qt-scaled QPixmap's QImage
+                buffer directly: that approach didn't reliably take visual
+                effect (root cause unconfirmed -- possibly a buffer
+                marshalling quirk in this Qt binding), and doing the exact
+                colour match *after* Qt's SmoothTransformation scaling would
+                anti-alias most pixels away from an exact match in the first
+                place, leaving only large flat areas actually recoloured.
+                Routing through a real PNG-bytes round-trip instead uses the
+                exact same 'Qt loads a PNG' path already proven to work for
+                the unmodified logo.
+                """
+                pil_img = PILImage.open(image_path).convert('RGBA')
+                arr = np.array(pil_img)
                 for r, g, b in [(255, 11, 23), (0, 27, 249)]:
                     mask = (arr[:, :, 0] == r) & (arr[:, :, 1] == g) & (arr[:, :, 2] == b)
                     arr[mask, 0] = int(r + (255 - r) * blend)
                     arr[mask, 1] = int(g + (255 - g) * blend)
                     arr[mask, 2] = int(b + (255 - b) * blend)
-                return QPixmap.fromImage(img)
+                buf = io.BytesIO()
+                PILImage.fromarray(arr, 'RGBA').save(buf, format='PNG')
+                result = QPixmap()
+                result.loadFromData(buf.getvalue())
+                return result
 
             def mousePressEvent(self, event):
                 if self.url is not None:
