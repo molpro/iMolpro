@@ -145,7 +145,7 @@ class Chooser(QMainWindow):
                 self.setPixmap(self._dark_pixmap if current_theme == 'dark' else self._light_pixmap)
 
             @staticmethod
-            def _brighten(pixmap, blend=0.35):
+            def _brighten(pixmap, blend=0.5):
                 """Brighten the logo's two exact colours by blending each
                 towards white, for legibility against a dark background.
                 Exact-colour replacement rather than a generic filter, since
