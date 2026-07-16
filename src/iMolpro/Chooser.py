@@ -4,6 +4,8 @@ import platform
 import re
 import time
 
+import numpy as np
+
 
 from .MenuBar import MenuBar
 from .RecentMenu import RecentMenu
@@ -15,20 +17,20 @@ import pymolpro
 try:
     from PySide6 import QtCore
     from PySide6.QtCore import QCoreApplication, Qt, QUrl
-    from PySide6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, QColor, QActionGroup
+    from PySide6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, QColor, QActionGroup, QImage
     from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
        QToolButton, QApplication, QMenu
 except ImportError:
     try:
         from PyQt6 import QtCore
         from PyQt6.QtCore import QCoreApplication, Qt, QUrl
-        from PyQt6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, QColor, QActionGroup
+        from PyQt6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, QColor, QActionGroup, QImage
         from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
             QToolButton, QApplication, QMenu
     except ImportError:
         from PyQt5 import QtCore
         from PyQt5.QtCore import QCoreApplication, Qt, QUrl
-        from PyQt5.QtGui import QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, QColor
+        from PyQt5.QtGui import QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, QColor, QImage
         from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
             QToolButton, QShortcut, QAction, QApplication, QMenu, QActionGroup
 try:
@@ -125,13 +127,41 @@ class Chooser(QMainWindow):
                 # copy (as this used to do) is a silent no-op. Set the ratio
                 # on the QPixmap object itself before handing it to
                 # setPixmap, so the tagged pixmap is the one actually stored.
-                pix = QPixmap(image).scaled(int(width * ratio), int(height * ratio), KeepAspectRatio,
-                                            SmoothTransformation)
-                pix.setDevicePixelRatio(ratio)
-                self.setPixmap(pix)
+                base_pix = QPixmap(image).scaled(int(width * ratio), int(height * ratio), KeepAspectRatio,
+                                                 SmoothTransformation)
+                self._light_pixmap = QPixmap(base_pix)
+                self._light_pixmap.setDevicePixelRatio(ratio)
+                self._dark_pixmap = self._brighten(base_pix)
+                self._dark_pixmap.setDevicePixelRatio(ratio)
                 self.setFixedSize(width, height)
                 self.url = QUrl(url)
                 self.setAlignment(AlignCenter)
+                self._update_pixmap()
+                theme_manager.themeChanged.connect(lambda name: self._update_pixmap())
+
+            def _update_pixmap(self):
+                current_theme = settings['theme'] if 'theme' in settings else detect_system_theme(
+                    QApplication.instance())
+                self.setPixmap(self._dark_pixmap if current_theme == 'dark' else self._light_pixmap)
+
+            @staticmethod
+            def _brighten(pixmap, blend=0.35):
+                """Brighten the logo's two exact colours by blending each
+                towards white, for legibility against a dark background.
+                Exact-colour replacement rather than a generic filter, since
+                the source image only ever uses these two colours."""
+                img = pixmap.toImage().convertToFormat(QImage.Format.Format_RGBA8888)
+                width, height = img.width(), img.height()
+                ptr = img.bits()
+                ptr.setsize(img.sizeInBytes())
+                arr = np.frombuffer(ptr, dtype=np.uint8).reshape((height, width, 4)).copy()
+                for r, g, b in [(255, 11, 23), (0, 27, 249)]:
+                    mask = (arr[:, :, 0] == r) & (arr[:, :, 1] == g) & (arr[:, :, 2] == b)
+                    arr[mask, 0] = int(r + (255 - r) * blend)
+                    arr[mask, 1] = int(g + (255 - g) * blend)
+                    arr[mask, 2] = int(b + (255 - b) * blend)
+                new_img = QImage(arr.data, width, height, QImage.Format.Format_RGBA8888)
+                return QPixmap.fromImage(new_img.copy())
 
             def mousePressEvent(self, event):
                 if self.url is not None:
