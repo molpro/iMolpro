@@ -142,6 +142,7 @@ class Chooser(QMainWindow):
             def _update_pixmap(self):
                 current_theme = settings['theme'] if 'theme' in settings else detect_system_theme(
                     QApplication.instance())
+                print('LinkImage._update_pixmap: current_theme =', repr(current_theme))
                 self.setPixmap(self._dark_pixmap if current_theme == 'dark' else self._light_pixmap)
 
             @staticmethod
