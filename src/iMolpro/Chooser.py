@@ -58,7 +58,7 @@ except:
 from .ProjectWindow import ProjectWindow
 from .WindowManager import WindowManager
 from .settings import settings, settings_edit
-from .theme import theme_manager, THEMES, apply_theme, detect_system_theme
+from .theme import theme_manager, THEMES, apply_theme, detect_system_theme, DARK_GREY_WINDOW
 from pysjef import recent_project
 
 
@@ -266,13 +266,13 @@ class Chooser(QMainWindow):
                     self.setShortcut('Ctrl+' + str(index))
                 self.qaction.triggered.connect(self.action)
                 self.clicked.connect(self.qaction.triggered)
-                window_colour = self.palette().color(ColorRole.Window)
-                if window_colour.lightness() < 128:
-                    # Dark theme: lighten the background moderately for a
-                    # visible-but-still-dark hover highlight, keeping white
-                    # text legible (the light literal below reads poorly
-                    # against it).
-                    hover_colour = window_colour.lighter(150).name()
+                current_theme = settings['theme'] if 'theme' in settings else detect_system_theme(
+                    QApplication.instance())
+                if current_theme == 'dark':
+                    # Lighten the dark theme's actual background moderately
+                    # for a visible-but-still-dark hover highlight, keeping
+                    # white text legible.
+                    hover_colour = DARK_GREY_WINDOW.lighter(150).name()
                 else:
                     hover_colour = '#F0F0F0'
                 self.setStyleSheet(f"* {{border: none }} :hover {{ background-color: {hover_colour}}}  ")
