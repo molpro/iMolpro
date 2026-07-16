@@ -104,13 +104,64 @@ class _ThemeManager(QObject):
 theme_manager = _ThemeManager()
 
 
+def _detect_linux_desktop_theme():
+    """Fallback dark/light detection for Linux, where Qt's own
+    styleHints().colorScheme() often returns Unknown -- it depends on the
+    desktop environment's Qt platform integration correctly reporting the
+    preference, which is much less consistently wired up than on macOS or
+    Windows. Returns 'dark', 'light', or None if neither method below can
+    determine it (e.g. not on Linux, or neither tool is available).
+    """
+    import platform
+    import subprocess
+    if platform.system() != 'Linux':
+        return None
+    # 1. The freedesktop XDG Desktop Portal 'Settings' interface -- the
+    # standard, desktop-environment-agnostic mechanism, implemented by both
+    # GNOME and KDE (via their respective portal backends). Queried via
+    # gdbus (part of glib, present on essentially any Linux desktop with
+    # GNOME or KDE installed) rather than adding a Python D-Bus dependency.
+    try:
+        result = subprocess.run(
+            ['gdbus', 'call', '--session', '--dest', 'org.freedesktop.portal.Desktop',
+             '--object-path', '/org/freedesktop/portal/desktop',
+             '--method', 'org.freedesktop.portal.Settings.Read',
+             'org.freedesktop.appearance', 'color-scheme'],
+            capture_output=True, text=True, timeout=2)
+        if result.returncode == 0:
+            # Output looks like "(<<uint32 1>>,)" -- 1 means prefer dark,
+            # 2 means prefer light, 0 means no preference.
+            if 'uint32 1' in result.stdout:
+                return 'dark'
+            if 'uint32 2' in result.stdout:
+                return 'light'
+    except (OSError, subprocess.SubprocessError):
+        pass
+    # 2. GNOME-specific fallback (Fedora Workstation's default desktop),
+    # for systems where the portal call above isn't available.
+    try:
+        result = subprocess.run(
+            ['gsettings', 'get', 'org.gnome.desktop.interface', 'color-scheme'],
+            capture_output=True, text=True, timeout=2)
+        if result.returncode == 0 and 'dark' in result.stdout.lower():
+            return 'dark'
+        if result.returncode == 0:
+            return 'light'
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return None
+
+
 def detect_system_theme(app, default: str = 'light') -> str:
     """Detect the OS's light/dark preference, falling back to `default`.
 
     Uses QGuiApplication.styleHints().colorScheme(), Qt's cross-platform
     (Windows/macOS/Linux) way of reading this -- added in Qt 6.5, so this
     falls back gracefully on older Qt, or on a binding (e.g. PyQt5) that
-    doesn't have it at all.
+    doesn't have it at all. On Linux, where this often reports Unknown
+    regardless of Qt version (depends on the desktop environment's Qt
+    platform integration), falls back further to _detect_linux_desktop_theme()
+    before finally giving up and returning `default`.
     """
     try:
         from PySide6.QtCore import Qt as _Qt
@@ -118,16 +169,19 @@ def detect_system_theme(app, default: str = 'light') -> str:
         try:
             from PyQt6.QtCore import Qt as _Qt
         except ImportError:
-            return default
+            linux_theme = _detect_linux_desktop_theme()
+            return linux_theme if linux_theme is not None else default
     try:
         scheme = app.styleHints().colorScheme()
     except AttributeError:
-        return default
+        linux_theme = _detect_linux_desktop_theme()
+        return linux_theme if linux_theme is not None else default
     if scheme == _Qt.ColorScheme.Dark:
         return 'dark'
     if scheme == _Qt.ColorScheme.Light:
         return 'light'
-    return default
+    linux_theme = _detect_linux_desktop_theme()
+    return linux_theme if linux_theme is not None else default
 
 
 def apply_theme(app, name: str = 'light'):
