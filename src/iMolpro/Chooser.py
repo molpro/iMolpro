@@ -155,14 +155,19 @@ class Chooser(QMainWindow):
                 ptr = img.bits()
                 if hasattr(ptr, 'setsize'):
                     ptr.setsize(img.sizeInBytes())
-                arr = np.frombuffer(ptr, dtype=np.uint8).reshape((height, width, 4)).copy()
+                # Operate on a view into img's own buffer (no .copy()) so
+                # this mutates the QImage in place, rather than building a
+                # brand-new QImage from a raw numpy buffer afterward -- that
+                # reconstruction step didn't reliably take effect (arr's
+                # values were correct, but the final displayed image never
+                # changed), so avoid it entirely.
+                arr = np.frombuffer(ptr, dtype=np.uint8).reshape((height, width, 4))
                 for r, g, b in [(255, 11, 23), (0, 27, 249)]:
                     mask = (arr[:, :, 0] == r) & (arr[:, :, 1] == g) & (arr[:, :, 2] == b)
                     arr[mask, 0] = int(r + (255 - r) * blend)
                     arr[mask, 1] = int(g + (255 - g) * blend)
                     arr[mask, 2] = int(b + (255 - b) * blend)
-                new_img = QImage(arr.data, width, height, QImage.Format.Format_RGBA8888)
-                return QPixmap.fromImage(new_img.copy())
+                return QPixmap.fromImage(img)
 
             def mousePressEvent(self, event):
                 if self.url is not None:
