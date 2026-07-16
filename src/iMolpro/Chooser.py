@@ -163,7 +163,9 @@ class Chooser(QMainWindow):
                 theme_manager.themeChanged.connect(lambda name: self._update_colour())
 
             def _update_colour(self):
-                colour = self.palette().color(ColorRole.WindowText).name()
+                current_theme = settings['theme'] if 'theme' in settings else detect_system_theme(
+                    QApplication.instance())
+                colour = 'white' if current_theme == 'dark' else 'black'
                 self.setText(f'<A style="text-decoration:none;color:{colour}" href="{self._url}">{self._text}</A>')
                 self.setStyleSheet(f'color: {colour}')
 
@@ -288,8 +290,9 @@ class Chooser(QMainWindow):
                 self.parent.window_manager.register(ProjectWindow(self.filename, self.parent.window_manager))
                 self.parent.hide()
 
-        alt_base = self.recent_project_box.palette().color(ColorRole.AlternateBase)
-        self.recent_project_box.setStyleSheet(f" background-color: {alt_base.name()} ")
+        current_theme = settings['theme'] if 'theme' in settings else detect_system_theme(QApplication.instance())
+        box_colour = DARK_GREY_WINDOW.name() if current_theme == 'dark' else '#F7F7F7'
+        self.recent_project_box.setStyleSheet(f" background-color: {box_colour} ")
         if not getattr(self, '_recent_project_box_theme_connected', False):
             theme_manager.themeChanged.connect(lambda name: self.populate_recent_project_box(max_items))
             self._recent_project_box_theme_connected = True
