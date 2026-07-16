@@ -15,22 +15,26 @@ import pymolpro
 try:
     from PySide6 import QtCore
     from PySide6.QtCore import QCoreApplication, Qt, QUrl
-    from PySide6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen
+    from PySide6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, QColor, QActionGroup
     from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-       QToolButton
+       QToolButton, QApplication, QMenu
 except ImportError:
     try:
         from PyQt6 import QtCore
         from PyQt6.QtCore import QCoreApplication, Qt, QUrl
-        from PyQt6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen
+        from PyQt6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, QColor, QActionGroup
         from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-            QToolButton
+            QToolButton, QApplication, QMenu
     except ImportError:
         from PyQt5 import QtCore
         from PyQt5.QtCore import QCoreApplication, Qt, QUrl
-        from PyQt5.QtGui import QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen
+        from PyQt5.QtGui import QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, QColor
         from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-            QToolButton, QShortcut, QAction
+            QToolButton, QShortcut, QAction, QApplication, QMenu, QActionGroup
+try:
+    ColorRole = QPalette.ColorRole
+except AttributeError:
+    ColorRole = QPalette
 try:
     KeepAspectRatio = Qt.KeepAspectRatio
     SmoothTransformation = Qt.SmoothTransformation
@@ -54,6 +58,7 @@ except:
 from .ProjectWindow import ProjectWindow
 from .WindowManager import WindowManager
 from .settings import settings, settings_edit
+from .theme import theme_manager, THEMES, apply_theme, detect_system_theme
 from pysjef import recent_project
 
 
@@ -152,8 +157,15 @@ class Chooser(QMainWindow):
             def __init__(self, text, url):
                 super().__init__()
                 self.setOpenExternalLinks(True)
-                self.setText('<A style="text-decoration:none;color:black" href="' + url + '">' + text + '</A>')
-                self.setStyleSheet('color: black')
+                self._text = text
+                self._url = url
+                self._update_colour()
+                theme_manager.themeChanged.connect(lambda name: self._update_colour())
+
+            def _update_colour(self):
+                colour = self.palette().color(ColorRole.WindowText).name()
+                self.setText(f'<A style="text-decoration:none;color:{colour}" href="{self._url}">{self._text}</A>')
+                self.setStyleSheet(f'color: {colour}')
 
         helpButton = PushButton('Help', self)
         helpButton.clicked.connect(lambda: help_manager.show('Help', 'README'))
@@ -209,6 +221,17 @@ class Chooser(QMainWindow):
         self.menubar.addAction('Quit', 'Projects', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
                           tooltip='Quit')
         self.menubar.addAction('Settings', 'Edit', lambda arg, parent=self: settings_edit(parent), tooltip='Edit settings')
+        theme_menu = QMenu('Theme')
+        theme_action_group = QActionGroup(self)
+        theme_action_group.setExclusive(True)
+        current_theme = settings['theme'] if 'theme' in settings else detect_system_theme(QApplication.instance())
+        for theme_name in THEMES:
+            action = theme_menu.addAction(theme_name.capitalize())
+            action.setCheckable(True)
+            action.setChecked(theme_name == current_theme)
+            theme_action_group.addAction(action)
+            action.triggered.connect(lambda checked, theme_name=theme_name: self.set_theme(theme_name))
+        self.menubar.addSubmenu(theme_menu, 'View')
 
         help_manager = help_manager_default(self.menubar)
 
@@ -243,7 +266,16 @@ class Chooser(QMainWindow):
                     self.setShortcut('Ctrl+' + str(index))
                 self.qaction.triggered.connect(self.action)
                 self.clicked.connect(self.qaction.triggered)
-                self.setStyleSheet("* {border: none } :hover { background-color: #F0F0F0}  ")
+                window_colour = self.palette().color(ColorRole.Window)
+                if window_colour.lightness() < 128:
+                    # Dark theme: lighten the background moderately for a
+                    # visible-but-still-dark hover highlight, keeping white
+                    # text legible (the light literal below reads poorly
+                    # against it).
+                    hover_colour = window_colour.lighter(150).name()
+                else:
+                    hover_colour = '#F0F0F0'
+                self.setStyleSheet(f"* {{border: none }} :hover {{ background-color: {hover_colour}}}  ")
                 # self.setStyleSheet("* {border: none }")
 
             def enterEvent(self, ev, QEnterEvent=None):
@@ -256,7 +288,11 @@ class Chooser(QMainWindow):
                 self.parent.window_manager.register(ProjectWindow(self.filename, self.parent.window_manager))
                 self.parent.hide()
 
-        self.recent_project_box.setStyleSheet(" background-color: #F7F7F7 ")
+        alt_base = self.recent_project_box.palette().color(ColorRole.AlternateBase)
+        self.recent_project_box.setStyleSheet(f" background-color: {alt_base.name()} ")
+        if not getattr(self, '_recent_project_box_theme_connected', False):
+            theme_manager.themeChanged.connect(lambda name: self.populate_recent_project_box(max_items))
+            self._recent_project_box_theme_connected = True
         self.recent_project_box.setMaximumWidth(400)
         self.recent_project_box.setFixedWidth(400)
         if not self.recent_project_box.layout():
@@ -271,6 +307,10 @@ class Chooser(QMainWindow):
             if f:
                 button = RecentProjectButton(f, i, self)
                 self.recent_project_box.layout().addWidget(button, -1, AlignLeft)
+
+    def set_theme(self, theme_name):
+        settings['theme'] = theme_name
+        apply_theme(QApplication.instance(), theme_name)
 
     def openProjectDialog(self):
         _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir
