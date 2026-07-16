@@ -68,6 +68,15 @@ def main():
             os.environ['FONTCONFIG_PATH'] = '/etc/fonts'
         if 'FONTCONFIG_FILE' not in os.environ:
             os.environ['FONTCONFIG_FILE'] = '/etc/fonts/fonts.conf'
+        if 'QT_QPA_PLATFORM' not in os.environ:
+            # VTK's OpenGL rendering (vtkXOpenGLRenderWindow) is Xlib-based
+            # and does raw X11 window calls; under Qt's native Wayland
+            # platform plugin there is no X11 window for it to get a handle
+            # to at all, causing a fatal X11 protocol error (BadWindow) the
+            # moment a VTK-containing window is opened. Forcing xcb runs
+            # through XWayland instead, like a normal X11 app, which VTK's
+            # X11 backend can actually interoperate with.
+            os.environ['QT_QPA_PLATFORM'] = 'xcb'
 
     try:
         if platform.uname().system == 'Windows':
