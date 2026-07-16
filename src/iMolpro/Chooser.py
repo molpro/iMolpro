@@ -153,7 +153,8 @@ class Chooser(QMainWindow):
                 img = pixmap.toImage().convertToFormat(QImage.Format.Format_RGBA8888)
                 width, height = img.width(), img.height()
                 ptr = img.bits()
-                ptr.setsize(img.sizeInBytes())
+                if hasattr(ptr, 'setsize'):
+                    ptr.setsize(img.sizeInBytes())
                 arr = np.frombuffer(ptr, dtype=np.uint8).reshape((height, width, 4)).copy()
                 for r, g, b in [(255, 11, 23), (0, 27, 249)]:
                     mask = (arr[:, :, 0] == r) & (arr[:, :, 1] == g) & (arr[:, :, 2] == b)
