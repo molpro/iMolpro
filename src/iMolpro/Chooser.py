@@ -150,28 +150,33 @@ class Chooser(QMainWindow):
 
             @staticmethod
             def _brighten(image_path, blend=0.5):
-                """Brighten the logo's two exact colours by blending each
-                towards white, for legibility against a dark background.
+                """Brighten the logo for legibility against a dark
+                background, by blending every non-transparent pixel's RGB
+                towards white, weighted by its own alpha.
 
                 Works on the original full-resolution file via PIL, rather
                 than manipulating an already-Qt-scaled QPixmap's QImage
                 buffer directly: that approach didn't reliably take visual
                 effect (root cause unconfirmed -- possibly a buffer
-                marshalling quirk in this Qt binding), and doing the exact
-                colour match *after* Qt's SmoothTransformation scaling would
-                anti-alias most pixels away from an exact match in the first
-                place, leaving only large flat areas actually recoloured.
-                Routing through a real PNG-bytes round-trip instead uses the
-                exact same 'Qt loads a PNG' path already proven to work for
-                the unmodified logo.
+                marshalling quirk in this Qt binding). Routing through a
+                real PNG-bytes round-trip instead uses the exact same 'Qt
+                loads a PNG' path already proven to work for the unmodified
+                logo.
+
+                Blends every pixel by alpha rather than matching specific
+                colours exactly: the image's actual dominant colours turned
+                out to be (0,0,255), (255,0,0) and a (54,0,255) gradient/
+                blend colour between them, not the (255,11,23)/(0,27,249)
+                originally assumed -- alpha-weighting sidesteps needing to
+                know the exact set of colours (including antialiasing) at
+                all.
                 """
                 pil_img = PILImage.open(image_path).convert('RGBA')
-                arr = np.array(pil_img)
-                for r, g, b in [(255, 11, 23), (0, 27, 249)]:
-                    mask = (arr[:, :, 0] == r) & (arr[:, :, 1] == g) & (arr[:, :, 2] == b)
-                    arr[mask, 0] = int(r + (255 - r) * blend)
-                    arr[mask, 1] = int(g + (255 - g) * blend)
-                    arr[mask, 2] = int(b + (255 - b) * blend)
+                arr = np.array(pil_img).astype(np.float32)
+                alpha = arr[:, :, 3] / 255.0
+                factor = (blend * alpha)[:, :, None]
+                arr[:, :, :3] = arr[:, :, :3] * (1 - factor) + 255 * factor
+                arr = np.clip(arr, 0, 255).astype(np.uint8)
                 buf = io.BytesIO()
                 PILImage.fromarray(arr, 'RGBA').save(buf, format='PNG')
                 result = QPixmap()
