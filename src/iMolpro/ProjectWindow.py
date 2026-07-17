@@ -263,9 +263,6 @@ class ProjectWindow(QMainWindow):
         left_layout = QVBoxLayout()
         self.input_tabs = MyTabWidget(self)
         self.input_pane.textChanged.connect(lambda: self.thread_executor.submit(self.input_text_changed_consequence))
-        self.input_tabs.setTabBarAutoHide(True)
-        self.input_tabs.setDocumentMode(True)
-        self.input_tabs.setTabPosition(South)
         self.input_tabs.currentChanged.connect(self.input_tab_changed_consequence)
         left_layout.addWidget(self.input_tabs)
         self.input_tabs.setMinimumHeight(300)
@@ -306,10 +303,7 @@ class ProjectWindow(QMainWindow):
         left_widget.setContentsMargins(0, 0, 0, 0)
         left_widget.setLayout(left_layout)
         splitter.addWidget(left_widget)
-        self.output_tabs = MyTabWidget(self)
-        self.output_tabs.setTabBarAutoHide(True)
-        self.output_tabs.setDocumentMode(True)
-        self.output_tabs.setTabPosition(South)
+        self.output_tabs = OutputTabWidget(self)
         self.refresh_output_tabs()
         self.timer_output_tabs = QTimer(self)
         self.timer_output_tabs.timeout.connect(self.refresh_output_tabs)
@@ -1761,6 +1755,9 @@ class MyTabWidget(DraggableTabWidget):
         super().__init__(parent)
         self.tab_names = set()
         # self.currentChanged.connect(lambda : force_render_vtk_widget(self.currentWidget())) # might be needed in future PySide6
+        self.setTabBarAutoHide(True)
+        self.setDocumentMode(True)
+        self.setTabPosition(South)
 
     def addTab(self, widget, QWidget=None, *args, **kwargs):
         super().addTab(widget, QWidget, *args, **kwargs)
@@ -1773,3 +1770,43 @@ class MyTabWidget(DraggableTabWidget):
 
     def __len__(self):
         return self.count()
+
+class OutputTabWidget(MyTabWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.run_directory = None
+        self.discover_tab_sources()
+
+    def discover_tab_sources(self):
+        run_directory = self.parent.project.run_directory
+        if self.run_directory != run_directory:
+            self.clear()
+            self.run_directory = run_directory
+        print('discover_tab_sources', run_directory)
+        for suffix in ['out', 'log','xml', 'stdout','stderr','inp']:
+            if os.path.exists(filename:=self.parent.project.filename(suffix,run=run_directory)):
+                label = os.path.basename(filename)
+                print('found',filename, label)
+        if os.path.exists(filename:=self.parent.project.filename('xml',run=run_directory)):
+            labels={}
+            try:
+                for index in range(10000):
+                    orbitals = self.parent.project.orbitals(index)
+                    orbitals_node = orbitals[0].node.getparent()
+                    label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals'
+                    if label in labels:
+                        labels[label] += 1
+                        label = label + ': ' + str(labels[label])
+                    else:
+                        labels[label] = 0
+                    print('found','orbital set', label)
+                    # self.vods[label] = MoleculeDisplay(orbitals, self,
+                    #                                 metadata=orbitals_node.attrib,
+                    #                                 )
+            except Exception as e:
+                if not isinstance(e, (IndexError)):
+                    print('Orbitals except',str(e)+' '+str(type(e)))
+                pass
+
+
