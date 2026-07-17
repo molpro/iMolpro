@@ -306,7 +306,8 @@ class ProjectWindow(QMainWindow):
         self.output_tabs = OutputTabWidget(self)
         self.refresh_output_tabs()
         self.timer_output_tabs = QTimer(self)
-        self.timer_output_tabs.timeout.connect(self.refresh_output_tabs)
+        # self.timer_output_tabs.timeout.connect(self.refresh_output_tabs)
+        self.timer_output_tabs.timeout.connect(self.output_tabs.refresh)
         self.timer_output_tabs.start(1000)
         splitter.addWidget(self.output_tabs)
         splitter.setStretchFactor(1, 2147483647)
@@ -352,14 +353,15 @@ class ProjectWindow(QMainWindow):
             ]}
 
     def switch_run_directory(self, run: int):
-        for title in list(self.vods.keys()):
-            self.destroy_vod(title)
-        self.refresh_output_tabs(force=True)
-        self.output_tabs.clear()
+        # for title in list(self.vods.keys()):
+            # self.destroy_vod(title)
+        # self.refresh_output_tabs(force=True)
+        # self.output_tabs.clear()
         self.project.run_directory = run
-        self.setup_output_panes()
-        self.rebuild_vod_selector()
-        self.restart_vods()
+        self.output_tabs.refresh()
+        # self.setup_output_panes()
+        # self.rebuild_vod_selector()
+        # self.restart_vods()
 
     def ensure_local_molpro(self, search_MEIPASS=True):
         for path in os.environ['PATH'].split(':'):
@@ -435,6 +437,10 @@ class ProjectWindow(QMainWindow):
                 if os.path.exists(pathlib.Path(path) / command):
                     self.external_viewer_commands[command] = str(pathlib.Path(path) / command)
                     break
+
+    def close(self):
+        self.timer_output_tabs.stop()
+        super().close()
 
     def setup_menubar(self):
         menubar = MenuBar(self)
@@ -583,6 +589,7 @@ class ProjectWindow(QMainWindow):
 
     def refresh_output_tabs(self, force=False):
         # print('refresh_output_tabs',force,self.output_tabs.tab_names)
+        return
         try:
             index = self.output_tabs.currentIndex()
             # logger.debug('refresh output tabs')
@@ -726,6 +733,7 @@ class ProjectWindow(QMainWindow):
                     self.visualise_output(external_path, '', self.project.filename('molden', typ, run=0))
 
     def rebuild_vod_selector(self):
+        return
         # logger.debug('rebuild_vod_selector')
         self.vods.clear()
         initial_xyz = self.initial_xyz()
@@ -1764,6 +1772,12 @@ class MyTabWidget(DraggableTabWidget):
         if type(QWidget) is str:
             self.tab_names.add(QWidget)
 
+    def indexOfTab(self, tab_name):
+        for i in range(self.count()):
+            if self.tabText(i) == tab_name:
+                return i
+        return -1
+
     def clear(self):
         self.tab_names.clear()
         super().clear()
@@ -1776,22 +1790,59 @@ class OutputTabWidget(MyTabWidget):
         super().__init__(parent)
         self.parent = parent
         self.run_directory = None
-        self.discover_tab_sources()
+        self.suffixes = { 'inp','out',}
+        # self.add_suffix('log') # TODO add menu for these
+        # self.add_suffix('xml')
+        # self.add_suffix('stdout')
+        # self.add_suffix('stderr')
+        self.refresh()
 
-    def discover_tab_sources(self):
+    def add_suffix(self, suffix):
+        self.suffixes.add(suffix)
+
+    def del_suffix(self, suffix):
+        self.suffixes.remove(suffix)
+
+    def refresh(self):
         run_directory = self.parent.project.run_directory
+        tab_names = [self.tabText(i) for i in range(self.count())]
         if self.run_directory != run_directory:
             self.clear()
             self.run_directory = run_directory
-        print('discover_tab_sources', run_directory)
-        for suffix in ['out', 'log','xml', 'stdout','stderr','inp']:
-            if os.path.exists(filename:=self.parent.project.filename(suffix,run=run_directory)):
+        # print('discover_tab_sources', run_directory)
+
+        self.output_panes = {}
+        for suffix in self.suffixes:
+            if os.path.exists(filename:=self.parent.project.filename(suffix,run=run_directory)) and os.path.getsize(filename) > 0:
                 label = os.path.basename(filename)
-                print('found',filename, label)
-        if os.path.exists(filename:=self.parent.project.filename('xml',run=run_directory)):
+                # print('found',filename, label,os.path.getsize(filename) )
+                if label not in tab_names:
+                    # print('new tab','file', label)
+                    self.parent.output_panes[suffix]= ViewProjectOutput(self.parent.project, suffix, point_size=12 if suffix == 'inp' else 9, width=80 if suffix == 'inp' else 132)
+                    self.addTab(self.parent.output_panes[suffix], label)
+        if os.path.exists(filename:=self.parent.project.filename('xml',run=run_directory)) and os.path.getsize(filename) > 0:
             labels={}
             try:
-                for index in range(10000):
+                # get input geometry maybe
+                # get final geometry
+                final_structure = self.parent.project.structure(True)
+                # metadata={}
+                # if final_structure.vibrations:
+                #     metadata['vibrations'] = final_structure.vibrations
+                final_structure_tab_label = 'final structure'
+                if not hasattr(self,'final_structure') or self.final_structure != final_structure:
+                    # print('final structure changed')
+                    # print('final structure',final_structure)
+                    # if hasattr(self,'final_structure'):
+                    #    print('self.final structure',self.final_structure)
+                    #    print(self.final_structure.vibrations == final_structure.vibrations)
+                    self.final_structure = final_structure
+                    if final_structure_tab_label in tab_names:
+                        self.removeTab(self.indexOfTab(final_structure_tab_label))
+                    # print('new tab','final structure', final_structure_tab_label)
+                    self.addTab(MoleculeDisplay(final_structure,self.parent), final_structure_tab_label)
+
+                for index in range(10000): # get orbital sets
                     orbitals = self.parent.project.orbitals(index)
                     orbitals_node = orbitals[0].node.getparent()
                     label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals'
@@ -1800,13 +1851,32 @@ class OutputTabWidget(MyTabWidget):
                         label = label + ': ' + str(labels[label])
                     else:
                         labels[label] = 0
-                    print('found','orbital set', label)
-                    # self.vods[label] = MoleculeDisplay(orbitals, self,
-                    #                                 metadata=orbitals_node.attrib,
-                    #                                 )
+                    # print('found','orbital set', label)
+                    if label not in tab_names:
+                        # print('new tab','orbital set', label)
+                        self.addTab( MoleculeDisplay(orbitals, self,
+                                                    metadata=orbitals_node.attrib,
+                                                    ), label)
             except Exception as e:
                 if not isinstance(e, (IndexError)):
                     print('Orbitals except',str(e)+' '+str(type(e)))
                 pass
 
+        # get input geometry from the input
+        input_xyz = self.parent.initial_xyz()
+        # print('input_xyz',input_xyz)
+        if input_xyz:
+            try:
+                atoms = atoms_from_xyz(input_xyz)
+                if not hasattr(self,'input_atoms') or self.input_atoms != atoms:
+                    print('new input structure')
+                    self.input_atoms = atoms
+                    input_structure_tab_label = 'input structure'
+                    if input_structure_tab_label in tab_names:
+                        self.removeTab(self.indexOfTab(input_structure_tab_label))
+                    # print('new tab','input structure', input_structure_tab_label)
+                    self.addTab(MoleculeDisplay(atoms, self.parent, metadata={'label': 'Input geometry'} ), input_structure_tab_label)
+            except:
+                # raise Exception('Could not read input xyz file')
+                pass
 

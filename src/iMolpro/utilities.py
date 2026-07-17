@@ -551,6 +551,11 @@ class VibrationSetXML(VibrationSet):
                 namespaces=namespaces_))
         ]
 
+    def __eq__(self,other):
+        if not isinstance(other, VibrationSetXML):
+            return False
+        return self.modes == other.modes and self.coordinateSet == other.coordinateSet
+
 
 class FileBackedDictionary(MutableMapping):
     def __init__(self, filename: str):
