@@ -579,6 +579,17 @@ def _make_pdf_background_transparent(pdf_path, background_rgb, tol=10):
     the image XObject as a PDF soft mask (/SMask), which PDF viewers use to
     render per-pixel transparency for that image.
 
+    Also declares the page as an isolated transparency group (/Group with
+    /S /Transparency and /I true). Without this, some standalone PDF
+    viewers (confirmed: macOS Preview, GIMP/poppler) still show an opaque
+    white page background despite the image's own alpha being correct --
+    they composite the page against an assumed opaque-white backdrop unless
+    the page itself declares that its own backdrop should be treated as
+    transparent. Other applications (confirmed: PowerPoint, Keynote) render
+    the transparency correctly either way, apparently treating a
+    single-image PDF more like importing a transparent picture regardless
+    of this declaration.
+
     Best-effort: any exception, or no embedded image found on the page,
     leaves the PDF unchanged and returns False rather than risk corrupting
     the file.
@@ -610,6 +621,14 @@ def _make_pdf_background_transparent(pdf_path, background_rgb, tol=10):
             smask_stream.BitsPerComponent = 8
 
             raw_image_obj.SMask = smask_stream
+
+            page.Group = pikepdf.Dictionary(
+                Type=pikepdf.Name('/Group'),
+                S=pikepdf.Name('/Transparency'),
+                CS=pikepdf.Name('/DeviceRGB'),
+                I=True,
+            )
+
             pdf.save(pdf_path)
             return True
     except Exception:
