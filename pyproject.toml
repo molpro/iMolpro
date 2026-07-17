@@ -21,6 +21,7 @@ dependencies = [
     "numpy",
     "ase",
     "pillow",
+    "pikepdf",
 ]
 
 [project.scripts]

@@ -1,5 +1,8 @@
 import os
 
+import pikepdf
+from pikepdf import PdfImage
+from PIL import Image as PILImage
 import math
 # import vtk
 import numpy as np
@@ -545,7 +548,91 @@ class MoleculeScene(QVTKRenderWindowInteractor):
             if filename is None or filename == '':
                 return
         pdf_exporter.SetFilePrefix(filename)
+        renderer = self.GetRenderWindow().GetRenderers().GetFirstRenderer()
+        background_rgb = tuple(round(c * 255) for c in renderer.GetBackground())
         pdf_exporter.Write()
+        # vtkOpenGLGL2PSExporter always draws the background regardless of
+        # DrawBackground (confirmed by VTK's own runtime warning) -- and,
+        # for a 3D scene like this, the exported PDF turns out to contain
+        # the whole rendered frame as a single embedded raster image, not
+        # vector geometry with a separately-removable background rectangle
+        # (GL2PS's vector capture only works with old fixed-function
+        # OpenGL; VTK's modern OpenGL2 backend falls back to a raster
+        # embed). Colour-key that image against the actual background
+        # colour to build an alpha channel instead, and attach it as a
+        # proper PDF soft mask.
+        pdf_path = filename + '.pdf'
+        if os.path.isfile(pdf_path):
+            _make_pdf_background_transparent(pdf_path, background_rgb)
+
+
+def _make_pdf_background_transparent(pdf_path, background_rgb, tol=10):
+    """Make a GL2PS-exported PDF's background transparent.
+
+    The exported PDF contains the whole rendered frame as a single embedded
+    raster image (confirmed by inspecting a real export's content stream:
+    just 'gs', 'q', 'cm', 'Do', 'Q' -- one image XObject scaled to cover the
+    page, no vector background rectangle to strip). Colour-keys that image
+    against `background_rgb` (an (r, g, b) tuple, 0-255) to build an 8-bit
+    grayscale alpha channel -- background-coloured pixels (within `tol`)
+    become transparent, everything else stays opaque -- and attaches it to
+    the image XObject as a PDF soft mask (/SMask), which PDF viewers use to
+    render per-pixel transparency for that image.
+
+    Also declares the page as an isolated transparency group (/Group with
+    /S /Transparency and /I true). Without this, some standalone PDF
+    viewers (confirmed: macOS Preview, GIMP/poppler) still show an opaque
+    white page background despite the image's own alpha being correct --
+    they composite the page against an assumed opaque-white backdrop unless
+    the page itself declares that its own backdrop should be treated as
+    transparent. Other applications (confirmed: PowerPoint, Keynote) render
+    the transparency correctly either way, apparently treating a
+    single-image PDF more like importing a transparent picture regardless
+    of this declaration.
+
+    Best-effort: any exception, or no embedded image found on the page,
+    leaves the PDF unchanged and returns False rather than risk corrupting
+    the file.
+    """
+    try:
+        with pikepdf.open(pdf_path, allow_overwriting_input=True) as pdf:
+            page = pdf.pages[0]
+            images = page.images
+            if not images:
+                return False
+            _, raw_image_obj = next(iter(images.items()))
+            pil_img = PdfImage(raw_image_obj).as_pil_image().convert('RGB')
+            arr = np.array(pil_img)
+            r, g, b = background_rgb
+            mask = (
+                (np.abs(arr[:, :, 0].astype(int) - r) <= tol) &
+                (np.abs(arr[:, :, 1].astype(int) - g) <= tol) &
+                (np.abs(arr[:, :, 2].astype(int) - b) <= tol)
+            )
+            alpha = np.where(mask, 0, 255).astype(np.uint8)
+            alpha_img = PILImage.fromarray(alpha, mode='L')
+
+            smask_stream = pdf.make_stream(alpha_img.tobytes())
+            smask_stream.Type = pikepdf.Name('/XObject')
+            smask_stream.Subtype = pikepdf.Name('/Image')
+            smask_stream.Width = alpha_img.width
+            smask_stream.Height = alpha_img.height
+            smask_stream.ColorSpace = pikepdf.Name('/DeviceGray')
+            smask_stream.BitsPerComponent = 8
+
+            raw_image_obj.SMask = smask_stream
+
+            page.Group = pikepdf.Dictionary(
+                Type=pikepdf.Name('/Group'),
+                S=pikepdf.Name('/Transparency'),
+                CS=pikepdf.Name('/DeviceRGB'),
+                I=True,
+            )
+
+            pdf.save(pdf_path)
+            return True
+    except Exception:
+        return False
 
 
 class mySlider(QSlider):

@@ -10,3 +10,4 @@ jsonschema >= 4
 openssl >= 3.5.3
 vtk
 pillow
+pikepdf
