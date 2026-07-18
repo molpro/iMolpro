@@ -98,8 +98,9 @@ class BasisSelector(QWidget):
             self.current_spec['elements'][range_str] = self.current_spec.get('default', self.null_prompt)
             self.reload()
 
-    def changed_code(self, selector: QComboBox, code: str):
-        selected_text = selector.currentText()
+    def changed_code(self, selector: QComboBox, code: str, selected_text: Optional[str] = None):
+        if selected_text is None:
+            selected_text = selector.currentText()
         if selected_text == self.delete_elementRange:
             if 'elements' in self.current_spec and code in self.current_spec['elements']:
                 self.current_spec['elements'].pop(code)
