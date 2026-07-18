@@ -19,7 +19,6 @@ class Structure:
 
 class Project(BaseProject):
     def __init__(self, *args, **kwargs):
-        self.run_directory = 0
         super().__init__(*args, **kwargs)
 
     def filename(self, suffix="", name="", run=0):

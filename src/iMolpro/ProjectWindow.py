@@ -1869,7 +1869,7 @@ class OutputTabWidget(MyTabWidget):
             try:
                 atoms = atoms_from_xyz(input_xyz)
                 if not hasattr(self,'input_atoms') or self.input_atoms != atoms:
-                    print('new input structure')
+                    # print('new input structure')
                     self.input_atoms = atoms
                     input_structure_tab_label = 'input structure'
                     if input_structure_tab_label in tab_names:
