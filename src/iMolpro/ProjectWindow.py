@@ -639,20 +639,7 @@ class ProjectWindow(QMainWindow):
     def guided_toggle(self):
         # logger.debug('guided_toggle')
         index = 1 if self.guided_action.isChecked() else 0
-        if 'inp' in self.output_panes:
-            if index == 0:
-                self.output_panes['inp'].hide()
-                for suffix in ['structure', 'out']:
-                    for i in range(len(self.output_tabs)):
-                        if self.output_tabs.tabText(i) == suffix:
-                            self.output_tabs.setCurrentIndex(i)
-            else:
-                self.output_panes['inp'].show()
-                for i in range(len(self.output_tabs)):
-                    if self.output_tabs.tabText(i) == 'inp':
-                        self.output_tabs.setCurrentIndex(i)
-        guided = self.guided_possible()
-        if not guided and index == 1:
+        if not self.guided_possible() and index == 1:
             box = QMessageBox()
             box.setText('Guided mode cannot be used because the input is too complex')
             spec_input = molpro_input.canonicalise(self.input_specification.molpro_input())
