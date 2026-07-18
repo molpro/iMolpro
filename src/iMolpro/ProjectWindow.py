@@ -165,20 +165,6 @@ class ProjectWindow(QMainWindow):
     all_qualities = 'All Qualities'
     basis_qualities = [all_qualities, 'SZ', 'DZ', 'TZ', 'QZ', '5Z', '6Z']
 
-    def resizeEvent(self, e):
-        super().resizeEvent(e)
-        # logger.debug('ProjectWindow.resizeEvent: ' + str(self.size()))
-        self.restart_vods()
-
-    def restart_vods(self):
-        # logger.debug('Restarting vods')
-        for vod in list(self.vods.keys()):
-            # if vod not in ['builder', 'initial structure', 'inp']:
-            if vod in self.vods:
-                del self.vods[vod]
-        self.rebuild_vod_selector()
-        self.refresh_output_tabs(force=True)
-
     def changeEvent(self, event):
         super().changeEvent(event)
         # logger.debug('event.type() ' + str(event.type))
@@ -353,15 +339,8 @@ class ProjectWindow(QMainWindow):
             ]}
 
     def switch_run_directory(self, run: int):
-        # for title in list(self.vods.keys()):
-            # self.destroy_vod(title)
-        # self.refresh_output_tabs(force=True)
-        # self.output_tabs.clear()
         self.project.run_directory = run
         self.output_tabs.refresh()
-        # self.setup_output_panes()
-        # self.rebuild_vod_selector()
-        # self.restart_vods()
 
     def ensure_local_molpro(self, search_MEIPASS=True):
         for path in os.environ['PATH'].split(':'):
@@ -485,7 +464,7 @@ class ProjectWindow(QMainWindow):
         self.run_directory_menus = RunDirectoryMenus(self, menubar, 'Runs')
 
         menubar.addAction('Settings', 'Edit',
-                          lambda arg, parent=self: settings_edit(parent, {'orbital_transparency': self.restart_vods}),
+                          lambda arg, parent=self: settings_edit(parent, {}),
                           tooltip='Edit settings')
         menubar.addSeparator('Edit')
         if False and settings['use_jmol']:
@@ -563,22 +542,6 @@ class ProjectWindow(QMainWindow):
         self.backend_configuration_editor = BackendConfigurationEditor(
             str(pathlib.Path.home() / '.sjef/molpro/backends.xml'), self)
         self.backend_configuration_editor.exec()
-
-    def edit_input_structure(self):
-        if False and settings['use_jmol']:
-            f = self.geometry_files()
-            if f:
-                filename = self.project.filename('', f[-1][1], run=-1)
-                if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
-                    with open(filename, 'w') as f:
-                        f.write('1\n\nC 0.0 0.0 0.0\n')
-                self.destroy_vod('initial structure')
-                self.destroy_vod('builder')
-                self.embedded_builder(filename)
-                self.refresh_output_tabs()
-                for i in range(len(self.output_tabs)):
-                    if self.output_tabs.tabText(i) == 'builder':
-                        self.output_tabs.setCurrentIndex(i)
 
     def destroy_vod(self, title):
         if title in self.vods:
@@ -1837,7 +1800,7 @@ class OutputTabWidget(MyTabWidget):
                         labels[label] += 1
                         label = label + ': ' + str(labels[label])
                     else:
-                        labels[label] = 0
+                        labels[label] = 1
                     # print('found','orbital set', label)
                     if label not in tab_names:
                         # print('new tab','orbital set', label)
@@ -1845,7 +1808,7 @@ class OutputTabWidget(MyTabWidget):
                                                     metadata=orbitals_node.attrib,
                                                     ), label)
             except Exception as e:
-                if not isinstance(e, (IndexError)):
+                if not isinstance(e, (IndexError)) and not isinstance(e, (AttributeError)):
                     print('Orbitals except',str(e)+' '+str(type(e)))
                 pass
 
