@@ -103,7 +103,6 @@ class StatusBar(QLabel):
         self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self.refresh)
         self.refresh_timer.start(latency)
-        self.force_initial_structure_tab = False
 
     def refresh(self):
         try:
@@ -301,7 +300,6 @@ class ProjectWindow(QMainWindow):
         self.layout = QVBoxLayout()
         self.layout.addLayout(top_layout)
 
-        self.output_panes['out'].textChanged.connect(self.rebuild_vod_selector)
         # self.minimum_window_size = self.window().size()
 
         if self.input_pane.toPlainText().strip('\n ') == '':
@@ -325,8 +323,6 @@ class ProjectWindow(QMainWindow):
         container.setLayout(self.layout)
         self.setCentralWidget(container)
         splitter.setSizes([1, 1])
-        if not pathlib.Path(self.project.filename('xml')).exists():
-            self.show_initial_structure()
 
     def setup_output_panes(self):
         self.output_panes = {
@@ -501,10 +497,6 @@ class ProjectWindow(QMainWindow):
             action.triggered.connect(lambda checked, theme_name=theme_name: self.set_theme(theme_name))
         menubar.addSubmenu(theme_menu, 'View')
         menubar.addSeparator('View')
-        menubar.addAction('Initial structure 3D', 'View', self.visualise_input,
-                          tooltip='View the molecular structure in the job input')
-        menubar.addAction('Final structure 3D', 'View', self.visualise_output, 'Alt+D',
-                          tooltip='View the molecular structure at the end of the job')
         menubar.addAction('Initial structure xyz', 'View', self.show_xyz_input,
                           tooltip='View the xyz file for the molecular structure in the job input')
         menubar.addAction('Final structure xyz', 'View', self.show_xyz_output,
@@ -649,74 +641,7 @@ class ProjectWindow(QMainWindow):
                         result.append(keyfound)
         return result
 
-    def vod_selector_action(self, text, external_path=None, force=False):
-        # logger.debug('vod_selector_action ' + text + ' ' + str(external_path))
-        # logger.debug('self.vods ' + str(self.vods))
-        # print('vod_selector_action', text, external_path, force)
-        if force and self.vod_selector.currentText().strip() == 'None':
-            self.vod_selector.setCurrentText('Final structure')
-        # text = self.vod_selector.currentText().strip()
-        # text = ''
-        # print('text', text)
-        # if text == '': text = text1
-        if text == '':
-            return
-        elif text == 'None':
-            pass
-        elif text[:5] == 'Edit ':
-            filename = self.project.filename('', text[5:], run=-1)
-            if not os.path.isfile(filename) or os.path.getsize(filename) <= 1:
-                with open(filename, 'w') as f:
-                    f.write('1\n\nC 0.0 0.0 0.0\n')
-            if external_path:
-                subprocess.Popen([external_path, filename])
-            else:
-                # self.embedded_builder(filename)
-                pass
-        elif text == 'Initial structure':
-            self.visualise_input(external_path=external_path)
-        elif text == 'Final structure':
-            self.visualise_output(external_path, 'xml')
-        else:
-            for typ in molpro_input.local_orbital_types():
-                if text.replace(' orbitals', '') == molpro_input.local_orbital_types()[typ]['text']:
-                    self.visualise_output(external_path, '', self.project.filename('molden', typ, run=0))
 
-    def rebuild_vod_selector(self):
-        return
-        # logger.debug('rebuild_vod_selector')
-        self.vods.clear()
-        initial_xyz = self.initial_xyz()
-        if initial_xyz:
-            try:
-                atoms = atoms_from_xyz(initial_xyz)
-                self.vods['initial structure'] = MoleculeDisplay(atoms, self )
-            except:
-                raise Exception('Could not read initial xyz file')
-        final_structure = self.project.structure(True)
-        metadata={}
-        if final_structure.vibrations:
-            metadata['vibrations'] = final_structure.vibrations
-        self.vods['final structure'] = MoleculeDisplay(final_structure, self)
-        labels = {}
-        try:
-            for index in range(10000):
-                orbitals = self.project.orbitals(index)
-                orbitals_node = orbitals[0].node.getparent()
-                label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals'
-                if label in labels:
-                    labels[label] += 1
-                    label = label + ': ' + str(labels[label])
-                else:
-                    labels[label] = 0
-                self.vods[label] = MoleculeDisplay(orbitals, self,
-                                                   metadata=orbitals_node.attrib,
-                                                   )
-                self.vod_selector_action(label)
-        except Exception as e:
-            if not isinstance(e, (IndexError)):
-                print('Orbitals except',str(e)+' '+str(type(e)))
-            pass
 
 
     def putfiles(self):
@@ -791,11 +716,6 @@ class ProjectWindow(QMainWindow):
         if not os.path.exists(filename): return
         if external_path:
             subprocess.Popen([external_path, filename])
-        # else: JSmol-based fallback removed along with the WebEngine dependency. In
-        # practice 'final structure' and every orbital label are already populated by
-        # rebuild_vod_selector's MoleculeDisplay-based loop, so this rarely fired --
-        # but a not-yet-covered typ/name combination will now silently do nothing
-        # instead of falling back to an embedded viewer.
 
 
     def show_xyz(self, instance=-1):
@@ -820,8 +740,8 @@ class ProjectWindow(QMainWindow):
         if os.path.isfile(xyz_file):
             if external_path:
                 subprocess.Popen([external_path, xyz_file])
-            elif 'builder' not in self.vods and 'initial structure' not in self.vods:
-                print('visualise_input', xyz_file)
+            # elif 'builder' not in self.vods and 'initial structure' not in self.vods:
+            #     print('visualise_input', xyz_file)
                 # self.embedded_vod_jmol(xyz_file, command='', title='initial structure')
 
     def initial_xyz(self) -> str:
@@ -877,7 +797,7 @@ class ProjectWindow(QMainWindow):
                 try:
                     geometry = project.geometry()
                 except Exception as e:
-                    print(f"Error occurred while fetching geometry: {e}")
+                    # print(f"Error occurred while fetching geometry: {e}")
                     geometry = None
                 if not geometry:
                     detail = ''
@@ -943,8 +863,6 @@ class ProjectWindow(QMainWindow):
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
             self.adopt_structure_file(filename)
-            self.show_initial_structure()
-            self.force_initial_structure_tab = True
             return filename
 
     def adopt_structure_file(self, filename):
@@ -954,29 +872,16 @@ class ProjectWindow(QMainWindow):
             if re.search(r'geometry *= *[-_./\w]+ *[;\n]', text, flags=re.IGNORECASE):
                 self.input_pane.setPlainText(
                     re.sub('geometry *=.*[\n;]', 'geometry=' + os.path.basename(filename) + '\n', text))
-                self.rebuild_vod_selector()
             else:
                 self.input_pane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
             self.xyz_to_zmat_activate_or_not(True)
 
-    def show_initial_structure(self):
-        self.destroy_vod('initial structure')
-        if len(self.geometry_files()) != 0 and pathlib.Path(
-                self.project.filename('', self.geometry_files()[0][1])).is_file():
-            self.visualise_input()
-            self.refresh_output_tabs()
-            # self.vod_selector_action('initial structure')
-            for i in range(len(self.output_tabs)):
-                if self.output_tabs.tabText(i) == 'initial structure':
-                    self.output_tabs.setCurrentIndex(i)
 
     def database_import_structure(self):
         if filename := database_choose_structure():
             self.adopt_structure_file(filename)
             os.remove(filename)
             os.rmdir(os.path.dirname(filename))
-            self.show_initial_structure()
-            self.force_initial_structure_tab = True
 
             return filename
 
@@ -1004,7 +909,6 @@ class ProjectWindow(QMainWindow):
                     filename = files_[k]
             if filename:
                 self.adopt_structure_file(pathlib.Path(self.run_directories[run_]) / filename)
-                self.show_initial_structure()
                 return filename
 
     def input_uses_xyz_file(self):
