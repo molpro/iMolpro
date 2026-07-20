@@ -54,7 +54,7 @@ from vtkmodules.vtkIOExportGL2PS import vtkGL2PSExporter
 from vtkmodules.vtkInteractionStyle import vtkInteractorStyleTrackballCamera
 from vtkmodules.vtkRenderingAnnotation import vtkCubeAxesActor
 from vtkmodules.vtkRenderingCore import vtkRenderer, vtkLightKit, vtkActor2D, vtkActorCollection, vtkPolyDataMapper, \
-    vtkColorTransferFunction
+    vtkColorTransferFunction, vtkTextProperty
 from vtkmodules.vtkRenderingLabel import vtkPointSetToLabelHierarchy, vtkLabelPlacementMapper
 
 
@@ -819,11 +819,28 @@ class NucleusLabelsActor(vtkActor2D):
             size_array_name='sizes',
         )
         point_set_to_label_hierarchy_filter.SetInputData(polydata)
+
+        # Label colour needs to survive being drawn over any CPK sphere
+        # colour (red, white, grey, and others -- but never a dark colour).
+        # vtkLabelPlacementMapper takes its text colour from the
+        # vtkTextProperty attached to the hierarchy filter, NOT from this
+        # actor's own vtkProperty2D -- so a plain self.GetProperty().SetColor()
+        # here (as previously attempted) has no visible effect and the text
+        # always renders in VTK's default white. Instead, give the text
+        # property a dark, semi-transparent background box behind black
+        # text: since atom colours are never dark, this halo is legible
+        # against any sphere colour without having to guess a single "safe"
+        # foreground colour.
+        text_property = vtkTextProperty()
+        text_property.SetColor(0.0, 0.0, 0.0)
+        text_property.SetBackgroundColor(1.0, 1.0, 1.0)
+        text_property.SetBackgroundOpacity(0.75)
+        text_property.SetBold(True)
+        point_set_to_label_hierarchy_filter.SetTextProperty(text_property)
+
         mapper = vtkLabelPlacementMapper()
         mapper.SetInputConnection(point_set_to_label_hierarchy_filter.GetOutputPort())
         self.SetMapper(mapper)
-        self.GetProperty().SetColor(vtkNamedColors().GetColor3d('Salmon'))
-        # self.GetProperty().SetOpacity(.1)
 
 
 def atoms_to_polydata(atoms: list[dict], atomic_number=None) -> vtkPolyData:
