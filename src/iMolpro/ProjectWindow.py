@@ -892,12 +892,13 @@ class ProjectWindow(QMainWindow):
                     # logger.debug('visualise_input project output file contents\n' + open(project.filename('out'),'r').read())
                     # except:
                     #     pass
-                    msg = QMessageBox()
-                    msg.setIcon(QMessageBox.Critical)
-                    msg.setWindowTitle("Error")
-                    msg.setText('Error in calculating input geometry')
-                    msg.setDetailedText(detail)
-                    msg.exec_()
+                    logger.debug("Error in calculating input geometry")
+                    # msg = QMessageBox()
+                    # msg.setIcon(QMessageBox.Critical)
+                    # msg.setWindowTitle("Error")
+                    # msg.setText('Error in calculating input geometry')
+                    # msg.setDetailedText(detail)
+                    # msg.exec_()
                     xyz_file = ''
                 else:
                     current_dir = os.path.dirname(self.project.filename(run=-1))
