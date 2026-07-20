@@ -233,7 +233,6 @@ class ProjectWindow(QMainWindow):
 
         self.input_specification = InputSpecification(self.input_pane.toPlainText(), directory=self.project.filename())
 
-        self.setup_output_panes()
 
         self.vods = {}
         self.setup_menubar()
@@ -289,9 +288,7 @@ class ProjectWindow(QMainWindow):
         left_widget.setLayout(left_layout)
         splitter.addWidget(left_widget)
         self.output_tabs = OutputTabWidget(self)
-        self.refresh_output_tabs()
         self.timer_output_tabs = QTimer(self)
-        # self.timer_output_tabs.timeout.connect(self.refresh_output_tabs)
         self.timer_output_tabs.timeout.connect(self.output_tabs.refresh)
         self.timer_output_tabs.start(1000)
         splitter.addWidget(self.output_tabs)
@@ -324,15 +321,6 @@ class ProjectWindow(QMainWindow):
         self.setCentralWidget(container)
         splitter.setSizes([1, 1])
 
-    def setup_output_panes(self):
-        self.output_panes = {
-            suffix: ViewProjectOutput(self.project, suffix, point_size=12 if suffix == 'inp' else 9,
-                                      width=80 if suffix == 'inp' else 132) for suffix in
-            [
-                'out',
-                'log',
-                'inp'
-            ]}
 
     def switch_run_directory(self, run: int):
         self.project.run_directory = run
@@ -516,9 +504,9 @@ class ProjectWindow(QMainWindow):
             (self.output_tabs.currentIndex() - 1) % len(self.output_tabs)), 'Alt+[')
 
         menubar.addSeparator('View')
-        menubar.addAction('Job stdout', 'View', lambda: self.add_output_tab(0, 'stdout', name='stdout'))
-        menubar.addAction('Job stderr', 'View', lambda: self.add_output_tab(0, 'stderr', name='stderr'))
-        menubar.addAction('Job xml', 'View', lambda: self.add_output_tab(0, 'xml', name='xml'))
+        menubar.addAction('Job stdout', 'View', lambda: self.output_tabs.add_suffix('stdout'))
+        menubar.addAction('Job stderr', 'View', lambda: self.output_tabs.add_suffix('stderr'))
+        menubar.addAction('Job xml', 'View', lambda: self.output_tabs.add_suffix('xml'))
 
         self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
         self.run_force_action = menubar.addAction('Run (force)', 'Job', self.run_force, 'Ctrl+Shift+R',
@@ -535,57 +523,6 @@ class ProjectWindow(QMainWindow):
             str(pathlib.Path.home() / '.sjef/molpro/backends.xml'), self)
         self.backend_configuration_editor.exec()
 
-    def destroy_vod(self, title):
-        if title in self.vods:
-            del self.vods[title]
-        for i in range(len(self.output_tabs)):
-            if self.output_tabs.tabText(i) == title:
-                self.output_tabs.removeTab(i)
-
-    def refresh_output_tabs(self, force=False):
-        # print('refresh_output_tabs',force,self.output_tabs.tab_names)
-        return
-        try:
-            index = self.output_tabs.currentIndex()
-            # logger.debug('refresh output tabs')
-            self.run_directory_menus.refresh()
-            if force or len(self.output_tabs) != len(
-                    [tab_name for tab_name, pane in self.output_panes.items() if
-                     os.path.exists(
-                         # self.project.filename(re.sub(r'.*\.', '', tab_name))
-                         pane.filename
-                     )
-                     ]) + len(self.vods):
-                # logger.debug('rebuilding output tabs')
-                for suffix, pane in self.output_panes.items():
-                    # print('examining',suffix,self.project.filename(suffix))
-                    tab_name = os.path.basename(pane.filename)
-                    # print('suffix',suffix,'tab_name',tab_name,pane.filename)
-                    if os.path.exists(pane.filename) and not tab_name in self.output_tabs.tab_names:
-                        # print('adding',suffix,self.project.filename(suffix))
-                        self.output_tabs.addTab(pane, tab_name)
-                for title, vod in self.vods.items():
-                    if title not in self.output_tabs.tab_names or (
-                            self.force_initial_structure_tab and title == 'initial structure'):
-                        self.output_tabs.addTab(vod, title)
-                        self.force_initial_structure_tab = False
-            if 'stderr' not in self.output_panes.keys() and self.project.status == 'completed' and not (
-                    os.path.exists(self.project.filename('out')) and self.project.out):
-                self.add_output_tab(0, suffix='stderr', name='stderr')
-            self.output_tabs.setCurrentIndex(index)
-            # print('end refresh output tabs')
-        except:
-            pass
-
-    def add_output_tab(self, run: int, suffix='out', name=None):
-        tab_name = os.path.basename(self.project.filename(suffix, run=run)) if name is None else name
-        # print('add_output_tab',run,tab_name)
-        self.output_panes[tab_name] = ViewProjectOutput(self.project, suffix, instance=run)
-        self.output_tabs.addTab(self.output_panes[tab_name], tab_name)
-        for i in range(len(self.output_tabs)):
-            if self.output_tabs.tabText(run) == tab_name:
-                # print('add_output_tab setting current Index',run,tab_name)
-                self.output_tabs.setCurrentIndex(run)
 
     def set_theme(self, theme_name):
         settings['theme'] = theme_name
@@ -680,13 +617,6 @@ class ProjectWindow(QMainWindow):
             -1)))):
             QMessageBox.critical(self, 'Geometry missing', 'Cannot submit job because no geometry is defined')
             return False
-        if 'stderr' in self.output_panes:
-            self.output_tabs.removeTab(self.output_tabs.indexOf(self.output_panes['stderr']))
-            del self.output_panes['stderr']
-        for vod in list(self.vods.keys()):
-            if vod not in ['builder', 'initial structure', 'inp']:
-                del self.vods[vod]
-        self.refresh_output_tabs()
         ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
         try:
             self.project.run(force=force)
@@ -697,10 +627,6 @@ class ProjectWindow(QMainWindow):
             os.environ['LD_LIBRARY_PATH'] = ld_library_path
         time.sleep(0.4)
         self.switch_run_directory(len(self.project.run_directory_names) - 1)
-        self.refresh_output_tabs()
-        for i in range(len(self.output_tabs)):
-            if self.output_tabs.tabText(i) == 'out':
-                self.output_tabs.setCurrentIndex(i)
 
     def run_force(self):
         self.run(force=True)
@@ -1672,9 +1598,7 @@ class OutputTabWidget(MyTabWidget):
                 label = os.path.basename(filename)
                 # print('found',filename, label,os.path.getsize(filename) )
                 if label not in tab_names:
-                    # print('new tab','file', label)
-                    self.parent.output_panes[suffix]= ViewProjectOutput(self.parent.project, suffix, point_size=12 if suffix == 'inp' else 9, width=80 if suffix == 'inp' else 132)
-                    self.addTab(self.parent.output_panes[suffix], label)
+                    self.addTab(ViewProjectOutput(self.parent.project, suffix, point_size=12 if suffix == 'inp' else 9, width=80 if suffix == 'inp' else 132), label)
         if os.path.exists(filename:=self.parent.project.filename('xml',run=run_directory)) and os.path.getsize(filename) > 0:
             labels={}
             try:

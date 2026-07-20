@@ -31,11 +31,6 @@ class RunDirectoryMenuActionOpenRun(RunDirectoryMenuAction):
             ProjectWindow(filename, self.project_window.window_manager, record_as_recent=False))
 
 
-class RunDirectoryMenuActionOldOutputs(RunDirectoryMenuAction):
-    def process(self):
-        self.project_window.add_output_tab(self.run)
-
-
 class RunDirectoryMenuActionShow(RunDirectoryMenuAction):
     def process(self):
         self.project_window.switch_run_directory(self.run)
@@ -80,7 +75,6 @@ class RunDirectoryMenus:
         'Show Run...': RunDirectoryMenuActionShow,
         'Open Run as Project...': RunDirectoryMenuActionOpenRun,
         'Erase Run...': RunDirectoryMenuActionDelete,
-        # 'Show Run Output...': RunDirectoryMenuActionOldOutputs,
         'Adopt optimised geometry from Run...': RunDirectoryMenuActionOptimisedGeometry,
         'Select a structure from geometry optimisation...': RunDirectoryMenuActionOptimisedGeometryChoose,
     }
