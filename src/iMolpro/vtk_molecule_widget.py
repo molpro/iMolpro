@@ -57,6 +57,21 @@ from vtkmodules.vtkRenderingCore import vtkRenderer, vtkLightKit, vtkActor2D, vt
     vtkColorTransferFunction, vtkTextProperty
 from vtkmodules.vtkRenderingLabel import vtkPointSetToLabelHierarchy, vtkLabelPlacementMapper
 
+# On VTK builds where they're compiled in (e.g. the official PyPI wheels),
+# vtkContourFilter can be silently swapped at runtime for a Viskores
+# (formerly VTK-m) accelerated implementation via VTK's object factory.
+# That accelerated path logs an "INFO| Using flying edges" line to stderr
+# every time CubeActor's vtkContourFilter runs, which is harmless but
+# noisy. Explicitly disabling the override keeps vtkContourFilter on its
+# ordinary (non-Viskores) code path, which doesn't emit that message.
+# Older/minimal VTK builds don't ship this module at all, hence the guard.
+try:
+    from vtkmodules.vtkAcceleratorsVTKmFilters import vtkmFilterOverrides
+
+    vtkmFilterOverrides.SetEnabled(False)
+except ImportError:
+    pass
+
 
 class ColourScheme(Enum):
     dark = DARK_GREY_WINDOW.red(), DARK_GREY_WINDOW.green(), DARK_GREY_WINDOW.blue(),
