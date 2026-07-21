@@ -14,10 +14,9 @@ def settings_edit(parent=None, callbacks=None):
         callbacks = {}
     hide = ['project_window_width', 'project_window_height']
     visible_settings = {k: settings[k] for k in settings if k not in hide}
-    box = OptionsDialog(visible_settings, [
-        'CHEMSPIDER_API_KEY',
-        'orbital_transparency',
-    ], title='Settings', parent=parent)
+    available_options = ['CHEMSPIDER_API_KEY']
+    available_options += [k for k in settings.defaults if k not in visible_settings and k not in available_options]
+    box = OptionsDialog(visible_settings, available_options, title='Settings', parent=parent)
     result = box.exec()
     if result is not None:
         for k, v in result.items():

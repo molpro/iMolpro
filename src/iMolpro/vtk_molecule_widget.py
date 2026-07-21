@@ -4,12 +4,12 @@ import pikepdf
 from pikepdf import PdfImage
 from PIL import Image as PILImage
 import math
-# import vtk
 import numpy as np
 from pymolpro import Orbital
 
 from .project import Structure
 from .theme import LIGHT_GREY_WINDOW, DARK_GREY_WINDOW, THEMES, theme_manager
+from .settings import settings
 
 try:
     from PySide6.QtGui import QColor, QPalette
@@ -155,10 +155,26 @@ class ItemLayout(QGridLayout):
 class MoleculeDisplay(QWidget):
     def __init__(self, source: Structure | str | list, parent=None, axes: bool = False,
                  background_colour: tuple | ColourScheme | None = None,
-                 contour_value=.1, contour_opacity=.7,
-                 resolution: float = .3,
+                 contour_value=None, contour_opacity=None,
+                 resolution: float = None,
                  metadata: dict = {},
                  ):
+        settings.add_default('contour_value',.1)
+        settings.add_default('contour_opacity',.7)
+        settings.add_default('grid_resolution',.3)
+        if contour_value is None:
+            contour_value = settings['contour_value']
+            # print('MoleculeDisplay() sets contour_value',contour_value)
+        else:
+            settings['contour_value'] = contour_value
+        if contour_opacity is None:
+            contour_opacity = settings['contour_opacity']
+        else:
+            settings['contour_opacity'] = contour_opacity
+        if resolution is None:
+            resolution = settings['grid_resolution']
+        else:
+            settings['grid_resolution'] = resolution
         follow_theme = True if background_colour is None else None
         if background_colour is None:
             rgb = parent.palette().color(QPalette.Window).rgb()
@@ -306,6 +322,7 @@ class MoleculeWidget(StyledWidget):
 
     def set_contour_opacity(self, value):
         self.model.set_contour_opacity(value * 0.01)
+        settings['contour_opacity'] = self.model.contour.opacity
         self.scene.GetRenderWindow().GetInteractor().Render()
 
     @property
@@ -316,6 +333,7 @@ class MoleculeWidget(StyledWidget):
         contour_value = self.contour_slider_minimum * math.exp(
             value * 0.01 * math.log(self.contour_slider_maximum / self.contour_slider_minimum))
         self.model.set_contour_value(contour_value)
+        settings['contour_value'] = self.model.contour_value
         self.scene.GetRenderWindow().GetInteractor().Render()
 
     def set_background_colour(self, colour: QColor | int | tuple[float, float, float], follow_theme: bool = False):
@@ -442,14 +460,14 @@ class ControlPanel(QWidget):
             contour_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
             contour_slider.setValue(
                 int(100 * math.log(
-                    self.parent.molecule_widget.model.contour_value / self.contour_slider_minimum) / math.log(
+                    float(settings['contour_value']) / self.contour_slider_minimum) / math.log(
                     self.contour_slider_maximum / self.contour_slider_minimum)))
             self.control_layout.add('Contour value', contour_slider)
 
             opacity_slider = mySlider(self)
             opacity_slider.valueChanged.connect(self.parent.molecule_widget.set_contour_opacity)
             opacity_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
-            opacity_slider.setValue(int(self.parent.molecule_widget.model.contour.opacity * 100))
+            opacity_slider.setValue(int(float(settings['contour_opacity']) * 100))
             self.control_layout.add('Opacity', opacity_slider)
 
             if False:
@@ -747,6 +765,8 @@ class MolecularModel(vtkActorCollection):
             self.AddItem(item)
 
         if isinstance(source_, CubeData):
+            contour_value = settings['contour_value']
+            contour_opacity = settings['contour_opacity']
             self.contour = CubeActor(source, contour_value=contour_value, colours=contour_colours,
                                      opacity=contour_opacity)
             self.AddItem(self.contour)
