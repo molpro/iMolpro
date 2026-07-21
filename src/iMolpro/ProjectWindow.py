@@ -506,6 +506,7 @@ class ProjectWindow(QMainWindow):
         menubar.addSeparator('View')
         menubar.addAction('Job stdout', 'View', lambda: self.output_tabs.add_suffix('stdout'))
         menubar.addAction('Job stderr', 'View', lambda: self.output_tabs.add_suffix('stderr'))
+        menubar.addAction('Job log', 'View', lambda: self.output_tabs.add_suffix('log'))
         menubar.addAction('Job xml', 'View', lambda: self.output_tabs.add_suffix('xml'))
 
         self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
@@ -1579,7 +1580,11 @@ class OutputTabWidget(MyTabWidget):
         self.refresh()
 
     def add_suffix(self, suffix):
+        old_count = self.count()
         self.suffixes.add(suffix)
+        self.refresh()
+        if old_count != self.count():
+            self.setCurrentIndex(self.count() - 1)
 
     def del_suffix(self, suffix):
         self.suffixes.remove(suffix)
