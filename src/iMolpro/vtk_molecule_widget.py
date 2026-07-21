@@ -722,7 +722,7 @@ class MolecularModel(vtkActorCollection):
     """
 
     def __init__(self, source: dict | CubeData | str | list[str],
-                 radius_scale: float = 0.6, bond_radius: float = .25,
+                 radius_scale: float = 0.4, bond_radius: float = .15,
                  bond_colour: tuple[float, float, float] = (1.0, 1.0, 1.0),
                  contour_value: float = .1,
                  contour_colours: list[tuple[float, float, float]] = [(1.0, 0.0, 0.0), (0.0, 0.0, 1.0)],
@@ -791,7 +791,7 @@ class NucleiActor(vtkActor):
 
     def set_source(self, source: list[dict] | CubeData):
         angstrom = 1.8897161646321
-        sphere_source = vtkSphereSource(phi_resolution=50, theta_resolution=50)
+        sphere_source = vtkSphereSource(phi_resolution=100, theta_resolution=100)
         sphere_source.SetRadius(0.2)
         if self.atomic_number is not None:
             sphere_source.SetRadius(self.radius_scale * angstrom * covalent_radii[self.atomic_number])
@@ -1014,7 +1014,7 @@ class GeometryActorCollection(vtkActorCollection):
 
 class BondActor(vtkActor):
     def __init__(self, startPoint: list[int], endPoint: list[int], radius: float = 1.0,
-                               resolution: int = 15, colour=(1.0, 1.0, 1.0)):
+                               resolution: int = 30, colour=(1.0, 1.0, 1.0)):
         self.GetProperty().SetColor(colour)
         self.radius = radius
         self.resolution = resolution
