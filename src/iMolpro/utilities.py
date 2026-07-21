@@ -558,10 +558,17 @@ class VibrationSetXML(VibrationSet):
 
 
 class FileBackedDictionary(MutableMapping):
+    #: Sentinel accepted by __setitem__ to mean "discard any stored value and fall back to the default"
+    DEFAULT = object()
+
     def __init__(self, filename: str):
         self.filename = filename
         self.filetime = 0.0
+        self.defaults = {}
         self.refresh()
+
+    def add_default(self, key, value):
+        self.defaults[key] = value
 
     def refresh(self):
         if os.path.exists(self.filename) and self.filetime < os.path.getmtime(self.filename) and os.stat(
@@ -579,7 +586,9 @@ class FileBackedDictionary(MutableMapping):
 
     def __getitem__(self, item):
         self.refresh()
-        return self.data[item]
+        if item in self.data:
+            return self.data[item]
+        return self.defaults[item]
 
     def __delitem__(self, item):
         self.refresh()
@@ -588,8 +597,13 @@ class FileBackedDictionary(MutableMapping):
 
     def __setitem__(self, key, value):
         self.refresh()
-        self.data[key] = value
-        self.save()
+        if value is FileBackedDictionary.DEFAULT:
+            if key in self.data:
+                del self.data[key]
+                self.save()
+        else:
+            self.data[key] = value
+            self.save()
 
     def __iter__(self):
         self.refresh()
