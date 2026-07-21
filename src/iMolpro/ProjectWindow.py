@@ -504,10 +504,12 @@ class ProjectWindow(QMainWindow):
             (self.output_tabs.currentIndex() - 1) % len(self.output_tabs)), 'Alt+[')
 
         menubar.addSeparator('View')
+        menubar.addAction('Job output', 'View', lambda: self.output_tabs.add_suffix('out'),shortcut='Alt+o')
+        menubar.addAction('Job input', 'View', lambda: self.output_tabs.add_suffix('inp'),shortcut='Alt+i')
+        menubar.addAction('Job log', 'View', lambda: self.output_tabs.add_suffix('log'),shortcut='Alt+l')
+        menubar.addAction('Job xml', 'View', lambda: self.output_tabs.add_suffix('xml'),shortcut='Alt+x')
         menubar.addAction('Job stdout', 'View', lambda: self.output_tabs.add_suffix('stdout'))
         menubar.addAction('Job stderr', 'View', lambda: self.output_tabs.add_suffix('stderr'))
-        menubar.addAction('Job log', 'View', lambda: self.output_tabs.add_suffix('log'))
-        menubar.addAction('Job xml', 'View', lambda: self.output_tabs.add_suffix('xml'))
 
         self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
         self.run_force_action = menubar.addAction('Run (force)', 'Job', self.run_force, 'Ctrl+Shift+R',
@@ -1573,39 +1575,35 @@ class OutputTabWidget(MyTabWidget):
         self.parent = parent
         self.run_directory = None
         self.suffixes = { 'inp','out',}
-        # self.add_suffix('log') # TODO add menu for these
-        # self.add_suffix('xml')
-        # self.add_suffix('stdout')
-        # self.add_suffix('stderr')
         self.refresh()
 
     def add_suffix(self, suffix):
-        old_count = self.count()
         self.suffixes.add(suffix)
         self.refresh()
-        if old_count != self.count():
-            self.setCurrentIndex(self.count() - 1)
+        self.setCurrentIndex(self.indexOfTab(self.label(suffix)))
 
     def del_suffix(self, suffix):
         self.suffixes.remove(suffix)
 
     def refresh(self):
-        run_directory = self.parent.project.run_directory
         tab_names = [self.tabText(i) for i in range(self.count())]
-        if self.run_directory != run_directory:
+        if self.run_directory != self.parent.project.run_directory:
             self.clear()
-            self.run_directory = run_directory
+            self.run_directory = self.parent.project.run_directory
         # print('discover_tab_sources', run_directory)
 
         self.output_panes = {}
         for suffix in self.suffixes:
-            if os.path.exists(filename:=self.parent.project.filename(suffix,run=run_directory)) and os.path.getsize(filename) > 0:
-                label = os.path.basename(filename)
+            if os.path.exists(filename := self.parent.project.filename(suffix, run=(
+                    self.parent.project.run_directory))) and os.path.getsize(filename) > 0:
+                label = self.label(suffix)
                 # print('found',filename, label,os.path.getsize(filename) )
                 if label not in tab_names:
-                    self.addTab(ViewProjectOutput(self.parent.project, suffix, point_size=12 if suffix == 'inp' else 9, width=80 if suffix == 'inp' else 132), label)
-        if os.path.exists(filename:=self.parent.project.filename('xml',run=run_directory)) and os.path.getsize(filename) > 0:
-            labels={}
+                    self.addTab(ViewProjectOutput(self.parent.project, suffix, point_size=12 if suffix == 'inp' else 9,
+                                                  width=80 if suffix == 'inp' else 132), label)
+        if os.path.exists(filename := self.parent.project.filename('xml', run=(
+                self.parent.project.run_directory))) and os.path.getsize(filename) > 0:
+            labels = {}
             try:
                 # get input geometry maybe
                 # get final geometry
@@ -1614,7 +1612,7 @@ class OutputTabWidget(MyTabWidget):
                 # if final_structure.vibrations:
                 #     metadata['vibrations'] = final_structure.vibrations
                 final_structure_tab_label = 'final structure'
-                if not hasattr(self,'final_structure') or self.final_structure != final_structure:
+                if not hasattr(self, 'final_structure') or self.final_structure != final_structure:
                     # print('final structure changed')
                     # print('final structure',final_structure)
                     # if hasattr(self,'final_structure'):
@@ -1624,9 +1622,9 @@ class OutputTabWidget(MyTabWidget):
                     if final_structure_tab_label in tab_names:
                         self.removeTab(self.indexOfTab(final_structure_tab_label))
                     # print('new tab','final structure', final_structure_tab_label)
-                    self.addTab(MoleculeDisplay(final_structure,self.parent), final_structure_tab_label)
+                    self.addTab(MoleculeDisplay(final_structure, self.parent), final_structure_tab_label)
 
-                for index in range(10000): # get orbital sets
+                for index in range(10000):  # get orbital sets
                     orbitals = self.parent.project.orbitals(index)
                     orbitals_node = orbitals[0].node.getparent()
                     label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals'
@@ -1638,12 +1636,12 @@ class OutputTabWidget(MyTabWidget):
                     # print('found','orbital set', label)
                     if label not in tab_names:
                         # print('new tab','orbital set', label)
-                        self.addTab( MoleculeDisplay(orbitals, self,
+                        self.addTab(MoleculeDisplay(orbitals, self,
                                                     metadata=orbitals_node.attrib,
                                                     ), label)
             except Exception as e:
                 if not isinstance(e, (IndexError)) and not isinstance(e, (AttributeError)):
-                    print('Orbitals except',str(e)+' '+str(type(e)))
+                    print('Orbitals except', str(e) + ' ' + str(type(e)))
                 pass
 
         # get input geometry from the input
@@ -1663,4 +1661,7 @@ class OutputTabWidget(MyTabWidget):
             except:
                 # raise Exception('Could not read input xyz file')
                 pass
+
+    def label(self, suffix: str) -> str:
+        return os.path.basename(self.parent.project.filename(suffix, run=(self.parent.project.run_directory)))
 
