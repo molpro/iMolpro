@@ -1601,6 +1601,25 @@ class OutputTabWidget(MyTabWidget):
                 if label not in tab_names:
                     self.addTab(ViewProjectOutput(self.parent.project, suffix, point_size=12 if suffix == 'inp' else 9,
                                                   width=80 if suffix == 'inp' else 132), label)
+
+        # get input geometry from the input
+        input_xyz = self.parent.initial_xyz()
+        # print('input_xyz',input_xyz)
+        if input_xyz:
+            try:
+                input_structure_tab_label = 'input structure'
+                atoms = atoms_from_xyz(input_xyz)
+                if not hasattr(self,'input_atoms') or self.input_atoms != atoms or input_structure_tab_label not in tab_names:
+                    # print('new input structure')
+                    self.input_atoms = atoms
+                    if input_structure_tab_label in tab_names:
+                        self.removeTab(self.indexOfTab(input_structure_tab_label))
+                    # print('new tab','input structure', input_structure_tab_label)
+                    self.addTab(MoleculeDisplay(atoms, self.parent, metadata={'label': 'Input geometry'} ), input_structure_tab_label)
+            except:
+                # raise Exception('Could not read input xyz file')
+                pass
+
         if os.path.exists(filename := self.parent.project.filename('xml', run=(
                 self.parent.project.run_directory))) and os.path.getsize(filename) > 0:
             labels = {}
@@ -1644,23 +1663,6 @@ class OutputTabWidget(MyTabWidget):
                     print('Orbitals except', str(e) + ' ' + str(type(e)))
                 pass
 
-        # get input geometry from the input
-        input_xyz = self.parent.initial_xyz()
-        # print('input_xyz',input_xyz)
-        if input_xyz:
-            try:
-                input_structure_tab_label = 'input structure'
-                atoms = atoms_from_xyz(input_xyz)
-                if not hasattr(self,'input_atoms') or self.input_atoms != atoms or input_structure_tab_label not in tab_names:
-                    # print('new input structure')
-                    self.input_atoms = atoms
-                    if input_structure_tab_label in tab_names:
-                        self.removeTab(self.indexOfTab(input_structure_tab_label))
-                    # print('new tab','input structure', input_structure_tab_label)
-                    self.addTab(MoleculeDisplay(atoms, self.parent, metadata={'label': 'Input geometry'} ), input_structure_tab_label)
-            except:
-                # raise Exception('Could not read input xyz file')
-                pass
 
     def label(self, suffix: str) -> str:
         return os.path.basename(self.parent.project.filename(suffix, run=(self.parent.project.run_directory)))
