@@ -1612,7 +1612,7 @@ class OutputTabWidget(MyTabWidget):
                 # if final_structure.vibrations:
                 #     metadata['vibrations'] = final_structure.vibrations
                 final_structure_tab_label = 'final structure'
-                if not hasattr(self, 'final_structure') or self.final_structure != final_structure:
+                if not hasattr(self, 'final_structure') or self.final_structure != final_structure or  final_structure_tab_label not in tab_names:
                     # print('final structure changed')
                     # print('final structure',final_structure)
                     # if hasattr(self,'final_structure'):
@@ -1649,11 +1649,11 @@ class OutputTabWidget(MyTabWidget):
         # print('input_xyz',input_xyz)
         if input_xyz:
             try:
+                input_structure_tab_label = 'input structure'
                 atoms = atoms_from_xyz(input_xyz)
-                if not hasattr(self,'input_atoms') or self.input_atoms != atoms:
+                if not hasattr(self,'input_atoms') or self.input_atoms != atoms or input_structure_tab_label not in tab_names:
                     # print('new input structure')
                     self.input_atoms = atoms
-                    input_structure_tab_label = 'input structure'
                     if input_structure_tab_label in tab_names:
                         self.removeTab(self.indexOfTab(input_structure_tab_label))
                     # print('new tab','input structure', input_structure_tab_label)
