@@ -1627,22 +1627,28 @@ class OutputTabWidget(MyTabWidget):
                 # get input geometry maybe
                 # get final geometry
                 final_structure = self.parent.project.structure(True)
-                # metadata={}
-                # if final_structure.vibrations:
-                #     metadata['vibrations'] = final_structure.vibrations
-                final_structure_tab_label = 'final structure'
-                if not hasattr(self, 'final_structure') or self.final_structure != final_structure or  final_structure_tab_label not in tab_names:
-                    # print('final structure changed')
-                    # print('final structure',final_structure)
-                    # if hasattr(self,'final_structure'):
-                    #    print('self.final structure',self.final_structure)
-                    #    print(self.final_structure.vibrations == final_structure.vibrations)
-                    self.final_structure = final_structure
-                    if final_structure_tab_label in tab_names:
-                        self.removeTab(self.indexOfTab(final_structure_tab_label))
-                    # print('new tab','final structure', final_structure_tab_label)
-                    self.addTab(MoleculeDisplay(final_structure, self.parent), final_structure_tab_label)
+                initial_structure = self.parent.project.structure(instance=0)
+            except:
+                if 'initial_structure' not in locals(): initial_structure = None
+                if 'final_structure' not in locals(): final_structure = None
+            # print('initial structure',initial_structure)
+            # print('final structure',final_structure)
+            final_structure_tab_label = 'final structure'
+            initial_structure_tab_label = 'initial structure'
+            if final_structure is not None and (not hasattr(self, 'final_structure') or self.final_structure != final_structure or  final_structure_tab_label not in tab_names):
+                self.final_structure = final_structure
+                if final_structure_tab_label in tab_names:
+                    self.removeTab(self.indexOfTab(final_structure_tab_label))
+                # print('new tab','final structure', final_structure_tab_label)
+                self.addTab(MoleculeDisplay(final_structure, self.parent), final_structure_tab_label)
+            if initial_structure is not None and final_structure_tab_label not in tab_names and initial_structure != final_structure and (not hasattr(self, 'initial_structure') or self.initial_structure != initial_structure or  initial_structure_tab_label not in tab_names):
+                self.initial_structure = initial_structure
+                if initial_structure_tab_label in tab_names:
+                    self.removeTab(self.indexOfTab(initial_structure_tab_label))
+                # print('new tab','initial structure', initial_structure_tab_label)
+                self.addTab(MoleculeDisplay(initial_structure, self.parent), initial_structure_tab_label)
 
+            try:
                 for index in range(10000):  # get orbital sets
                     orbitals = self.parent.project.orbitals(index)
                     orbitals_node = orbitals[0].node.getparent()

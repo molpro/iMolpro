@@ -55,16 +55,17 @@ class Project(BaseProject):
         with open(self.filename('xml', run=run),'r') as f:
             xml = f.read()
 
+        vibrations = None
         if require_frequencies:
             try:
                 vibrations = VibrationSetXML(xml, instance=instance)
             except:
-                vibrations = None
+                pass
         if vibrations:
             return Structure(vibrations.atoms, vibrations)
         else:
             root = lxml.etree.fromstring(xml)
-            coords = root.xpath('(/*/*/*/*/cml:atomArray)', namespaces=namespaces_)
+            coords = root.xpath('(//cml:atomArray)', namespaces=namespaces_)
             atoms=[]
             angstrom = 1.8897161646321
             for coord in coords[instance]:
