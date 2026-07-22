@@ -1602,27 +1602,8 @@ class OutputTabWidget(MyTabWidget):
                     self.addTab(ViewProjectOutput(self.parent.project, suffix, point_size=12 if suffix == 'inp' else 9,
                                                   width=80 if suffix == 'inp' else 132), label)
 
-        # get input geometry from the input
-        input_xyz = self.parent.initial_xyz()
-        # print('input_xyz',input_xyz)
-        if input_xyz:
-            try:
-                input_structure_tab_label = 'input structure'
-                atoms = atoms_from_xyz(input_xyz)
-                if not hasattr(self,'input_atoms') or self.input_atoms != atoms or input_structure_tab_label not in tab_names:
-                    # print('new input structure')
-                    self.input_atoms = atoms
-                    if input_structure_tab_label in tab_names:
-                        self.removeTab(self.indexOfTab(input_structure_tab_label))
-                    # print('new tab','input structure', input_structure_tab_label)
-                    self.addTab(MoleculeDisplay(atoms, self.parent, metadata={'label': 'Input geometry'} ), input_structure_tab_label)
-            except:
-                # raise Exception('Could not read input xyz file')
-                pass
-
         if os.path.exists(filename := self.parent.project.filename('xml', run=(
                 self.parent.project.run_directory))) and os.path.getsize(filename) > 0:
-            labels = {}
             try:
                 # get input geometry maybe
                 # get final geometry
@@ -1648,6 +1629,37 @@ class OutputTabWidget(MyTabWidget):
                 # print('new tab','initial structure', initial_structure_tab_label)
                 self.addTab(MoleculeDisplay(initial_structure, self.parent), initial_structure_tab_label)
 
+        # get input geometry from the input
+        input_xyz = self.parent.initial_xyz()
+        if input_xyz:
+            try:
+                input_structure_tab_label = 'input structure'
+                atoms = atoms_from_xyz(input_xyz)
+                # print('self.initial_structure',self.initial_structure)
+                test = 'initial_structure' in locals() and initial_structure is not None and atoms is not None
+                if test:
+                    for i,atom in enumerate(atoms):
+                        test = test and all(
+                            [abs(initial_structure.atoms[i]['xyz'][k] - atom['xyz'][k]) < 1e-7 for k in range(3)])
+                if test:
+                    if input_structure_tab_label in tab_names:
+                        self.removeTab(self.indexOfTab(input_structure_tab_label))
+                else:
+                    if not hasattr(self,'input_atoms') or self.input_atoms != atoms or input_structure_tab_label not in tab_names:
+                        # print('new input structure')
+                        self.input_atoms = atoms
+                        if input_structure_tab_label in tab_names:
+                            self.removeTab(self.indexOfTab(input_structure_tab_label))
+                        # print('new tab','input structure', input_structure_tab_label)
+                        self.addTab(MoleculeDisplay(atoms, self.parent, metadata={'label': 'Input geometry'} ), input_structure_tab_label)
+            except:
+                # raise Exception('Could not read input xyz file')
+                pass
+
+
+        if os.path.exists(filename := self.parent.project.filename('xml', run=(
+                self.parent.project.run_directory))) and os.path.getsize(filename) > 0:
+            labels = {}
             try:
                 for index in range(10000):  # get orbital sets
                     orbitals = self.parent.project.orbitals(index)
