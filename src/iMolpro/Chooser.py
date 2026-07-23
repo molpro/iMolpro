@@ -1,13 +1,10 @@
 import os
-import pathlib
 import platform
 import re
-import time
 import io
 
 import numpy as np
 from PIL import Image as PILImage
-
 
 from .MenuBar import MenuBar
 from .RecentMenu import RecentMenu
@@ -15,24 +12,27 @@ from .help import help_manager_default
 from .utilities import force_suffix
 from ._paths import app_root
 
-import pymolpro
+
 try:
     from PySide6 import QtCore
     from PySide6.QtCore import QCoreApplication, Qt, QUrl
-    from PySide6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, QColor, QActionGroup, QImage
+    from PySide6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, \
+        QScreen, QPalette, QColor, QActionGroup, QImage
     from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-       QToolButton, QApplication, QMenu
+        QToolButton, QApplication, QMenu
 except ImportError:
     try:
         from PyQt6 import QtCore
         from PyQt6.QtCore import QCoreApplication, Qt, QUrl
-        from PyQt6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, QColor, QActionGroup, QImage
+        from PyQt6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, \
+            QScreen, QPalette, QColor, QActionGroup, QImage
         from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
             QToolButton, QApplication, QMenu
     except ImportError:
         from PyQt5 import QtCore
         from PyQt5.QtCore import QCoreApplication, Qt, QUrl
-        from PyQt5.QtGui import QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, QColor, QImage
+        from PyQt5.QtGui import QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, \
+            QColor, QImage
         from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
             QToolButton, QShortcut, QAction, QApplication, QMenu, QActionGroup
 try:
@@ -238,7 +238,8 @@ class Chooser(QMainWindow):
             version = None
             if os.path.exists(app_root() / '.git'):
                 try:
-                    version = subprocess.check_output(['git', '-C', str(app_root()), 'describe', '--tags', '--dirty']).decode('ascii').strip()
+                    version = subprocess.check_output(
+                        ['git', '-C', str(app_root()), 'describe', '--tags', '--dirty']).decode('ascii').strip()
                 except Exception:
                     pass
                 if version:
@@ -254,7 +255,9 @@ class Chooser(QMainWindow):
             except Exception:
                 return 'unknown'
 
-        version_label = LinkLabel("iMolpro version " + version_(), 'https://github.com/molpro/iMolpro/tree/'+re.sub('-.*','',version_())+'/README.md')
+        version_label = LinkLabel("iMolpro version " + version_(),
+                                  'https://github.com/molpro/iMolpro/tree/' + re.sub('-.*', '',
+                                                                                     version_()) + '/README.md')
         version_label.setStyleSheet("font-size: 10px")
         version_label.setAlignment(AlignCenter)
         rh_panel.addWidget(version_label)
@@ -263,16 +266,17 @@ class Chooser(QMainWindow):
         self.showNormal()
         self.menubar = MenuBar()
         self.menubar.addAction('New', 'Projects', slot=self.newProjectDialog, shortcut='Ctrl+N',
-                          tooltip='Create a new project')
+                               tooltip='Create a new project')
         self.menubar.addAction('Open', 'Projects', slot=self.openProjectDialog, shortcut='Ctrl+O',
-                          tooltip='Open an existing project')
+                               tooltip='Open an existing project')
         self.menubar.addSeparator('Projects')
         self.recentMenu = RecentMenu(window_manager)
         self.menubar.addSubmenu(self.recentMenu, 'Projects')
         self.menubar.addSeparator('Projects')
         self.menubar.addAction('Quit', 'Projects', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
-                          tooltip='Quit')
-        self.menubar.addAction('Settings', 'Edit', lambda arg, parent=self: settings_edit(parent), tooltip='Edit settings')
+                               tooltip='Quit')
+        self.menubar.addAction('Settings', 'Edit', lambda arg, parent=self: settings_edit(parent),
+                               tooltip='Edit settings')
         theme_menu = QMenu('Theme')
         theme_action_group = QActionGroup(self)
         theme_action_group.setExclusive(True)
@@ -310,7 +314,7 @@ class Chooser(QMainWindow):
                 max_length = 60
                 self.setText(('' if index is None or index > 9 else '&' + str(index) + ': ') + (
                     reduced_filename if len(reduced_filename) <= max_length else ' ... ' + reduced_filename[
-                                                                                           -max_length + 5:]))
+                        -max_length + 5:]))
                 self.setContentsMargins(0, 0, 0, 0)
 
                 self.qaction = QAction(self)
