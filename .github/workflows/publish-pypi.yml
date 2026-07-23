@@ -1,16 +1,8 @@
-name: Publish to TestPyPI
-
-# Triggered whenever a GitHub Release is published. Your repo's deploy.yml
-# creates a release for *every* tag push, including the auto-generated
-# "latest_YYYY_MM_DD_<sha>" tags and ad hoc tags like "windows-test-1" or
-# "mcs07-2" — none of those are real version tags, so the "check-version-tag"
-# job below only lets the build/publish jobs run when the release tag looks
-# like a version number (e.g. "0.1.2", "2025.4.1"). Also runnable by hand via
-# workflow_dispatch for testing.
+name: Publish to PyPI
 
 on:
   release:
-    types: [published]
+    types: [ published ]
   workflow_dispatch:
 
 jobs:
@@ -57,12 +49,13 @@ jobs:
           name: dist
           path: dist/
 
-  publish-testpypi:
+
+  publish-pypi:
     needs: build
     runs-on: ubuntu-latest
     environment:
-      name: testpypi
-      url: https://test.pypi.org/p/imolpro
+      name: pypi
+      url: https://pypi.org/p/imolpro
     permissions:
       id-token: write   # required for OIDC trusted publishing
     steps:
@@ -70,28 +63,4 @@ jobs:
         with:
           name: dist
           path: dist/
-
       - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-
-  # Once you're ready to publish real releases to pypi.org, uncomment this
-  # job (and consider adding a "required reviewers" protection rule on the
-  # "pypi" environment in GitHub repo settings so publishes need manual
-  # approval). It needs its own trusted publisher registered on pypi.org
-  # (see setup notes) — the testpypi one above does not carry over.
-  #
-  # publish-pypi:
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   environment:
-  #     name: pypi
-  #     url: https://pypi.org/p/imolpro
-  #   permissions:
-  #     id-token: write
-  #   steps:
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: dist
-  #         path: dist/
-  #     - uses: pypa/gh-action-pypi-publish@release/v1
