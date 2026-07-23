@@ -16,6 +16,11 @@ Once the input has been prepared, the job can be submitted either locally (defau
 
 Editing of input can be done in one of _guided_ or _freehand_ modes. In guided mode, the default for new projects, as well for old inputs that are sufficiently simple that their structure can be parsed, methods and options are specified through buttons and menus. In freehand mode, the text of the input is simply edited by hand. It is possible at any time to toggle between the two modes, and if guided mode becomes impossible, an attempt to toggle will show information on why. Most projects prepared previously with
 [gmolpro](https://www.molpro.net/manual/doku.php?id=gmolpro_graphical_user_interface) will open successfully in guided mode.
+### Installation
+Binaries prepared with [PyInstaller](https://pyinstaller.org/) are available for Windows, macOS, and Linux, and can be downloaded from the [releases](https://github.com/molpro/imolpro/releases) page.
+The package is alternatively available as a Python module published on [PyPI](https://pypi.org/project/iMolpro/), and can be installed with `pip install iMolpro`, which has the effect of providing the command `iMolpro` in the current Python environment.
+
+In the case of MacOS, the PyInstaller-built binary is an application bundle which, when normally installed in `/Applications`, registers as an opener for Molpro projects, which means that you can double-click on a Molpro project file to launch iMolpro.
 ### License
 iMolpro is
 licensed under the [GNU LGPL v3](https://opensource.org/license/lgpl-3-0).
