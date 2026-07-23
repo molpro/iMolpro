@@ -61,7 +61,7 @@ def main():
         logging.basicConfig(level=log_level,
                             format='%(asctime)s %(levelname)-8s %(name)s %(funcName)s() %(pathname)s:%(lineno)d %(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S')
-    logger.info('iMolpro starting...')
+    logger.debug('iMolpro starting...')
 
     if platform.uname().system == 'Linux':
         if 'FONTCONFIG_PATH' not in os.environ:
@@ -127,7 +127,7 @@ def main():
         window_manager.register(ProjectWindow(arg, window_manager))
 
     app.exec()
-    logger.info('... iMolpro stopping')
+    logger.debug('... iMolpro stopping')
 
 
 if __name__ == '__main__':
