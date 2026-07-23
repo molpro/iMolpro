@@ -159,9 +159,9 @@ class MoleculeDisplay(QWidget):
                  resolution: float = None,
                  metadata: dict = {},
                  ):
-        settings.add_default('contour_value',.1)
-        settings.add_default('contour_opacity',.7)
-        settings.add_default('grid_resolution',.3)
+        settings.add_default('contour_value', .1)
+        settings.add_default('contour_opacity', .7)
+        settings.add_default('grid_resolution', .3)
         if contour_value is None:
             contour_value = settings['contour_value']
             # print('MoleculeDisplay() sets contour_value',contour_value)
@@ -638,9 +638,9 @@ def _make_pdf_background_transparent(pdf_path, background_rgb, tol=10):
             arr = np.array(pil_img)
             r, g, b = background_rgb
             mask = (
-                (np.abs(arr[:, :, 0].astype(int) - r) <= tol) &
-                (np.abs(arr[:, :, 1].astype(int) - g) <= tol) &
-                (np.abs(arr[:, :, 2].astype(int) - b) <= tol)
+                    (np.abs(arr[:, :, 0].astype(int) - r) <= tol) &
+                    (np.abs(arr[:, :, 1].astype(int) - g) <= tol) &
+                    (np.abs(arr[:, :, 2].astype(int) - b) <= tol)
             )
             alpha = np.where(mask, 0, 255).astype(np.uint8)
             alpha_img = PILImage.fromarray(alpha, mode='L')
@@ -899,7 +899,7 @@ class BondActorCollection(vtkActorCollection):
         if isinstance(source, CubeData):
             self.set_source(source.atoms)
             return
-        self.bonds=[]
+        self.bonds = []
         self.atoms = source
         angstrom = 1.8897161646321
         for i, iatom in enumerate(self.atoms):
@@ -1020,7 +1020,7 @@ class GeometryActorCollection(vtkActorCollection):
         if False:
             geom2 = [d for d in geom]
             for d in geom2:
-                d['xyz'] = [d['xyz'][i]*1.5 for i in range(3)]
+                d['xyz'] = [d['xyz'][i] * 1.5 for i in range(3)]
             self.update(geom2)
 
     def update(self, source: dict | CubeData):
@@ -1034,15 +1034,15 @@ class GeometryActorCollection(vtkActorCollection):
 
 class BondActor(vtkActor):
     def __init__(self, startPoint: list[int], endPoint: list[int], radius: float = 1.0,
-                               resolution: int = 30, colour=(1.0, 1.0, 1.0)):
+                 resolution: int = 30, colour=(1.0, 1.0, 1.0)):
         self.GetProperty().SetColor(colour)
         self.radius = radius
         self.resolution = resolution
         self.update(startPoint, endPoint)
 
-
     def update(self, startPoint: list[int], endPoint: list[int]):
         self.SetMapper(join_points_with_cylinder(startPoint, endPoint, radius=self.radius, resolution=self.resolution))
+
 
 def join_points_with_cylinder(startPoint: list[int], endPoint: list[int], radius: float = 1.0,
                               resolution: int = 15) -> vtkPolyDataMapper:

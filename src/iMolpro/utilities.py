@@ -283,7 +283,7 @@ class ViewFile(QPlainTextEdit):
                     contents = f.read()
                     self.clear()
                     self.setPlainText(contents)
-                    contents=self.toPlainText() # seems to be needed to ensure sync
+                    contents = self.toPlainText()  # seems to be needed to ensure sync
             if scrollbar_at_bottom:
                 self.verticalScrollBar().setValue(scrollbar.maximum())
             else:
@@ -457,7 +457,8 @@ class VibrationSet:
     """
 
     def __str__(self):
-        return 'VibrationSet ' + str(type(self)) + '\n' + str(self.modes) + str('\n\ncoordinateSet: ') + str(self.coordinateSet)+ str('\n\natoms: ') + str(self.atoms)
+        return 'VibrationSet ' + str(type(self)) + '\n' + str(self.modes) + str('\n\ncoordinateSet: ') + str(
+            self.coordinateSet) + str('\n\natoms: ') + str(self.atoms)
 
     @property
     def frequencies(self):
@@ -476,7 +477,6 @@ def displace_coordinate(source: list[dict] | CubeData, coordinate: list[float], 
         result.append({'atomic_number': atom['atomic_number'],
                        'xyz': [atom['xyz'][j] + displacement * coordinate[j] for j in range(3)]})
     return result
-
 
 
 def factory_vibration_set(input: str, file_type=None, instance=-1):
@@ -532,10 +532,12 @@ class VibrationSetXML(VibrationSet):
             vibrations_node[instance].xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
                                             namespaces=namespaces_))
         coords = vibrations_node[instance].xpath('preceding::cml:atomArray[1]', namespaces=namespaces_)
-        self.atoms=[]
+        self.atoms = []
         angstrom = 1.8897161646321
         for coord in coords[0]:
-            self.atoms.append({'xyz': [angstrom*float(coord.attrib['x3']),angstrom*float(coord.attrib['y3']),angstrom*float(coord.attrib['z3'])],'atomic_number':periodic_table.index(coord.attrib['elementType'])+1})
+            self.atoms.append({'xyz': [angstrom * float(coord.attrib['x3']), angstrom * float(coord.attrib['y3']),
+                                       angstrom * float(coord.attrib['z3'])],
+                               'atomic_number': periodic_table.index(coord.attrib['elementType']) + 1})
         self.modes = [
             {
                 'vector': [float(v) for v in c.text.split()],
@@ -551,7 +553,7 @@ class VibrationSetXML(VibrationSet):
                 namespaces=namespaces_))
         ]
 
-    def __eq__(self,other):
+    def __eq__(self, other):
         if not isinstance(other, VibrationSetXML):
             return False
         return self.modes == other.modes and self.coordinateSet == other.coordinateSet
@@ -616,7 +618,8 @@ class FileBackedDictionary(MutableMapping):
     def __repr__(self):
         return f"{type(self).__name__}({self.data})"
 
-def writable_directory(preferred:str=None) -> pathlib.Path:
+
+def writable_directory(preferred: str = None) -> pathlib.Path:
     if preferred is not None and os.access(preferred, os.W_OK):
         return preferred
     tmpdir = pathlib.Path('/tmp')
@@ -625,6 +628,7 @@ def writable_directory(preferred:str=None) -> pathlib.Path:
             tmpdir = pathlib.Path(os.environ[env])
             break
     return tmpdir
+
 
 def atoms_from_xyz(initial_xyz: str) -> list[Any]:
     angstrom = 1.8897161646321

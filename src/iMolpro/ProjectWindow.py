@@ -37,8 +37,8 @@ except ImportError as e:
     try:
         from PyQt6.QtCore import QTimer, pyqtSignal, QCoreApplication, Qt, QSize, QEvent
         from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
-        QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
-        QToolButton
+            QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
+            QToolButton
         from PyQt6.QtGui import QFont, QDesktopServices, QAction, QActionGroup
         import PyQt6.QtCore
         # from Qt.AlignmentFlag import AlignVCenter as Qt_AlignCenter, AlignTop as Qt_AlignTop
@@ -66,9 +66,6 @@ except:
     Orientation = Qt
     MatchFlag = Qt
 
-
-
-
 from pymolpro import molpro_input
 from .BasisSelector import BasisSelector
 from .SpinComboBox import SpinComboBox
@@ -90,8 +87,6 @@ from .vtk_molecule_widget import MoleculeDisplay, MoleculeWidget
 import logging
 
 logger = logging.getLogger(__name__)
-
-
 
 
 class StatusBar(QLabel):
@@ -233,7 +228,6 @@ class ProjectWindow(QMainWindow):
 
         self.input_specification = InputSpecification(self.input_pane.toPlainText(), directory=self.project.filename())
 
-
         self.vods = {}
         self.setup_menubar()
 
@@ -320,7 +314,6 @@ class ProjectWindow(QMainWindow):
         container.setLayout(self.layout)
         self.setCentralWidget(container)
         splitter.setSizes([1, 1])
-
 
     def switch_run_directory(self, run: int):
         self.project.run_directory = run
@@ -504,10 +497,10 @@ class ProjectWindow(QMainWindow):
             (self.output_tabs.currentIndex() - 1) % len(self.output_tabs)), 'Alt+[')
 
         menubar.addSeparator('View')
-        menubar.addAction('Job output', 'View', lambda: self.output_tabs.add_suffix('out'),shortcut='Alt+o')
-        menubar.addAction('Job input', 'View', lambda: self.output_tabs.add_suffix('inp'),shortcut='Alt+i')
-        menubar.addAction('Job log', 'View', lambda: self.output_tabs.add_suffix('log'),shortcut='Alt+l')
-        menubar.addAction('Job xml', 'View', lambda: self.output_tabs.add_suffix('xml'),shortcut='Alt+x')
+        menubar.addAction('Job output', 'View', lambda: self.output_tabs.add_suffix('out'), shortcut='Alt+o')
+        menubar.addAction('Job input', 'View', lambda: self.output_tabs.add_suffix('inp'), shortcut='Alt+i')
+        menubar.addAction('Job log', 'View', lambda: self.output_tabs.add_suffix('log'), shortcut='Alt+l')
+        menubar.addAction('Job xml', 'View', lambda: self.output_tabs.add_suffix('xml'), shortcut='Alt+x')
         menubar.addAction('Job stdout', 'View', lambda: self.output_tabs.add_suffix('stdout'))
         menubar.addAction('Job stderr', 'View', lambda: self.output_tabs.add_suffix('stderr'))
 
@@ -525,7 +518,6 @@ class ProjectWindow(QMainWindow):
         self.backend_configuration_editor = BackendConfigurationEditor(
             str(pathlib.Path.home() / '.sjef/molpro/backends.xml'), self)
         self.backend_configuration_editor.exec()
-
 
     def set_theme(self, theme_name):
         settings['theme'] = theme_name
@@ -580,9 +572,6 @@ class ProjectWindow(QMainWindow):
                     if project_registry[keyfound]['priority'] == priority:
                         result.append(keyfound)
         return result
-
-
-
 
     def putfiles(self):
         result = []
@@ -646,7 +635,6 @@ class ProjectWindow(QMainWindow):
         if external_path:
             subprocess.Popen([external_path, filename])
 
-
     def show_xyz(self, instance=-1):
         for file in self.geometry_files():
             full_file = self.project.filename('', file[1], instance)
@@ -671,7 +659,7 @@ class ProjectWindow(QMainWindow):
                 subprocess.Popen([external_path, xyz_file])
             # elif 'builder' not in self.vods and 'initial structure' not in self.vods:
             #     print('visualise_input', xyz_file)
-                # self.embedded_vod_jmol(xyz_file, command='', title='initial structure')
+            # self.embedded_vod_jmol(xyz_file, command='', title='initial structure')
 
     def initial_xyz(self) -> str:
         """
@@ -804,7 +792,6 @@ class ProjectWindow(QMainWindow):
             else:
                 self.input_pane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
             self.xyz_to_zmat_activate_or_not(True)
-
 
     def database_import_structure(self):
         if filename := database_choose_structure():
@@ -954,10 +941,9 @@ def force_render_vtk_widget(widget):
     if isinstance(widget, MoleculeDisplay):
         for w in QApplication.topLevelWidgets():
             if isinstance(w, QMainWindow):
-                w.resize(w.width()+1, w.height())
+                w.resize(w.width() + 1, w.height())
                 w.repaint()
-                w.resize(w.width()-1, w.height())
-
+                w.resize(w.width() - 1, w.height())
 
 
 class BasisAndHamiltonianChooser(QWidget):
@@ -1209,7 +1195,8 @@ class GuidedPane(QWidget):
             if self.input_specification.method is None:
                 self.input_specification.method = 'rhf'
             method_index = self.guided_combo_method.findText(
-                re.sub('^df-', '', self.input_specification.method, flags=re.IGNORECASE).upper(), MatchFlag.MatchFixedString)
+                re.sub('^df-', '', self.input_specification.method, flags=re.IGNORECASE).upper(),
+                MatchFlag.MatchFixedString)
             self.guided_combo_method.setCurrentIndex(method_index)
             if re.match('[ru]ks', self.input_specification.method, flags=re.IGNORECASE):
                 self.method_row.ensure_not(['Core Correlation'])
@@ -1569,12 +1556,13 @@ class MyTabWidget(DraggableTabWidget):
     def __len__(self):
         return self.count()
 
+
 class OutputTabWidget(MyTabWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
         self.run_directory = None
-        self.suffixes = { 'inp','out',}
+        self.suffixes = {'inp', 'out', }
         self.refresh()
 
     def add_suffix(self, suffix):
@@ -1616,13 +1604,16 @@ class OutputTabWidget(MyTabWidget):
             # print('final structure',final_structure)
             final_structure_tab_label = 'final structure'
             initial_structure_tab_label = 'initial structure'
-            if final_structure is not None and (not hasattr(self, 'final_structure') or self.final_structure != final_structure or  final_structure_tab_label not in tab_names):
+            if final_structure is not None and (not hasattr(self,
+                                                            'final_structure') or self.final_structure != final_structure or final_structure_tab_label not in tab_names):
                 self.final_structure = final_structure
                 if final_structure_tab_label in tab_names:
                     self.removeTab(self.indexOfTab(final_structure_tab_label))
                 # print('new tab','final structure', final_structure_tab_label)
                 self.addTab(MoleculeDisplay(final_structure, self.parent), final_structure_tab_label)
-            if initial_structure is not None and final_structure_tab_label not in tab_names and initial_structure != final_structure and (not hasattr(self, 'initial_structure') or self.initial_structure != initial_structure or  initial_structure_tab_label not in tab_names):
+            if initial_structure is not None and final_structure_tab_label not in tab_names and initial_structure != final_structure and (
+                    not hasattr(self,
+                                'initial_structure') or self.initial_structure != initial_structure or initial_structure_tab_label not in tab_names):
                 self.initial_structure = initial_structure
                 if initial_structure_tab_label in tab_names:
                     self.removeTab(self.indexOfTab(initial_structure_tab_label))
@@ -1638,24 +1629,25 @@ class OutputTabWidget(MyTabWidget):
                 # print('self.initial_structure',self.initial_structure)
                 test = 'initial_structure' in locals() and initial_structure is not None and atoms is not None
                 if test:
-                    for i,atom in enumerate(atoms):
+                    for i, atom in enumerate(atoms):
                         test = test and all(
                             [abs(initial_structure.atoms[i]['xyz'][k] - atom['xyz'][k]) < 1e-7 for k in range(3)])
                 if test:
                     if input_structure_tab_label in tab_names:
                         self.removeTab(self.indexOfTab(input_structure_tab_label))
                 else:
-                    if not hasattr(self,'input_atoms') or self.input_atoms != atoms or input_structure_tab_label not in tab_names:
+                    if not hasattr(self,
+                                   'input_atoms') or self.input_atoms != atoms or input_structure_tab_label not in tab_names:
                         # print('new input structure')
                         self.input_atoms = atoms
                         if input_structure_tab_label in tab_names:
                             self.removeTab(self.indexOfTab(input_structure_tab_label))
                         # print('new tab','input structure', input_structure_tab_label)
-                        self.addTab(MoleculeDisplay(atoms, self.parent, metadata={'label': 'Input geometry'} ), input_structure_tab_label)
+                        self.addTab(MoleculeDisplay(atoms, self.parent, metadata={'label': 'Input geometry'}),
+                                    input_structure_tab_label)
             except:
                 # raise Exception('Could not read input xyz file')
                 pass
-
 
         if os.path.exists(filename := self.parent.project.filename('xml', run=(
                 self.parent.project.run_directory))) and os.path.getsize(filename) > 0:
@@ -1681,7 +1673,5 @@ class OutputTabWidget(MyTabWidget):
                     print('Orbitals except', str(e) + ' ' + str(type(e)))
                 pass
 
-
     def label(self, suffix: str) -> str:
         return os.path.basename(self.parent.project.filename(suffix, run=(self.parent.project.run_directory)))
-
