@@ -11,3 +11,8 @@ __pycache__/
 *.molpro
 test.html
 test.inp
+_pyinstaller_entry.py
+*.egg-info/
+playground
+Package-license.pdf
+Package-license.rtf

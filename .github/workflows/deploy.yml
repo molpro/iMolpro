@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-           python-version: '3.12'
+           python-version: '3.13'
       - uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: iMolpro-github
@@ -63,6 +63,7 @@ jobs:
         if: ${{ matrix.mac }}
         run: |
           for f in $(find dist -name '*.pkg' -o -name '*.dmg') ; do xcrun notarytool submit $f --apple-id ${{ secrets.APPLE_NOTARYTOOL_APPLE_ID }} --team-id ${{ secrets.APPLE_NOTARYTOOL_TEAM_ID }} --password ${{ secrets.APPLE_NOTARYTOOL_PASSWORD }} --wait ; done
+          for f in $(find dist -name '*.pkg' -o -name '*.dmg') ; do xcrun stapler staple $f ; done
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
@@ -78,12 +79,12 @@ jobs:
   deploy-windows:
     name:  Deploy on Windows
     runs-on: windows-latest
-    if: startsWith(github.ref, 'refs/tags/')
+#    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.13'
       - uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: iMolpro-github
@@ -109,6 +110,13 @@ jobs:
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
+        with:
+          name: iMolpro-windows
+          path: |
+            iMolpro*.exe
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')

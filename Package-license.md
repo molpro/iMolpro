@@ -1,5 +1,7 @@
 ## Licence
-iMolpro is licensed under the [GNU GPL v3](https://www.gnu.org/licenses/licenses.html#GPL) ([source code](https://github.com/molpro/iMolpro)). It uses several additional open-source libraries: [further details](https://github.com/molpro/iMolpro/blob/master/README.md#acknowledgements).
+iMolpro is
+licensed under the [GNU LGPL v3](https://opensource.org/license/lgpl-3-0)
+ ([source code](https://github.com/molpro/iMolpro)). It uses several additional open-source libraries: [further details](https://github.com/molpro/iMolpro/blob/master/README.md#acknowledgements).
 
 The installed package also contains a reduced-function installation of [Molpro](https://www.molpro.net) to support educational use of iMolpro, and installation or use of the package implies acceptance of the following conditions for using the embedded Molpro.
 

@@ -1,0 +1,1677 @@
+import concurrent.futures
+import copy
+import datetime
+import difflib
+import glob
+import os
+import pathlib
+import time
+
+from pymolpro.elements import periodic_table
+
+from .RunDirectoryMenu import RunDirectoryMenus
+from .utilities import atoms_from_xyz
+from .project import Project, Structure
+
+try:
+    import pwd
+except ImportError:
+    pass
+import shutil
+import subprocess
+import sys
+import re
+import platform
+
+import pymolpro
+
+try:
+    from PySide6.QtCore import QTimer, Signal as pyqtSignal, QCoreApplication, Qt, QSize, QEvent
+    from PySide6.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
+        QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
+        QToolButton
+    from PySide6.QtGui import QFont, QDesktopServices, QAction, QActionGroup
+    # from PySide6.QtCore.Qt.AlignmentFlag import Qt_AlignCenter, Qt_AlignTop
+except ImportError as e:
+    # print('PySide6 not found. Trying PyQt6',str(e))
+    try:
+        from PyQt6.QtCore import QTimer, pyqtSignal, QCoreApplication, Qt, QSize, QEvent
+        from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
+            QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
+            QToolButton
+        from PyQt6.QtGui import QFont, QDesktopServices, QAction, QActionGroup
+        import PyQt6.QtCore
+        # from Qt.AlignmentFlag import AlignVCenter as Qt_AlignCenter, AlignTop as Qt_AlignTop
+    except ImportError as e:
+        # print('PyQt6 not found. Trying PyQt5',str(e))
+        from PyQt5.QtCore import QTimer, pyqtSignal, QCoreApplication, Qt, QSize, QEvent
+        from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, \
+            QMessageBox, QTabWidget, QFileDialog, QSplitter, QMenu, QGridLayout, QInputDialog, QCheckBox, QApplication, \
+            QToolButton, QAction, QActionGroup
+        from PyQt5.QtGui import QFont, QDesktopServices
+        # from PyQt5.QtCore.Qt import AlignCenter as Qt_AlignCenter, AlignTop as Qt_AlignTop
+
+try:
+    South = QTabWidget.TabPosition.South
+    UpArrow = Qt.ArrowType.UpArrow
+    DownArrow = Qt.ArrowType.DownArrow
+    CheckState = Qt.CheckState
+    Orientation = Qt.Orientation
+    MatchFlag = Qt.MatchFlag
+except:
+    South = QTabWidget.South
+    UpArrow = Qt.UpArrow
+    DownArrow = Qt.DownArrow
+    CheckState = Qt
+    Orientation = Qt
+    MatchFlag = Qt
+
+from pymolpro import molpro_input
+from .BasisSelector import BasisSelector
+from .SpinComboBox import SpinComboBox
+from .draggabletabwidget import DraggableTabWidget
+from pymolpro.molpro_input import InputSpecification
+from .CheckableComboBox import CheckableComboBox
+from .MenuBar import MenuBar
+from .RecentMenu import RecentMenu
+from .database import database_choose_structure
+from .help import help_manager_default
+from .utilities import EditFile, ViewFile, factory_vibration_set, factory_orbital_set, factory_coordinate_set, \
+    writable_directory
+from .backend import configure_backend, BackendConfigurationEditor
+from .settings import settings, settings_edit
+from .theme import THEMES, apply_theme, detect_system_theme
+from .OptionsDialog import OptionsDialog
+from .vtk_molecule_widget import MoleculeDisplay, MoleculeWidget
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class StatusBar(QLabel):
+    def __init__(self, project: Project, run_actions: list, kill_actions: list, latency=1000):
+        super().__init__()
+        self.project = project
+        self.run_actions = run_actions
+        self.kill_actions = kill_actions
+        self.refresh_timer = QTimer(self)
+        self.refresh_timer.timeout.connect(self.refresh)
+        self.refresh_timer.start(latency)
+
+    def refresh(self):
+        try:
+            self.setText('Status: ' + ('run ' + pathlib.Path(
+                self.project.filename()).stem + ' ' if self.project.filename() != self.project.filename(
+                run=-1) else '') + self.project.status)
+            for run_action in self.run_actions:
+                run_action.setDisabled(not self.project.run_needed())
+            for kill_action in self.kill_actions:
+                kill_action.setDisabled(self.project.status != 'running' and self.project.status != 'waiting')
+        except:
+            pass
+
+
+class ViewProjectOutput(ViewFile):
+    def __init__(self, project, suffix='out', width=132, latency=100, filename_latency=500, point_size=8, instance=0):
+        self.project = project
+        self.suffix = suffix
+        self.instance = instance
+        minimum_point_size = point_size - 2
+        # print('ViewProjectOutput',suffix,self.instance,self.project.filename(suffix,run=self.instance))
+        self.character_width = width
+        super().__init__(self.project.filename(suffix, run=self.instance), latency=latency, point_size=point_size)
+        target_width = self.fontMetrics().size(0, ''.join(['M' for k in range(width)])).width()
+        self.setFont(QFont(self.font().family(), minimum_point_size))
+        minimum_width = self.fontMetrics().size(0, ''.join(['M' for k in range(width)])).width()
+        super().setMinimumWidth(minimum_width)
+        self.resize(target_width, 900)
+        # self.resize(target_width, self.minimumHeight())
+        self.refresh_output_file_timer = QTimer(self)
+        self.refresh_output_file_timer.timeout.connect(self.refresh_output_file)
+        self.refresh_output_file_timer.start(filename_latency)  # find a better way
+
+    def refresh_output_file(self):
+        try:
+            latest_filename = self.project.filename(self.suffix, run=self.instance)
+            if latest_filename != self.filename:
+                self.reset(latest_filename)
+        except:
+            pass
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        contingency = 4
+        for size in range(100, 1, -1):
+            self.setFont(QFont(self.font().family(), size))
+            f_metrics = self.fontMetrics()
+            if f_metrics.size(0,
+                              ''.join(['M' for k in range(
+                                  self.character_width)])).width() + contingency < self.size().width():
+                break
+
+
+class ProjectWindow(QMainWindow):
+    close_signal = pyqtSignal(QWidget, name='closeSignal')
+    new_signal = pyqtSignal(QWidget, name='newSignal')
+    chooser_signal = pyqtSignal(QWidget, name='chooserSignal')
+    null_prompt = '- Select -'
+    all_qualities = 'All Qualities'
+    basis_qualities = [all_qualities, 'SZ', 'DZ', 'TZ', 'QZ', '5Z', '6Z']
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        # logger.debug('event.type() ' + str(event.type))
+        if True or event.type() == QEvent.WindowStateChange:
+            # logger.debug('windowStateChange')
+            # logger.debug('full screen ? ' + str(self.isFullScreen()))
+            if not self.isFullScreen():
+                self.normal_geometry = self.normalGeometry()
+            # logger.debug('normal_geometry ' + str(self.normal_geometry))
+            settings['project_window_width'] = self.normal_geometry.width()
+            settings['project_window_height'] = self.normal_geometry.height()
+
+    def __init__(self, filename, window_manager, latency=1000, **kwargs):
+        # print('ProjectWindow.__init__ entered')
+        logger.debug('Initializing ProjectWindow with filename {}'.format(filename))
+        super().__init__(None)
+        self.window_manager = window_manager
+        self.latency = latency
+        if 'project_window_width' not in settings:
+            settings['project_window_width'] = 1311
+        if 'project_window_height' not in settings:
+            settings['project_window_height'] = 576
+        if 'project_window_width' in settings and 'project_window_height' in settings:
+            self.resize(settings['project_window_width'], settings['project_window_height'])
+        self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+        self.initialised_from_input = False
+
+        self.normal_geometry = self.normalGeometry()
+
+        import ssl
+        ssl._create_default_https_context = ssl._create_stdlib_context
+
+        try:
+            if isinstance(filename, list):
+                if re.match('https://|http://|file://', filename[0]):
+                    self.project = Project(files=filename, **kwargs)
+                else:
+                    self.project = Project(location=(writable_directory(preferred=pathlib.Path(filename[0]).parent)),
+                                           files=filename, **kwargs)
+            elif pathlib.Path(filename).suffix == '.molpro':
+                self.project = Project(filename, **kwargs)
+            else:
+                self.project = Project(
+                    location=(writable_directory(preferred=pathlib.Path(filename).parent)),
+                    files=[filename], **kwargs)
+            logger.debug('Initialised Project input filename {}. Project bundle at {}'.format(filename,
+                                                                                              self.project.filename('',
+                                                                                                                    '',
+                                                                                                                    -1)))
+        except Exception as e:
+            msg = QMessageBox()
+            msg.setText('Project ' + str(filename) + ' cannot be opened')
+            msg.setDetailedText(str(e))
+            msg.exec()
+            self.invalid = True
+            return
+
+        self.project.refresh_backends()
+        self.ensure_local_molpro()
+
+        settings['project_directory'] = os.path.dirname(self.project.filename(run=-1))
+
+        self.discover_external_viewer_commands()
+
+        self.input_pane = EditFile(self.project.filename('inp', run=-1), latency)
+        self.setWindowTitle(self.project.filename(run=-1))
+
+        self.input_specification = InputSpecification(self.input_pane.toPlainText(), directory=self.project.filename())
+
+        self.vods = {}
+        self.setup_menubar()
+
+        self.run_button = QPushButton('Run job')
+        self.run_button.clicked.connect(self.run_action.trigger)
+        self.run_button.setToolTip("Run the job")
+
+        self.statusBar = StatusBar(self.project, [self.run_action, self.run_button], [self.kill_action])
+        self.statusBar.refresh()
+
+        left_layout = QVBoxLayout()
+        self.input_tabs = MyTabWidget(self)
+        self.input_pane.textChanged.connect(lambda: self.thread_executor.submit(self.input_text_changed_consequence))
+        self.input_tabs.currentChanged.connect(self.input_tab_changed_consequence)
+        left_layout.addWidget(self.input_tabs)
+        self.input_tabs.setMinimumHeight(300)
+        self.input_tabs.setMinimumWidth(450)
+        self.statusBar.setMaximumWidth(400)
+        button_layout = QHBoxLayout()
+        # left_layout.addWidget(QLabel('Execution:'))
+        left_layout.addLayout(button_layout)
+        self.backend_selector = QComboBox(self)
+        self.backend_selector.setMinimumWidth(15)
+        self.backend_selector.addItems(self.project.backend_names())
+        backend = self.project.property_get('backend')
+        self.backend_selector.setCurrentText(backend['backend'] if backend else 'local')
+        self.backend_selector.currentTextChanged.connect(lambda text: self.project.property_set({'backend': text}))
+        self.backend_parameter_button = QPushButton('Parameters')
+        self.backend_parameter_button.clicked.connect(lambda: configure_backend(self))
+        backend_label = QLabel('Backend:')
+        button_layout.addWidget(backend_label)
+        button_layout.addWidget(self.backend_selector)
+        button_layout.addWidget(self.backend_parameter_button)
+        backend_label.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
+        self.backend_selector.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
+        self.backend_parameter_button.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
+        button_layout.addWidget(self.run_button)
+        self.run_button.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() + 2) + 'pt;')
+        left_layout.addWidget(self.statusBar)
+        self.input_tabs.addTab(self.input_pane, 'freehand')
+        self.guided_pane = GuidedPane(self)
+        self.input_tabs.addTab(self.guided_pane, 'guided')
+        self.input_tabs.setTabVisible(self.input_tabs.indexOf(self.guided_pane), False)
+        self.input_text_changed_consequence(0)
+
+        top_layout = QHBoxLayout()
+        splitter = QSplitter(Orientation.Horizontal)
+        top_layout.addWidget(splitter)
+
+        left_widget = QWidget(self)
+        left_widget.setContentsMargins(0, 0, 0, 0)
+        left_widget.setLayout(left_layout)
+        splitter.addWidget(left_widget)
+        self.output_tabs = OutputTabWidget(self)
+        self.timer_output_tabs = QTimer(self)
+        self.timer_output_tabs.timeout.connect(self.output_tabs.refresh)
+        self.timer_output_tabs.start(1000)
+        splitter.addWidget(self.output_tabs)
+        splitter.setStretchFactor(1, 2147483647)
+
+        self.layout = QVBoxLayout()
+        self.layout.addLayout(top_layout)
+
+        # self.minimum_window_size = self.window().size()
+
+        if self.input_pane.toPlainText().strip('\n ') == '':
+            self.input_pane.setPlainText(
+                'geometry={0}.xyz\nbasis=cc-pV(T+d)Z-PP\ndf-rhf'.format(
+                    os.path.basename(self.project.name).replace(' ', '-')))
+            if not os.path.exists(self.project.filename('xyz')):
+                import_structure = ''
+                if QMessageBox.question(self, '',
+                                        'Would you like to import the molecular geometry from a file?',
+                                        defaultButton=QMessageBox.Yes) == QMessageBox.Yes:
+                    import_structure = self.import_structure()
+                if not import_structure:
+                    import_structure = self.database_import_structure()
+
+        self.input_tabs.setCurrentIndex(1 if self.guided_possible() else 0)
+        self.initialised_from_input = True
+        self.guided_action.setChecked(self.input_tabs.currentIndex() == 1)
+
+        container = QWidget(self)
+        container.setLayout(self.layout)
+        self.setCentralWidget(container)
+        splitter.setSizes([1, 1])
+
+    def switch_run_directory(self, run: int):
+        self.project.run_directory = run
+        self.output_tabs.refresh()
+
+    def ensure_local_molpro(self, search_MEIPASS=True):
+        for path in os.environ['PATH'].split(':'):
+            if (pathlib.Path(path) / 'molpro').is_file():
+                return
+            if platform.uname().system == 'Windows' and (pathlib.Path(path) / 'molpro.bat').is_file():
+                return
+
+        if hasattr(sys, '_MEIPASS') and search_MEIPASS:
+            self.ensure_teaching_licence_accepted()
+
+            s = str(pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin')
+            if s not in os.environ['PATH'].split(':'):
+                os.environ['PATH'] += os.pathsep + s
+                logger.debug(f'PATH appended with {s}')
+                logger.debug(f'new PATH {os.environ["PATH"]}')
+                self.ensure_local_molpro(search_MEIPASS=False)
+                return
+
+        msg = QMessageBox()
+        msg.setText(f'Local molpro not found')
+        msg.setDetailedText(f'PATH={os.environ["PATH"]}\nGuided mode will not work correctly.')
+        msg.exec()
+
+    def ensure_teaching_licence_accepted(self):
+        licence_accepted_file = pathlib.Path.home() / '.molpro' / 'teaching_molpro_licence_accepted'
+        try:
+            user_name = pwd.getpwuid(os.getuid())[4].split(',')[0]
+        except:
+            user_name = 'User'
+        licence_text = '1. Only educational use is permitted.\n2. Molpro, together with its documentation, is a copyrighted work of authorship,  and is licensed for use  by the user only. It may not be rented, leased, sub-licensed, sold or otherwise transferred to a third party.'
+        licence_acceptance_text = user_name + ' has accepted the following conditions\n' + licence_text
+        while not licence_accepted_file.is_file() or ''.join(
+                open(licence_accepted_file).readlines()[1:]) != licence_acceptance_text:
+            dlg = QMessageBox()
+            dlg.setWindowTitle("Teaching Molpro licence")
+            dlg.setText(
+                "Molpro is necessary to use this program. You do not have a full copy of Molpro in your PATH. You can instead use the teaching version of Molpro embedded in this program, with limited functionality, but you must first agree to the following conditions.\n\n" + licence_text)
+            dlg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            dlg.setIcon(QMessageBox.Question)
+            button = dlg.exec()
+            if button != QMessageBox.Yes:
+                logger.debug('licence not accepted; exiting')
+                sys.exit(1)
+            else:
+                with open(licence_accepted_file, 'w') as f:
+                    logger.debug('licence accepted: ' + licence_acceptance_text)
+                    f.write(str(datetime.datetime.now()) + '\n')
+                    f.write(licence_acceptance_text)
+                logger.debug('Contents of ' + licence_accepted_file.as_posix() + ':\n' + ''.join(
+                    open(licence_accepted_file).readlines()))
+
+    def discover_external_viewer_commands(self):
+        external_command_stems = [
+            'avogadro',
+            'Avogadro2',
+            'jmol',
+        ]
+        external_command_paths = []
+        if 'PATH' in os.environ:
+            external_command_paths += os.environ['PATH'].split(':')
+        # TODO paths for Windows
+        external_command_paths += [
+            '/Applications/Avogadro.app/Contents/MacOS',
+            '/Applications/Avogadro2.app/Contents/MacOS',
+            '/usr/local/bin',
+            '/usr/bin',
+            '/bin',
+        ]
+        self.external_viewer_commands = {}
+        for command in external_command_stems:
+            for path in external_command_paths:
+                if os.path.exists(pathlib.Path(path) / command):
+                    self.external_viewer_commands[command] = str(pathlib.Path(path) / command)
+                    break
+
+    def close(self):
+        self.timer_output_tabs.stop()
+        super().close()
+
+    def setup_menubar(self):
+        menubar = MenuBar(self)
+        self.setMenuBar(menubar)
+        menubar.addAction('New', 'Projects', slot=self.new_action, shortcut='Ctrl+N',
+                          tooltip='Create a new project')
+        menubar.addAction('Close', 'Projects', self.close, 'Ctrl+W')
+        menubar.addAction('Open', 'Projects', self.chooser_open, 'Ctrl+O', 'Open another project')
+        menubar.addSeparator('Projects')
+        self.recent_menu = RecentMenu(self.window_manager)
+        menubar.addSubmenu(self.recent_menu, 'Projects')
+        menubar.addSeparator('Projects')
+        menubar.addAction('Move to...', 'Projects', self.move_to, tooltip='Move the project')
+        menubar.addAction('Copy to...', 'Projects', self.copy_to, tooltip='Make a copy of the project')
+        menubar.addAction('Erase', 'Projects', self.erase, tooltip='Completely erase the project')
+        menubar.addSeparator('Projects')
+        menubar.addAction('Quit', 'Projects', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
+                          tooltip='Quit')
+        menubar.addAction('Import input', 'Files', self.import_input, 'Ctrl+Shift+I',
+                          tooltip='Import a file and assign it as the input for the project')
+        menubar.addAction('Import structure', 'Files', self.import_structure, 'Ctrl+Alt+I',
+                          tooltip='Import an xyz file and use it as the source of molecular structure in the input for the project')
+        menubar.addAction('Search external databases for structure', 'Files', self.database_import_structure,
+                          'Ctrl+Shift+Alt+I',
+                          tooltip='Search PubChem and ChemSpider for a molecule and use it as the source of molecular structure in the input for the project')
+        # menubar.addAction('Adopt optimised structure from the most recent run', 'Files',
+        #                   lambda dum, self=self: self.database_import_optimised(run=0, file='optimised.xyz'),
+        #                   tooltip='Adopt structure from the most recent geometry optimisation')
+        # menubar.addAction('Select a structure from a previous geometry optimisation...', 'Files',
+        #                   self.database_import_optimised,
+        #                   tooltip='Select a structure from a previous geometry optimisation')
+        menubar.addAction('Convert xyz geometry to Z-matrix', 'Files',
+                          self.convert_xyz_to_zmat,
+                          tooltip='Convert xyz geometry to Z-matrix')
+        self.xyz_to_zmat_activate_or_not(self.input_uses_xyz_file() is not None)
+        menubar.addAction('Import file', 'Files', self.import_file, 'Ctrl+I',
+                          tooltip='Import one or more files, eg geometry definition, into the project')
+        menubar.addAction('Export file', 'Files', self.export_file, 'Ctrl+E',
+                          tooltip='Export one or more files from the project')
+        menubar.addAction('Clean', 'Files', self.clean, tooltip='Remove old runs from the project')
+
+        self.run_directory_menus = RunDirectoryMenus(self, menubar, 'Runs')
+
+        menubar.addAction('Settings', 'Edit',
+                          lambda arg, parent=self: settings_edit(parent, {}),
+                          tooltip='Edit settings')
+        menubar.addSeparator('Edit')
+        if False and settings['use_jmol']:
+            menubar.addAction('Structure', 'Edit', self.edit_input_structure, 'Ctrl+D', 'Edit molecular geometry')
+        menubar.addAction('Cut', 'Edit', self.input_pane.cut, 'Ctrl+X', 'Cut')
+        menubar.addAction('Copy', 'Edit', lambda: QApplication.focusWidget().copy(), 'Ctrl+C', 'Copy')
+        menubar.addAction('Paste', 'Edit', self.input_pane.paste, 'Ctrl+V', 'Paste')
+        menubar.addAction('Undo', 'Edit', self.input_pane.undo, 'Ctrl+Z', 'Undo')
+        menubar.addAction('Redo', 'Edit', self.input_pane.redo, 'Shift+Ctrl+Z', 'Redo')
+        menubar.addAction('Select All', 'Edit', self.input_pane.selectAll, 'Ctrl+A', 'Redo')
+        menubar.addSeparator('Edit')
+        menubar.addAction('Zoom In', 'Edit', self.input_pane.zoomIn, 'Ctrl++', 'Increase font size')
+        menubar.addAction('Zoom Out', 'Edit', self.input_pane.zoomOut, 'Ctrl+-', 'Decrease font size')
+        menubar.addSeparator('Edit')
+        self.guided_action = menubar.addAction('Guided mode', 'Edit', self.guided_toggle, 'Ctrl+G', checkable=True)
+        menubar.addAction('Show parsed input specification', 'Edit', self.show_input_specification, 'Shift+Ctrl+G')
+
+        menubar.addSeparator('Files')
+        menubar.addAction('Browse project folder', 'Files', self.browse_project, 'Ctrl+Alt+F',
+                          tooltip='Look at the contents of the project folder.  With care, files can be edited or renamed, but note that this may break the integrity of the project.')
+        menubar.addAction('Zoom In', 'View', lambda: [p.zoomIn() for p in self.output_panes.values()], 'Alt++',
+                          'Increase font size')
+        menubar.addAction('Zoom Out', 'View', lambda: [p.zoomOut() for p in self.output_panes.values()], 'Alt+-',
+                          'Decrease font size')
+        theme_menu = QMenu('Theme')
+        theme_action_group = QActionGroup(self)
+        theme_action_group.setExclusive(True)
+        current_theme = settings['theme'] if 'theme' in settings else detect_system_theme(QApplication.instance())
+        for theme_name in THEMES:
+            action = theme_menu.addAction(theme_name.capitalize())
+            action.setCheckable(True)
+            action.setChecked(theme_name == current_theme)
+            theme_action_group.addAction(action)
+            action.triggered.connect(lambda checked, theme_name=theme_name: self.set_theme(theme_name))
+        menubar.addSubmenu(theme_menu, 'View')
+        menubar.addSeparator('View')
+        menubar.addAction('Initial structure xyz', 'View', self.show_xyz_input,
+                          tooltip='View the xyz file for the molecular structure in the job input')
+        menubar.addAction('Final structure xyz', 'View', self.show_xyz_output,
+                          tooltip='View the xyz file for the molecular structure at the end of the job')
+        if self.external_viewer_commands:
+            self.external_menu = QMenu('View molecule in external program...')
+            for command in self.external_viewer_commands.keys():
+                action = self.external_menu.addAction(command)
+                action.triggered.connect(lambda dum, command=command: self.visualise_input(
+                    external_path=self.external_viewer_commands[command]))
+
+            menubar.addSubmenu(self.external_menu, 'View')
+        menubar.addSeparator('View')
+        menubar.addAction('Next output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
+            (self.output_tabs.currentIndex() + 1) % len(self.output_tabs)), 'Alt+]')
+        menubar.addAction('Previous output tab', 'View', lambda: self.output_tabs.setCurrentIndex(
+            (self.output_tabs.currentIndex() - 1) % len(self.output_tabs)), 'Alt+[')
+
+        menubar.addSeparator('View')
+        menubar.addAction('Job output', 'View', lambda: self.output_tabs.add_suffix('out'), shortcut='Alt+o')
+        menubar.addAction('Job input', 'View', lambda: self.output_tabs.add_suffix('inp'), shortcut='Alt+i')
+        menubar.addAction('Job log', 'View', lambda: self.output_tabs.add_suffix('log'), shortcut='Alt+l')
+        menubar.addAction('Job xml', 'View', lambda: self.output_tabs.add_suffix('xml'), shortcut='Alt+x')
+        menubar.addAction('Job stdout', 'View', lambda: self.output_tabs.add_suffix('stdout'))
+        menubar.addAction('Job stderr', 'View', lambda: self.output_tabs.add_suffix('stderr'))
+
+        self.run_action = menubar.addAction('Run', 'Job', self.run, 'Ctrl+R', 'Run Molpro on the project input')
+        self.run_force_action = menubar.addAction('Run (force)', 'Job', self.run_force, 'Ctrl+Shift+R',
+                                                  'Run Molpro on the project input, even if the input has not changed since the last run')
+        self.kill_action = menubar.addAction('Kill', 'Job', self.kill, tooltip='Kill the running job')
+        menubar.addAction('Backend', 'Job', lambda: configure_backend(self), 'Ctrl+B', 'Configure backend')
+        menubar.addAction('Edit backend configuration file', 'Job', self.edit_backend_configuration, 'Ctrl+Shift+B',
+                          'Edit backend configuration file')
+        help_manager = help_manager_default(menubar)
+        menubar.show()
+
+    def edit_backend_configuration(self):
+        self.backend_configuration_editor = BackendConfigurationEditor(
+            str(pathlib.Path.home() / '.sjef/molpro/backends.xml'), self)
+        self.backend_configuration_editor.exec()
+
+    def set_theme(self, theme_name):
+        settings['theme'] = theme_name
+        apply_theme(QApplication.instance(), theme_name)
+
+    def guided_toggle(self):
+        # logger.debug('guided_toggle')
+        index = 1 if self.guided_action.isChecked() else 0
+        if not self.guided_possible() and index == 1:
+            box = QMessageBox()
+            box.setText('Guided mode cannot be used because the input is too complex')
+            spec_input = molpro_input.canonicalise(self.input_specification.molpro_input())
+            file_input = molpro_input.canonicalise(self.input_pane.toPlainText())
+            box.setInformativeText(
+                'The input regenerated from the attempt to parse into guided mode is\n' +
+                spec_input + '\n\nThe input file in canonical form is\n' + file_input + '\n\nDifferences:\n' +
+                '\n'.join(list(
+                    difflib.context_diff(spec_input.split('\n'), file_input.split('\n'),
+                                         fromfile='parsed specification',
+                                         tofile='input file'))))
+            box.exec()
+            self.guided_action.setChecked(False)
+        else:
+            self.input_tabs.setCurrentIndex(index)
+
+    def input_text_changed_consequence(self, index=0):
+        # logger.debug('input_text_changed_consequence, index=' + str(index))
+        guided = self.guided_possible()
+        if guided:
+            self.input_specification = InputSpecification(self.input_pane.toPlainText(),
+                                                          directory=self.project.filename())
+        self.input_tabs.setTabVisible(self.input_tabs.indexOf(self.guided_pane), guided)
+
+    def guided_possible(self):
+        input_text = self.input_pane.toPlainText()
+        if not input_text: input_text = ''
+        input_specification = InputSpecification(input_text, directory=self.project.filename())
+        guided = len(input_specification) and molpro_input.equivalent(input_text, input_specification)
+        return guided
+
+    def input_tab_changed_consequence(self, index=0):
+        # logger.debug('index=' + str(index) + ' ' + str(self.input_tabs.currentIndex()))
+        if self.input_tabs.currentIndex() == 1:
+            self.guided_pane.refresh()
+
+    def available_functionals(self):
+        project_registry = pymolpro.registry('dfunc')
+        result = []
+        if project_registry != None:
+            for priority in range(5, -1, -1):
+                for keyfound in project_registry:
+                    if project_registry[keyfound]['priority'] == priority:
+                        result.append(keyfound)
+        return result
+
+    def putfiles(self):
+        result = []
+        lines = self.input_pane.toPlainText().replace(';', '\n').split('\n')
+        for line in lines:
+            fields = line.replace(' ', ',').split(',')
+            if len(fields) > 2 and fields[0].lower() == 'put':
+                result.append((fields[1], fields[2]))
+        return result
+
+    def geometry_files(self):
+        import re
+        result = []
+        lines = self.input_pane.toPlainText().replace(';', '\n').split('\n')
+        for line in lines:
+            fields = line.replace(' ', ',').split(',')
+            regex = r'geometry=([-@#&a-z0-9_]+)\.(xyz)'
+            if len(fields) == 1 and re.match(regex, fields[0], re.IGNORECASE):
+                result.append(
+                    (re.sub(regex, r'\2', fields[0]), re.sub(regex, r'\1.\2', fields[0], flags=re.IGNORECASE)))
+        return result
+
+    def run(self, force=False):
+        molprorc = ''
+        with open(pathlib.Path(self.project.filename(run=-1)) / 'molpro.rc', 'r') as f:
+            molprorc = f.read()
+        molprorc = molprorc.replace(' --xml-orbdump', '')
+        # if 'orbitals' in self.input_specification:
+        molprorc += ' --xml-orbdump'
+        with open(pathlib.Path(self.project.filename(run=-1)) / 'molpro.rc', 'w') as f:
+            f.write(molprorc)
+        if self.guided_possible() and ('geometry' not in self.input_specification or (
+                self.input_specification['geometry'][-4:] == '.xyz' and not os.path.exists(
+            self.project.filename('', self.input_specification['geometry'], run=
+            -1)))):
+            QMessageBox.critical(self, 'Geometry missing', 'Cannot submit job because no geometry is defined')
+            return False
+        ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
+        try:
+            self.project.run(force=force)
+        except Exception as e:
+            QMessageBox.critical(self, 'Job submission failed', 'Cannot submit job:\n' + str(e))
+            return False
+        if ld_library_path is not None:
+            os.environ['LD_LIBRARY_PATH'] = ld_library_path
+        time.sleep(0.4)
+        self.switch_run_directory(len(self.project.run_directory_names) - 1)
+
+    def run_force(self):
+        self.run(force=True)
+
+    def kill(self):
+        self.project.kill()
+
+    def clean(self):
+        self.project.clean()
+
+    def visualise_output(self, external_path=None, typ='xml', name=None):
+        filename = self.project.filename(typ, name) if name else self.project.filename(typ)
+        if not os.path.exists(filename): return
+        if external_path:
+            subprocess.Popen([external_path, filename])
+
+    def show_xyz(self, instance=-1):
+        for file in self.geometry_files():
+            full_file = self.project.filename('', file[1], instance)
+            # logger.debug('xyz file ' + full_file)
+            with open(full_file, 'r') as f:
+                contents = ''.join(f.readlines())
+            # logger.debug('xyz file ' + contents)
+            QMessageBox.information(self, 'xyz', contents)
+
+    def show_xyz_input(self):
+        self.show_xyz(-1)
+
+    def show_xyz_output(self):
+        self.show_xyz(0)
+        pass
+
+    def visualise_input(self, external_path=None):
+        # logger.debug('visualise_input' + str(self.vods.keys()))
+        xyz_file = self.initial_xyz()
+        if os.path.isfile(xyz_file):
+            if external_path:
+                subprocess.Popen([external_path, xyz_file])
+            # elif 'builder' not in self.vods and 'initial structure' not in self.vods:
+            #     print('visualise_input', xyz_file)
+            # self.embedded_vod_jmol(xyz_file, command='', title='initial structure')
+
+    def initial_xyz(self) -> str:
+        """
+        Generates or retrieves the XYZ file for the initial geometry configuration.
+
+        This method handles the creation or validation of an XYZ file containing the system's initial geometry.
+        It ensures that the file is either generated or updated as needed based on the current state of the
+        input geometry and its associated files. Temporary directories and auxiliary computations are used
+        where necessary to calculate or verify the geometric data. The method returns the path to the XYZ file,
+        or an empty string if an error occurs during processing.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        str
+            The file path to the generated or validated XYZ file. If an error occurs, an empty string is returned.
+        """
+        import tempfile
+        geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
+        geometry_directory.mkdir(exist_ok=True)
+        xyz_file = str(geometry_directory / pathlib.Path(self.project.filename(run=-1)).stem) + '.xyz'
+        geom = self.input_specification.get('geometry', "")
+        if '.xyz' in geom and (not os.path.isfile(self.project.filename('', geom, run=-1)) or os.path.getsize(
+                self.project.filename('', geom, run=-1)) <= 1):
+            geom = ''
+        if geom and (not os.path.isfile(xyz_file) or os.path.getmtime(xyz_file) < os.path.getmtime(
+                self.project.filename('inp', run=-1)) or any(
+            [os.path.getmtime(xyz_file) < os.path.getmtime(self.project.filename('', gfile[1], run=-1)) for gfile in
+             self.geometry_files()])):
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                path = pathlib.Path(tmpdirname) / 'input_geometries'
+                os.makedirs(str(path), exist_ok=True)
+                # logger.debug('visualise_input makes project at ' + str(path))
+                self.project.copy(pathlib.Path(self.project.filename(run=-1)).name, location=path)
+                project_path = path / pathlib.Path(self.project.filename(run=-1)).name
+                project = Project(str(project_path))
+                project.clean(0)
+                open(project.filename('inp', run=-1), 'a').write('\nhf\n---')
+                # logger.debug('visualise_input project input filename' + project.filename('inp', run=-1))
+                # logger.debug('visualise_input project input file contents\n' + open(project.filename('inp', run=-1),'r').read())
+                with open(pathlib.Path(project.filename(run=-1)) / 'molpro.rc', 'a') as f:
+                    f.write(' --geometry')
+
+                ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
+                project.run(wait=True, force=True, backend='local')
+                time.sleep(.3)  # not clear why this is needed
+                if ld_library_path is not None:
+                    os.environ['LD_LIBRARY_PATH'] = ld_library_path
+                try:
+                    geometry = project.geometry()
+                except Exception as e:
+                    # print(f"Error occurred while fetching geometry: {e}")
+                    geometry = None
+                if not geometry:
+                    detail = ''
+                    for suffix in ['stdout', 'stderr', 'out']:
+                        try:
+                            with open(project.filename(suffix, run=0), 'r') as ff:
+                                detail += ''.join(ff.readlines())
+                        except:
+                            pass
+                    # try:
+                    # logger.debug('visualise_input project input file contents\n' + open(project.filename('inp'),'r').read())
+                    # logger.debug('visualise_input project output file contents\n' + open(project.filename('out'),'r').read())
+                    # except:
+                    #     pass
+                    logger.debug("Error in calculating input geometry")
+                    # msg = QMessageBox()
+                    # msg.setIcon(QMessageBox.Critical)
+                    # msg.setWindowTitle("Error")
+                    # msg.setText('Error in calculating input geometry')
+                    # msg.setDetailedText(detail)
+                    # msg.exec_()
+                    xyz_file = ''
+                else:
+                    current_dir = os.path.dirname(self.project.filename(run=-1))
+                    project.trash()
+                    settings['project_directory'] = current_dir
+                    with open(xyz_file, 'w') as f:
+                        f.write(str(len(geometry)) + '\n\n')
+                        for atom in geometry:
+                            f.write(atom['elementType'])
+                            for c in atom['xyz']: f.write(' ' + str(c * .529177210903))
+                            f.write('\n')
+        return xyz_file
+
+    def closeEvent(self, a0, QCloseEvent=None):
+        self.close_signal.emit(self)
+
+    def new_action(self):
+        self.new_signal.emit(self)
+
+    def chooser_open(self):
+        self.chooser_signal.emit(self)
+
+    def import_file(self):
+        _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
+            self.project.filename(run=-1))
+        filenames, junk = QFileDialog.getOpenFileNames(self, 'Import file(s) into project',
+                                                       str(pathlib.Path(_dir) / '*'),
+                                                       options=QFileDialog.DontResolveSymlinks)
+        for filename in filenames:
+            if os.path.isfile(filename):
+                settings['import_directory'] = os.path.dirname(filename)
+                self.project.import_file(filename)
+
+    def import_structure(self):
+        _dir = settings['geometry_directory'] if 'geometry_directory' in settings else (
+            settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
+                self.project.filename(run=-1)))
+        filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project',
+                                                     str(pathlib.Path(_dir) / '*'),
+                                                     "Geometry (*.xyz)",
+                                                     options=QFileDialog.DontResolveSymlinks)
+        if os.path.isfile(filename):
+            settings['geometry_directory'] = os.path.dirname(filename)
+            self.adopt_structure_file(filename)
+            return filename
+
+    def adopt_structure_file(self, filename):
+        if os.path.exists(filename):
+            self.project.import_file(filename)
+            text = self.input_pane.toPlainText()
+            if re.search(r'geometry *= *[-_./\w]+ *[;\n]', text, flags=re.IGNORECASE):
+                self.input_pane.setPlainText(
+                    re.sub('geometry *=.*[\n;]', 'geometry=' + os.path.basename(filename) + '\n', text))
+            else:
+                self.input_pane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
+            self.xyz_to_zmat_activate_or_not(True)
+
+    def database_import_structure(self):
+        if filename := database_choose_structure():
+            self.adopt_structure_file(filename)
+            os.remove(filename)
+            os.rmdir(os.path.dirname(filename))
+
+            return filename
+
+    def database_import_optimised(self, run=None, file=None):
+        run_directories = self.run_directories
+        for k in range(len(run_directories)):
+            run_directories[k] = os.path.splitext(os.path.basename(run_directories[k]))[0]
+        if len(run_directories) <= 1: return None
+        run_ = 1 if len(run_directories) == 2 else run if run else None
+        if run_ is None:
+            selected_, ok = QInputDialog.getItem(self, 'Choose run from which to obtain optimised geometry',
+                                                 'Which run?',
+                                                 run_directories[-1:0:-1])
+            return self.database_import_optimised(run_directories[1:].index(selected_) + 1, file) if ok else None
+        else:
+            filename = ''
+            if file:
+                filename = file
+            else:
+                files_ = self.optimised_structure_files(run_)
+                k, ok = QInputDialog.getItem(self, 'Choose geometry',
+                                             'Which geometry from run ' + run_directories[
+                                                 run_] + ' should be selected?', files_.keys())
+                if ok:
+                    filename = files_[k]
+            if filename:
+                self.adopt_structure_file(pathlib.Path(self.run_directories[run_]) / filename)
+                return filename
+
+    def input_uses_xyz_file(self):
+        if match := re.search(r'^ *geometry=(.*\.xyz)', self.input_pane.toPlainText(), re.MULTILINE):
+            return match.group(1)
+        else:
+            return None
+
+    def convert_xyz_to_zmat(self):
+        if xyzfile := self.input_uses_xyz_file() is not None:
+            zmat = pymolpro.xyz_to_zmat(self.project.filename('', xyzfile, -1))
+            self.input_pane.setPlainText(
+                self.input_pane.toPlainText().replace('geometry=' + xyzfile,
+                                                      '!geometry=' + xyzfile + '\nangstrom\ngeometry={\n' + zmat + '}')
+            )
+        self.xyz_to_zmat_activate_or_not(False)
+
+    def xyz_to_zmat_activate_or_not(self, activate: bool):
+        for action in self.menuBar().actions():
+            if action.text() == 'Files':
+                for action2 in self.menuBar().findChildren(QAction, 'Convert xyz geometry to Z-matrix'):
+                    action2.setEnabled(activate)
+
+    def optimised_structure_files(self, run=0):
+        run_directory_ = self.project.filename('', '', run)
+        files = glob.glob('[Oo]ptimised*.xyz', root_dir=run_directory_)
+        files_ = {}
+        if 'optimised.xyz' in files: files_['final'] = 'optimised.xyz'
+        files.sort(reverse=True)
+        for fn in files:
+            if 'optimised_' in fn:
+                files_[re.sub('optimised_', '', re.sub('.xyz', '', fn))] = fn
+        return files_
+
+    @property
+    def run_directories(self):
+        last_filename = self.project.filename('', '', 0)
+        result = [last_filename]
+        if last_filename == self.project.filename('', '', -1):
+            return []
+        for i in range(1, 100000):
+            filename = self.project.filename('', '', i)
+            result.append(filename)
+            if filename == last_filename: break
+        return result
+
+    def import_input(self):
+        _dir = settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
+            self.project.filename(run=-1))
+        filename, junk = QFileDialog.getOpenFileName(self, 'Copy file to project input', str(pathlib.Path(_dir) / '*'),
+                                                     options=QFileDialog.DontResolveSymlinks)
+        if os.path.isfile(filename):
+            settings['import_directory'] = os.path.dirname(filename)
+            self.project.import_input(filename)
+
+    def export_file(self):
+        filenames, junk = QFileDialog.getOpenFileNames(self, 'Export file(s) from the project',
+                                                       str(pathlib.Path(self.project.filename()) / '*'))
+        for filename in filenames:
+            if os.path.isfile(filename):
+                b = os.path.basename(filename)
+                _dir = settings['export_directory'] if 'export_directory' in settings else os.path.dirname(
+                    self.project.filename())
+                dest = QFileDialog.getExistingDirectory(self, 'Destination for ' + b, _dir)
+                if dest:
+                    settings['export_directory'] = dest
+                    shutil.copy(filename, dest)
+
+    def browse_project(self):
+        dlg = QFileDialog(self, self.project.filename(), str(pathlib.Path(self.project.filename(run=-1)) / '*'))
+        dlg.setLabelText(QFileDialog.Accept, "OK")
+        dlg.exec()
+
+    def move_to(self):
+        file_name, filter_ = QFileDialog.getSaveFileName(self, 'Move project to...',
+                                                         os.path.dirname(self.project.filename(run=-1)),
+                                                         'Molpro project (*.molpro)', )
+        if file_name:
+            self.project.move(file_name)
+            self.close()
+            self.__init__(file_name, self.window_manager, self.latency)
+
+    def copy_to(self):
+        file_name, filter_ = QFileDialog.getSaveFileName(self, 'Copy project to...',
+                                                         os.path.dirname(self.project.filename(run=-1)),
+                                                         'Molpro project (*.molpro)', )
+        if file_name:
+            self.project.copy(file_name, keep_run_directories=0)
+            return file_name
+
+    def erase(self):
+        result = QMessageBox.question(self, 'Erase project',
+                                      'Are you sure you want to erase project ' + self.project.filename(run=-1))
+        if result == QMessageBox.Yes:
+            current_dir = os.path.dirname(self.project.filename(run=-1))
+            time.sleep(.5)
+            logger.debug('closing ' + self.project.filename(run=-1))
+            self.close()
+            logger.debug('closed ' + self.project.filename(run=-1))
+            time.sleep(.5)
+            self.project.trash()
+            logger.debug('trashed ' + self.project.filename(run=-1))
+            time.sleep(.5)
+            settings['project_directory'] = current_dir
+            logger.debug('save project_directory ' + current_dir)
+
+    def show_input_specification(self):
+        QMessageBox.information(self, 'Input specification', 'Input specification:\r\n' +
+                                re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
+                                                                                                                  ',\n  '))
+
+
+def force_render_vtk_widget(widget):
+    if isinstance(widget, MoleculeDisplay):
+        for w in QApplication.topLevelWidgets():
+            if isinstance(w, QMainWindow):
+                w.resize(w.width() + 1, w.height())
+                w.repaint()
+                w.resize(w.width() - 1, w.height())
+
+
+class BasisAndHamiltonianChooser(QWidget):
+    r"""
+    Choose basis and hamiltonian
+    """
+    null_prompt = '- Select -'
+    all_qualities = 'All Qualities'
+    basis_qualities = [all_qualities, 'SZ', 'DZ', 'TZ', 'QZ', '5Z', '6Z']
+
+    def __init__(self, parent: ProjectWindow):
+        super().__init__(parent)
+        self.parent = parent
+
+        self.basis_registry = pymolpro.basis_registry()
+        self.desired_basis_quality = self.parent.input_specification.basis_quality
+
+        self.combo_hamiltonian = QComboBox(self)
+        self.combo_hamiltonian.addItems([h['text'] for h in molpro_input.hamiltonians().values()])
+        self.combo_hamiltonian.currentTextChanged.connect(self.changed_hamiltonian)
+
+        self.guided_combo_basis_quality = QComboBox(self)
+        self.guided_combo_basis_quality.addItems(self.basis_qualities)
+        self.guided_combo_basis_quality.currentTextChanged.connect(self.changed_basis_quality)
+
+        self.basis_selector = BasisSelector(self.changed_default_basis, self.null_prompt)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(RowOfTitledWidgets({
+            'Hamiltonian': self.combo_hamiltonian,
+            'Quality': self.guided_combo_basis_quality,
+            'Basis': self.basis_selector,
+        }, title='Hamiltonian and basis', alignment=Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignTop))
+
+    def refresh(self):
+        while True:
+            if not 'basis' in self.input_specification or not 'default' in self.input_specification['basis'] or not \
+                    self.input_specification['basis']['default']:
+                self.input_specification['basis'] = self.default_basis_for_hamiltonian(
+                    self.desired_basis_quality if self.desired_basis_quality > 0 else 3)
+                continue
+
+            core_correlation = self.input_specification[
+                'core_correlation'] if 'core_correlation' in self.input_specification else 'large'
+            possible_basis_sets = [k for k in self.basis_registry.keys() if (  # True or
+                    self.desired_basis_quality == 0 or self.basis_registry[k][
+                'quality'] == self.basis_qualities[self.desired_basis_quality]
+            )
+                                   and (
+                                           not 'hamiltonian' in self.input_specification or
+                                           self.hamiltonian_type(k) == self.input_specification[
+                                               'hamiltonian']
+                                   )
+                                   and (
+                                           core_correlation == 'mixed'
+                                           or (core_correlation == 'small' and 'CV' in k)
+                                           or core_correlation == 'large'
+                                   )
+                                   ]
+            if core_correlation == 'mixed' and 'heavy' not in self.input_specification['basis']['elements']:
+                self.input_specification['basis']['elements']['Heavy'] = ''
+            self.basis_selector.reload(self.input_specification['basis'], possible_basis_sets,
+                                       core_correlation == 'mixed')
+            self.basis_selector.show()
+
+            self.guided_combo_basis_quality.setCurrentText(self.basis_qualities[self.desired_basis_quality])
+            self.combo_hamiltonian.setCurrentText(
+                molpro_input.hamiltonians()[self.input_specification['hamiltonian']]['text'])
+            break
+
+    def changed_hamiltonian(self, text):
+        new_hamiltonian_ = list(molpro_input.hamiltonians().keys())[
+            [v['text'] for v in molpro_input.hamiltonians().values()].index(text)]
+        if self.input_specification['hamiltonian'] != new_hamiltonian_:
+            self.input_specification['hamiltonian'] = new_hamiltonian_
+            if 'basis' in self.input_specification and 'default' in self.input_specification['basis']:
+                self.input_specification['basis'] = self.default_basis_for_hamiltonian(self.desired_basis_quality)
+            self.write()
+            self.refresh()
+
+    def changed_basis_quality(self, text):
+        if self.desired_basis_quality != self.basis_qualities.index(text):
+            self.desired_basis_quality = self.basis_qualities.index(text)
+            self.refresh()
+
+    def default_basis_for_hamiltonian(self, desired_basis_quality=0):
+        quality = desired_basis_quality if desired_basis_quality > 0 else 3
+        return {'default': 'cc-pV(' + self.basis_qualities[quality][0] + '+d)Z' +
+                           molpro_input.hamiltonians()[self.input_specification['hamiltonian']]['basis_string'],
+                'elements': {}, 'quality': quality}
+
+    def changed_default_basis(self, spec):
+        if (spec and
+                'default' in spec and
+                spec['default'] != self.null_prompt and
+                spec['default'] != '' and
+                spec != self.input_specification['basis']):
+            self.input_specification['basis'] = copy.deepcopy(spec)
+            self.input_specification['basis']['quality'] = self.input_specification.basis_quality
+            self.write()
+
+    def write(self):
+        self.parent.refresh_input_from_specification()
+
+    @property
+    def input_specification(self):
+        return self.parent.input_specification
+
+    # @property
+    # def hamiltonians(self):
+    #     result = set()
+    #     for keyfound in self.basis_registry.keys():
+    #         if keyfound is not None:
+    #             result.add(self.hamiltonian_type(keyfound))
+    #     print('BasisAndHamiltonianChooser.hamiltonians:',result)
+    #     return result
+
+    def hamiltonian_type(self, key):
+        return re.sub(r'\(.*', '', self.basis_registry[key]['type'])
+
+
+class GuidedPane(QWidget):
+    method_changed_signal = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.project = self.parent.project
+        self.input_pane = self.parent.input_pane
+        self.setContentsMargins(0, 0, 0, 0)
+        self.method_asserted = False
+
+        self.guided_layout = QVBoxLayout()
+        self.guided_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.guided_layout)
+
+        self.guided_combo_orientation = QComboBox(self)
+        self.guided_combo_orientation.addItems(molpro_input.orientation_options().keys())
+        self.guided_combo_orientation.currentTextChanged.connect(
+            lambda text: self.input_specification_change('orientation', text))
+
+        self.charge_line = ChargeSelector()
+        self.charge_line.textChanged.connect(lambda text: self.input_specification_change('charge', text))
+
+        self.spin_line = SpinComboBox(self, 0, 14)
+        self.spin_line.spin_changed.connect(
+            lambda ms2: self.input_specification_change('spin', str(ms2) if ms2 >= 0 else ''))
+
+        self.guided_combo_wave_fct_symm = QComboBox(self)
+        self.guided_combo_wave_fct_symm.addItems(molpro_input.symmetry_commands().keys())
+        self.guided_combo_wave_fct_symm.currentTextChanged.connect(
+            lambda text: self.input_specification_change('symmetry', text))
+
+        self.guided_combo_job_type = QComboBox(self)
+        self.guided_combo_job_type.setMaximumWidth(180)
+        self.guided_combo_job_type.addItems(molpro_input.job_types().values())
+        self.guided_combo_job_type.currentTextChanged.connect(
+            lambda text: self.input_specification_change('job_type', text))
+
+        self.guided_combo_method = QComboBox(self)
+
+        logger.debug('molpro_input.supported_methods(): ' + str(molpro_input.supported_methods()))
+        self.guided_combo_method.addItems(molpro_input.supported_methods())
+        # print('input specification',self.input_specification)
+        # print('input specification method',self.input_specification['method'])
+        self.guided_combo_method.currentTextChanged.connect(
+            lambda text: self.input_specification_change('method', text))
+
+        self.guided_combo_functional = QComboBox(self)
+        self.guided_combo_functional.addItems(self.parent.available_functionals())
+        self.guided_combo_functional.hide()
+        self.guided_combo_functional.currentTextChanged.connect(
+            lambda text: self.input_specification_change('density_functional', text))
+
+        self.guided_combo_core_correlation = QComboBox(self)
+        self.guided_combo_core_correlation.addItems(['large', 'mixed', 'small'])
+        self.guided_combo_core_correlation.hide()
+        self.guided_combo_core_correlation.currentTextChanged.connect(
+            lambda text: self.input_specification_change('core_correlation', text))
+
+        self.checkbox_df = QCheckBox()
+        self.checkbox_df.clicked.connect(lambda text: self.input_specification_change('density_fitting', text))
+
+        self.combo_properties = PropertyInput(self)
+
+        self.method_row = RowOfTitledWidgets({'Type': self.guided_combo_job_type, 'Method': self.guided_combo_method,
+                                              'Functional': self.guided_combo_functional, }, title='Calculation')
+        self.guided_layout.addWidget(self.method_row)
+
+        self.desired_basis_quality = 0
+        self.basis_and_hamiltonian_chooser = BasisAndHamiltonianChooser(self)
+        self.guided_layout.addWidget(self.basis_and_hamiltonian_chooser)
+
+        self.thresholds_button = QPushButton('Thresholds')
+        self.thresholds_button.clicked.connect(self.thresholds_edit)
+        self.thresholds_button.setToolTip('Specify global thresholds')
+        self.thresholds_button.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
+
+        self.print_button = QPushButton('Print')
+        self.print_button.clicked.connect(self.print_edit)
+        self.print_button.setToolTip('Specify global print levels')
+        self.print_button.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
+
+        self.step_options_combo = QComboBox(self)
+        self.step_options_combo.currentIndexChanged.connect(
+            lambda text: self.step_options_edit(int(text - 1)))
+
+        self.guided_layout.addWidget(RowOfTitledWidgets({
+            'Charge': self.charge_line,
+            'Spin': self.spin_line,
+            'Symmetry': self.guided_combo_wave_fct_symm,
+        }, title='Wavefunction parameters'))
+
+        self.guided_orbitals_input = OrbitalInput(self)
+        self.guided_layout.addWidget(RowOfTitledWidgets({
+            'Local orbitals': self.guided_orbitals_input,
+            'Expectation values': self.combo_properties,
+        }, title='Properties'))
+        misc_layout = QHBoxLayout()
+        self.guided_layout.addLayout(misc_layout)
+        misc_layout.addWidget(RowOfTitledWidgets({
+            'Orientation': self.guided_combo_orientation,
+            'Density Fitting': self.checkbox_df,
+            'Options': self.step_options_combo,
+        }, title='Miscellaneous'))
+        options_layout = QGridLayout()
+        options_layout.addWidget(self.thresholds_button, 0, 0)
+        options_layout.addWidget(self.print_button, 1, 0)
+        # options_layout.addWidget(self.method_options_button,0,0)
+        misc_layout.addLayout(options_layout)
+        self.guided_layout.addStretch()
+
+    @property
+    def input_specification(self):
+        return self.parent.input_specification
+
+    def refresh(self):
+        self.guided_combo_orientation.setCurrentText(self.input_specification.with_defaults['orientation'])
+        self.guided_combo_wave_fct_symm.setCurrentText(self.input_specification.with_defaults['symmetry'])
+        if 'charge' in self.input_specification:
+            self.charge_line.setText(self.input_specification['charge'])
+        else:
+            self.charge_line.setText('0')
+
+        self.spin_line.refresh(self.input_specification.with_defaults['spin'])
+
+        if self.input_specification is not None:
+            if self.input_specification.method is None:
+                self.input_specification.method = 'rhf'
+            method_index = self.guided_combo_method.findText(
+                re.sub('^df-', '', self.input_specification.method, flags=re.IGNORECASE).upper(),
+                MatchFlag.MatchFixedString)
+            self.guided_combo_method.setCurrentIndex(method_index)
+            if re.match('[ru]ks', self.input_specification.method, flags=re.IGNORECASE):
+                self.method_row.ensure_not(['Core Correlation'])
+                self.method_row.ensure({'Functional': self.guided_combo_functional, })
+                if not self.input_specification.density_functional:
+                    self.input_specification.density_functional = self.guided_combo_functional.itemText(0)
+                self.guided_combo_functional.setCurrentIndex(self.guided_combo_functional.findText(
+                    self.input_specification.density_functional, MatchFlag.MatchFixedString))
+            elif re.match('[ru]hf', self.input_specification.method):
+                self.method_row.ensure_not(['Functional'])
+                self.method_row.ensure_not(['Core Correlation'])
+            else:
+                self.method_row.ensure_not(['Functional'])
+                self.method_row.ensure({'Core Correlation': self.guided_combo_core_correlation, })
+        self.guided_combo_job_type.setCurrentText(self.input_specification['job_type'])
+        if 'core_correlation' in self.input_specification:
+            self.guided_combo_core_correlation.setCurrentText(self.input_specification['core_correlation'])
+
+        self.step_options_combo.clear()
+        self.step_options_combo.addItem('- Select job step -')
+        self.step_options_combo.addItems([step.command.upper() for step in self.input_specification.job_steps if
+                                          step.command.lower() != self.input_specification.procname.lower()])
+        self.step_options_combo.setCurrentIndex(0)
+        try:
+            registry_df = pymolpro.procedures_registry()[self.input_specification.method.upper()][
+                'DF']  # TODO do something about negative sign in registry
+            bit_pattern = '0000' + bin(abs(registry_df)).replace('b', '0') if registry_df is not None else '0000'
+            # print(registry_df, bin(registry_df),bit_pattern)
+            closed_shell = bit_pattern[-1] == '1'
+            open_shell = bit_pattern[-2] == '1'
+            available = open_shell if self.input_specification.open_shell_electrons > 0 else closed_shell
+            mandatory = bit_pattern[-4] == '1'
+            if not available:
+                # print('density fitting not possible')
+                self.checkbox_df.setDisabled(True)
+                self.checkbox_df.setChecked(False)
+                self.input_specification['density_fitting'] = False
+            elif mandatory:
+                # print('density fitting mandatory',bit_pattern[-4],bit_pattern[-2],bit_pattern[-1])
+                self.checkbox_df.setDisabled(True)
+                self.checkbox_df.setChecked(True)
+                self.input_specification['density_fitting'] = True
+            else:
+                # print('density fitting possible')
+                self.checkbox_df.setDisabled(False)
+                if self.method_asserted:
+                    # print('asserted')
+                    self.input_specification['density_fitting'] = int(registry_df) > 0
+                    self.method_asserted = False
+                # print('df option','density_fitting' in self.input_specification and self.input_specification['density_fitting'])
+                self.checkbox_df.setChecked(
+                    'density_fitting' in self.input_specification and self.input_specification['density_fitting'])
+            self.refresh_input_from_specification()
+        except KeyError:
+            self.checkbox_df.setDisabled(True)
+
+        self.basis_and_hamiltonian_chooser.refresh()
+
+        self.guided_orbitals_input.refresh()
+
+    # def orbitals_input_action(self, parameter):
+    #     if not 'postscripts' in self.input_specification: self.input_specification['postscripts'] = []
+    #     self.input_specification['postscripts'] = [ps for ps in self.input_specification['postscripts'] if
+    #                                                ps != self.orbital_put_command]
+    #     if parameter:
+    #         self.input_specification['postscripts'].append(self.orbital_put_command)
+    #     self.refresh_input_from_specification()
+    #     self.guided_orbitals_input.setChecked(parameter)
+
+    # @property
+    # def orbital_put_command(self):
+    #     return 'put,molden,' + os.path.basename(os.path.splitext(self.project.filename(run=-1))[0]) + '.molden'
+
+    def input_specification_change(self, key, value):
+        if value is None or (
+                key in self.input_specification and str(self.input_specification[key]).lower() == str(value).lower()):
+            return
+        if key == 'method':
+            self.input_specification.method = value
+            if 'ks' in value.lower():
+                self.input_specification.density_functional = self.input_specification.density_functional
+            self.method_changed_signal.emit(value)
+            if self.parent.initialised_from_input:
+                self.method_asserted = True
+            self.input_specification.polish()
+        elif key == 'job_type':
+            self.input_specification.set_job_type([k for k, v in molpro_input.job_types().items() if v == value][0])
+        elif key == 'density_functional':
+            self.input_specification.density_functional = value
+        elif key == 'charge':
+            if value == '-': return
+            try:
+                old_charge = int(self.input_specification['charge'])
+            except:
+                old_charge = 0
+            self.input_specification['charge'] = int(value)
+            if int(value) != old_charge and 'spin' in self.input_specification:
+                self.input_specification.pop('spin')
+        elif key == 'spin':
+            if value is not None and int(value) >= 0:
+                self.input_specification['spin'] = int(value)
+            else:
+                if 'spin' in self.input_specification: self.input_specification.pop('spin')
+        else:
+            self.input_specification[key] = value
+            if key == 'properties':
+                self.input_specification.polish()
+        self.refresh_input_from_specification()
+        self.refresh()
+
+    def input_specification_variable_change(self, key, value):
+        if 'variables' not in self.input_specification:
+            self.input_specification['variables'] = {}
+
+        self.input_specification['variables'][key] = value
+        if key == 'charge':
+            self.refresh()
+
+        self.refresh_input_from_specification()
+
+    def refresh_input_from_specification(self):
+        # logger.debug('refresh_input_from_specification')
+        if not self.parent.guided_possible(): return
+        new_input = self.input_specification.molpro_input()
+        if not molpro_input.equivalent(self.input_pane.toPlainText(), new_input):
+            self.input_pane.setPlainText(new_input)
+
+    def thresholds_edit(self, flag):
+        project_registry = pymolpro.registry('THRESH')
+        available_options = [k.split(',')[0] for k in project_registry]
+        title = 'Global thresholds'
+        box = OptionsDialog(
+            self.parent.input_specification['thresholds'] if 'thresholds' in self.parent.input_specification else {},
+            {o.lower(): '' for o in available_options}, title=title, parent=self,
+            help_uri='https://www.molpro.net/manual/doku.php?id=program_control&s[]=gthresh#global_thresholds_gthresh')
+        result = box.exec()
+        if result is not None:
+            self.parent.input_specification['thresholds'] = result
+            self.refresh_input_from_specification()
+
+    def print_edit(self, flag):
+        available_options = [
+            'BASIS',
+            'DISTANCE',
+            'ANGLES',
+            'ORBITAL',
+            'ORBEN',
+            'CIVECTOR',
+            'PAIRS',
+            'CS',
+            'CP',
+            'REF',
+            'PSPACE',
+            'MICRO',
+            'CPU',
+            'IO',
+            'VARIABLE',
+        ]
+        title = 'Global print levels'
+        box = OptionsDialog(
+            self.parent.input_specification['prints'] if 'prints' in self.parent.input_specification else {},
+            {o.lower(): '' for o in available_options}, title=title, parent=self,
+            help_uri='https://www.molpro.net/manual/doku.php?id=program_control#global_print_options_gprint_nogprint')
+        result = box.exec()
+        if result is not None:
+            self.parent.input_specification['prints'] = result
+            self.refresh_input_from_specification()
+
+    def step_options_edit(self, step: int):
+        if step < 0: return
+        step_ = self.parent.input_specification.job_steps[step]
+        method_ = step_.command.upper()
+        available_options = {}
+        for option in list(
+                pymolpro.procedures_registry()[re.sub('^HF', 'RHF', method_.replace('FREQUENCIES', 'FREQ'))][
+                    'options']):
+            available_options[re.sub('.*:', '', option.split('=')[0])] = (option.split('=') + [''])[1]
+        title = 'Options for step ' + str(step + 1) + ' (' + method_ + ')'
+        existing_options = {o.split('=')[0]: o.split('=')[1] if len(o.split('=')) > 1 else '' for o in step_.options}
+        box = OptionsDialog(existing_options, available_options, title=title, parent=self,
+                            help_uri='https://www.molpro.net/manual/doku.php?q=' + method_ + '&do=search')
+        result = box.exec()
+        if result is not None:
+            step_.options = [k + '=' + v if v else k for k, v in result.items()]
+            self.parent.input_specification.set_job_step(step_, step)
+            self.refresh_input_from_specification()
+        self.step_options_combo.setCurrentIndex(0)
+
+
+class RowOfTitledWidgets(QWidget):
+    def __init__(self, widgets, title=None, parent=None, alignment=Qt.AlignmentFlag.AlignCenter):
+        super().__init__(parent)
+        self.alignment = alignment
+        self.setContentsMargins(0, 0, 0, 0)
+        # self.setStyleSheet('background-color: lightblue;')
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        if title is not None:
+            q_label = QLabel(title + ':')
+            q_label.setContentsMargins(0, 0, 0, 0)
+            layout.addWidget(q_label)
+        subpane = QWidget(self)
+        subpane.setContentsMargins(0, 0, 0, 0)
+        subpane.setStyleSheet('font-size: ' + str(self.fontInfo().pointSize() - 1) + 'pt;')
+        subpane.setAutoFillBackground(True)
+        layout.addWidget(subpane)
+        self.layout2 = QGridLayout(subpane)
+        self.layout2.setContentsMargins(0, 0, 0, 0)
+        self.layout2.setSpacing(0)
+        self.widgets = {}
+        self.widget_captions = {}
+        self.ensure(widgets)
+
+    def ensure(self, widgets):
+        for k, v in widgets.items():
+            if k not in self.widgets.keys():
+                self.widget_captions[k] = QLabel(k)
+                self.layout2.addWidget(self.widget_captions[k], 0, len(self.widgets), alignment=self.alignment)
+                self.layout2.addWidget(v, 1, len(self.widgets), alignment=self.alignment)
+                self.widgets[k] = v
+                self.widget_captions[k].show()
+                self.widgets[k].show()
+
+    def ensure_not(self, widget_keys):
+        for k in widget_keys:
+            if k in self.widgets.keys():
+                self.layout2.removeWidget(self.widget_captions[k])
+                self.layout2.removeWidget(self.widgets[k])
+                self.widgets[k].hide()
+                self.widget_captions[k].hide()
+                del self.widgets[k]
+                del self.widget_captions[k]
+
+
+class OrbitalInput(CheckableComboBox):
+    r"""
+    Helper for constructing input for producing various kinds of orbitals
+    """
+
+    def __init__(self, parent=None, null_text='None'):
+        super().__init__(null_text=null_text)
+        self.parent = parent
+        self.refresh()
+        self.model().dataChanged.connect(self.action)
+
+    def refresh(self):
+        self.clear()
+        self.addItems([o['text'] for k, o in molpro_input.local_orbital_types().items() if
+                       k != 'nbo' or self.parent.input_specification.open_shell_electrons is None or self.parent.input_specification.open_shell_electrons == 0])
+        if 'orbitals' in self.parent.input_specification:
+            for o in self.parent.input_specification['orbitals']:
+                for i in range(self.model().rowCount()):
+                    if self.model().item(i).text() == molpro_input.local_orbital_types()[o]['text']:
+                        self.model().item(i).setCheckState(CheckState.Checked)
+        self.updateText()
+
+    def action(self, text):
+        self.parent.input_specification['orbitals'] = [k for k, v in molpro_input.local_orbital_types().items() for t in
+                                                       self.currentData() if t == v['text']]
+        if any([b in self.parent.input_specification['orbitals'] for b in ['nbo', 'ibo']]):
+            self.parent.input_specification_change('symmetry', 'none')
+        self.parent.refresh_input_from_specification()
+
+
+class InputCombo(CheckableComboBox):
+    r"""
+    Helper for constructing input
+    """
+
+    def __init__(self, identity, parent=None):
+        super().__init__(parent, null_text='None')
+        self.parent = parent
+        self.identity = identity
+        self.addItems(getattr(molpro_input, self.identity).keys())
+        if identity in self.parent.input_specification:
+            for o in self.parent.input_specification[identity]:
+                for i in range(self.model().rowCount()):
+                    if self.model().item(i).text() == o:
+                        self.model().item(i).setCheckState(CheckState.Checked)
+        self.model().dataChanged.connect(self.refresh)
+
+    def refresh(self, text):
+        self.parent.input_specification[self.identity] = [k for k, v in getattr(molpro_input, self.identity).items() for
+                                                          t in
+                                                          self.currentData() if t == k]
+        self.parent.input_specification.polish()
+        self.parent.refresh_input_from_specification()
+
+
+class PropertyInput(InputCombo):
+    r"""
+    Helper for constructing input for properties
+    """
+
+    def __init__(self, parent=None):
+        super().__init__('properties', parent)
+
+
+class ChargeSelector(QWidget):
+    textChanged = pyqtSignal(str, name='textChanged')
+
+    def __init__(self):
+        super().__init__()
+        self.layout = QHBoxLayout(self)
+        self.label = QLabel('0')
+        self.plus_button = QToolButton()
+        self.plus_button.setArrowType(UpArrow)
+        self.minus_button = QToolButton()
+        self.minus_button.setArrowType(DownArrow)
+        fontsize = self.fontInfo().pointSize()
+        self.minus_button.setIconSize(QSize(fontsize // 2, fontsize * 2 // 3))
+        self.plus_button.setIconSize(QSize(fontsize // 2, fontsize * 2 // 3))
+        self.layout.addWidget(self.minus_button)
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.plus_button)
+        self.plus_button.setContentsMargins(0, 0, 0, 0)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.minus_button.clicked.connect(lambda: self.change(-1))
+        self.plus_button.clicked.connect(lambda: self.change(1))
+
+    def setText(self, value):
+        self.label.setText(str(value))
+
+    def text(self):
+        return self.label.text()
+
+    def change(self, amount=1):
+        self.label.setText(str(int(self.label.text()) + amount))
+        self.textChanged.emit(self.label.text())
+
+
+class MyTabWidget(DraggableTabWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.tab_names = set()
+        # self.currentChanged.connect(lambda : force_render_vtk_widget(self.currentWidget())) # might be needed in future PySide6
+        self.setTabBarAutoHide(True)
+        self.setDocumentMode(True)
+        self.setTabPosition(South)
+
+    def addTab(self, widget, QWidget=None, *args, **kwargs):
+        super().addTab(widget, QWidget, *args, **kwargs)
+        if type(QWidget) is str:
+            self.tab_names.add(QWidget)
+
+    def indexOfTab(self, tab_name):
+        for i in range(self.count()):
+            if self.tabText(i) == tab_name:
+                return i
+        return -1
+
+    def clear(self):
+        self.tab_names.clear()
+        super().clear()
+
+    def __len__(self):
+        return self.count()
+
+
+class OutputTabWidget(MyTabWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.run_directory = None
+        self.suffixes = {'inp', 'out', }
+        self.refresh()
+
+    def add_suffix(self, suffix):
+        self.suffixes.add(suffix)
+        self.refresh()
+        self.setCurrentIndex(self.indexOfTab(self.label(suffix)))
+
+    def del_suffix(self, suffix):
+        self.suffixes.remove(suffix)
+
+    def refresh(self):
+        tab_names = [self.tabText(i) for i in range(self.count())]
+        if self.run_directory != self.parent.project.run_directory:
+            self.clear()
+            self.run_directory = self.parent.project.run_directory
+        # print('discover_tab_sources', run_directory)
+
+        self.output_panes = {}
+        for suffix in self.suffixes:
+            if os.path.exists(filename := self.parent.project.filename(suffix, run=(
+                    self.parent.project.run_directory))) and os.path.getsize(filename) > 0:
+                label = self.label(suffix)
+                # print('found',filename, label,os.path.getsize(filename) )
+                if label not in tab_names:
+                    self.addTab(ViewProjectOutput(self.parent.project, suffix, point_size=12 if suffix == 'inp' else 9,
+                                                  width=80 if suffix == 'inp' else 132), label)
+
+        if os.path.exists(filename := self.parent.project.filename('xml', run=(
+                self.parent.project.run_directory))) and os.path.getsize(filename) > 0:
+            try:
+                # get input geometry maybe
+                # get final geometry
+                final_structure = self.parent.project.structure(True)
+                initial_structure = self.parent.project.structure(instance=0)
+            except:
+                if 'initial_structure' not in locals(): initial_structure = None
+                if 'final_structure' not in locals(): final_structure = None
+            # print('initial structure',initial_structure)
+            # print('final structure',final_structure)
+            final_structure_tab_label = 'final structure'
+            initial_structure_tab_label = 'initial structure'
+            if final_structure is not None and (not hasattr(self,
+                                                            'final_structure') or self.final_structure != final_structure or final_structure_tab_label not in tab_names):
+                self.final_structure = final_structure
+                if final_structure_tab_label in tab_names:
+                    self.removeTab(self.indexOfTab(final_structure_tab_label))
+                # print('new tab','final structure', final_structure_tab_label)
+                self.addTab(MoleculeDisplay(final_structure, self.parent), final_structure_tab_label)
+            if initial_structure is not None and final_structure_tab_label not in tab_names and initial_structure != final_structure and (
+                    not hasattr(self,
+                                'initial_structure') or self.initial_structure != initial_structure or initial_structure_tab_label not in tab_names):
+                self.initial_structure = initial_structure
+                if initial_structure_tab_label in tab_names:
+                    self.removeTab(self.indexOfTab(initial_structure_tab_label))
+                # print('new tab','initial structure', initial_structure_tab_label)
+                self.addTab(MoleculeDisplay(initial_structure, self.parent), initial_structure_tab_label)
+
+        # get input geometry from the input
+        input_xyz = self.parent.initial_xyz()
+        if input_xyz:
+            try:
+                input_structure_tab_label = 'input structure'
+                atoms = atoms_from_xyz(input_xyz)
+                # print('self.initial_structure',self.initial_structure)
+                test = 'initial_structure' in locals() and initial_structure is not None and atoms is not None
+                if test:
+                    for i, atom in enumerate(atoms):
+                        test = test and all(
+                            [abs(initial_structure.atoms[i]['xyz'][k] - atom['xyz'][k]) < 1e-7 for k in range(3)])
+                if test:
+                    if input_structure_tab_label in tab_names:
+                        self.removeTab(self.indexOfTab(input_structure_tab_label))
+                else:
+                    if not hasattr(self,
+                                   'input_atoms') or self.input_atoms != atoms or input_structure_tab_label not in tab_names:
+                        # print('new input structure')
+                        self.input_atoms = atoms
+                        if input_structure_tab_label in tab_names:
+                            self.removeTab(self.indexOfTab(input_structure_tab_label))
+                        # print('new tab','input structure', input_structure_tab_label)
+                        self.addTab(MoleculeDisplay(atoms, self.parent, metadata={'label': 'Input geometry'}),
+                                    input_structure_tab_label)
+            except:
+                # raise Exception('Could not read input xyz file')
+                pass
+
+        if os.path.exists(filename := self.parent.project.filename('xml', run=(
+                self.parent.project.run_directory))) and os.path.getsize(filename) > 0:
+            labels = {}
+            try:
+                for index in range(10000):  # get orbital sets
+                    orbitals = self.parent.project.orbitals(index)
+                    orbitals_node = orbitals[0].node.getparent()
+                    label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals'
+                    if label in labels:
+                        labels[label] += 1
+                        label = label + ': ' + str(labels[label])
+                    else:
+                        labels[label] = 1
+                    # print('found','orbital set', label)
+                    if label not in tab_names:
+                        # print('new tab','orbital set', label)
+                        self.addTab(MoleculeDisplay(orbitals, self,
+                                                    metadata=orbitals_node.attrib,
+                                                    ), label)
+            except Exception as e:
+                if not isinstance(e, (IndexError)) and not isinstance(e, (AttributeError)):
+                    print('Orbitals except', str(e) + ' ' + str(type(e)))
+                pass
+
+    def label(self, suffix: str) -> str:
+        return os.path.basename(self.parent.project.filename(suffix, run=(self.parent.project.run_directory)))

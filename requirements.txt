@@ -1,12 +1,13 @@
-pyqt >=5.15
-pyqtwebengine >=5.15
+pyside6 <6.10
 pyinstaller >=6
-pymolpro >=1.19.0
-pysjef >=1.45.3
+pymolpro >=1.19.5
+pysjef >=1.45.11
 pubchempy >=1
 chemspipy >=2
-git >= 2.49
-libboost >= 1.84.0
+git >= 2
 certifi >= 2024.8.30
 jsonschema >= 4
 openssl >= 3.5.3
+vtk
+pillow
+pikepdf

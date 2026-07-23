@@ -1,0 +1,66 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+jobs:
+  check-version-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      is_version: ${{ steps.check.outputs.is_version }}
+    steps:
+      - name: Check tag looks like a version
+        id: check
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          if [ -z "$tag" ]; then
+            # workflow_dispatch has no release tag_name; allow it through
+            echo "is_version=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$tag" =~ ^v?[0-9]+(\.[0-9]+)+$ ]]; then
+            echo "is_version=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tag '$tag' doesn't look like a version tag, skipping publish."
+            echo "is_version=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: check-version-tag
+    if: needs.check-version-tag.outputs.is_version == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # needed so setuptools_scm can see tags
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tool
+        run: python -m pip install --upgrade build
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+
+  publish-pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/imolpro
+    permissions:
+      id-token: write   # required for OIDC trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

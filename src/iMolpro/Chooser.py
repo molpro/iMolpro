@@ -1,0 +1,396 @@
+import os
+import platform
+import re
+import io
+
+import numpy as np
+from PIL import Image as PILImage
+
+from .MenuBar import MenuBar
+from .RecentMenu import RecentMenu
+from .help import help_manager_default
+from .utilities import force_suffix
+from ._paths import app_root
+
+
+try:
+    from PySide6 import QtCore
+    from PySide6.QtCore import QCoreApplication, Qt, QUrl
+    from PySide6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, \
+        QScreen, QPalette, QColor, QActionGroup, QImage
+    from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
+        QToolButton, QApplication, QMenu
+except ImportError:
+    try:
+        from PyQt6 import QtCore
+        from PyQt6.QtCore import QCoreApplication, Qt, QUrl
+        from PyQt6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, \
+            QScreen, QPalette, QColor, QActionGroup, QImage
+        from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
+            QToolButton, QApplication, QMenu
+    except ImportError:
+        from PyQt5 import QtCore
+        from PyQt5.QtCore import QCoreApplication, Qt, QUrl
+        from PyQt5.QtGui import QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, \
+            QColor, QImage
+        from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
+            QToolButton, QShortcut, QAction, QApplication, QMenu, QActionGroup
+try:
+    ColorRole = QPalette.ColorRole
+except AttributeError:
+    ColorRole = QPalette
+try:
+    KeepAspectRatio = Qt.KeepAspectRatio
+    SmoothTransformation = Qt.SmoothTransformation
+    FramelessWindowHint = Qt.FramelessWindowHint
+except:
+    KeepAspectRatio = Qt.AspectRatioMode.KeepAspectRatio
+    SmoothTransformation = Qt.TransformationMode.SmoothTransformation
+    FramelessWindowHint = Qt.WindowType.FramelessWindowHint
+
+try:
+    AlignCenter = Qt.AlignCenter
+    AlignLeft = Qt.AlignLeft
+except:
+    AlignCenter = Qt.AlignmentFlag.AlignCenter
+    AlignLeft = Qt.AlignmentFlag.AlignLeft
+try:
+    HelpContents = QKeySequence.HelpContents
+except:
+    HelpContents = QKeySequence.StandardKey.HelpContents
+
+from .ProjectWindow import ProjectWindow
+from .WindowManager import WindowManager
+from .settings import settings, settings_edit
+from .theme import theme_manager, THEMES, apply_theme, detect_system_theme, DARK_GREY_WINDOW
+from pysjef import recent_project
+
+
+class PushButton(QPushButton):
+    def enterEvent(self, ev, QEnterEvent=None):
+        self.setCursor(Qt.PointingHandCursor)
+
+    def exitEvent(self, ev, QExitEvent=None):
+        self.setCursor(Qt.ArrowCursor)
+
+
+class Chooser(QMainWindow):
+    def __init__(self, window_manager: WindowManager):
+        super().__init__()
+        self.window_manager = window_manager
+
+        self.layout = QHBoxLayout()
+        container = QWidget()
+        container.setLayout(self.layout)
+        self.setCentralWidget(container)
+
+        lh_panel = QVBoxLayout()
+        self.layout.addLayout(lh_panel)
+        new_button = PushButton('&New project')
+        new_button.clicked.connect(self.newProjectDialog)
+        # hover_css = ':hover { border: none; background-color: #D0D0D0 }'
+        # new_button.setStyleSheet(hover_css)
+        lh_panel.addWidget(new_button)
+        self.recent_project_box = QWidget()
+        self.populate_recent_project_box()
+
+        lh_panel.addWidget(self.recent_project_box)
+        existing_button = PushButton('&Open an existing project...')
+        # existing_button.setStyleSheet(hover_css)
+        existing_button.clicked.connect(self.openProjectDialog)
+        lh_panel.addWidget(existing_button)
+        self.quitButton = PushButton('&Quit')
+        # self.quitButton.setStyleSheet(hover_css)
+        lh_panel.addWidget(self.quitButton)
+
+        rh_panel = QVBoxLayout()
+        self.layout.addLayout(rh_panel)
+        cwd = app_root()
+
+        class LinkImage(QLabel):
+            # Render at a generous fixed multiplier rather than querying
+            # QGuiApplication.primaryScreen().devicePixelRatio() here: at
+            # construction time this widget isn't yet shown or positioned on
+            # any particular screen, so on a mixed-DPI multi-monitor setup
+            # that query can report the wrong screen's scale factor entirely
+            # -- producing a pixmap that's too low-resolution for the screen
+            # the window actually opens on, which Qt then has to upscale
+            # (blurry, and the softened edges can look like the image is
+            # spilling past its intended box). The source PNG is large
+            # (3139x3475), so rendering at a fixed high ratio and letting Qt
+            # scale down for lower-DPI screens stays sharp everywhere.
+            RENDER_RATIO = 3
+
+            def __init__(self, image, url=None, width=250, height=250):
+                super().__init__()
+                ratio = self.RENDER_RATIO
+                # QLabel.pixmap() returns a copy of the internal pixmap, not
+                # a reference to it -- calling setDevicePixelRatio on that
+                # copy (as this used to do) is a silent no-op. Set the ratio
+                # on the QPixmap object itself before handing it to
+                # setPixmap, so the tagged pixmap is the one actually stored.
+                light_source = QPixmap(image)
+                dark_source = self._brighten(image)
+                self._light_pixmap = light_source.scaled(int(width * ratio), int(height * ratio), KeepAspectRatio,
+                                                         SmoothTransformation)
+                self._light_pixmap.setDevicePixelRatio(ratio)
+                self._dark_pixmap = dark_source.scaled(int(width * ratio), int(height * ratio), KeepAspectRatio,
+                                                       SmoothTransformation)
+                self._dark_pixmap.setDevicePixelRatio(ratio)
+                self.setFixedSize(width, height)
+                self.url = QUrl(url)
+                self.setAlignment(AlignCenter)
+                self._update_pixmap()
+                theme_manager.themeChanged.connect(lambda name: self._update_pixmap())
+
+            def _update_pixmap(self):
+                current_theme = settings['theme'] if 'theme' in settings else detect_system_theme(
+                    QApplication.instance())
+                self.setPixmap(self._dark_pixmap if current_theme == 'dark' else self._light_pixmap)
+
+            @staticmethod
+            def _brighten(image_path, blend=0.5):
+                """Brighten the logo for legibility against a dark
+                background, by blending every non-transparent pixel's RGB
+                towards white, weighted by its own alpha.
+
+                Works on the original full-resolution file via PIL, rather
+                than manipulating an already-Qt-scaled QPixmap's QImage
+                buffer directly: that approach didn't reliably take visual
+                effect (root cause unconfirmed -- possibly a buffer
+                marshalling quirk in this Qt binding). Routing through a
+                real PNG-bytes round-trip instead uses the exact same 'Qt
+                loads a PNG' path already proven to work for the unmodified
+                logo.
+
+                Blends every pixel by alpha rather than matching specific
+                colours exactly: the image's actual dominant colours turned
+                out to be (0,0,255), (255,0,0) and a (54,0,255) gradient/
+                blend colour between them, not the (255,11,23)/(0,27,249)
+                originally assumed -- alpha-weighting sidesteps needing to
+                know the exact set of colours (including antialiasing) at
+                all.
+                """
+                pil_img = PILImage.open(image_path).convert('RGBA')
+                arr = np.array(pil_img).astype(np.float32)
+                alpha = arr[:, :, 3] / 255.0
+                factor = (blend * alpha)[:, :, None]
+                arr[:, :, :3] = arr[:, :, :3] * (1 - factor) + 255 * factor
+                arr = np.clip(arr, 0, 255).astype(np.uint8)
+                buf = io.BytesIO()
+                PILImage.fromarray(arr, 'RGBA').save(buf, format='PNG')
+                result = QPixmap()
+                result.loadFromData(buf.getvalue())
+                return result
+
+            def mousePressEvent(self, event):
+                if self.url is not None:
+                    QDesktopServices.openUrl(self.url)
+
+            def enterEvent(self, ev, QEnterEvent=None):
+                self.setCursor(Qt.PointingHandCursor)
+
+            def exitEvent(self, ev, QExitEvent=None):
+                self.setCursor(Qt.ArrowCursor)
+
+        label = LinkImage(str(cwd / 'Molpro_Logo_Molpro_Quantum_Chemistry_Software.png'), 'https://www.molpro.net', 186,
+                          217)  # predicated on 3139 x 3475 image
+        label.setContentsMargins(0, 30, 0, 20)
+        margins = label.contentsMargins()
+        label.setFixedSize(186 + margins.left() + margins.right(), 217 + margins.top() + margins.bottom())
+        rh_panel.addWidget(label)
+        rh_panel.setAlignment(label, AlignCenter)
+        link_layout = QHBoxLayout()
+        rh_panel.addLayout(link_layout)
+
+        class LinkLabel(QLabel):
+            def __init__(self, text, url):
+                super().__init__()
+                self.setOpenExternalLinks(True)
+                self._text = text
+                self._url = url
+                self._update_colour()
+                theme_manager.themeChanged.connect(lambda name: self._update_colour())
+
+            def _update_colour(self):
+                current_theme = settings['theme'] if 'theme' in settings else detect_system_theme(
+                    QApplication.instance())
+                colour = 'white' if current_theme == 'dark' else 'black'
+                self.setText(f'<A style="text-decoration:none;color:{colour}" href="{self._url}">{self._text}</A>')
+                self.setStyleSheet(f'color: {colour}')
+
+        helpButton = PushButton('Help', self)
+        helpButton.clicked.connect(lambda: help_manager.show('Help', 'README'))
+        self.shortcutHelp = QShortcut(HelpContents, self)
+        self.shortcutHelp.activated.connect(self.close)
+        # helpButton.setStyleSheet(":hover {border: none ; background-color: #D0D0D0}  ")
+        link_layout.addWidget(helpButton)
+        # manual_button = LinkLabel('Molpro Manual', 'https://www.molpro.net/manual/doku.php')
+        manual_button = PushButton('Molpro Manual', self)
+        # manual_button.setStyleSheet(":hover {border: none ; background-color: #D0D0D0}  ")
+        manual_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl('https://www.molpro.net/manual/doku.php')))
+        link_layout.addWidget(manual_button)
+
+        # rh_panel.addWidget(QLabel("iMolpro version "+get_versions()['version']+'\n('+get_versions()['date']+')'))
+        def version_():
+            import subprocess
+            import os
+            version = None
+            if os.path.exists(app_root() / '.git'):
+                try:
+                    version = subprocess.check_output(
+                        ['git', '-C', str(app_root()), 'describe', '--tags', '--dirty']).decode('ascii').strip()
+                except Exception:
+                    pass
+                if version:
+                    return version
+            version_file = app_root() / 'VERSION'
+            if os.path.exists(version_file):
+                version = open(version_file, 'r').read().strip()
+            if version:
+                return version
+            try:
+                from importlib.metadata import version as installed_version
+                return installed_version('iMolpro')
+            except Exception:
+                return 'unknown'
+
+        version_label = LinkLabel("iMolpro version " + version_(),
+                                  'https://github.com/molpro/iMolpro/tree/' + re.sub('-.*', '',
+                                                                                     version_()) + '/README.md')
+        version_label.setStyleSheet("font-size: 10px")
+        version_label.setAlignment(AlignCenter)
+        rh_panel.addWidget(version_label)
+
+        self.setWindowFlag(FramelessWindowHint)
+        self.showNormal()
+        self.menubar = MenuBar()
+        self.menubar.addAction('New', 'Projects', slot=self.newProjectDialog, shortcut='Ctrl+N',
+                               tooltip='Create a new project')
+        self.menubar.addAction('Open', 'Projects', slot=self.openProjectDialog, shortcut='Ctrl+O',
+                               tooltip='Open an existing project')
+        self.menubar.addSeparator('Projects')
+        self.recentMenu = RecentMenu(window_manager)
+        self.menubar.addSubmenu(self.recentMenu, 'Projects')
+        self.menubar.addSeparator('Projects')
+        self.menubar.addAction('Quit', 'Projects', slot=QCoreApplication.quit, shortcut='Ctrl+Q',
+                               tooltip='Quit')
+        self.menubar.addAction('Settings', 'Edit', lambda arg, parent=self: settings_edit(parent),
+                               tooltip='Edit settings')
+        theme_menu = QMenu('Theme')
+        theme_action_group = QActionGroup(self)
+        theme_action_group.setExclusive(True)
+        current_theme = settings['theme'] if 'theme' in settings else detect_system_theme(QApplication.instance())
+        for theme_name in THEMES:
+            action = theme_menu.addAction(theme_name.capitalize())
+            action.setCheckable(True)
+            action.setChecked(theme_name == current_theme)
+            theme_action_group.addAction(action)
+            action.triggered.connect(lambda checked, theme_name=theme_name: self.set_theme(theme_name))
+        self.menubar.addSubmenu(theme_menu, 'View')
+
+        help_manager = help_manager_default(self.menubar)
+
+        if platform.system() == 'Darwin':
+            self.setMenuBar(self.menubar)
+        else:
+            self.shortcutQuit = QShortcut(QKeySequence("Ctrl+Q"), self)
+            self.shortcutQuit.activated.connect(QCoreApplication.quit)
+            self.shortcutNew = QShortcut(QKeySequence("Ctrl+N"), self)
+            self.shortcutNew.activated.connect(self.newProjectDialog)
+            self.shortcutOpen = QShortcut(QKeySequence("Ctrl+O"), self)
+            self.shortcutOpen.activated.connect(self.openProjectDialog)
+
+    def populate_recent_project_box(self, max_items=10):
+
+        class RecentProjectButton(QToolButton):
+            def __init__(self, filename, index=None, parent=None):
+                self.parent = parent
+                import os
+                self.filename = os.path.expanduser(filename)
+                home_dir = os.path.expanduser('~')
+                reduced_filename = self.filename.replace(home_dir, '~')
+                super().__init__(parent)
+                max_length = 60
+                self.setText(('' if index is None or index > 9 else '&' + str(index) + ': ') + (
+                    reduced_filename if len(reduced_filename) <= max_length else ' ... ' + reduced_filename[
+                        -max_length + 5:]))
+                self.setContentsMargins(0, 0, 0, 0)
+
+                self.qaction = QAction(self)
+                if index <= 9:
+                    self.setShortcut('Ctrl+' + str(index))
+                self.qaction.triggered.connect(self.action)
+                self.clicked.connect(self.qaction.triggered)
+                current_theme = settings['theme'] if 'theme' in settings else detect_system_theme(
+                    QApplication.instance())
+                if current_theme == 'dark':
+                    # Lighten the dark theme's actual background moderately
+                    # for a visible-but-still-dark hover highlight, keeping
+                    # white text legible.
+                    hover_colour = DARK_GREY_WINDOW.lighter(150).name()
+                else:
+                    hover_colour = '#F0F0F0'
+                self.setStyleSheet(f"* {{border: none }} :hover {{ background-color: {hover_colour}}}  ")
+                # self.setStyleSheet("* {border: none }")
+
+            def enterEvent(self, ev, QEnterEvent=None):
+                self.setCursor(Qt.PointingHandCursor)
+
+            def exitEvent(self, ev, QExitEvent=None):
+                self.setCursor(Qt.ArrowCursor)
+
+            def action(self):
+                self.parent.window_manager.register(ProjectWindow(self.filename, self.parent.window_manager))
+                self.parent.hide()
+
+        current_theme = settings['theme'] if 'theme' in settings else detect_system_theme(QApplication.instance())
+        box_colour = DARK_GREY_WINDOW.name() if current_theme == 'dark' else '#F7F7F7'
+        self.recent_project_box.setStyleSheet(f" background-color: {box_colour} ")
+        if not getattr(self, '_recent_project_box_theme_connected', False):
+            theme_manager.themeChanged.connect(lambda name: self.populate_recent_project_box(max_items))
+            self._recent_project_box_theme_connected = True
+        self.recent_project_box.setMaximumWidth(400)
+        self.recent_project_box.setFixedWidth(400)
+        if not self.recent_project_box.layout():
+            QVBoxLayout(self.recent_project_box)
+        layout = self.recent_project_box.layout()
+        for item in [layout.itemAt(i) for i in range(layout.count())]:
+            self.recent_project_box.layout().removeItem(item)
+            # item.widget().setParent(None)
+        self.recent_project_box.layout().addWidget(QLabel('Open a recently-used project:'), 0, AlignLeft)
+        for i in range(1, max_items):
+            f = recent_project('molpro', i)
+            if f:
+                button = RecentProjectButton(f, i, self)
+                self.recent_project_box.layout().addWidget(button, -1, AlignLeft)
+
+    def set_theme(self, theme_name):
+        settings['theme'] = theme_name
+        apply_theme(QApplication.instance(), theme_name)
+
+    def openProjectDialog(self):
+        _dir = settings['project_directory'] if 'project_directory' in settings else os.path.curdir
+        if platform.system() == 'Darwin':
+            filename, filter = QFileDialog.getOpenFileName(self, 'Open existing project...', _dir,
+                                                           filter='Molpro projects (*.molpro *.out *.inp *.xml)')
+        else:
+            filename = force_suffix(QFileDialog.getExistingDirectory(self, 'Open existing project...', _dir))
+        if filename:
+            self.window_manager.register(ProjectWindow(filename, self.window_manager))
+            self.hide()
+
+    def newProjectDialog(self):
+        self.window_manager.new(self)
+        if len(self.window_manager.openWindows) > 0:
+            self.hide()
+
+    def activate(self):
+        # q_screen = QScreen(self)
+        q_screen = QGuiApplication.primaryScreen()
+        resolution = q_screen.geometry()
+        self.move((resolution.width() // 2) - (self.frameSize().width() // 2),
+                  (resolution.height() // 2) - (self.frameSize().height() // 2))
+        self.populate_recent_project_box()
+        self.show()
+        self.raise_()
