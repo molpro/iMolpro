@@ -32,8 +32,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # needed so setuptools_scm can see tags
-          fetch-tags: true
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --prune --unshallow --tags --force
+
+      - name: Check detected version
+        run: pipx run --spec setuptools_scm python -m setuptools_scm
 
       - uses: actions/setup-python@v5
         with:
