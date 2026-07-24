@@ -170,6 +170,10 @@ class ProjectWindow(QMainWindow):
             # logger.debug('normal_geometry ' + str(self.normal_geometry))
             settings['project_window_width'] = self.normal_geometry.width()
             settings['project_window_height'] = self.normal_geometry.height()
+        if event.type() == QEvent.ActivationChange and self.isActiveWindow():
+            menubar = self.menuBar()
+            if menubar is not None and hasattr(self, 'window_manager'):
+                self.window_manager.set_cli_action_owner(menubar)
 
     def __init__(self, filename, window_manager, latency=1000, **kwargs):
         # print('ProjectWindow.__init__ entered')
@@ -443,6 +447,7 @@ class ProjectWindow(QMainWindow):
         menubar.addAction('Settings', 'Edit',
                           lambda arg, parent=self: settings_edit(parent, {}),
                           tooltip='Edit settings')
+        self.window_manager.set_cli_action_owner(menubar)
         menubar.addSeparator('Edit')
         if False and settings['use_jmol']:
             menubar.addAction('Structure', 'Edit', self.edit_input_structure, 'Ctrl+D', 'Edit molecular geometry')

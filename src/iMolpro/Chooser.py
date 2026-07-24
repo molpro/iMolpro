@@ -15,26 +15,26 @@ from ._paths import app_root
 
 try:
     from PySide6 import QtCore
-    from PySide6.QtCore import QCoreApplication, Qt, QUrl
+    from PySide6.QtCore import QCoreApplication, Qt, QUrl, QEvent
     from PySide6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, \
         QScreen, QPalette, QColor, QActionGroup, QImage
     from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-        QToolButton, QApplication, QMenu
+        QToolButton, QApplication, QMenu, QMessageBox
 except ImportError:
     try:
         from PyQt6 import QtCore
-        from PyQt6.QtCore import QCoreApplication, Qt, QUrl
+        from PyQt6.QtCore import QCoreApplication, Qt, QUrl, QEvent
         from PyQt6.QtGui import QShortcut, QAction, QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, \
             QScreen, QPalette, QColor, QActionGroup, QImage
         from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-            QToolButton, QApplication, QMenu
+            QToolButton, QApplication, QMenu, QMessageBox
     except ImportError:
         from PyQt5 import QtCore
-        from PyQt5.QtCore import QCoreApplication, Qt, QUrl
+        from PyQt5.QtCore import QCoreApplication, Qt, QUrl, QEvent
         from PyQt5.QtGui import QScreen, QPixmap, QKeySequence, QDesktopServices, QGuiApplication, QScreen, QPalette, \
             QColor, QImage
         from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QLabel, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-            QToolButton, QShortcut, QAction, QApplication, QMenu, QActionGroup
+            QToolButton, QShortcut, QAction, QApplication, QMenu, QActionGroup, QMessageBox
 try:
     ColorRole = QPalette.ColorRole
 except AttributeError:
@@ -277,6 +277,7 @@ class Chooser(QMainWindow):
                                tooltip='Quit')
         self.menubar.addAction('Settings', 'Edit', lambda arg, parent=self: settings_edit(parent),
                                tooltip='Edit settings')
+        window_manager.set_cli_action_owner(self.menubar)
         theme_menu = QMenu('Theme')
         theme_action_group = QActionGroup(self)
         theme_action_group.setExclusive(True)
@@ -394,3 +395,8 @@ class Chooser(QMainWindow):
         self.populate_recent_project_box()
         self.show()
         self.raise_()
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if event.type() == QEvent.ActivationChange and self.isActiveWindow() and hasattr(self, 'menubar'):
+            self.window_manager.set_cli_action_owner(self.menubar)

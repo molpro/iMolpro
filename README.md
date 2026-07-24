@@ -20,7 +20,7 @@ Editing of input can be done in one of _guided_ or _freehand_ modes. In guided m
 Binaries prepared with [PyInstaller](https://pyinstaller.org/) are available for Windows, macOS, and Linux, and can be downloaded from the [releases](https://github.com/molpro/imolpro/releases) page.
 The package is alternatively available as a Python module published on [PyPI](https://pypi.org/project/iMolpro/), and can be installed with `pip install iMolpro`, which has the effect of providing the command `iMolpro` in the current Python environment.
 
-In the case of MacOS, the PyInstaller-built binary is an application bundle which, when normally installed in `/Applications`, registers as an opener for Molpro projects, which means that you can double-click on a Molpro project file to launch iMolpro.
+In the case of MacOS, the PyInstaller-built binary is an application bundle which, when normally installed in `/Applications`, registers as an opener for Molpro projects, which means that you can double-click on a Molpro project file to launch iMolpro. To also be able to launch iMolpro (optionally with a project, input, or output file as argument) from Terminal, use the `iMolpro > Install command line tool...` menu item; this installs an `iMolpro` command at `/usr/local/bin/iMolpro`, prompting for an administrator password if needed, and the same menu item can be used afterwards to reinstall or remove it again.
 ### License
 iMolpro is
 licensed under the [GNU LGPL v3](https://opensource.org/license/lgpl-3-0).
