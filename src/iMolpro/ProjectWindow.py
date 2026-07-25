@@ -935,6 +935,15 @@ class ProjectWindow(QMainWindow):
             time.sleep(.5)
             settings['project_directory'] = current_dir
             logger.debug('save project_directory ' + current_dir)
+            # self.close() (above) already unregistered this window and,
+            # if it was the last open one, triggered the empty-window
+            # action (Chooser.activate) -- but that happened before
+            # trash() actually removed the project from disk, so the
+            # recent-projects list it refreshed still showed the
+            # about-to-be-erased project. Re-trigger it now that the
+            # project is really gone.
+            if self.window_manager.emptyAction and not self.window_manager.openWindows:
+                self.window_manager.emptyAction()
 
     def show_input_specification(self):
         QMessageBox.information(self, 'Input specification', 'Input specification:\r\n' +

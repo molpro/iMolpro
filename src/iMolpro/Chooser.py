@@ -356,9 +356,12 @@ class Chooser(QMainWindow):
         if not self.recent_project_box.layout():
             QVBoxLayout(self.recent_project_box)
         layout = self.recent_project_box.layout()
-        for item in [layout.itemAt(i) for i in range(layout.count())]:
-            self.recent_project_box.layout().removeItem(item)
-            # item.widget().setParent(None)
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.hide()
+                widget.deleteLater()
         self.recent_project_box.layout().addWidget(QLabel('Open a recently-used project:'), 0, AlignLeft)
         for i in range(1, max_items):
             f = recent_project('molpro', i)
@@ -393,6 +396,7 @@ class Chooser(QMainWindow):
         self.move((resolution.width() // 2) - (self.frameSize().width() // 2),
                   (resolution.height() // 2) - (self.frameSize().height() // 2))
         self.populate_recent_project_box()
+        self.recentMenu.refresh()
         self.show()
         self.raise_()
 
@@ -400,3 +404,5 @@ class Chooser(QMainWindow):
         super().changeEvent(event)
         if event.type() == QEvent.ActivationChange and self.isActiveWindow() and hasattr(self, 'menubar'):
             self.window_manager.set_cli_action_owner(self.menubar)
+            self.populate_recent_project_box()
+            self.recentMenu.refresh()
