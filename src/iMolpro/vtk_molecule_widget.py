@@ -213,7 +213,7 @@ class MoleculeDisplay(QWidget):
         key = self.orbital, self.resolution, contour_value
         if key not in self.cubes:
             # print('get_cube',self.orbital.ID,self.resolution,contour_value,'creating')
-            self.cubes[key] = self.orbital.cube_data(resolution=self.resolution, threshold=contour_value * .1)
+            self.cubes[key] = self.orbital.cube_data(resolution=self.resolution, threshold=contour_value * .1, border=6)
         return self.cubes[key]
 
     def set_atom_labels(self, atom_labels: bool):
