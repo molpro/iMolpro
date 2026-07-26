@@ -1,0 +1,10 @@
+# Conda packages needed to build/package iMolpro that are NOT Python
+# runtime dependencies of iMolpro itself (those come from pyproject.toml
+# via scripts/generate_conda_requirements.py). Edit this file directly --
+# it has no pip/pyproject.toml equivalent, since git/openssl aren't PyPI
+# packages and pyinstaller/certifi have no place in a normal user's
+# `pip install iMolpro`.
+pyinstaller>=6
+git>=2
+certifi>=2024.8.30
+openssl>=3.5.3
