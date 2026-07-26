@@ -17,8 +17,11 @@ if (-not(Test-Path -path $molpro_zip)) {
 # second, hand-edited copy that can silently drift out of sync.
 $condaRequirements = Join-Path $env:TEMP "imolpro-conda-requirements.txt"
 python scripts/generate_conda_requirements.py $condaRequirements
+if ($LASTEXITCODE -ne 0) { throw "generate_conda_requirements.py failed (exit $LASTEXITCODE)" }
 cmd.exe /c conda install -c conda-forge -y --file=$condaRequirements --file=conda-build-tools.txt m2-base nsis pip
+if ($LASTEXITCODE -ne 0) { throw "conda install failed (exit $LASTEXITCODE)" }
 python -m pip install --no-build-isolation --no-deps .
+if ($LASTEXITCODE -ne 0) { throw "pip install failed (exit $LASTEXITCODE)" }
 
 $versionfile = ( $env:TMP, "\VERSION") -join ""
 $PWD = (Get-Item .).FullName
