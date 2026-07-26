@@ -12,7 +12,12 @@ if (-not(Test-Path -path $molpro_zip)) {
 7z -o"${molpro_root}" -aoa x -- ${molpro_zip}
 
 
-cmd.exe /c conda install -c conda-forge -y --file=requirements.txt m2-base nsis pip
+# iMolpro's own runtime dependencies live in exactly one place, pyproject.toml;
+# this regenerates the conda-syntax file from it rather than maintaining a
+# second, hand-edited copy that can silently drift out of sync.
+$condaRequirements = Join-Path $env:TEMP "imolpro-conda-requirements.txt"
+python scripts/generate_conda_requirements.py $condaRequirements
+cmd.exe /c conda install -c conda-forge -y --file=$condaRequirements --file=conda-build-tools.txt m2-base nsis pip
 python -m pip install --no-build-isolation --no-deps .
 
 $versionfile = ( $env:TMP, "\VERSION") -join ""

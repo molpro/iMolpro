@@ -9,7 +9,12 @@ if [ -z "$NOCONDA" ]; then
 #conda install -c conda-forge -c defaults -y --file=requirements.txt python=3.12 scipy=1.11  || exit 1
 #conda remove -y pubchempy
 #pip install -I https://github.com/molpro/PubChemPy/archive/refs/heads/main.zip
-conda install -q -c conda-forge -c defaults -y --file=requirements.txt 'setuptools=80.9' pandoc pip || exit
+# iMolpro's own runtime dependencies live in exactly one place, pyproject.toml;
+# this regenerates the conda-syntax file from it rather than maintaining a
+# second, hand-edited copy that can silently drift out of sync.
+conda_requirements=${TMPDIR:-/tmp}/imolpro-conda-requirements.txt
+python3 scripts/generate_conda_requirements.py "$conda_requirements" || exit
+conda install -q -c conda-forge -c defaults -y --file="$conda_requirements" --file=conda-build-tools.txt 'setuptools=80.9' pandoc pip || exit
 python -m pip install --no-build-isolation --no-deps . || exit
 gem install --user-install -n~/bin fpm
 PATH=~/bin:$PATH
