@@ -39,6 +39,8 @@ There is no lint config and no CI test workflow (`.github/workflows/` only has `
 
 Package version comes from git tags via `setuptools_scm` (see the comment block in `pyproject.toml` about `tag.strict` — the repo has non-version tags like `latest_2026_05_06_<hash>` that must be excluded from `git describe`).
 
+Pushing to any branch with "candidate" in its name (matching *candidate*) triggers deploy.yml, which does a full signed and notarized macOS/Windows build and uploads release artifacts — not just a CI check. Don't use that naming pattern for a branch you don't intend to trigger a real release build from. It's there to allow a developer to test the release workflow without having to push to `master`.
+
 ## Architecture
 
 **Qt binding indirection.** Nearly every UI module (`Chooser.py`, `ProjectWindow.py`, `MenuBar.py`, `backend.py`, `WindowManager.py`, etc.) imports Qt via a repeated `try: from PySide6... except ImportError: try: from PyQt6... except ImportError: from PyQt5...` chain, and often follows it with enum-compatibility shims (Qt5 flat enums like `Qt.AlignCenter` vs Qt6 scoped ones like `Qt.AlignmentFlag.AlignCenter`). `pyqt_discover.py` does the analogous binding detection for VTK's Qt interactor. When editing UI code, preserve this fallback pattern rather than importing one binding directly — PySide6 is primary but PyQt6/PyQt5 must keep working.
