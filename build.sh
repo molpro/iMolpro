@@ -209,6 +209,20 @@ else
   for l in libcrypto.so.3 libssl.so.3 ; do
     cp -p $(find ${CONDA_PREFIX} -name $l) $(find dist/iMolpro/_internal -name $l) # because, somehow, pyinstaller picks up the system libcrypto
   done
+  # Opposite direction from the swap above: PyInstaller bundles conda's own
+  # libpcre2-8.so.0, which lacks the glibc symbol-versioning info the
+  # system's build expects. Subprocesses spawned at runtime (grep, sed, id,
+  # ...) inherit LD_LIBRARY_PATH pointing at _internal and pick up that
+  # version-info-less copy instead of the system's, producing spurious "no
+  # version information available" warnings. Swap in the system's own copy
+  # instead, wherever it happens to live on this distro.
+  system_libpcre2=$(find /usr/lib64 /lib64 /usr/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu /usr/lib /lib \
+    -name 'libpcre2-8.so*' 2>/dev/null | head -1)
+  bundled_libpcre2=$(find dist/iMolpro/_internal -name 'libpcre2-8.so*' 2>/dev/null | head -1)
+  echo "system libpcre2: ${system_libpcre2:-NOT FOUND}, bundled libpcre2: ${bundled_libpcre2:-NOT FOUND}"
+  if [ -n "$system_libpcre2" ] && [ -n "$bundled_libpcre2" ]; then
+    cp -p "$system_libpcre2" "$bundled_libpcre2"
+  fi
   if [ ! -z "$tar" ]; then
   tar cjf dist/iMolpro-"${descriptor}".tar.bz2 -C dist iMolpro
   fi
