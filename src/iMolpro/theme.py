@@ -155,33 +155,37 @@ def _detect_linux_desktop_theme():
 def detect_system_theme(app, default: str = 'light') -> str:
     """Detect the OS's light/dark preference, falling back to `default`.
 
-    Uses QGuiApplication.styleHints().colorScheme(), Qt's cross-platform
-    (Windows/macOS/Linux) way of reading this -- added in Qt 6.5, so this
-    falls back gracefully on older Qt, or on a binding (e.g. PyQt5) that
-    doesn't have it at all. On Linux, where this often reports Unknown
-    regardless of Qt version (depends on the desktop environment's Qt
-    platform integration), falls back further to _detect_linux_desktop_theme()
-    before finally giving up and returning `default`.
+    On Linux, tries _detect_linux_desktop_theme() (the XDG portal, then
+    GNOME gsettings) first, since Qt's own styleHints().colorScheme() can
+    confidently report a definite -- but wrong -- Light or Dark answer on
+    Linux (rather than Unknown), depending on the desktop environment's Qt
+    platform integration; trusting Qt first would then bypass the
+    desktop-specific check entirely even though it's the one that actually
+    works. Falls back to Qt's styleHints() (Windows/macOS/Linux, added in
+    Qt 6.5) if the Linux-specific check doesn't return an answer, or on
+    other platforms where it's reliable to begin with.
     """
+    import platform
+    if platform.system() == 'Linux':
+        linux_theme = _detect_linux_desktop_theme()
+        if linux_theme is not None:
+            return linux_theme
     try:
         from PySide6.QtCore import Qt as _Qt
     except ImportError:
         try:
             from PyQt6.QtCore import Qt as _Qt
         except ImportError:
-            linux_theme = _detect_linux_desktop_theme()
-            return linux_theme if linux_theme is not None else default
+            return default
     try:
         scheme = app.styleHints().colorScheme()
     except AttributeError:
-        linux_theme = _detect_linux_desktop_theme()
-        return linux_theme if linux_theme is not None else default
+        return default
     if scheme == _Qt.ColorScheme.Dark:
         return 'dark'
     if scheme == _Qt.ColorScheme.Light:
         return 'light'
-    linux_theme = _detect_linux_desktop_theme()
-    return linux_theme if linux_theme is not None else default
+    return default
 
 
 def apply_theme(app, name: str = 'light'):
