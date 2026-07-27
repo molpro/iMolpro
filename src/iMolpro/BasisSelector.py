@@ -48,7 +48,11 @@ class BasisSelector(QWidget):
             widget = item.widget()
             if widget is not None:
                 self.layout().removeWidget(widget)
+                # Hide before reparenting: a visible widget that is reparented to
+                # None becomes its own top-level window instead of disappearing.
+                widget.hide()
                 widget.setParent(None)
+                widget.deleteLater()
 
         # Default selector
         self.layout().addWidget(QLabel('Default'), 0, 0)
