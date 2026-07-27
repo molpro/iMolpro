@@ -1547,7 +1547,7 @@ class MyTabWidget(DraggableTabWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.tab_names = set()
-        # self.currentChanged.connect(lambda : force_render_vtk_widget(self.currentWidget())) # might be needed in future PySide6
+        self.currentChanged.connect(lambda: force_render_vtk_widget(self.currentWidget()))
         self.setTabBarAutoHide(True)
         self.setDocumentMode(True)
         self.setTabPosition(South)
