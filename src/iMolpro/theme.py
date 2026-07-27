@@ -16,6 +16,8 @@ used regardless of how PySide6 itself was packaged, or which OS it runs on.
 It also gives a single, obvious place to make the theme user-configurable
 later (e.g. a Theme menu offering additional palettes built the same way).
 """
+import os
+
 try:
     from PySide6.QtGui import QPalette, QColor
     from PySide6.QtCore import QObject, Signal as pyqtSignal
@@ -104,6 +106,31 @@ class _ThemeManager(QObject):
 theme_manager = _ThemeManager()
 
 
+def _external_tool_env():
+    """Environment for invoking external system tools as subprocesses.
+
+    When running from a PyInstaller bundle, LD_LIBRARY_PATH points at
+    iMolpro's own bundled libraries for the whole process. A subprocess
+    like gdbus (and anything it in turn triggers, e.g. D-Bus service
+    activation scripts) inherits that and can end up loading iMolpro's
+    bundled libpcre2-8.so.0 instead of the system's own, which then
+    produces spurious 'no version information available' warnings from
+    unrelated tools (grep, sed, id, ...) that happen to get invoked along
+    the way. PyInstaller saves the pre-bootloader value in
+    LD_LIBRARY_PATH_ORIG specifically so bundled apps can restore it
+    before spawning external tools; only touches the environment at all
+    when that's present (i.e. actually running from a PyInstaller bundle),
+    leaving a normal pip/conda environment's LD_LIBRARY_PATH untouched.
+    """
+    env = os.environ.copy()
+    if 'LD_LIBRARY_PATH_ORIG' in env:
+        if env['LD_LIBRARY_PATH_ORIG']:
+            env['LD_LIBRARY_PATH'] = env['LD_LIBRARY_PATH_ORIG']
+        else:
+            env.pop('LD_LIBRARY_PATH', None)
+    return env
+
+
 def _detect_linux_desktop_theme():
     """Fallback dark/light detection for Linux, where Qt's own
     styleHints().colorScheme() often returns Unknown -- it depends on the
@@ -116,6 +143,7 @@ def _detect_linux_desktop_theme():
     import subprocess
     if platform.system() != 'Linux':
         return None
+    env = _external_tool_env()
     # 1. The freedesktop XDG Desktop Portal 'Settings' interface -- the
     # standard, desktop-environment-agnostic mechanism, implemented by both
     # GNOME and KDE (via their respective portal backends). Queried via
@@ -127,7 +155,7 @@ def _detect_linux_desktop_theme():
              '--object-path', '/org/freedesktop/portal/desktop',
              '--method', 'org.freedesktop.portal.Settings.Read',
              'org.freedesktop.appearance', 'color-scheme'],
-            capture_output=True, text=True, timeout=2)
+            capture_output=True, text=True, timeout=2, env=env)
         if result.returncode == 0:
             # Output looks like "(<<uint32 1>>,)" -- 1 means prefer dark,
             # 2 means prefer light, 0 means no preference.
@@ -142,7 +170,7 @@ def _detect_linux_desktop_theme():
     try:
         result = subprocess.run(
             ['gsettings', 'get', 'org.gnome.desktop.interface', 'color-scheme'],
-            capture_output=True, text=True, timeout=2)
+            capture_output=True, text=True, timeout=2, env=env)
         if result.returncode == 0 and 'dark' in result.stdout.lower():
             return 'dark'
         if result.returncode == 0:
