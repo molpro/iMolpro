@@ -214,15 +214,16 @@ else
   # system's build expects. Subprocesses spawned at runtime (grep, sed, id,
   # ...) inherit LD_LIBRARY_PATH pointing at _internal and pick up that
   # version-info-less copy instead of the system's, producing spurious "no
-  # version information available" warnings. Swap in the system's own copy
-  # instead, wherever it happens to live on this distro.
-  system_libpcre2=$(find /usr/lib64 /lib64 /usr/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu /usr/lib /lib \
-    -name 'libpcre2-8.so*' 2>/dev/null | head -1)
-  bundled_libpcre2=$(find dist/iMolpro/_internal -name 'libpcre2-8.so*' 2>/dev/null | head -1)
-  echo "system libpcre2: ${system_libpcre2:-NOT FOUND}, bundled libpcre2: ${bundled_libpcre2:-NOT FOUND}"
-  if [ -n "$system_libpcre2" ] && [ -n "$bundled_libpcre2" ]; then
-    cp -p "$system_libpcre2" "$bundled_libpcre2"
-  fi
+  # version information available" warnings. Copying in the *build
+  # machine's* own libpcre2 doesn't fix this for the .rpm output -- this
+  # builds on Ubuntu but the .rpm installs on Fedora/RHEL-family systems,
+  # so "the build machine's system copy" is a different distro's library
+  # entirely and can just as easily mismatch the *installed* system's
+  # libselinux/grep/sed. Simplest correct fix: don't bundle a copy at all,
+  # so LD_LIBRARY_PATH's search falls through to whatever the actual
+  # target machine already has -- essentially guaranteed present, since
+  # grep/sed/systemd themselves depend on it.
+  find dist/iMolpro/_internal -name 'libpcre2-8.so*' -print -delete
   if [ ! -z "$tar" ]; then
   tar cjf dist/iMolpro-"${descriptor}".tar.bz2 -C dist iMolpro
   fi
