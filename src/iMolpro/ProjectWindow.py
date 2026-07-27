@@ -683,7 +683,19 @@ class ProjectWindow(QMainWindow):
         geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
         geometry_directory.mkdir(exist_ok=True)
         xyz_file = str(geometry_directory / pathlib.Path(self.project.filename(run=-1)).stem) + '.xyz'
-        geom = self.input_specification.get('geometry', "")
+        # Deliberately re-parse the *current* input text here rather than relying on
+        # self.input_specification: that attribute is only refreshed by
+        # input_text_changed_consequence() when guided_possible() is true, so for input that
+        # isn't representable in guided mode (eg an embedded Z-matrix using algebraic
+        # parameters) it goes stale and can freeze on a 'geometry' value (or lack of one) left
+        # over from before the edit, permanently suppressing regeneration of the input-structure
+        # preview. Re-parsing here is cheap (no subprocess) and keeps this check accurate
+        # regardless of whether the overall input round-trips through guided mode.
+        try:
+            geom = InputSpecification(self.input_pane.toPlainText(), directory=self.project.filename()).get(
+                'geometry', "")
+        except Exception:
+            geom = self.input_specification.get('geometry', "")
         if '.xyz' in geom and (not os.path.isfile(self.project.filename('', geom, run=-1)) or os.path.getsize(
                 self.project.filename('', geom, run=-1)) <= 1):
             geom = ''
