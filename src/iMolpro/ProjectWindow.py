@@ -191,6 +191,14 @@ class ProjectWindow(QMainWindow):
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
         self.initialised_from_input = False
         self._initial_xyz_lock = threading.Lock()
+        # Cache of (input text, parsed geom) from the last _initial_xyz_staleness() call, so a
+        # fresh InputSpecification parse is only done when the input pane text has actually
+        # changed since the last check, rather than on every ~1s timer tick.
+        self._initial_xyz_geom_cache = (None, "")
+        # Suppresses re-logging the same background geometry-preview failure on every retry
+        # (initial_xyz_async() retries roughly every second while the input stays invalid).
+        self._last_geometry_error = None
+        self._last_geometry_exception = None
 
         self.normal_geometry = self.normalGeometry()
 
@@ -689,13 +697,24 @@ class ProjectWindow(QMainWindow):
         # isn't representable in guided mode (eg an embedded Z-matrix using algebraic
         # parameters) it goes stale and can freeze on a 'geometry' value (or lack of one) left
         # over from before the edit, permanently suppressing regeneration of the input-structure
-        # preview. Re-parsing here is cheap (no subprocess) and keeps this check accurate
-        # regardless of whether the overall input round-trips through guided mode.
-        try:
-            geom = InputSpecification(self.input_pane.toPlainText(), directory=self.project.filename()).get(
-                'geometry', "")
-        except Exception:
-            geom = self.input_specification.get('geometry', "")
+        # preview. Only actually re-parse when the text has changed since the last check --
+        # this is called roughly once a second by initial_xyz_async(), and re-running the parse
+        # when nothing changed is pure waste.
+        current_text = self.input_pane.toPlainText()
+        if current_text == self._initial_xyz_geom_cache[0]:
+            geom = self._initial_xyz_geom_cache[1]
+        else:
+            try:
+                geom = InputSpecification(current_text, directory=self.project.filename()).get('geometry', "")
+            except Exception:
+                # Falls back to the very attribute the comment above says goes stale -- only
+                # acceptable because this is the rare/exceptional path (eg self.project.filename()
+                # transiently raising), not the common one; log it so a persistent failure here
+                # is diagnosable rather than silently masquerading as the bug this re-parse fixes.
+                logger.debug('Failed to re-parse input pane text for initial-geometry staleness check',
+                             exc_info=True)
+                geom = self.input_specification.get('geometry', "")
+            self._initial_xyz_geom_cache = (current_text, geom)
         if '.xyz' in geom and (not os.path.isfile(self.project.filename('', geom, run=-1)) or os.path.getsize(
                 self.project.filename('', geom, run=-1)) <= 1):
             geom = ''
@@ -758,13 +777,19 @@ class ProjectWindow(QMainWindow):
             def recompute():
                 try:
                     self._compute_initial_xyz(xyz_file)
-                except Exception:
+                    self._last_geometry_exception = None
+                except Exception as e:
                     # This runs on a background thread via thread_executor and nothing ever
                     # calls .result() on the submitted future, so without this except clause
                     # any exception here (eg project.run() failing) would vanish silently -
                     # unlike the old synchronous code, where an uncaught exception at least
-                    # produced a visible traceback via Qt's slot dispatch.
-                    logger.exception('Background regeneration of the input-structure preview failed')
+                    # produced a visible traceback via Qt's slot dispatch. While the input stays
+                    # invalid this retries roughly once a second, so only log a given failure once
+                    # rather than spamming an identical traceback every retry.
+                    error_key = (type(e), str(e))
+                    if error_key != self._last_geometry_exception:
+                        self._last_geometry_exception = error_key
+                        logger.exception('Background regeneration of the input-structure preview failed')
                 finally:
                     self._initial_xyz_lock.release()
 
@@ -819,9 +844,15 @@ class ProjectWindow(QMainWindow):
                         preview_input = ff.read()
                 except Exception:
                     preview_input = '<could not be read>'
-                logger.warning("Error in calculating input geometry for 'input structure' preview.\n"
-                              "Input:\n" + preview_input +
-                              "\nOutput/error detail:\n" + detail)
+                # While the input stays invalid this is retried roughly once a second (see
+                # initial_xyz_async()), so only log a given failure once rather than repeatedly
+                # dumping the full input/output at WARNING level for an unbounded retry loop.
+                error_key = (preview_input, detail)
+                if error_key != self._last_geometry_error:
+                    self._last_geometry_error = error_key
+                    logger.warning("Error in calculating input geometry for 'input structure' preview.\n"
+                                  "Input:\n" + preview_input +
+                                  "\nOutput/error detail:\n" + detail)
                 # msg = QMessageBox()
                 # msg.setIcon(QMessageBox.Critical)
                 # msg.setWindowTitle("Error")
@@ -830,6 +861,7 @@ class ProjectWindow(QMainWindow):
                 # msg.exec_()
                 xyz_file = ''
             else:
+                self._last_geometry_error = None
                 current_dir = os.path.dirname(self.project.filename(run=-1))
                 project.trash()
                 settings['project_directory'] = current_dir
@@ -1033,9 +1065,16 @@ class ProjectWindow(QMainWindow):
                 self.window_manager.emptyAction()
 
     def show_input_specification(self):
+        # self.input_specification is only refreshed when guided_possible() is true (see
+        # _initial_xyz_staleness()), so re-parse the live text here rather than showing a
+        # specification that may be stale for input not representable in guided mode.
+        try:
+            input_specification = InputSpecification(self.input_pane.toPlainText(), directory=self.project.filename())
+        except Exception:
+            input_specification = self.input_specification
         QMessageBox.information(self, 'Input specification', 'Input specification:\r\n' +
-                                re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(self.input_specification))).replace(', ',
-                                                                                                                  ',\n  '))
+                                re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(input_specification))).replace(', ',
+                                                                                                              ',\n  '))
 
 
 def force_render_vtk_widget(widget):
