@@ -758,6 +758,13 @@ class ProjectWindow(QMainWindow):
             def recompute():
                 try:
                     self._compute_initial_xyz(xyz_file)
+                except Exception:
+                    # This runs on a background thread via thread_executor and nothing ever
+                    # calls .result() on the submitted future, so without this except clause
+                    # any exception here (eg project.run() failing) would vanish silently -
+                    # unlike the old synchronous code, where an uncaught exception at least
+                    # produced a visible traceback via Qt's slot dispatch.
+                    logger.exception('Background regeneration of the input-structure preview failed')
                 finally:
                     self._initial_xyz_lock.release()
 
@@ -786,10 +793,14 @@ class ProjectWindow(QMainWindow):
                 f.write(' --geometry')
 
             ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
-            project.run(wait=True, force=True, backend='local')
-            time.sleep(.3)  # not clear why this is needed
-            if ld_library_path is not None:
-                os.environ['LD_LIBRARY_PATH'] = ld_library_path
+            try:
+                project.run(wait=True, force=True, backend='local')
+                time.sleep(.3)  # not clear why this is needed
+            except Exception:
+                logger.warning('Error running Molpro to determine input geometry', exc_info=True)
+            finally:
+                if ld_library_path is not None:
+                    os.environ['LD_LIBRARY_PATH'] = ld_library_path
             try:
                 geometry = project.geometry()
             except Exception as e:
@@ -803,12 +814,14 @@ class ProjectWindow(QMainWindow):
                             detail += ''.join(ff.readlines())
                     except:
                         pass
-                # try:
-                # logger.debug('visualise_input project input file contents\n' + open(project.filename('inp'),'r').read())
-                # logger.debug('visualise_input project output file contents\n' + open(project.filename('out'),'r').read())
-                # except:
-                #     pass
-                logger.debug("Error in calculating input geometry")
+                try:
+                    with open(project.filename('inp', run=-1), 'r') as ff:
+                        preview_input = ff.read()
+                except Exception:
+                    preview_input = '<could not be read>'
+                logger.warning("Error in calculating input geometry for 'input structure' preview.\n"
+                              "Input:\n" + preview_input +
+                              "\nOutput/error detail:\n" + detail)
                 # msg = QMessageBox()
                 # msg.setIcon(QMessageBox.Critical)
                 # msg.setWindowTitle("Error")
