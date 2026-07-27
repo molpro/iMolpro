@@ -5,6 +5,7 @@ import difflib
 import glob
 import os
 import pathlib
+import threading
 import time
 
 from pymolpro.elements import periodic_table
@@ -189,6 +190,7 @@ class ProjectWindow(QMainWindow):
             self.resize(settings['project_window_width'], settings['project_window_height'])
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
         self.initialised_from_input = False
+        self._initial_xyz_lock = threading.Lock()
 
         self.normal_geometry = self.normalGeometry()
 
@@ -666,6 +668,31 @@ class ProjectWindow(QMainWindow):
             #     print('visualise_input', xyz_file)
             # self.embedded_vod_jmol(xyz_file, command='', title='initial structure')
 
+    def _initial_xyz_staleness(self):
+        """
+        Cheap (no subprocess) check of whether the cached initial-geometry xyz file is out of
+        date with respect to the current input. Used by both initial_xyz() and
+        initial_xyz_async() so the expensive recomputation in _compute_initial_xyz() can be
+        gated without doing that work itself.
+
+        Returns
+        -------
+        tuple[bool, str, str]
+            (stale, xyz_file, geom)
+        """
+        geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
+        geometry_directory.mkdir(exist_ok=True)
+        xyz_file = str(geometry_directory / pathlib.Path(self.project.filename(run=-1)).stem) + '.xyz'
+        geom = self.input_specification.get('geometry', "")
+        if '.xyz' in geom and (not os.path.isfile(self.project.filename('', geom, run=-1)) or os.path.getsize(
+                self.project.filename('', geom, run=-1)) <= 1):
+            geom = ''
+        stale = bool(geom) and (not os.path.isfile(xyz_file) or os.path.getmtime(xyz_file) < os.path.getmtime(
+            self.project.filename('inp', run=-1)) or any(
+            [os.path.getmtime(xyz_file) < os.path.getmtime(self.project.filename('', gfile[1], run=-1)) for gfile in
+             self.geometry_files()]))
+        return stale, xyz_file, geom
+
     def initial_xyz(self) -> str:
         """
         Generates or retrieves the XYZ file for the initial geometry configuration.
@@ -676,6 +703,10 @@ class ProjectWindow(QMainWindow):
         where necessary to calculate or verify the geometric data. The method returns the path to the XYZ file,
         or an empty string if an error occurs during processing.
 
+        This is a synchronous, potentially slow call (it can invoke Molpro) and is intended for
+        explicit, on-demand use (eg the 'Visualise input' action). For periodic/background
+        refreshes that must not block the calling (GUI) thread, use initial_xyz_async() instead.
+
         Parameters
         ----------
         None
@@ -685,73 +716,104 @@ class ProjectWindow(QMainWindow):
         str
             The file path to the generated or validated XYZ file. If an error occurs, an empty string is returned.
         """
-        import tempfile
-        geometry_directory = pathlib.Path(self.project.filename(run=-1)) / 'initial'
-        geometry_directory.mkdir(exist_ok=True)
-        xyz_file = str(geometry_directory / pathlib.Path(self.project.filename(run=-1)).stem) + '.xyz'
-        geom = self.input_specification.get('geometry', "")
-        if '.xyz' in geom and (not os.path.isfile(self.project.filename('', geom, run=-1)) or os.path.getsize(
-                self.project.filename('', geom, run=-1)) <= 1):
-            geom = ''
-        if geom and (not os.path.isfile(xyz_file) or os.path.getmtime(xyz_file) < os.path.getmtime(
-                self.project.filename('inp', run=-1)) or any(
-            [os.path.getmtime(xyz_file) < os.path.getmtime(self.project.filename('', gfile[1], run=-1)) for gfile in
-             self.geometry_files()])):
-            with tempfile.TemporaryDirectory() as tmpdirname:
-                path = pathlib.Path(tmpdirname) / 'input_geometries'
-                os.makedirs(str(path), exist_ok=True)
-                # logger.debug('visualise_input makes project at ' + str(path))
-                self.project.copy(pathlib.Path(self.project.filename(run=-1)).name, location=path)
-                project_path = path / pathlib.Path(self.project.filename(run=-1)).name
-                project = Project(str(project_path))
-                project.clean(0)
-                open(project.filename('inp', run=-1), 'a').write('\nhf\n---')
-                # logger.debug('visualise_input project input filename' + project.filename('inp', run=-1))
-                # logger.debug('visualise_input project input file contents\n' + open(project.filename('inp', run=-1),'r').read())
-                with open(pathlib.Path(project.filename(run=-1)) / 'molpro.rc', 'a') as f:
-                    f.write(' --geometry')
+        stale, xyz_file, geom = self._initial_xyz_staleness()
+        if stale:
+            with self._initial_xyz_lock:
+                # re-check staleness now that we hold the lock, in case a background
+                # recomputation (see initial_xyz_async()) already brought it up to date
+                stale, xyz_file, geom = self._initial_xyz_staleness()
+                if stale:
+                    xyz_file = self._compute_initial_xyz(xyz_file)
+        return xyz_file
 
-                ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
-                project.run(wait=True, force=True, backend='local')
-                time.sleep(.3)  # not clear why this is needed
-                if ld_library_path is not None:
-                    os.environ['LD_LIBRARY_PATH'] = ld_library_path
+    def initial_xyz_async(self) -> str:
+        """
+        Non-blocking counterpart to initial_xyz(), for use from periodic GUI-thread callbacks
+        (eg OutputTabWidget.refresh(), which is driven by a 1-second QTimer). It never runs
+        Molpro on the calling thread: the cheap staleness check happens immediately, and if
+        recomputation is needed it is handed off to the background thread pool (and skipped
+        entirely if a recomputation is already in flight), so the GUI stays responsive while
+        editing the input even though the cached geometry is briefly out of date.
+
+        Returns
+        -------
+        str
+            The most recently computed xyz file path (which may be momentarily stale, or '' if
+            none has been computed yet).
+        """
+        stale, xyz_file, geom = self._initial_xyz_staleness()
+        if stale and self._initial_xyz_lock.acquire(blocking=False):
+            def recompute():
                 try:
-                    geometry = project.geometry()
-                except Exception as e:
-                    # print(f"Error occurred while fetching geometry: {e}")
-                    geometry = None
-                if not geometry:
-                    detail = ''
-                    for suffix in ['stdout', 'stderr', 'out']:
-                        try:
-                            with open(project.filename(suffix, run=0), 'r') as ff:
-                                detail += ''.join(ff.readlines())
-                        except:
-                            pass
-                    # try:
-                    # logger.debug('visualise_input project input file contents\n' + open(project.filename('inp'),'r').read())
-                    # logger.debug('visualise_input project output file contents\n' + open(project.filename('out'),'r').read())
-                    # except:
-                    #     pass
-                    logger.debug("Error in calculating input geometry")
-                    # msg = QMessageBox()
-                    # msg.setIcon(QMessageBox.Critical)
-                    # msg.setWindowTitle("Error")
-                    # msg.setText('Error in calculating input geometry')
-                    # msg.setDetailedText(detail)
-                    # msg.exec_()
-                    xyz_file = ''
-                else:
-                    current_dir = os.path.dirname(self.project.filename(run=-1))
-                    project.trash()
-                    settings['project_directory'] = current_dir
-                    with open(xyz_file, 'w') as f:
-                        f.write(str(len(geometry)) + '\n\n')
-                        for atom in geometry:
-                            f.write(atom['elementType'])
-                            for c in atom['xyz']: f.write(' ' + str(c * .529177210903))
-                            f.write('\n')
+                    self._compute_initial_xyz(xyz_file)
+                finally:
+                    self._initial_xyz_lock.release()
+
+            self.thread_executor.submit(recompute)
+        return xyz_file if os.path.isfile(xyz_file) else ''
+
+    def _compute_initial_xyz(self, xyz_file) -> str:
+        """
+        Does the actual (expensive, Molpro-invoking) work of regenerating xyz_file. Safe to call
+        from a background thread: it only touches the filesystem and Project/pymolpro objects,
+        never Qt widgets. Callers are responsible for serializing access via _initial_xyz_lock.
+        """
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            path = pathlib.Path(tmpdirname) / 'input_geometries'
+            os.makedirs(str(path), exist_ok=True)
+            # logger.debug('visualise_input makes project at ' + str(path))
+            self.project.copy(pathlib.Path(self.project.filename(run=-1)).name, location=path)
+            project_path = path / pathlib.Path(self.project.filename(run=-1)).name
+            project = Project(str(project_path))
+            project.clean(0)
+            open(project.filename('inp', run=-1), 'a').write('\nhf\n---')
+            # logger.debug('visualise_input project input filename' + project.filename('inp', run=-1))
+            # logger.debug('visualise_input project input file contents\n' + open(project.filename('inp', run=-1),'r').read())
+            with open(pathlib.Path(project.filename(run=-1)) / 'molpro.rc', 'a') as f:
+                f.write(' --geometry')
+
+            ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
+            project.run(wait=True, force=True, backend='local')
+            time.sleep(.3)  # not clear why this is needed
+            if ld_library_path is not None:
+                os.environ['LD_LIBRARY_PATH'] = ld_library_path
+            try:
+                geometry = project.geometry()
+            except Exception as e:
+                # print(f"Error occurred while fetching geometry: {e}")
+                geometry = None
+            if not geometry:
+                detail = ''
+                for suffix in ['stdout', 'stderr', 'out']:
+                    try:
+                        with open(project.filename(suffix, run=0), 'r') as ff:
+                            detail += ''.join(ff.readlines())
+                    except:
+                        pass
+                # try:
+                # logger.debug('visualise_input project input file contents\n' + open(project.filename('inp'),'r').read())
+                # logger.debug('visualise_input project output file contents\n' + open(project.filename('out'),'r').read())
+                # except:
+                #     pass
+                logger.debug("Error in calculating input geometry")
+                # msg = QMessageBox()
+                # msg.setIcon(QMessageBox.Critical)
+                # msg.setWindowTitle("Error")
+                # msg.setText('Error in calculating input geometry')
+                # msg.setDetailedText(detail)
+                # msg.exec_()
+                xyz_file = ''
+            else:
+                current_dir = os.path.dirname(self.project.filename(run=-1))
+                project.trash()
+                settings['project_directory'] = current_dir
+                with open(xyz_file, 'w') as f:
+                    f.write(str(len(geometry)) + '\n\n')
+                    for atom in geometry:
+                        f.write(atom['elementType'])
+                        for c in atom['xyz']: f.write(' ' + str(c * .529177210903))
+                        f.write('\n')
         return xyz_file
 
     def closeEvent(self, a0, QCloseEvent=None):
@@ -1634,8 +1696,9 @@ class OutputTabWidget(MyTabWidget):
                 # print('new tab','initial structure', initial_structure_tab_label)
                 self.addTab(MoleculeDisplay(initial_structure, self.parent), initial_structure_tab_label)
 
-        # get input geometry from the input
-        input_xyz = self.parent.initial_xyz()
+        # get input geometry from the input (non-blocking: this refresh() runs on a 1-second
+        # GUI-thread QTimer, so we must never invoke Molpro synchronously here)
+        input_xyz = self.parent.initial_xyz_async()
         if input_xyz:
             try:
                 input_structure_tab_label = 'input structure'
