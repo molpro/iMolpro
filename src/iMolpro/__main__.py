@@ -1,32 +1,63 @@
 import pathlib
+import os
+import platform
+import sys
+
+from ._paths import app_root
+
+# This must run before importing any iMolpro submodule that transitively
+# imports pymolpro/pysjef (.Chooser, .ProjectWindow, .WindowManager below):
+# the compiled sjef library appears to resolve/cache PATH-dependent state
+# (eg where to find the bundled Molpro executable) the first time it's
+# touched, so a PATH fixup applied any later -- even at the top of main(),
+# let alone per-window in ProjectWindow.ensure_local_molpro() -- arrives too
+# late to take effect. Symptom when it's too late: job submission fails with
+# (on Windows) "CreateProcess failed: The system cannot find the path
+# specified" even though os.environ['PATH'] itself, inspected afterwards,
+# looks correct.
+try:
+    if platform.uname().system == 'Windows':
+        os.environ['PATH'] = str(app_root()) + os.pathsep + os.environ['PATH']
+        if 'CONDA_PREFIX' not in os.environ:
+            os.environ['CONDA_PREFIX'] = str(app_root())
+        os.environ['PATH'] = str(pathlib.Path(os.environ['CONDA_PREFIX']) / 'bin') + os.pathsep + os.environ['PATH']
+    elif 'PATH' in os.environ and 'SHELL' in os.environ:
+        os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + os.pathsep + \
+                             os.environ['PATH']  # make PATH just as if running from shell
+    molpro_bin = app_root() / 'molpro' / 'bin'
+    if molpro_bin.is_dir():
+        s = str(molpro_bin)
+        if s not in os.environ.get('PATH', '').split(os.pathsep):
+            os.environ['PATH'] = s + os.pathsep + os.environ.get('PATH', '')
+except Exception as _e:
+    # Too early for a QMessageBox (no QApplication yet) -- this mirrors the
+    # equivalent fallback that used to live in main(), just downgraded to a
+    # plain stderr print since it can no longer show a dialog here.
+    print(f'Error in setting PATH: {_e}', file=sys.stderr)
 
 try:
     from PySide6.QtCore import QEvent
-    from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
+    from PySide6.QtWidgets import QApplication, QWidget, QPushButton
 except ImportError:
     try:
         from PyQt6.QtCore import QEvent
-        from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
+        from PyQt6.QtWidgets import QApplication, QWidget, QPushButton
     except ImportError:
         from PyQt5.QtCore import QEvent
-        from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox
+        from PyQt5.QtWidgets import QApplication, QWidget, QPushButton
 
 try:
     QEvent_Type = QEvent.Type
 except:
     QEvent_Type = QEvent
-import sys
 
 from .Chooser import Chooser
 from .ProjectWindow import ProjectWindow
 from .WindowManager import WindowManager
-import os
-import platform
 import logging
 
 from .utilities import writable_directory
 from .settings import settings
-from ._paths import app_root
 
 
 def main():
@@ -62,6 +93,7 @@ def main():
                             format='%(asctime)s %(levelname)-8s %(name)s %(funcName)s() %(pathname)s:%(lineno)d %(message)s',
                             datefmt='%Y-%m-%d %H:%M:%S')
     logger.debug('iMolpro starting...')
+    logger.debug(f'PATH={os.environ.get("PATH", "")}')
 
     if platform.uname().system == 'Linux':
         if 'FONTCONFIG_PATH' not in os.environ:
@@ -78,23 +110,7 @@ def main():
             # X11 backend can actually interoperate with.
             os.environ['QT_QPA_PLATFORM'] = 'xcb'
 
-    try:
-        if platform.uname().system == 'Windows':
-            os.environ['PATH'] = str(app_root()) + ';' + os.environ['PATH']
-            if 'CONDA_PREFIX' not in os.environ:
-                os.environ['CONDA_PREFIX'] = str(app_root())
-        elif 'PATH' in os.environ and 'SHELL' in os.environ:
-            os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + ':' + os.environ[
-                'PATH']  # make PATH just as if running from shell
-    except Exception as e:
-        msg = QMessageBox()
-        msg.setText('Error in setting PATH')
-        msg.setDetailedText(str(e))
-        msg.exec()
-
     if platform.uname().system == 'Windows':
-        if 'CONDA_PREFIX' in os.environ:
-            os.environ['PATH'] = str(pathlib.Path(os.environ['CONDA_PREFIX']) / 'bin') + ';' + os.environ['PATH']
         import ctypes
         import ctypes.wintypes
 

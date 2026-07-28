@@ -334,7 +334,7 @@ class ProjectWindow(QMainWindow):
         self.output_tabs.refresh()
 
     def ensure_local_molpro(self, search_MEIPASS=True):
-        for path in os.environ['PATH'].split(':'):
+        for path in os.environ['PATH'].split(os.pathsep):
             if (pathlib.Path(path) / 'molpro').is_file():
                 return
             if platform.uname().system == 'Windows' and (pathlib.Path(path) / 'molpro.bat').is_file():
@@ -344,7 +344,7 @@ class ProjectWindow(QMainWindow):
             self.ensure_teaching_licence_accepted()
 
             s = str(pathlib.Path(sys._MEIPASS) / 'molpro' / 'bin')
-            if s not in os.environ['PATH'].split(':'):
+            if s not in os.environ['PATH'].split(os.pathsep):
                 os.environ['PATH'] += os.pathsep + s
                 logger.debug(f'PATH appended with {s}')
                 logger.debug(f'new PATH {os.environ["PATH"]}')
