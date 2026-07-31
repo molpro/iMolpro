@@ -121,7 +121,17 @@ def main():
             ctypes.windll.user32.GetWindowThreadProcessId(console_window, ctypes.byref(console_process_id))
             console_process_id = console_process_id.value
             if process_id == console_process_id:
-                ctypes.windll.user32.ShowWindow(console_window, 2)
+                # Free the console entirely rather than just minimising it.
+                # sys.stdout/sys.stderr are already redirected to log files
+                # above, so iMolpro has no further use for this console --
+                # and leaving the process attached to it (even minimised)
+                # is a plausible source of unexpected behaviour in spawned
+                # child processes (e.g. the MSYS2-based nohup/bash used for
+                # local job submission), which was only ever observed when
+                # this console was freshly auto-allocated (a double-clicked
+                # frozen exe with no parent terminal to inherit from) and
+                # not when launched from an existing terminal.
+                ctypes.windll.kernel32.FreeConsole()
 
     app = App(sys.argv)
     from .theme import apply_theme, detect_system_theme
