@@ -55,7 +55,7 @@ if __name__ == '__main__':
     main()
 "@ | Out-File -Encoding utf8 $entry_script
 
-pyinstaller --noconfirm `
+& "$cp\python.exe" -m PyInstaller --noconfirm `
   --name iMolpro `
   --paths="$PWD\src" `
   --collect-submodules=iMolpro `
