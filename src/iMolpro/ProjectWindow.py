@@ -626,7 +626,7 @@ class ProjectWindow(QMainWindow):
             return False
         ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
         try:
-            self.project.run(force=force)
+            self.project.run(force=force, verbosity=int(os.environ.get('IMOLPRO_RUN_VERBOSITY', 0)))
         except Exception as e:
             QMessageBox.critical(self, 'Job submission failed', 'Cannot submit job:\n' + str(e))
             return False

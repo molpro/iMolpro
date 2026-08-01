@@ -110,7 +110,7 @@ def main():
             # X11 backend can actually interoperate with.
             os.environ['QT_QPA_PLATFORM'] = 'xcb'
 
-    if platform.uname().system == 'Windows':
+    if platform.uname().system == 'Windows' and os.environ.get('IMOLPRO_KEEP_CONSOLE') != '1':
         import ctypes
         import ctypes.wintypes
 
