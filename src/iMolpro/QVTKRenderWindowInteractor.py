@@ -409,6 +409,15 @@ class QVTKRenderWindowInteractor(QVTKRWIBaseClass):
         # slot for proper cleanup of VTK objects.
         if self.parent():
             self.parent().destroyed.connect(self.close, ConnectionType.DirectConnection)
+        # Also finalize on application shutdown, before any widget/window
+        # destruction has begun: on Windows, destroying a parent HWND
+        # immediately destroys all child HWNDs at the OS level, which can
+        # happen well before the closeEvent path above runs, leaving the
+        # render window's native handle already gone by the time Finalize()
+        # is called there.
+        app = QApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self.Finalize)
 
     def __getattr__(self, attr):
         """Makes the object behave like a vtkGenericRenderWindowInteractor"""
