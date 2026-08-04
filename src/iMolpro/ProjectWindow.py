@@ -83,7 +83,7 @@ from .backend import configure_backend, BackendConfigurationEditor
 from .settings import settings, settings_edit
 from .theme import THEMES, apply_theme, detect_system_theme
 from .OptionsDialog import OptionsDialog
-from .vtk_molecule_widget import MoleculeDisplay, MoleculeWidget
+from .vtk_molecule_widget import MoleculeDisplay, MoleculeWidget, MoleculeScene
 
 import logging
 
@@ -874,6 +874,8 @@ class ProjectWindow(QMainWindow):
         return xyz_file
 
     def closeEvent(self, a0, QCloseEvent=None):
+        for scene in self.findChildren(MoleculeScene):
+            scene.Finalize()
         self.close_signal.emit(self)
 
     def new_action(self):
