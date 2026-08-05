@@ -187,7 +187,13 @@ class ProjectWindow(QMainWindow):
         if 'project_window_height' not in settings:
             settings['project_window_height'] = 576
         if 'project_window_width' in settings and 'project_window_height' in settings:
-            self.resize(settings['project_window_width'], settings['project_window_height'])
+            width, height = settings['project_window_width'], settings['project_window_height']
+            screen = self.screen() or QApplication.primaryScreen()
+            if screen is not None:
+                available = screen.availableGeometry()
+                width = min(width, available.width())
+                height = min(height, available.height())
+            self.resize(width, height)
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
         self.initialised_from_input = False
         self._initial_xyz_lock = threading.Lock()
