@@ -133,6 +133,21 @@ def main():
                 # not when launched from an existing terminal.
                 ctypes.windll.kernel32.FreeConsole()
 
+    # Suppress a known-benign Qt/Windows cosmetic warning
+    # ("QWindowsWindow::setGeometry: Unable to set geometry...") that Qt
+    # logs whenever it has to adjust a *native* child widget's geometry
+    # (e.g. a QSplitter promoted to a native window by containing VTK/
+    # OpenGL content) to fit Windows' own constraints. This is an internal
+    # Qt layout/platform interaction, unrelated to and unaffected by any
+    # application-level window sizing -- harmless, but noisy on every
+    # startup. Append to any existing rules rather than overwriting them.
+    existing_qt_logging_rules = os.environ.get('QT_LOGGING_RULES', '')
+    qpa_window_suppression = 'qt.qpa.window=false'
+    os.environ['QT_LOGGING_RULES'] = (
+        existing_qt_logging_rules + ';' + qpa_window_suppression
+        if existing_qt_logging_rules else qpa_window_suppression
+    )
+
     app = App(sys.argv)
     from .theme import apply_theme, detect_system_theme
     default_theme = settings['theme'] if 'theme' in settings else detect_system_theme(app)
