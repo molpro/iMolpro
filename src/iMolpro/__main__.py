@@ -36,14 +36,14 @@ except Exception as _e:
     print(f'Error in setting PATH: {_e}', file=sys.stderr)
 
 try:
-    from PySide6.QtCore import QEvent
+    from PySide6.QtCore import QEvent, qInstallMessageHandler, QtMsgType
     from PySide6.QtWidgets import QApplication, QWidget, QPushButton
 except ImportError:
     try:
-        from PyQt6.QtCore import QEvent
+        from PyQt6.QtCore import QEvent, qInstallMessageHandler, QtMsgType
         from PyQt6.QtWidgets import QApplication, QWidget, QPushButton
     except ImportError:
-        from PyQt5.QtCore import QEvent
+        from PyQt5.QtCore import QEvent, qInstallMessageHandler, QtMsgType
         from PyQt5.QtWidgets import QApplication, QWidget, QPushButton
 
 try:
@@ -149,6 +149,24 @@ def main():
     )
 
     app = App(sys.argv)
+
+    # QT_LOGGING_RULES above cannot actually suppress the
+    # QWindowsWindow::setGeometry warning: qCWarning-level messages are
+    # always emitted regardless of category rules (only qCDebug/qCInfo can
+    # be filtered that way). Install a message handler to filter it
+    # directly instead, passing every other message through unchanged.
+    _default_qt_message_handler = qInstallMessageHandler(None)
+
+    def _filtering_qt_message_handler(msg_type, context, message):
+        if 'QWindowsWindow::setGeometry: Unable to set geometry' in message:
+            return
+        if _default_qt_message_handler is not None:
+            _default_qt_message_handler(msg_type, context, message)
+        else:
+            print(message, file=sys.stderr)
+
+    qInstallMessageHandler(_filtering_qt_message_handler)
+
     from .theme import apply_theme, detect_system_theme
     default_theme = settings['theme'] if 'theme' in settings else detect_system_theme(app)
     theme_name = os.environ.get('IMOLPRO_THEME', default_theme)
