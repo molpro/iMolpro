@@ -74,6 +74,11 @@ class ProjectWindow(QMainWindow):
     close_signal = pyqtSignal(QWidget, name='closeSignal')
     new_signal = pyqtSignal(QWidget, name='newSignal')
     chooser_signal = pyqtSignal(QWidget, name='chooserSignal')
+    # Emitted from the background thread that submits a job (see run()); Qt automatically
+    # delivers this via a queued connection onto the GUI thread since self lives there, unlike
+    # QTimer.singleShot() which needs an event loop on the *calling* thread to ever fire and so
+    # silently never runs when called from a plain background thread.
+    run_finished_signal = pyqtSignal(object, name='runFinishedSignal')
     null_prompt = '- Select -'
     all_qualities = 'All Qualities'
     basis_qualities = [all_qualities, 'SZ', 'DZ', 'TZ', 'QZ', '5Z', '6Z']
@@ -118,6 +123,7 @@ class ProjectWindow(QMainWindow):
         # Held for the duration of a background job submission (see run()), so StatusBar's
         # timer-driven polling doesn't call into the sjef project object concurrently with it.
         self._run_lock = threading.Lock()
+        self.run_finished_signal.connect(self._run_submitted)
         # Cache of (input text, parsed geom) from the last _initial_xyz_staleness() call, so a
         # fresh InputSpecification parse is only done when the input pane text has actually
         # changed since the last check, rather than on every ~1s timer tick.
@@ -442,7 +448,8 @@ class ProjectWindow(QMainWindow):
         # so it's submitted to the background thread pool rather than called here directly, to
         # keep the GUI responsive. The button/action are disabled meanwhile to prevent a second
         # submission racing the first, and completion is marshalled back to the GUI thread via
-        # QTimer.singleShot since Qt widgets may only be touched from there.
+        # run_finished_signal (Qt widgets may only be touched from there, and plain
+        # QTimer.singleShot() never fires when called from a thread with no Qt event loop).
         self.run_button.setEnabled(False)
         self.run_action.setEnabled(False)
 
@@ -457,7 +464,7 @@ class ProjectWindow(QMainWindow):
                     error = e
             if ld_library_path is not None:
                 os.environ['LD_LIBRARY_PATH'] = ld_library_path
-            QTimer.singleShot(0, lambda: self._run_submitted(error))
+            self.run_finished_signal.emit(error)
 
         self.thread_executor.submit(submit_job)
         return True
