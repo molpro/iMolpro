@@ -115,6 +115,9 @@ class ProjectWindow(QMainWindow):
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
         self.initialised_from_input = False
         self._initial_xyz_lock = threading.Lock()
+        # Held for the duration of a background job submission (see run()), so StatusBar's
+        # timer-driven polling doesn't call into the sjef project object concurrently with it.
+        self._run_lock = threading.Lock()
         # Cache of (input text, parsed geom) from the last _initial_xyz_staleness() call, so a
         # fresh InputSpecification parse is only done when the input pane text has actually
         # changed since the last check, rather than on every ~1s timer tick.
@@ -173,7 +176,8 @@ class ProjectWindow(QMainWindow):
         self.run_button.clicked.connect(self.run_action.trigger)
         self.run_button.setToolTip("Run the job")
 
-        self.statusBar = StatusBar(self.project, [self.run_action, self.run_button], [self.kill_action])
+        self.statusBar = StatusBar(self.project, [self.run_action, self.run_button], [self.kill_action],
+                                    run_lock=self._run_lock)
         self.statusBar.refresh()
 
         left_layout = QVBoxLayout()
@@ -434,15 +438,36 @@ class ProjectWindow(QMainWindow):
             -1)))):
             QMessageBox.critical(self, 'Geometry missing', 'Cannot submit job because no geometry is defined')
             return False
-        ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
-        try:
-            self.project.run(force=force, verbosity=int(os.environ.get('IMOLPRO_RUN_VERBOSITY', 0)))
-        except Exception as e:
-            QMessageBox.critical(self, 'Job submission failed', 'Cannot submit job:\n' + str(e))
-            return False
-        if ld_library_path is not None:
-            os.environ['LD_LIBRARY_PATH'] = ld_library_path
-        time.sleep(0.4)
+        # project.run() blocks on network I/O for a remote backend (can take several seconds),
+        # so it's submitted to the background thread pool rather than called here directly, to
+        # keep the GUI responsive. The button/action are disabled meanwhile to prevent a second
+        # submission racing the first, and completion is marshalled back to the GUI thread via
+        # QTimer.singleShot since Qt widgets may only be touched from there.
+        self.run_button.setEnabled(False)
+        self.run_action.setEnabled(False)
+
+        def submit_job():
+            ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
+            error = None
+            with self._run_lock:
+                try:
+                    self.project.run(force=force, verbosity=int(os.environ.get('IMOLPRO_RUN_VERBOSITY', 0)))
+                    time.sleep(0.4)
+                except Exception as e:
+                    error = e
+            if ld_library_path is not None:
+                os.environ['LD_LIBRARY_PATH'] = ld_library_path
+            QTimer.singleShot(0, lambda: self._run_submitted(error))
+
+        self.thread_executor.submit(submit_job)
+        return True
+
+    def _run_submitted(self, error):
+        self.run_button.setEnabled(True)
+        self.run_action.setEnabled(True)
+        if error is not None:
+            QMessageBox.critical(self, 'Job submission failed', 'Cannot submit job:\n' + str(error))
+            return
         self.switch_run_directory(len(self.project.run_directory_names) - 1)
 
     def run_force(self):
