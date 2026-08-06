@@ -452,16 +452,24 @@ class ProjectWindow(QMainWindow):
         # QTimer.singleShot() never fires when called from a thread with no Qt event loop).
         self.run_button.setEnabled(False)
         self.run_action.setEnabled(False)
+        # Acquired here (not in submit_job) so it's already held by the time StatusBar's next
+        # timer tick can fire, guaranteeing 'submitting' below can't be immediately clobbered by
+        # a refresh() that snuck in before the background thread got going. It's released by
+        # submit_job once the submission itself is done, so the next refresh() tick after that
+        # naturally overwrites 'submitting' with the real status.
+        self._run_lock.acquire()
+        self.statusBar.setText('Status: submitting...')
 
         def submit_job():
             ld_library_path = os.environ.pop('LD_LIBRARY_PATH', None)
             error = None
-            with self._run_lock:
-                try:
-                    self.project.run(force=force, verbosity=int(os.environ.get('IMOLPRO_RUN_VERBOSITY', 0)))
-                    time.sleep(0.4)
-                except Exception as e:
-                    error = e
+            try:
+                self.project.run(force=force, verbosity=int(os.environ.get('IMOLPRO_RUN_VERBOSITY', 0)))
+                time.sleep(0.4)
+            except Exception as e:
+                error = e
+            finally:
+                self._run_lock.release()
             if ld_library_path is not None:
                 os.environ['LD_LIBRARY_PATH'] = ld_library_path
             self.run_finished_signal.emit(error)
