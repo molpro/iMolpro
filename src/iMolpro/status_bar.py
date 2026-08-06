@@ -15,16 +15,22 @@ from .project import Project
 
 
 class StatusBar(QLabel):
-    def __init__(self, project: Project, run_actions: list, kill_actions: list, latency=1000):
+    def __init__(self, project: Project, run_actions: list, kill_actions: list, latency=1000, run_lock=None):
         super().__init__()
         self.project = project
         self.run_actions = run_actions
         self.kill_actions = kill_actions
+        # Held by ProjectWindow while a job submission is running on a background thread, so
+        # this timer-driven refresh doesn't call into the (not known to be thread-safe) sjef
+        # project object concurrently with that submission.
+        self.run_lock = run_lock
         self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self.refresh)
         self.refresh_timer.start(latency)
 
     def refresh(self):
+        if self.run_lock is not None and not self.run_lock.acquire(blocking=False):
+            return
         try:
             self.setText('Status: ' + ('run ' + pathlib.Path(
                 self.project.filename()).stem + ' ' if self.project.filename() != self.project.filename(
@@ -35,3 +41,6 @@ class StatusBar(QLabel):
                 kill_action.setDisabled(self.project.status != 'running' and self.project.status != 'waiting')
         except:
             pass
+        finally:
+            if self.run_lock is not None:
+                self.run_lock.release()
