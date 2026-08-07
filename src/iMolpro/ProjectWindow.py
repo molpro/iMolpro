@@ -232,6 +232,7 @@ class ProjectWindow(QMainWindow):
         self.output_tabs = OutputTabWidget(self)
         self.timer_output_tabs = QTimer(self)
         self.timer_output_tabs.timeout.connect(self.output_tabs.refresh)
+        self.timer_output_tabs.timeout.connect(self.update_view_menu_actions)
         self.timer_output_tabs.start(1000)
         splitter.addWidget(self.output_tabs)
         splitter.setStretchFactor(1, 2147483647)
@@ -515,6 +516,25 @@ class ProjectWindow(QMainWindow):
     def show_xyz_output(self):
         self.show_xyz(0)
         pass
+
+    def update_view_menu_actions(self):
+        for suffix, action in getattr(self, 'view_file_actions', {}).items():
+            try:
+                filename = self.project.filename(suffix)
+                exists = bool(filename) and os.path.isfile(filename) and os.path.getsize(filename) > 0
+            except Exception:
+                exists = False
+            action.setEnabled(exists)
+        for action, instance in getattr(self, 'view_xyz_actions', []):
+            exists = False
+            try:
+                exists = any(
+                    os.path.isfile(self.project.filename('', file[1], instance))
+                    for file in self.geometry_files()
+                )
+            except Exception:
+                exists = False
+            action.setEnabled(exists)
 
     def visualise_input(self, external_path=None):
         # logger.debug('visualise_input' + str(self.vods.keys()))
