@@ -183,7 +183,7 @@ class ProjectWindow(QMainWindow):
         self.run_button.setToolTip("Run the job")
 
         self.statusBar = StatusBar(self.project, [self.run_action, self.run_button], [self.kill_action],
-                                    run_lock=self._run_lock)
+                                   run_lock=self._run_lock)
         self.statusBar.refresh()
 
         left_layout = QVBoxLayout()
@@ -701,8 +701,8 @@ class ProjectWindow(QMainWindow):
                 if error_key != self._last_geometry_error:
                     self._last_geometry_error = error_key
                     logger.warning("Error in calculating input geometry for 'input structure' preview.\n"
-                                  "Input:\n" + preview_input +
-                                  "\nOutput/error detail:\n" + detail)
+                                   "Input:\n" + preview_input +
+                                   "\nOutput/error detail:\n" + detail)
                 # msg = QMessageBox()
                 # msg.setIcon(QMessageBox.Critical)
                 # msg.setWindowTitle("Error")
@@ -926,5 +926,4 @@ class ProjectWindow(QMainWindow):
             input_specification = self.input_specification
         QMessageBox.information(self, 'Input specification', 'Input specification:\r\n' +
                                 re.sub('}$', '\n}', re.sub('^{', '{\n  ', str(input_specification))).replace(', ',
-                                                                                                              ',\n  '))
-
+                                                                                                             ',\n  '))

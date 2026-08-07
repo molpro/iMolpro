@@ -130,7 +130,7 @@ def setup_project_window_menubar(window):
 
     window.run_action = menubar.addAction('Run', 'Job', window.run, 'Ctrl+R', 'Run Molpro on the project input')
     window.run_force_action = menubar.addAction('Run (force)', 'Job', window.run_force, 'Ctrl+Shift+R',
-                                              'Run Molpro on the project input, even if the input has not changed since the last run')
+                                                'Run Molpro on the project input, even if the input has not changed since the last run')
     window.kill_action = menubar.addAction('Kill', 'Job', window.kill, tooltip='Kill the running job')
     menubar.addAction('Backend', 'Job', lambda: configure_backend(window), 'Ctrl+B', 'Configure backend')
     menubar.addAction('Edit backend configuration file', 'Job', window.edit_backend_configuration, 'Ctrl+Shift+B',
