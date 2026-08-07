@@ -121,6 +121,7 @@ class OutputTabWidget(MyTabWidget):
         if self.run_directory != self.parent.project.run_directory:
             self.clear()
             self.run_directory = self.parent.project.run_directory
+            self._xml_mtime = None
         # print('discover_tab_sources', run_directory)
 
         self.output_panes = {}
@@ -133,8 +134,20 @@ class OutputTabWidget(MyTabWidget):
                     self.addTab(ViewProjectOutput(self.parent.project, suffix, point_size=12 if suffix == 'inp' else 9,
                                                   width=80 if suffix == 'inp' else 132), label)
 
-        if os.path.exists(filename := self.parent.project.filename('xml', run=(
-                self.parent.project.run_directory))) and os.path.getsize(filename) > 0:
+        # This method runs on a 1-second GUI-thread QTimer (see ProjectWindow.timer_output_tabs),
+        # so re-parsing the whole XML file and re-enumerating every orbital set below (both
+        # non-trivial for a large output) unconditionally on every tick was a periodic
+        # ~1-second GUI-thread stall -- most noticeable as a stutter in the vibrational-mode
+        # animation, since that's the one thing on screen fast enough to make a once-a-second
+        # hitch obvious. Guard on the XML file's mtime (a cheap stat()) so that work only
+        # actually happens when the file has changed since the last tick.
+        xml_filename = self.parent.project.filename('xml', run=(self.parent.project.run_directory))
+        xml_exists = os.path.exists(xml_filename) and os.path.getsize(xml_filename) > 0
+        xml_mtime = os.path.getmtime(xml_filename) if xml_exists else None
+        xml_changed = xml_mtime != getattr(self, '_xml_mtime', None)
+        self._xml_mtime = xml_mtime
+
+        if xml_exists and xml_changed:
             try:
                 # get input geometry maybe
                 # get final geometry
@@ -193,8 +206,7 @@ class OutputTabWidget(MyTabWidget):
                 # raise Exception('Could not read input xyz file')
                 pass
 
-        if os.path.exists(filename := self.parent.project.filename('xml', run=(
-                self.parent.project.run_directory))) and os.path.getsize(filename) > 0:
+        if xml_exists and xml_changed:
             labels = {}
             try:
                 for index in range(10000):  # get orbital sets

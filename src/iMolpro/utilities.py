@@ -475,7 +475,7 @@ def displace_coordinate(source: list[dict] | CubeData, coordinate: list[float], 
     result = []
     for i, atom in enumerate(source):
         result.append({'atomic_number': atom['atomic_number'],
-                       'xyz': [atom['xyz'][j] + displacement * coordinate[j] for j in range(3)]})
+                       'xyz': [atom['xyz'][j] + displacement * coordinate[3 * i + j] for j in range(3)]})
     return result
 
 
