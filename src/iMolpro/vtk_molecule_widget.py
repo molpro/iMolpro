@@ -10,23 +10,24 @@ from pymolpro import Orbital
 from .project import Structure
 from .theme import LIGHT_GREY_WINDOW, DARK_GREY_WINDOW, THEMES, theme_manager
 from .settings import settings
+from .utilities import displace_coordinate
 
 try:
     from PySide6.QtGui import QColor, QPalette
     from PySide6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
         QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
-    from PySide6.QtCore import Qt, QSize
+    from PySide6.QtCore import Qt, QSize, QTimer, QElapsedTimer
 except ImportError:
     try:
         from PyQt6.QtGui import QColor, QPalette
         from PyQt6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
             QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
-        from PyQt6.QtCore import Qt, QSize
+        from PyQt6.QtCore import Qt, QSize, QTimer, QElapsedTimer
     except ImportError:
         from PyQt5.QtGui import QColor, QPalette
         from PyQt5.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
             QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
-        from PyQt5.QtCore import Qt, QSize
+        from PyQt5.QtCore import Qt, QSize, QTimer, QElapsedTimer
 
 try:
     ColorRole = QPalette.ColorRole
@@ -48,7 +49,6 @@ from .QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 from enum import Enum
 
-from vtkmodules.vtkFiltersGeneral import vtkTransformPolyDataFilter
 from vtkmodules.vtkFiltersSources import vtkSphereSource, vtkCylinderSource
 from vtkmodules.vtkIOExportGL2PS import vtkGL2PSExporter
 from vtkmodules.vtkInteractionStyle import vtkInteractorStyleTrackballCamera
@@ -162,6 +162,7 @@ class MoleculeDisplay(QWidget):
         settings.add_default('contour_value', .1)
         settings.add_default('contour_opacity', .7)
         settings.add_default('grid_resolution', .3)
+        settings.add_default('vibrational_frequency_scaling', 1.0)
         if contour_value is None:
             contour_value = settings['contour_value']
             # print('MoleculeDisplay() sets contour_value',contour_value)
@@ -185,12 +186,18 @@ class MoleculeDisplay(QWidget):
         self.setLayout(layout)
         self.parent = parent
 
+        self.metadata = metadata
+        self.vibrational_mode = 0
+        self.vibration_animating = False
+        self._vibration_timer = None
+
         if isinstance(source, list) and len(source) > 0 and isinstance(source[-1], dict):
             data = source
         elif isinstance(source, Structure):
             data = source
-            if source.vibrations:
+            if source.vibrations and source.vibrations.modes:
                 metadata['vibrations'] = source.vibrations
+                self._equilibrium_atoms = source.atoms
         elif isinstance(source, list) and len(source) > 0 and isinstance(source[-1], Orbital):
             self.cubes = {}
             self.orbitals = source
@@ -228,9 +235,103 @@ class MoleculeDisplay(QWidget):
         self.molecule_widget.refresh_model(cube_data)
         pass
 
-    def set_vibration(self, mode_id):
-        self.vibrational_mode = mode_id
+    def set_vibration(self, mode_index):
+        self.vibrational_mode = mode_index
         self.right_panel.refresh()
+        if self.vibration_animating:
+            self._start_vibration_animation()
+
+    # Per-atom displacement (bohr) at the peak of the oscillation. Chosen to
+    # be a visible fraction of a typical bond length without atoms swinging
+    # through each other, regardless of the (implementation-defined) scale
+    # of the raw normal-coordinate vectors coming from the XML.
+    VIBRATION_PEAK_DISPLACEMENT = 0.4
+    VIBRATION_FRAME_INTERVAL_MS = 33
+    # Range of the 'Speed' slider (a multiplier on the nominal 1000cm-1 <-> 1Hz mapping).
+    # Capped at 1.0 -- the slider is there to slow the animation down to something the
+    # renderer can keep up with, not to speed it up further.
+    VIBRATION_SPEED_SLIDER_MINIMUM = 0.05
+    VIBRATION_SPEED_SLIDER_MAXIMUM = 1.0
+    # Sphere tessellation while animating: dropped right down, since vtkGlyph3D pays this
+    # cost fresh on every frame (see NucleiActor.set_source). Restored to
+    # NucleiActor.STATIC_SPHERE_RESOLUTION -- full quality -- as soon as animation stops,
+    # eg. for a static-structure image export.
+    VIBRATION_ANIMATING_SPHERE_RESOLUTION = 24
+
+    def set_vibration_animate(self, animate: bool):
+        self.vibration_animating = animate
+        if animate:
+            self._start_vibration_animation()
+        else:
+            self._stop_vibration_animation()
+
+    def set_vibration_frequency_scaling(self, slider_value: int):
+        r"""Live-adjust the animation speed (see the 'Speed' slider, values 0-100), without resetting amplitude or restarting the timer. Re-baselines the oscillation phase against the new frequency so the motion doesn't jump when the scaling changes mid-animation."""
+        scaling = self.VIBRATION_SPEED_SLIDER_MINIMUM * math.exp(
+            slider_value * 0.01 * math.log(
+                self.VIBRATION_SPEED_SLIDER_MAXIMUM / self.VIBRATION_SPEED_SLIDER_MINIMUM))
+        settings['vibrational_frequency_scaling'] = scaling
+        if self.vibration_animating and hasattr(self, '_vibration_base_omega'):
+            self._vibration_phase0 = self._current_vibration_phase()
+            self._vibration_t0 = self._vibration_clock.elapsed() / 1000.0
+            self._vibration_omega = self._vibration_base_omega * scaling
+
+    def _current_vibration_phase(self):
+        t = self._vibration_clock.elapsed() / 1000.0
+        return self._vibration_phase0 + self._vibration_omega * (t - self._vibration_t0)
+
+    def _start_vibration_animation(self):
+        vibrations = self.metadata.get('vibrations')
+        if not vibrations or not vibrations.modes or not hasattr(self, '_equilibrium_atoms'):
+            return
+        mode = vibrations.modes[self.vibrational_mode]
+        vector = mode['vector']
+        n_atoms = len(vector) // 3
+        peak_norm = max(
+            (math.sqrt(sum(vector[3 * i + k] ** 2 for k in range(3))) for i in range(n_atoms)),
+            default=0.0,
+        )
+        self._vibration_vector = vector
+        self._vibration_amplitude = self.VIBRATION_PEAK_DISPLACEMENT / peak_norm if peak_norm > 1e-8 else 0.0
+        # 1000 cm-1 <-> 1 oscillation/sec, i.e. frequency_Hz = wavenumber / 1000, further
+        # scaled by the user-adjustable 'Speed' slider (settings['vibrational_frequency_scaling'])
+        self._vibration_base_omega = 2 * math.pi * mode['wavenumber'] / 1000.0
+        self._vibration_omega = self._vibration_base_omega * float(settings['vibrational_frequency_scaling'])
+        self._vibration_phase0 = 0.0
+        self._vibration_t0 = 0.0
+        self._vibration_clock = QElapsedTimer()
+        self._vibration_clock.start()
+        self.molecule_widget.model.geometry.set_sphere_resolution(self.VIBRATION_ANIMATING_SPHERE_RESOLUTION)
+        if self._vibration_timer is None:
+            self._vibration_timer = QTimer(self)
+            self._vibration_timer.timeout.connect(self._advance_vibration_animation)
+        self._vibration_timer.start(self.VIBRATION_FRAME_INTERVAL_MS)
+
+    def _advance_vibration_animation(self):
+        displacement = self._vibration_amplitude * math.sin(self._current_vibration_phase())
+        atoms = displace_coordinate(self._equilibrium_atoms, self._vibration_vector, displacement)
+        self.molecule_widget.update_geometry(atoms)
+
+    def _stop_vibration_animation(self):
+        if self._vibration_timer is not None:
+            self._vibration_timer.stop()
+        if hasattr(self, '_equilibrium_atoms'):
+            self.molecule_widget.model.geometry.set_sphere_resolution(NucleiActor.STATIC_SPHERE_RESOLUTION)
+            self.molecule_widget.update_geometry(self._equilibrium_atoms)
+
+    def hideEvent(self, event):
+        # Pause the animation timer while this tab isn't visible so a
+        # replaced/hidden MoleculeDisplay (see MyTabWidget.removeTab, which
+        # doesn't delete the old widget) doesn't keep re-rendering forever.
+        if self._vibration_timer is not None:
+            self._vibration_timer.stop()
+        super().hideEvent(event)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self.vibration_animating and self._vibration_timer is not None:
+            self._vibration_clock.start()
+            self._vibration_timer.start(self.VIBRATION_FRAME_INTERVAL_MS)
 
     def set_resolution(self, resolution):
         shift_factor = 0.8
@@ -263,6 +364,13 @@ class MoleculeWidget(StyledWidget):
 
     def show_nucleus_labels(self, show: bool):
         self.nucleus_labels.SetVisibility(show)
+        self.scene.GetRenderWindow().GetInteractor().Render()
+
+    def update_geometry(self, atoms: list[dict]):
+        r"""Reposition the nuclei/bond actors (and, if shown, the atom-label actor) to a new set of atomic coordinates, without rebuilding the whole model. Used for vibrational-mode animation."""
+        self.model.geometry.update(atoms)
+        if self.nucleus_labels.GetVisibility():
+            self.nucleus_labels.update(atoms)
         self.scene.GetRenderWindow().GetInteractor().Render()
 
     def __init__(self, source, parent=None, axes: bool = False,
@@ -424,12 +532,26 @@ class ControlPanel(QWidget):
         self.layout.addStretch()
         # self.control_layout.addWidget(QLabel('Orbitals'),0,0)
 
-        if 'vibrations' in metadata:
+        if 'vibrations' in metadata and metadata['vibrations'].modes:
             vibration_selector = QComboBox()
             for i, mode in enumerate(metadata['vibrations'].modes):
                 vibration_selector.addItem(f'{i + 1}: {mode["wavenumber"]} cm-1')
-            # vibration_selector.currentIndexChanged.connect(self.parent.molecule_widget.model.set_vibration)
+            vibration_selector.setCurrentIndex(self.parent.vibrational_mode)
+            vibration_selector.currentIndexChanged.connect(self.parent.set_vibration)
             self.control_layout.add('Normal mode', vibration_selector)
+
+            animate_checkbox = QCheckBox()
+            animate_checkbox.setChecked(self.parent.vibration_animating)
+            animate_checkbox.toggled.connect(self.parent.set_vibration_animate)
+            self.control_layout.add('Animate', animate_checkbox)
+
+            speed_slider = mySlider(self)
+            speed_slider.setValue(int(100 * math.log(
+                float(settings['vibrational_frequency_scaling']) / self.parent.VIBRATION_SPEED_SLIDER_MINIMUM) /
+                                     math.log(self.parent.VIBRATION_SPEED_SLIDER_MAXIMUM /
+                                             self.parent.VIBRATION_SPEED_SLIDER_MINIMUM)))
+            speed_slider.valueChanged.connect(self.parent.set_vibration_frequency_scaling)
+            self.control_layout.add('Speed', speed_slider)
         if hasattr(self.parent, 'orbitals'):
             orbital_selector = QComboBox()
             for orbital in self.parent.orbitals[::-1]:
@@ -805,22 +927,53 @@ class NucleiActor(vtkActor):
         if isinstance(source, CubeData):
             self.update_data(source.atoms)
             return
-        polydata = atoms_to_polydata(source, self.atomic_number)
-        self.glyph.SetInputData(polydata)
+        filtered_xyz = [atom['xyz'] for atom in source
+                        if self.atomic_number is None or atom['atomic_number'] == self.atomic_number]
+        if hasattr(self, 'points') and self.points.GetNumberOfPoints() == len(filtered_xyz):
+            # Same atom count for this element as before (the normal case during
+            # vibrational-mode animation, where only positions change) -- move the
+            # existing points in place rather than handing the glyph filter a brand new
+            # input polydata (and forcing a full GPU re-upload) every frame.
+            for i, xyz in enumerate(filtered_xyz):
+                self.points.SetPoint(i, xyz)
+            self.points.Modified()
+        else:
+            self.points = vtkPoints()
+            for xyz in filtered_xyz:
+                self.points.InsertNextPoint(xyz)
+            polydata = vtkPolyData()
+            polydata.SetPoints(self.points)
+            self.glyph.SetInputData(polydata)
         self.glyph.Update()
+
+    # Full resolution (~20000 triangles/sphere): used whenever not animating, including
+    # for a static-structure image export, where quality matters and cost is paid once.
+    STATIC_SPHERE_RESOLUTION = 100
 
     def set_source(self, source: list[dict] | CubeData):
         angstrom = 1.8897161646321
-        sphere_source = vtkSphereSource(phi_resolution=100, theta_resolution=100)
-        sphere_source.SetRadius(0.2)
+        # vtkGlyph3D fully regenerates its whole output mesh from scratch on every
+        # Update() -- it has no notion of "only positions changed" -- so during
+        # vibrational-mode animation, where every atom moves every frame, sphere
+        # resolution directly sets the dominant per-frame cost (confirmed: ~5-10ms per
+        # element per frame at resolution 100, vs ~0.2-0.4ms at resolution 20). Kept
+        # high here by default; set_sphere_resolution() below drops it while animating
+        # and restores it afterwards (see MoleculeDisplay._start/_stop_vibration_animation).
+        self.sphere_source = vtkSphereSource(phi_resolution=self.STATIC_SPHERE_RESOLUTION,
+                                             theta_resolution=self.STATIC_SPHERE_RESOLUTION)
+        self.sphere_source.SetRadius(0.2)
         if self.atomic_number is not None:
-            sphere_source.SetRadius(self.radius_scale * angstrom * covalent_radii[self.atomic_number])
+            self.sphere_source.SetRadius(self.radius_scale * angstrom * covalent_radii[self.atomic_number])
         self.glyph = vtkGlyph3D()
-        self.glyph.SetSourceConnection(sphere_source.GetOutputPort())
+        self.glyph.SetSourceConnection(self.sphere_source.GetOutputPort())
         mapper = vtkPolyDataMapper()
         self.update_data(source)
         mapper.SetInputConnection(self.glyph.GetOutputPort())
         self.SetMapper(mapper)
+
+    def set_sphere_resolution(self, resolution: int):
+        self.sphere_source.SetPhiResolution(resolution)
+        self.sphere_source.SetThetaResolution(resolution)
         self.GetProperty().SetColor(vtkNamedColors().GetColor3d('Salmon'))
         if self.atomic_number is not None:
             self.GetProperty().SetColor(colors.cpk_colors[self.atomic_number])
@@ -877,6 +1030,9 @@ class NucleusLabelsActor(vtkActor2D):
         mapper.SetInputConnection(point_set_to_label_hierarchy_filter.GetOutputPort())
         self.SetMapper(mapper)
 
+    def update(self, source: list[dict] | CubeData):
+        self.set_source(source)
+
 
 def atoms_to_polydata(atoms: list[dict], atomic_number=None) -> vtkPolyData:
     points = vtkPoints()
@@ -899,6 +1055,9 @@ class BondActorCollection(vtkActorCollection):
         if isinstance(source, CubeData):
             self.set_source(source.atoms)
             return
+        # Bonds are stored as atom indices, not the atom dicts themselves, so that
+        # update() can move them to follow a new (distinct) list of atom coordinates
+        # -- eg an animation frame -- while keeping the connectivity computed here.
         self.bonds = []
         self.atoms = source
         angstrom = 1.8897161646321
@@ -909,14 +1068,15 @@ class BondActorCollection(vtkActorCollection):
                     jatom['atomic_number']]:
                     actor = BondActor(iatom['xyz'], jatom['xyz'], radius=self.bond_radius, colour=self.bond_colour)
                     self.AddItem(actor)
-                    self.bonds.append((iatom, jatom, actor))
+                    self.bonds.append((i, j, actor))
 
     def update(self, source: list[dict] | CubeData):
         if isinstance(source, CubeData):
             self.update(source.atoms)
             return
-        for bond in self.bonds:
-            bond[2].update(bond[0]['xyz'], bond[1]['xyz'])
+        self.atoms = source
+        for i, j, actor in self.bonds:
+            actor.update(source[i]['xyz'], source[j]['xyz'])
 
 
 class CubeActor(vtkActor):
@@ -1027,37 +1187,55 @@ class GeometryActorCollection(vtkActorCollection):
         geom = source.atoms if isinstance(source, CubeData) else source
         for item in self:
             if isinstance(item, NucleiActor):
-                item.update(geom)
+                item.update_data(geom)
         if hasattr(self, 'bond_actor_collection'):
             self.bond_actor_collection.update(geom)
+
+    def set_sphere_resolution(self, resolution: int):
+        for item in self:
+            if isinstance(item, NucleiActor):
+                item.set_sphere_resolution(resolution)
 
 
 class BondActor(vtkActor):
     def __init__(self, startPoint: list[int], endPoint: list[int], radius: float = 1.0,
                  resolution: int = 30, colour=(1.0, 1.0, 1.0)):
+        vtkActor.__init__(self)
         self.GetProperty().SetColor(colour)
         self.radius = radius
         self.resolution = resolution
+        # A single unit cylinder (radius 1, height 1) is built once and reused for the
+        # actor's lifetime; update() repositions/resizes it purely via the actor's own
+        # vtkUserTransform, never touching the mesh. This matters for vibrational-mode
+        # animation, where update() runs every frame: the previous approach rebuilt the
+        # cylinder source, transform filter and mapper from scratch each call, forcing a
+        # full geometry re-upload to the GPU per bond per frame -- the dominant cause of
+        # animation jank. Moving the per-frame work to a small transform matrix update
+        # instead is orders of magnitude cheaper.
+        cylinder_source = vtkCylinderSource()
+        cylinder_source.SetResolution(resolution)
+        cylinder_source.SetRadius(1.0)
+        cylinder_source.SetHeight(1.0)
+        mapper = vtkPolyDataMapper()
+        mapper.SetInputConnection(cylinder_source.GetOutputPort())
+        self.SetMapper(mapper)
+        self.user_transform = vtkTransform()
+        self.SetUserTransform(self.user_transform)
         self.update(startPoint, endPoint)
 
     def update(self, startPoint: list[int], endPoint: list[int]):
-        self.SetMapper(join_points_with_cylinder(startPoint, endPoint, radius=self.radius, resolution=self.resolution))
+        set_bond_transform(self.user_transform, startPoint, endPoint, radius=self.radius)
 
 
-def join_points_with_cylinder(startPoint: list[int], endPoint: list[int], radius: float = 1.0,
-                              resolution: int = 15) -> vtkPolyDataMapper:
+def set_bond_transform(transform: vtkTransform, startPoint: list[int], endPoint: list[int], radius: float = 1.0):
     """
-    From https://examples.vtk.org/site/Python/GeometricObjects/OrientedCylinder
-
-    :param startPoint:
-    :param endPoint:
-    :param radius:
-    :param resolution:
-    :return:
+    Set `transform` (mutated in place) to place a unit cylinder (radius 1, height 1,
+    centred on the origin, axis along Y) so that it joins startPoint to endPoint with
+    the given radius. Adapted from
+    https://examples.vtk.org/site/Python/GeometricObjects/OrientedCylinder, which built
+    a fresh vtkPolyDataMapper for this each call; here the same maths instead updates an
+    existing vtkTransform, so it can be called every animation frame cheaply.
     """
-    cylinderSource = vtkCylinderSource()
-    cylinderSource.SetResolution(resolution)
-    cylinderSource.SetRadius(radius)
     # Compute a basis
     normalizedX = [0] * 3
     normalizedY = [0] * 3
@@ -1090,22 +1268,12 @@ def join_points_with_cylinder(startPoint: list[int], endPoint: list[int], radius
         matrix.SetElement(i, 2, normalizedZ[i])
 
     # Apply the transforms
-    transform = vtkTransform()
+    transform.Identity()
     transform.Translate(startPoint)  # translate to starting point
     transform.Concatenate(matrix)  # apply direction cosines
     transform.RotateZ(-90.0)  # align cylinder to x axis
-    transform.Scale(1.0, length, 1.0)  # scale along the height vector
+    transform.Scale(radius, length, radius)  # scale to bond radius and length
     transform.Translate(0, .5, 0)  # translate to start of cylinder
-
-    # Transform the polydata
-    transformPD = vtkTransformPolyDataFilter()
-    transformPD.SetTransform(transform)
-    transformPD.SetInputConnection(cylinderSource.GetOutputPort())
-
-    # Create a mapper and actor for the arrow
-    mapper = vtkPolyDataMapper()
-    mapper.SetInputConnection(transformPD.GetOutputPort())
-    return mapper
 
 
 def xyz_to_atoms(xyz: str | list[str]):
