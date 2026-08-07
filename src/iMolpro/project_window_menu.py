@@ -19,6 +19,7 @@ from .settings import settings, settings_edit
 from .theme import THEMES, detect_system_theme
 from .help import help_manager_default
 from .backend import configure_backend
+from .project import SLURM_OUTPUT_SUFFIX
 
 
 def setup_project_window_menubar(window):
@@ -102,10 +103,14 @@ def setup_project_window_menubar(window):
         action.triggered.connect(lambda checked, theme_name=theme_name: window.set_theme(theme_name))
     menubar.addSubmenu(theme_menu, 'View')
     menubar.addSeparator('View')
-    menubar.addAction('Initial structure xyz', 'View', window.show_xyz_input,
-                      tooltip='View the xyz file for the molecular structure in the job input')
-    menubar.addAction('Final structure xyz', 'View', window.show_xyz_output,
-                      tooltip='View the xyz file for the molecular structure at the end of the job')
+    # (action, instance) pairs consulted by update_view_menu_actions() to grey out actions
+    # whose target file doesn't exist yet.
+    window.view_xyz_actions = [
+        (menubar.addAction('Initial structure xyz', 'View', window.show_xyz_input,
+                           tooltip='View the xyz file for the molecular structure in the job input'), -1),
+        (menubar.addAction('Final structure xyz', 'View', window.show_xyz_output,
+                           tooltip='View the xyz file for the molecular structure at the end of the job'), 0),
+    ]
     if window.external_viewer_commands:
         window.external_menu = QMenu('View molecule in external program...')
         for command in window.external_viewer_commands.keys():
@@ -121,12 +126,23 @@ def setup_project_window_menubar(window):
         (window.output_tabs.currentIndex() - 1) % len(window.output_tabs)), 'Alt+[')
 
     menubar.addSeparator('View')
-    menubar.addAction('Job output', 'View', lambda: window.output_tabs.add_suffix('out'), shortcut='Alt+o')
-    menubar.addAction('Job input', 'View', lambda: window.output_tabs.add_suffix('inp'), shortcut='Alt+i')
-    menubar.addAction('Job log', 'View', lambda: window.output_tabs.add_suffix('log'), shortcut='Alt+l')
-    menubar.addAction('Job xml', 'View', lambda: window.output_tabs.add_suffix('xml'), shortcut='Alt+x')
-    menubar.addAction('Job stdout', 'View', lambda: window.output_tabs.add_suffix('stdout'))
-    menubar.addAction('Job stderr', 'View', lambda: window.output_tabs.add_suffix('stderr'))
+    # suffix -> action, consulted by update_view_menu_actions() to grey out actions whose
+    # target file doesn't exist yet.
+    window.view_file_actions = {
+        'out': menubar.addAction('Job output', 'View', lambda: window.output_tabs.add_suffix('out'),
+                                 shortcut='Alt+o'),
+        'inp': menubar.addAction('Job input', 'View', lambda: window.output_tabs.add_suffix('inp'),
+                                 shortcut='Alt+i'),
+        'log': menubar.addAction('Job log', 'View', lambda: window.output_tabs.add_suffix('log'),
+                                 shortcut='Alt+l'),
+        'xml': menubar.addAction('Job xml', 'View', lambda: window.output_tabs.add_suffix('xml'),
+                                 shortcut='Alt+x'),
+        'stdout': menubar.addAction('Job stdout', 'View', lambda: window.output_tabs.add_suffix('stdout')),
+        'stderr': menubar.addAction('Job stderr', 'View', lambda: window.output_tabs.add_suffix('stderr')),
+        SLURM_OUTPUT_SUFFIX: menubar.addAction('Job Slurm output', 'View',
+                                              lambda: window.output_tabs.add_suffix(SLURM_OUTPUT_SUFFIX)),
+    }
+    window.update_view_menu_actions()
 
     window.run_action = menubar.addAction('Run', 'Job', window.run, 'Ctrl+R', 'Run Molpro on the project input')
     window.run_force_action = menubar.addAction('Run (force)', 'Job', window.run_force, 'Ctrl+Shift+R',
