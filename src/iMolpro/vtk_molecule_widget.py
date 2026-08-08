@@ -970,15 +970,14 @@ class NucleiActor(vtkActor):
         self.update_data(source)
         mapper.SetInputConnection(self.glyph.GetOutputPort())
         self.SetMapper(mapper)
-
-    def set_sphere_resolution(self, resolution: int):
-        self.sphere_source.SetPhiResolution(resolution)
-        self.sphere_source.SetThetaResolution(resolution)
         self.GetProperty().SetColor(vtkNamedColors().GetColor3d('Salmon'))
         if self.atomic_number is not None:
             self.GetProperty().SetColor(colors.cpk_colors[self.atomic_number])
         self.SetOrigin(0.0, 0.0, 0.0)
-        # self.GetProperty().SetOpacity(.1)
+
+    def set_sphere_resolution(self, resolution: int):
+        self.sphere_source.SetPhiResolution(resolution)
+        self.sphere_source.SetThetaResolution(resolution)
 
 
 class NucleusLabelsActor(vtkActor2D):
