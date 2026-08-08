@@ -12,7 +12,7 @@ dynamic = ["version"]
 dependencies = [
     "pyside6<6.10",
     "pymolpro>=1.21.1",
-    "pysjef>=1.45.20",
+    "pysjef>=1.45.21",
     "pubchempy>=1",
     "chemspipy>=2",
     "jsonschema>=4",
