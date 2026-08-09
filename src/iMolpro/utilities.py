@@ -34,6 +34,11 @@ try:
 except:
     Key = Qt
 
+try:
+    KeyboardModifier = Qt.KeyboardModifier
+except:
+    KeyboardModifier = Qt
+
 from enum import Enum
 
 from .MenuBar import MenuBar
@@ -50,14 +55,28 @@ class VimMode(Enum):
 
 
 class QVimPlainTextEdit(QPlainTextEdit):
+    # motions with no special linewise/charwise handling: usable standalone or as an operator's range
+    _motions = {
+        Key.Key_H: QTextCursor.Left,
+        Key.Key_J: QTextCursor.Down,
+        Key.Key_K: QTextCursor.Up,
+        Key.Key_L: QTextCursor.Right,
+        Key.Key_W: QTextCursor.NextWord,
+        Key.Key_B: QTextCursor.PreviousWord,
+        Key.Key_E: QTextCursor.EndOfWord,
+    }
+
     def __init__(self, initial_mode=VimMode.normal):
         super().__init__()
         self.vimMode = initial_mode
         self.lastKey = None
         self.searching = False
-        self.shiftKey = False
         self.searchReverse = False
         self.lastSearch = ''
+        self.countBuffer = ''
+        self.pendingOperator = None
+        self.operatorCount = 1
+        self.pendingReplace = False
 
         self.statusLine = QLabel(self)
 
@@ -77,67 +96,141 @@ class QVimPlainTextEdit(QPlainTextEdit):
             else:
                 super().keyPressEvent(e)
         elif self.vimMode == VimMode.normal:
-            if e.key() == Key.Key_A:
-                if self.shiftKey:
-                    self.moveCursor(QTextCursor.EndOfLine)
-                else:
-                    self.moveCursor(QTextCursor.Right)
-                self.enterMode(VimMode.insert)
-            elif e.key() == Key.Key_B:
-                self.moveCursor(QTextCursor.StartOfWord)
-            elif e.key() == Key.Key_D and self.lastKey == Key.Key_D:
-                print('delete line not implemented')
-            elif e.key() == Key.Key_E:
-                self.moveCursor(QTextCursor.EndOfWord)
-            elif e.key() == Key.Key_I:
-                if self.shiftKey:
-                    self.moveCursor(QTextCursor.StartOfLine)
-                self.enterMode(VimMode.insert)
-            if e.key() == Key.Key_H:
-                self.moveCursor(QTextCursor.Left)
-            elif e.key() == Key.Key_J:
-                self.moveCursor(QTextCursor.Down)
-            elif e.key() == Key.Key_K:
-                self.moveCursor(QTextCursor.Up)
-            elif e.key() == Key.Key_L:
-                self.moveCursor(QTextCursor.Right)
-            elif e.key() == Key.Key_N:
-                self.search_and_move(reverse=not self.searchReverse if self.shiftKey else self.searchReverse)
-            elif e.key() == Key.Key_O:
-                if not self.shiftKey:
-                    self.moveCursor(QTextCursor.Down)
-                self.moveCursor(QTextCursor.StartOfLine)
-                pos = self.textCursor().position()
-                self.setPlainText(self.toPlainText()[:pos] + '\n' + self.toPlainText()[pos:])
-                cursor = self.textCursor()
-                cursor.setPosition(pos)
-                self.setTextCursor(cursor)
-                self.enterMode(VimMode.insert)
-            elif e.key() == Key.Key_R:
-                print('replace not implemented')
-            elif e.key() == Key.Key_U:
-                print('undo not implemented')
-            elif e.key() == Key.Key_V:
-                print('visual mode not implemented')
-            elif e.key() == Key.Key_X:
-                pos = self.textCursor().position()
-                self.setPlainText(self.toPlainText()[:pos] + self.toPlainText()[pos + 1:])
-                cursor = self.textCursor()
-                cursor.setPosition(pos)
-                self.setTextCursor(cursor)
-            elif e.key() == Key.Key_0:
-                self.moveCursor(QTextCursor.StartOfLine)
-            elif e.key() == Key.Key_Dollar:
-                self.moveCursor(QTextCursor.EndOfLine)
-            elif e.key() == Key.Key_Colon:
-                print('command-line mode not implemented')
-            elif e.key() == Key.Key_Slash or e.key() == Key.Key_Question:
-                self.searchReverse = e.key() == Key.Key_Question
-                self.searching = True
-                self.establishStatus(e.text())
-            elif e.key() == Key.Key_Shift:
-                self.shiftKey = True
+            shift = bool(e.modifiers() & KeyboardModifier.ShiftModifier)
+            self.handleNormalKey(e, shift)
         self.lastKey = e.key()
+
+    def handleNormalKey(self, e, shift):
+        key = e.key()
+
+        # modifier-only presses arrive as their own event, ahead of the letter they're
+        # held for (e.g. Shift before '$') - ignore them rather than cancelling state
+        if key in (Key.Key_Shift, Key.Key_Control, Key.Key_Alt, Key.Key_Meta):
+            return
+
+        if self.pendingReplace:
+            self.pendingReplace = False
+            self.statusLine.hide()
+            if e.text():
+                cursor = self.textCursor()
+                cursor.deleteChar()
+                cursor.insertText(e.text())
+                cursor.movePosition(QTextCursor.Left)
+                self.setTextCursor(cursor)
+            return
+
+        if key == Key.Key_Escape:
+            self.countBuffer = ''
+            self.pendingOperator = None
+            self.statusLine.hide()
+            return
+
+        # counts: leading digits accumulate; a bare '0' (no count yet) is the "start of line" motion
+        if Key.Key_0 <= key <= Key.Key_9 and e.text().isdigit():
+            if e.text() == '0' and not self.countBuffer:
+                self.moveCursor(QTextCursor.StartOfLine)
+            else:
+                self.countBuffer += e.text()
+                self.establishStatus(('d' if self.pendingOperator else '') + self.countBuffer)
+            return
+
+        repeat = int(self.countBuffer) if self.countBuffer else 1
+        self.countBuffer = ''
+
+        motion = self._motions.get(key)
+        if motion is not None:
+            cursor = self.textCursor()
+            if self.pendingOperator == 'd':
+                cursor.movePosition(motion, QTextCursor.KeepAnchor, self.operatorCount * repeat)
+                cursor.removeSelectedText()
+                self.pendingOperator = None
+                self.statusLine.hide()
+            else:
+                cursor.movePosition(motion, QTextCursor.MoveAnchor, repeat)
+            self.setTextCursor(cursor)
+            return
+
+        if key == Key.Key_Dollar:
+            cursor = self.textCursor()
+            if self.pendingOperator == 'd':
+                cursor.movePosition(QTextCursor.EndOfLine, QTextCursor.KeepAnchor)
+                cursor.removeSelectedText()
+                self.pendingOperator = None
+                self.statusLine.hide()
+            else:
+                cursor.movePosition(QTextCursor.EndOfLine)
+            self.setTextCursor(cursor)
+            return
+
+        if key == Key.Key_D:
+            if self.pendingOperator == 'd':
+                self.deleteLines(self.operatorCount * repeat)
+                self.pendingOperator = None
+                self.statusLine.hide()
+            else:
+                self.pendingOperator = 'd'
+                self.operatorCount = repeat
+                self.establishStatus((str(repeat) if repeat != 1 else '') + 'd')
+            return
+
+        # any other key aborts a pending operator, same as real vim
+        self.pendingOperator = None
+        self.statusLine.hide()
+
+        if key == Key.Key_A:
+            self.moveCursor(QTextCursor.EndOfLine if shift else QTextCursor.Right)
+            self.enterMode(VimMode.insert)
+        elif key == Key.Key_I:
+            if shift:
+                self.moveCursor(QTextCursor.StartOfLine)
+            self.enterMode(VimMode.insert)
+        elif key == Key.Key_N:
+            self.search_and_move(reverse=not self.searchReverse if shift else self.searchReverse)
+        elif key == Key.Key_O:
+            cursor = self.textCursor()
+            if shift:
+                cursor.movePosition(QTextCursor.StartOfBlock)
+                cursor.insertBlock()
+                cursor.movePosition(QTextCursor.PreviousBlock)
+            else:
+                cursor.movePosition(QTextCursor.EndOfBlock)
+                cursor.insertBlock()
+            self.setTextCursor(cursor)
+            self.enterMode(VimMode.insert)
+        elif key == Key.Key_R:
+            self.pendingReplace = True
+            self.establishStatus('r')
+        elif key == Key.Key_U:
+            for _ in range(repeat):
+                self.undo()
+        elif key == Key.Key_V:
+            print('visual mode not implemented')
+        elif key == Key.Key_X:
+            cursor = self.textCursor()
+            for _ in range(repeat):
+                cursor.deleteChar()
+            self.setTextCursor(cursor)
+        elif key == Key.Key_Colon:
+            print('command-line mode not implemented')
+        elif key == Key.Key_Slash or key == Key.Key_Question:
+            self.searchReverse = key == Key.Key_Question
+            self.searching = True
+            self.establishStatus(e.text())
+
+    def deleteLines(self, count):
+        cursor = self.textCursor()
+        cursor.movePosition(QTextCursor.StartOfBlock)
+        start = cursor.position()
+        moved = 0
+        while moved < count and cursor.movePosition(QTextCursor.NextBlock):
+            moved += 1
+        if moved < count:
+            cursor.movePosition(QTextCursor.End)
+        end = cursor.position()
+        cursor.setPosition(start)
+        cursor.setPosition(end, QTextCursor.KeepAnchor)
+        cursor.removeSelectedText()
+        self.setTextCursor(cursor)
 
     def establishStatus(self, message=''):
         self.statusLine.setFixedWidth(self.width())
@@ -161,11 +254,6 @@ class QVimPlainTextEdit(QPlainTextEdit):
             self.establishStatus(':')
         elif mode == VimMode.normal:
             self.statusLine.hide()
-
-    def keyReleaseEvent(self, e):
-        if e.key() == Key.Key_Shift:
-            # print('shift off')
-            self.shiftKey = False
 
     def search_and_move(self, search_string=None, reverse=False):
         if search_string:
