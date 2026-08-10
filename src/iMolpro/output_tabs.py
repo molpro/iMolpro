@@ -1,17 +1,17 @@
 import os
 
 try:
-    from PySide6.QtCore import QTimer
-    from PySide6.QtWidgets import QMainWindow, QApplication, QTabWidget
+    from PySide6.QtCore import QTimer, Qt
+    from PySide6.QtWidgets import QMainWindow, QApplication, QTabWidget, QWidget, QLabel, QVBoxLayout
     from PySide6.QtGui import QFont
 except ImportError:
     try:
-        from PyQt6.QtCore import QTimer
-        from PyQt6.QtWidgets import QMainWindow, QApplication, QTabWidget
+        from PyQt6.QtCore import QTimer, Qt
+        from PyQt6.QtWidgets import QMainWindow, QApplication, QTabWidget, QWidget, QLabel, QVBoxLayout
         from PyQt6.QtGui import QFont
     except ImportError:
-        from PyQt5.QtCore import QTimer
-        from PyQt5.QtWidgets import QMainWindow, QApplication, QTabWidget
+        from PyQt5.QtCore import QTimer, Qt
+        from PyQt5.QtWidgets import QMainWindow, QApplication, QTabWidget, QWidget, QLabel, QVBoxLayout
         from PyQt5.QtGui import QFont
 
 try:
@@ -63,7 +63,50 @@ class ViewProjectOutput(ViewFile):
                 break
 
 
+class LazyOrbitalTab(QWidget):
+    r"""Tab page standing in for an orbital-set MoleculeDisplay.
+
+    Building a MoleculeDisplay for orbitals starts an (async, see
+    vtk_molecule_widget._CubeWorker) orbital cube computation and sets up a
+    whole VTK render window/interactor -- real cost that's wasted if the user
+    never looks at that particular orbital set. A project's output can contain
+    several orbital sets (canonical, natural, state-specific, ...), all
+    discovered and added as tabs together in OutputTabWidget.refresh() as soon
+    as they appear in the XML, so paying that cost eagerly for all of them
+    means paying it for tabs that may never be selected. This placeholder
+    defers building the real MoleculeDisplay until Qt actually shows this tab
+    page, ie. the user selects it.
+    """
+
+    def __init__(self, orbitals, parent, metadata):
+        super().__init__()
+        self._orbitals = orbitals
+        self._owner = parent
+        self._metadata = metadata
+        self.molecule_display = None
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(QLabel('Loading orbitals …', alignment=Qt.AlignCenter))
+
+    def ensure_built(self):
+        if self.molecule_display is not None:
+            return
+        layout = self.layout()
+        while (item := layout.takeAt(0)) is not None:
+            if item.widget():
+                item.widget().deleteLater()
+        self.molecule_display = MoleculeDisplay(self._orbitals, self._owner, metadata=self._metadata)
+        layout.addWidget(self.molecule_display)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.ensure_built()
+
+
 def force_render_vtk_widget(widget):
+    if isinstance(widget, LazyOrbitalTab):
+        widget.ensure_built()
+        widget = widget.molecule_display
     if isinstance(widget, MoleculeDisplay):
         for w in QApplication.topLevelWidgets():
             if isinstance(w, QMainWindow):
@@ -221,9 +264,7 @@ class OutputTabWidget(MyTabWidget):
                     # print('found','orbital set', label)
                     if label not in tab_names:
                         # print('new tab','orbital set', label)
-                        self.addTab(MoleculeDisplay(orbitals, self,
-                                                    metadata=orbitals_node.attrib,
-                                                    ), label)
+                        self.addTab(LazyOrbitalTab(orbitals, self, metadata=orbitals_node.attrib), label)
             except Exception as e:
                 if not isinstance(e, (IndexError)) and not isinstance(e, (AttributeError)):
                     print('Orbitals except', str(e) + ' ' + str(type(e)))
