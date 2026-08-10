@@ -16,18 +16,19 @@ try:
     from PySide6.QtGui import QColor, QPalette
     from PySide6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
         QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
-    from PySide6.QtCore import Qt, QSize, QTimer, QElapsedTimer
+    from PySide6.QtCore import Qt, QSize, QTimer, QElapsedTimer, QObject, QRunnable, QThreadPool, \
+        Signal as pyqtSignal
 except ImportError:
     try:
         from PyQt6.QtGui import QColor, QPalette
         from PyQt6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
             QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
-        from PyQt6.QtCore import Qt, QSize, QTimer, QElapsedTimer
+        from PyQt6.QtCore import Qt, QSize, QTimer, QElapsedTimer, QObject, QRunnable, QThreadPool, pyqtSignal
     except ImportError:
         from PyQt5.QtGui import QColor, QPalette
         from PyQt5.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
             QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
-        from PyQt5.QtCore import Qt, QSize, QTimer, QElapsedTimer
+        from PyQt5.QtCore import Qt, QSize, QTimer, QElapsedTimer, QObject, QRunnable, QThreadPool, pyqtSignal
 
 try:
     ColorRole = QPalette.ColorRole
@@ -152,6 +153,38 @@ class ItemLayout(QGridLayout):
         return self.row - 1
 
 
+class _CubeWorkerSignals(QObject):
+    # (key, CubeData) / (key, error message) -- key identifies which (orbital,
+    # resolution, contour_value) request this result belongs to, so the
+    # receiver can tell a stale in-flight computation from the current one.
+    finished = pyqtSignal(object, object)
+    failed = pyqtSignal(object, str)
+
+
+class _CubeWorker(QRunnable):
+    r"""Computes Orbital.cube_data() -- pure numpy/Python, no Qt or VTK objects
+    touched -- on a QThreadPool worker thread, so evaluating the orbital on
+    its grid (the expensive step for a large molecule/basis) doesn't stall
+    the GUI thread. Only the CubeData result crosses back to the GUI thread;
+    building VTK actors from it still happens there."""
+
+    def __init__(self, orbital, resolution, contour_value, key):
+        super().__init__()
+        self.orbital = orbital
+        self.resolution = resolution
+        self.contour_value = contour_value
+        self.key = key
+        self.signals = _CubeWorkerSignals()
+
+    def run(self):
+        try:
+            cube_data = self.orbital.cube_data(resolution=self.resolution, threshold=self.contour_value * .1,
+                                               border=6)
+            self.signals.finished.emit(self.key, cube_data)
+        except Exception as e:
+            self.signals.failed.emit(self.key, str(e))
+
+
 class MoleculeDisplay(QWidget):
     def __init__(self, source: Structure | str | list, parent=None, axes: bool = False,
                  background_colour: tuple | ColourScheme | None = None,
@@ -203,7 +236,17 @@ class MoleculeDisplay(QWidget):
             self.orbitals = source
             self.resolution = resolution
             self.orbital = source[-1]
-            data = self.get_cube(contour_value=contour_value)
+            self._pending_cube_key = None
+            # Keep in-flight workers referenced -- QThreadPool.start() does not
+            # protect a QRunnable's Python wrapper (and its signals QObject)
+            # from garbage collection the way QObject parent/child ownership
+            # would, so a purely-local worker variable can be collected (and
+            # its finished/failed signal silently dropped) while still running.
+            self._cube_workers = {}
+            # Show the nuclei/bonds immediately; the (potentially slow) orbital
+            # cube is computed asynchronously below and dropped in once ready,
+            # rather than blocking widget construction on it.
+            data = self.orbital.atoms
         else:
             raise ValueError('source must be a list of Orbitals or a dict of atoms or an xyz filename')
 
@@ -215,13 +258,45 @@ class MoleculeDisplay(QWidget):
         self.right_panel = ControlPanel(self, metadata=metadata)
         layout.addWidget(self.right_panel)
 
-    def get_cube(self, contour_value=None):
-        # print('get_cube',self.orbital.ID,self.resolution,contour_value,'')
-        key = self.orbital, self.resolution, contour_value
-        if key not in self.cubes:
-            # print('get_cube',self.orbital.ID,self.resolution,contour_value,'creating')
-            self.cubes[key] = self.orbital.cube_data(resolution=self.resolution, threshold=contour_value * .1, border=6)
-        return self.cubes[key]
+        if hasattr(self, 'orbitals'):
+            self._request_cube(contour_value)
+
+    def _request_cube(self, contour_value):
+        r"""Ensure self.cubes has the CubeData for (self.orbital, self.resolution,
+        contour_value), computing it on a background thread if necessary, and apply
+        it (or a previously cached result) to the display once available. Any
+        request superseded by a later one (eg. the user flipped to a different
+        orbital while a computation was still running) is left to finish -- its
+        result is cached for later reuse -- but is not applied to the display."""
+        key = (self.orbital, self.resolution, contour_value)
+        self._pending_cube_key = key
+        if key in self.cubes:
+            self._apply_cube(key)
+            return
+        self.right_panel.set_status('Computing orbital …')
+        worker = _CubeWorker(self.orbital, self.resolution, contour_value, key)
+        worker.signals.finished.connect(self._on_cube_ready)
+        worker.signals.failed.connect(self._on_cube_failed)
+        self._cube_workers[key] = worker
+        QThreadPool.globalInstance().start(worker)
+
+    def _on_cube_ready(self, key, cube_data):
+        self._cube_workers.pop(key, None)
+        self.cubes[key] = cube_data
+        if key == self._pending_cube_key:
+            self._apply_cube(key)
+
+    def _on_cube_failed(self, key, message):
+        self._cube_workers.pop(key, None)
+        print('orbital cube computation failed:', message)
+        if key == self._pending_cube_key:
+            self._pending_cube_key = None
+            self.right_panel.set_status(f'Failed to compute orbital: {message}')
+
+    def _apply_cube(self, key):
+        self._pending_cube_key = None
+        self.right_panel.set_status(None)
+        self.molecule_widget.refresh_model(self.cubes[key])
 
     def set_atom_labels(self, atom_labels: bool):
         self.molecule_widget.show_nucleus_labels(atom_labels)
@@ -229,11 +304,8 @@ class MoleculeDisplay(QWidget):
     def set_orbital(self, orbital_id):
         # print('set_orbital', orbital_id)
         self.orbital = self.orbitals[[orbital.ID for orbital in self.orbitals].index(orbital_id)]
-        cube_data = self.get_cube(self.molecule_widget.model.contour_value)
-        # print(str(cube_data)[:100] + '...')
         self.right_panel.refresh()
-        self.molecule_widget.refresh_model(cube_data)
-        pass
+        self._request_cube(settings['contour_value'])
 
     def set_vibration(self, mode_index):
         self.vibrational_mode = mode_index
@@ -357,7 +429,8 @@ class MoleculeWidget(StyledWidget):
     def refresh_model(self, source):
         # print('refresh_model', type(source))
         # print('self.model', type(self.model))
-        self.scene.Remove(self.model.contour)
+        if hasattr(self.model, 'contour'):
+            self.scene.Remove(self.model.contour)
         self.model = MolecularModel(source, )
         self.scene.Add(self.model.contour)
         self.scene.GetRenderWindow().GetInteractor().Render()
@@ -429,9 +502,14 @@ class MoleculeWidget(StyledWidget):
         return self.model.contour.opacity
 
     def set_contour_opacity(self, value):
-        self.model.set_contour_opacity(value * 0.01)
-        settings['contour_opacity'] = self.model.contour.opacity
-        self.scene.GetRenderWindow().GetInteractor().Render()
+        opacity = value * 0.01
+        # Guard for the interval before the first orbital cube has arrived
+        # (model is atoms-only, no contour yet): just remember the value in
+        # settings, which MolecularModel reads when the contour is built.
+        if hasattr(self.model, 'contour'):
+            self.model.set_contour_opacity(opacity)
+            self.scene.GetRenderWindow().GetInteractor().Render()
+        settings['contour_opacity'] = opacity
 
     @property
     def contour_value(self):
@@ -440,9 +518,10 @@ class MoleculeWidget(StyledWidget):
     def set_contour_value(self, value):
         contour_value = self.contour_slider_minimum * math.exp(
             value * 0.01 * math.log(self.contour_slider_maximum / self.contour_slider_minimum))
-        self.model.set_contour_value(contour_value)
-        settings['contour_value'] = self.model.contour_value
-        self.scene.GetRenderWindow().GetInteractor().Render()
+        if hasattr(self.model, 'contour'):
+            self.model.set_contour_value(contour_value)
+            self.scene.GetRenderWindow().GetInteractor().Render()
+        settings['contour_value'] = contour_value
 
     def set_background_colour(self, colour: QColor | int | tuple[float, float, float], follow_theme: bool = False):
         # print('set_background_colour', colour,type(colour))
@@ -508,6 +587,16 @@ class ControlPanel(QWidget):
             else:
                 self.occupation_widget.setText('None')
         pass
+
+    def set_status(self, text: str | None):
+        r"""Shows/hides a status line (eg. while an orbital cube is being computed
+        on a background thread) below the rest of the control panel. Kept below
+        the stretch added in setup() -- rather than above the content, where its
+        appearing/disappearing would shift every row beneath it -- so toggling it
+        only grows/shrinks the empty space above it, leaving the rest of the
+        panel still."""
+        self.status_widget.setText(text or '')
+        self.status_widget.setVisible(bool(text))
 
     def setup(self, metadata={}):
 
@@ -657,6 +746,13 @@ class ControlPanel(QWidget):
         export_button.clicked.connect(lambda: self.parent.molecule_widget.scene.export_image())
 
         # self.control_layout.addStretch()
+
+        # Added after the stretch above (not before the content), so that
+        # showing/hiding it doesn't shift the rows above it -- see set_status().
+        self.status_widget = QLabel('', alignment=Qt.AlignCenter)
+        self.status_widget.setStyleSheet('color: orange;')
+        self.status_widget.setVisible(False)
+        self.layout.addWidget(self.status_widget)
 
 
 class MoleculeScene(QVTKRenderWindowInteractor):
