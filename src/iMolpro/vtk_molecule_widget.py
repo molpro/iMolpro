@@ -155,10 +155,34 @@ class ItemLayout(QGridLayout):
 
 class _CubeWorkerSignals(QObject):
     # (key, CubeData) / (key, error message) -- key identifies which (orbital,
-    # resolution, contour_value) request this result belongs to, so the
+    # grid_points, contour_value) request this result belongs to, so the
     # receiver can tell a stale in-flight computation from the current one.
     finished = pyqtSignal(object, object)
     failed = pyqtSignal(object, str)
+
+
+# Padding (bohr) added around the atoms' bounding box before evaluating the
+# orbital, in every direction. Fixed rather than user-configurable: it only
+# ever adds GRID_BORDER/resolution extra points per axis (small next to
+# grid_points), and exists to make sure the contour of a diffuse orbital
+# isn't clipped right at the atoms.
+GRID_BORDER = 6.0
+
+
+def _grid_resolution(orbital, grid_points: int, border: float = GRID_BORDER) -> float:
+    r"""Bohr grid spacing that puts `grid_points` points along the longest side
+    of `orbital`'s atoms' bounding box (+border). Orbital.cube_data() narrows
+    that box further (down to where the orbital is non-negligible, see its
+    threshold parameter), so this is an upper bound: the resulting cube never
+    has more than `grid_points` points along any axis. Since the memory
+    (and time) cube_data() needs is dominated by (grid points) x (number of
+    basis functions), deriving resolution from a fixed point budget like this
+    -- rather than a fixed absolute spacing -- keeps that cost bounded
+    regardless of molecule size, at the expense of coarsening the grid for
+    large molecules."""
+    xyz = np.array([atom['xyz'] for atom in orbital.atoms])
+    extent = xyz.max(axis=0) - xyz.min(axis=0) + 2 * border
+    return float(extent.max()) / grid_points
 
 
 class _CubeWorker(QRunnable):
@@ -168,33 +192,45 @@ class _CubeWorker(QRunnable):
     the GUI thread. Only the CubeData result crosses back to the GUI thread;
     building VTK actors from it still happens there."""
 
-    def __init__(self, orbital, resolution, contour_value, key):
+    def __init__(self, orbital, grid_points, contour_value, key):
         super().__init__()
         self.orbital = orbital
-        self.resolution = resolution
+        self.grid_points = grid_points
         self.contour_value = contour_value
         self.key = key
         self.signals = _CubeWorkerSignals()
 
     def run(self):
         try:
-            cube_data = self.orbital.cube_data(resolution=self.resolution, threshold=self.contour_value * .1,
-                                               border=6)
+            resolution = _grid_resolution(self.orbital, self.grid_points)
+            cube_data = self.orbital.cube_data(resolution=resolution, threshold=self.contour_value * .1,
+                                               border=GRID_BORDER)
             self.signals.finished.emit(self.key, cube_data)
         except Exception as e:
             self.signals.failed.emit(self.key, str(e))
 
 
 class MoleculeDisplay(QWidget):
+    # Number of grid points along the longest axis of the atoms' bounding box
+    # (see _grid_resolution): a fixed point budget rather than a fixed Bohr
+    # spacing, so the memory/time cube_data() needs stays bounded regardless
+    # of how physically large the molecule is, at the cost of a coarser grid
+    # for large molecules. Min/max clamp what the '+'/'-' buttons (see
+    # set_grid_points) can reach, so repeated clicks can't reintroduce an
+    # unbounded grid for a large molecule.
+    GRID_POINTS_DEFAULT = 60
+    GRID_POINTS_MINIMUM = 15
+    GRID_POINTS_MAXIMUM = 150
+
     def __init__(self, source: Structure | str | list, parent=None, axes: bool = False,
                  background_colour: tuple | ColourScheme | None = None,
                  contour_value=None, contour_opacity=None,
-                 resolution: float = None,
+                 grid_points: int = None,
                  metadata: dict = {},
                  ):
         settings.add_default('contour_value', .1)
         settings.add_default('contour_opacity', .7)
-        settings.add_default('grid_resolution', .3)
+        settings.add_default('grid_points', self.GRID_POINTS_DEFAULT)
         settings.add_default('vibrational_frequency_scaling', 1.0)
         if contour_value is None:
             contour_value = settings['contour_value']
@@ -205,10 +241,10 @@ class MoleculeDisplay(QWidget):
             contour_opacity = settings['contour_opacity']
         else:
             settings['contour_opacity'] = contour_opacity
-        if resolution is None:
-            resolution = settings['grid_resolution']
+        if grid_points is None:
+            grid_points = settings['grid_points']
         else:
-            settings['grid_resolution'] = resolution
+            settings['grid_points'] = grid_points
         follow_theme = True if background_colour is None else None
         if background_colour is None:
             rgb = parent.palette().color(QPalette.Window).rgb()
@@ -234,7 +270,7 @@ class MoleculeDisplay(QWidget):
         elif isinstance(source, list) and len(source) > 0 and isinstance(source[-1], Orbital):
             self.cubes = {}
             self.orbitals = source
-            self.resolution = resolution
+            self.grid_points = grid_points
             self.orbital = source[-1]
             self._pending_cube_key = None
             # Keep in-flight workers referenced -- QThreadPool.start() does not
@@ -262,19 +298,19 @@ class MoleculeDisplay(QWidget):
             self._request_cube(contour_value)
 
     def _request_cube(self, contour_value):
-        r"""Ensure self.cubes has the CubeData for (self.orbital, self.resolution,
+        r"""Ensure self.cubes has the CubeData for (self.orbital, self.grid_points,
         contour_value), computing it on a background thread if necessary, and apply
         it (or a previously cached result) to the display once available. Any
         request superseded by a later one (eg. the user flipped to a different
         orbital while a computation was still running) is left to finish -- its
         result is cached for later reuse -- but is not applied to the display."""
-        key = (self.orbital, self.resolution, contour_value)
+        key = (self.orbital, self.grid_points, contour_value)
         self._pending_cube_key = key
         if key in self.cubes:
             self._apply_cube(key)
             return
         self.right_panel.set_status('Computing orbital …')
-        worker = _CubeWorker(self.orbital, self.resolution, contour_value, key)
+        worker = _CubeWorker(self.orbital, self.grid_points, contour_value, key)
         worker.signals.finished.connect(self._on_cube_ready)
         worker.signals.failed.connect(self._on_cube_failed)
         self._cube_workers[key] = worker
@@ -405,17 +441,15 @@ class MoleculeDisplay(QWidget):
             self._vibration_clock.start()
             self._vibration_timer.start(self.VIBRATION_FRAME_INTERVAL_MS)
 
-    def set_resolution(self, resolution):
-        shift_factor = 0.8
-        if type(resolution) is int:
-            resolution = resolution / 100.0
-        elif type(resolution) is str and resolution == '+':
-            resolution = self.resolution * shift_factor
-        elif type(resolution) is str and resolution == '-':
-            resolution = self.resolution / shift_factor
+    def set_grid_points(self, grid_points):
+        shift_factor = 1.25
+        if type(grid_points) is str and grid_points == '+':
+            grid_points = round(self.grid_points * shift_factor)
+        elif type(grid_points) is str and grid_points == '-':
+            grid_points = round(self.grid_points / shift_factor)
+        grid_points = max(self.GRID_POINTS_MINIMUM, min(self.GRID_POINTS_MAXIMUM, grid_points))
 
-        # print('set_resolution', resolution)
-        self.resolution = resolution
+        self.grid_points = grid_points
         self.set_orbital(self.orbital.ID)
 
 
@@ -683,24 +717,23 @@ class ControlPanel(QWidget):
 
             if False:
                 resolution_slider = mySlider(self)
-                resolution_slider.valueChanged.connect(self.set_resolution)
+                resolution_slider.valueChanged.connect(self.parent.set_grid_points)
                 resolution_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
-                resolution_slider.setValue(int(self.resolution * 100))
+                resolution_slider.setValue(self.parent.grid_points)
                 resolution_label = FixedLabel('Resolution:')
                 self.control_layout.addWidget(resolution_label, row, 0)
                 self.control_layout.addWidget(resolution_slider, row, 1)
                 row += 1
 
-            resolution_label = FixedLabel('Resolution:')
             resolution_layout = QHBoxLayout()
             # resolution_layout.setContentsMargins(0,0,0,0)
             # resolution_layout.setSpacing(0)
             coarser_button = QPushButton('-')
             resolution_layout.addWidget(coarser_button)
-            coarser_button.clicked.connect(lambda: self.parent.set_resolution('-'))
+            coarser_button.clicked.connect(lambda: self.parent.set_grid_points('-'))
             finer_button = QPushButton('+')
             resolution_layout.addWidget(finer_button)
-            finer_button.clicked.connect(lambda: self.parent.set_resolution('+'))
+            finer_button.clicked.connect(lambda: self.parent.set_grid_points('+'))
             self.control_layout.add('Resolution', resolution_layout)
 
         # self.control_layout.add('',None)
