@@ -203,8 +203,21 @@ class _CubeWorker(QRunnable):
     def run(self):
         try:
             resolution = _grid_resolution(self.orbital, self.grid_points)
-            cube_data = self.orbital.cube_data(resolution=resolution, threshold=self.contour_value * .1,
-                                               border=GRID_BORDER)
+            try:
+                cube_data = self.orbital.cube_data(resolution=resolution, threshold=self.contour_value * .1,
+                                                   border=GRID_BORDER)
+            except RuntimeError:
+                # cube_data()'s adaptive threshold search (pymolpro's
+                # find_bounding_box) seeds itself with a coarse grid over the
+                # atoms+border box and can fail to find any point there for a
+                # compact orbital with a node at/near the seed centre (eg. a p
+                # orbital on a single atom) -- it then only widens the search
+                # radius, which makes a centred node worse, not better, and it
+                # eventually gives up with "No point inside". Fall back to the
+                # fixed atoms+border box with no threshold narrowing: grid_points
+                # already keeps that bounded regardless of molecule size, so
+                # this is always a safe retry.
+                cube_data = self.orbital.cube_data(resolution=resolution, threshold=None, border=GRID_BORDER)
             self.signals.finished.emit(self.key, cube_data)
         except Exception as e:
             self.signals.failed.emit(self.key, str(e))
@@ -784,6 +797,16 @@ class ControlPanel(QWidget):
         # showing/hiding it doesn't shift the rows above it -- see set_status().
         self.status_widget = QLabel('', alignment=Qt.AlignCenter)
         self.status_widget.setStyleSheet('color: orange;')
+        # Long messages (eg. an exception string) must wrap within the panel's
+        # existing width rather than stretch it -- self's size policy is Fixed
+        # horizontally, which locks the panel to sizeHint(), so an unwrapped
+        # long label would otherwise widen the whole window every time it
+        # appeared. Word wrap alone still lets a label's own sizeHint prefer
+        # a wide single-ish line; capping maximumWidth to whatever the rest of
+        # the panel already needs (control_layout's sizeHint, now that every
+        # row has been added) forces it to wrap within that instead.
+        self.status_widget.setWordWrap(True)
+        self.status_widget.setMaximumWidth(max(150, self.control_layout.sizeHint().width()))
         self.status_widget.setVisible(False)
         self.layout.addWidget(self.status_widget)
 
