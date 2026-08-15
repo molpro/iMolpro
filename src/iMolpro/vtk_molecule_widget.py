@@ -1,3 +1,4 @@
+import logging
 import os
 
 import pikepdf
@@ -11,6 +12,8 @@ from .project import Structure
 from .theme import LIGHT_GREY_WINDOW, DARK_GREY_WINDOW, THEMES, theme_manager
 from .settings import settings
 from .utilities import displace_coordinate
+
+logger = logging.getLogger(__name__)
 
 try:
     from PySide6.QtGui import QColor, QPalette
@@ -206,7 +209,7 @@ class _CubeWorker(QRunnable):
             try:
                 cube_data = self.orbital.cube_data(resolution=resolution, threshold=self.contour_value * .1,
                                                    border=GRID_BORDER)
-            except RuntimeError:
+            except RuntimeError as e:
                 # cube_data()'s adaptive threshold search (pymolpro's
                 # find_bounding_box) seeds itself with a coarse grid over the
                 # atoms+border box and can fail to find any point there for a
@@ -217,7 +220,13 @@ class _CubeWorker(QRunnable):
                 # fixed atoms+border box with no threshold narrowing: grid_points
                 # already keeps that bounded regardless of molecule size, so
                 # this is always a safe retry.
+                logger.info('orbital %s: threshold search failed (%s), retrying with threshold=None',
+                           self.orbital.ID, e)
                 cube_data = self.orbital.cube_data(resolution=resolution, threshold=None, border=GRID_BORDER)
+            logger.info(
+                'orbital %s: grid_points=%d contour_value=%s -> resolution=%.4f bohr, dims=%s (%s points)',
+                self.orbital.ID, self.grid_points, self.contour_value, resolution, cube_data.dimensions,
+                f'{np.prod(cube_data.dimensions):,}')
             self.signals.finished.emit(self.key, cube_data)
         except Exception as e:
             self.signals.failed.emit(self.key, str(e))
