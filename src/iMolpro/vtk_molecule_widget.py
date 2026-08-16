@@ -220,10 +220,10 @@ class _CubeWorker(QRunnable):
                 # fixed atoms+border box with no threshold narrowing: grid_points
                 # already keeps that bounded regardless of molecule size, so
                 # this is always a safe retry.
-                logger.info('orbital %s: threshold search failed (%s), retrying with threshold=None',
-                           self.orbital.ID, e)
+                logger.debug('orbital %s: threshold search failed (%s), retrying with threshold=None',
+                            self.orbital.ID, e)
                 cube_data = self.orbital.cube_data(resolution=resolution, threshold=None, border=GRID_BORDER)
-            logger.info(
+            logger.debug(
                 'orbital %s: grid_points=%d contour_value=%s -> resolution=%.4f bohr, dims=%s (%s points)',
                 self.orbital.ID, self.grid_points, self.contour_value, resolution, cube_data.dimensions,
                 f'{np.prod(cube_data.dimensions):,}')
