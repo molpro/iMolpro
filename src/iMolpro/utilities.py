@@ -239,6 +239,12 @@ class QVimPlainTextEdit(QPlainTextEdit):
                 self.enterMode(VimMode.normal)
             return
 
+        if key == Key.Key_Y and shift:
+            # Y is a standalone command (yank current line, like yy) - not the y-operator
+            self._applyLinewiseOperator('y', repeat)
+            self.pendingOperator = None
+            return
+
         if key in (Key.Key_D, Key.Key_C, Key.Key_Y):
             op = {Key.Key_D: 'd', Key.Key_C: 'c', Key.Key_Y: 'y'}[key]
             if self.pendingOperator == op:
