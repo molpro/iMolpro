@@ -11,17 +11,17 @@ import numpy
 from .cube_data import CubeData
 
 try:
-    from PySide6.QtCore import QTimer, QPoint, QCoreApplication, Qt
-    from PySide6.QtGui import QFont, QFontDatabase, QTextCursor, QCursor
+    from PySide6.QtCore import QTimer, QPoint, QCoreApplication, Qt, QEvent
+    from PySide6.QtGui import QFont, QFontDatabase, QTextCursor, QCursor, QKeyEvent
     from PySide6.QtWidgets import QPlainTextEdit, QMessageBox, QLabel, QMainWindow
 except ImportError:
     try:
-        from PyQt6.QtCore import QTimer, QPoint, QCoreApplication, Qt
-        from PyQt6.QtGui import QFont, QFontDatabase, QTextCursor, QCursor
+        from PyQt6.QtCore import QTimer, QPoint, QCoreApplication, Qt, QEvent
+        from PyQt6.QtGui import QFont, QFontDatabase, QTextCursor, QCursor, QKeyEvent
         from PyQt6.QtWidgets import QPlainTextEdit, QMessageBox, QLabel, QMainWindow
     except ImportError:
-        from PyQt5.QtCore import QTimer, QPoint, QCoreApplication, Qt
-        from PyQt5.QtGui import QFont, QFontDatabase, QTextCursor, QCursor
+        from PyQt5.QtCore import QTimer, QPoint, QCoreApplication, Qt, QEvent
+        from PyQt5.QtGui import QFont, QFontDatabase, QTextCursor, QCursor, QKeyEvent
         from PyQt5.QtWidgets import QPlainTextEdit, QMessageBox, QLabel, QMainWindow
 
 try:
@@ -38,6 +38,11 @@ try:
     KeyboardModifier = Qt.KeyboardModifier
 except:
     KeyboardModifier = Qt
+
+try:
+    KeyPressEventType = QEvent.Type.KeyPress
+except:
+    KeyPressEventType = QEvent.KeyPress
 
 from enum import Enum
 
@@ -68,7 +73,6 @@ class QVimPlainTextEdit(QPlainTextEdit):
 
     def __init__(self, initial_mode=VimMode.normal):
         super().__init__()
-        self.lastKey = None
         self.searching = False
         self.searchReverse = False
         self.lastSearch = ''
@@ -78,12 +82,21 @@ class QVimPlainTextEdit(QPlainTextEdit):
         self.pendingReplace = False
         self.pendingCharMotion = None
         self.charMotionTotal = 1
+        self.register = ''
+        self.registerLinewise = False
+        self.lastChange = []
+        self.replaying = False
+        self._dotRecording = False
+        self._dotBuffer = []
+        self._dotStartRevision = 0
 
         self.statusLine = QLabel(self)
         self.enterMode(initial_mode)
 
     def keyPressEvent(self, e):
         # print('key', e.key(), self.vimMode, Key.Key_Enter, Key.Key_Return)
+        if not self.replaying:
+            self._dotRecordBefore(e)
         if self.searching:
             if e.key() == Key.Key_Enter or e.key() == Key.Key_Return:
                 self.search_and_move(self.statusLine.text()[1:], self.searchReverse)
@@ -100,7 +113,47 @@ class QVimPlainTextEdit(QPlainTextEdit):
         elif self.vimMode == VimMode.normal:
             shift = bool(e.modifiers() & KeyboardModifier.ShiftModifier)
             self.handleNormalKey(e, shift)
-        self.lastKey = e.key()
+        if not self.replaying:
+            self._dotRecordAfter()
+
+    def _isNeutral(self):
+        """True between commands: normal mode, nothing pending, nothing being typed into."""
+        return (self.vimMode == VimMode.normal and self.pendingOperator is None
+                and not self.pendingCharMotion and not self.pendingReplace
+                and not self.countBuffer and not self.searching)
+
+    def _dotRecordBefore(self, e):
+        # '.' (repeat last change) is a meta-command, never itself part of a recorded
+        # change - unless it's literally raw input being typed into r/f/t/search
+        raw_input_pending = self.pendingReplace or self.pendingCharMotion or self.searching
+        if e.key() == Key.Key_Period and not raw_input_pending:
+            if self._isNeutral():
+                self._dotRecording = False
+            return
+        if self._isNeutral():
+            self._dotBuffer = [(e.key(), e.text(), e.modifiers())]
+            self._dotStartRevision = self.document().revision()
+            self._dotRecording = True
+        elif self._dotRecording:
+            self._dotBuffer.append((e.key(), e.text(), e.modifiers()))
+
+    def _dotRecordAfter(self):
+        if self._dotRecording and self._isNeutral():
+            self._dotRecording = False
+            if self.document().revision() != self._dotStartRevision:
+                self.lastChange = list(self._dotBuffer)
+
+    def repeatLastChange(self):
+        self._dotRecording = False  # discard any stale in-progress capture this replay might disturb
+        if not self.lastChange:
+            return
+        events = list(self.lastChange)
+        self.replaying = True
+        try:
+            for key, text, modifiers in events:
+                self.keyPressEvent(QKeyEvent(KeyPressEventType, key, modifiers, text))
+        finally:
+            self.replaying = False
 
     def handleNormalKey(self, e, shift):
         key = e.key()
@@ -143,9 +196,10 @@ class QVimPlainTextEdit(QPlainTextEdit):
                 self.moveCursor(QTextCursor.StartOfLine)
             else:
                 self.countBuffer += e.text()
-                self.establishStatus(('d' if self.pendingOperator else '') + self.countBuffer)
+                self.establishStatus((self.pendingOperator or '') + self.countBuffer)
             return
 
+        hadCount = bool(self.countBuffer)
         repeat = int(self.countBuffer) if self.countBuffer else 1
         self.countBuffer = ''
 
@@ -156,44 +210,53 @@ class QVimPlainTextEdit(QPlainTextEdit):
 
         motion = self._motions.get(key)
         if motion is not None:
-            cursor = self.textCursor()
-            if self.pendingOperator == 'd':
-                self._moveByRepeated(cursor, motion, QTextCursor.KeepAnchor, self.operatorCount * repeat)
-                cursor.removeSelectedText()
-                self.pendingOperator = None
+            if self.pendingOperator in ('d', 'c', 'y'):
+                origin = self.textCursor().position()
+                cursor = self.textCursor()
+                if self.pendingOperator == 'c' and key == Key.Key_W and self._onNonBlank(cursor):
+                    # vim special case: cw (unlike dw) acts like ce when starting on a
+                    # non-blank character - it shouldn't eat the trailing whitespace too
+                    motion = QTextCursor.EndOfWord
+                self._moveByRepeated(cursor, motion, QTextCursor.MoveAnchor, self.operatorCount * repeat)
+                self._finishCharwiseOperator(origin, cursor.position())
             else:
+                cursor = self.textCursor()
                 self._moveByRepeated(cursor, motion, QTextCursor.MoveAnchor, repeat)
-            self.setTextCursor(cursor)
-            self.enterMode(VimMode.normal)
+                self.setTextCursor(cursor)
+                self.enterMode(VimMode.normal)
             return
 
         if key == Key.Key_Dollar:
-            cursor = self.textCursor()
-            if self.pendingOperator == 'd':
-                cursor.movePosition(QTextCursor.EndOfLine, QTextCursor.KeepAnchor)
-                cursor.removeSelectedText()
-                self.pendingOperator = None
-            else:
+            if self.pendingOperator in ('d', 'c', 'y'):
+                origin = self.textCursor().position()
+                cursor = self.textCursor()
                 cursor.movePosition(QTextCursor.EndOfLine)
-            self.setTextCursor(cursor)
-            self.enterMode(VimMode.normal)
+                self._finishCharwiseOperator(origin, cursor.position())
+            else:
+                cursor = self.textCursor()
+                cursor.movePosition(QTextCursor.EndOfLine)
+                self.setTextCursor(cursor)
+                self.enterMode(VimMode.normal)
             return
 
-        if key == Key.Key_D:
-            if self.pendingOperator == 'd':
-                self.deleteLines(self.operatorCount * repeat)
+        if key in (Key.Key_D, Key.Key_C, Key.Key_Y):
+            op = {Key.Key_D: 'd', Key.Key_C: 'c', Key.Key_Y: 'y'}[key]
+            if self.pendingOperator == op:
+                self._applyLinewiseOperator(op, self.operatorCount * repeat)
                 self.pendingOperator = None
-                self.enterMode(VimMode.normal)
-            else:
-                self.pendingOperator = 'd'
+                return
+            if self.pendingOperator is None:
+                self.pendingOperator = op
                 self.operatorCount = repeat
-                self.establishStatus((str(repeat) if repeat != 1 else '') + 'd')
-            return
+                self.establishStatus((str(repeat) if repeat != 1 else '') + op)
+                return
+            # a different operator was already pending (e.g. "dc"): falls through to the
+            # generic "any other key aborts" handling below, same as real vim's beep-and-give-up
 
         if key == Key.Key_F or key == Key.Key_T:
             self.pendingCharMotion = ('F' if shift else 'f') if key == Key.Key_F else ('T' if shift else 't')
             self.charMotionTotal = (self.operatorCount if self.pendingOperator else 1) * repeat
-            prefix = 'd' if self.pendingOperator else ''
+            prefix = self.pendingOperator or ''
             count = str(repeat) if repeat != 1 else ''
             self.establishStatus(prefix + count + self.pendingCharMotion)
             return
@@ -222,6 +285,35 @@ class QVimPlainTextEdit(QPlainTextEdit):
                 cursor.insertBlock()
             self.setTextCursor(cursor)
             self.enterMode(VimMode.insert)
+        elif key == Key.Key_G:
+            # a trailing newline gives Qt one more block than vim counts as a line - a
+            # doc-final empty block is that artifact, not a real last line, so exclude it
+            last_block = self.document().blockCount() - 1
+            if last_block > 0 and self.document().findBlockByNumber(last_block).text() == '':
+                last_block -= 1
+            target_block = min(repeat - 1, last_block) if hadCount else last_block
+            cursor = self.textCursor()
+            cursor.movePosition(QTextCursor.Start)
+            cursor.movePosition(QTextCursor.NextBlock, QTextCursor.MoveAnchor, target_block)
+            self.setTextCursor(cursor)
+        elif key == Key.Key_AsciiTilde:
+            cursor = self.textCursor()
+            for _ in range(repeat):
+                pos = cursor.position()
+                ch = str(self.document().characterAt(pos))
+                if ch in (' ', '\x00'):
+                    break
+                cursor.setPosition(pos)
+                cursor.setPosition(pos + 1, QTextCursor.KeepAnchor)
+                cursor.insertText(ch.swapcase())
+            self.setTextCursor(cursor)
+        elif key == Key.Key_P:
+            if self.registerLinewise:
+                self._pasteLinewise(before=shift, count=repeat)
+            else:
+                self._pasteCharwise(before=shift, count=repeat)
+        elif key == Key.Key_Period:
+            self.repeatLastChange()
         elif key == Key.Key_R:
             self.pendingReplace = True
             self.establishStatus('r')
@@ -232,8 +324,11 @@ class QVimPlainTextEdit(QPlainTextEdit):
             print('visual mode not implemented')
         elif key == Key.Key_X:
             cursor = self.textCursor()
-            for _ in range(repeat):
-                cursor.deleteChar()
+            cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, repeat)
+            if cursor.hasSelection():
+                self.register = cursor.selectedText().replace(' ', '\n')
+                self.registerLinewise = False
+                cursor.removeSelectedText()
             self.setTextCursor(cursor)
         elif key == Key.Key_Colon:
             print('command-line mode not implemented')
@@ -242,7 +337,28 @@ class QVimPlainTextEdit(QPlainTextEdit):
             self.searching = True
             self.establishStatus(e.text())
 
-    def deleteLines(self, count):
+    def _finishCharwiseOperator(self, origin, target):
+        """origin/target delimit a charwise range for the pending d/c/y operator (either order).
+        y never moves the cursor; d/c leave it at the range's start; c continues into insert mode."""
+        operator = self.pendingOperator
+        self.pendingOperator = None
+        cursor = self.textCursor()
+        cursor.setPosition(min(origin, target))
+        cursor.setPosition(max(origin, target), QTextCursor.KeepAnchor)
+        self.register = cursor.selectedText().replace(' ', '\n')
+        self.registerLinewise = False
+        if operator == 'y':
+            cursor.clearSelection()
+            cursor.setPosition(origin)
+            self.setTextCursor(cursor)
+            self.enterMode(VimMode.normal)
+        else:
+            cursor.removeSelectedText()
+            self.setTextCursor(cursor)
+            self.enterMode(VimMode.insert if operator == 'c' else VimMode.normal)
+
+    def _applyLinewiseOperator(self, op, count):
+        """dd/cc/yy (and their counted forms): op applied to `count` whole lines from the cursor."""
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.StartOfBlock)
         start = cursor.position()
@@ -254,8 +370,63 @@ class QVimPlainTextEdit(QPlainTextEdit):
         end = cursor.position()
         cursor.setPosition(start)
         cursor.setPosition(end, QTextCursor.KeepAnchor)
+        self.register = cursor.selectedText().replace(' ', '\n')
+        self.registerLinewise = True
+        if op == 'y':
+            cursor.clearSelection()
+            cursor.setPosition(start)
+            self.setTextCursor(cursor)
+            self.enterMode(VimMode.normal)
+            return
+        if op == 'c':
+            # clear the affected lines' text (and any separators between them) but leave the
+            # separator *after* the range untouched, so exactly one blank line remains in
+            # place - this also leaves a document-final blank block undisturbed, rather than
+            # inserting a second one next to it
+            cursor.setPosition(start)
+            cursor.movePosition(QTextCursor.NextBlock, QTextCursor.KeepAnchor, count - 1)
+            cursor.movePosition(QTextCursor.EndOfBlock, QTextCursor.KeepAnchor)
+            cursor.removeSelectedText()
+            self.setTextCursor(cursor)
+            self.enterMode(VimMode.insert)
+            return
         cursor.removeSelectedText()
         self.setTextCursor(cursor)
+        self.enterMode(VimMode.normal)
+
+    def _pasteCharwise(self, before, count):
+        if not self.register:
+            return
+        text = self.register * count
+        cursor = self.textCursor()
+        pos = cursor.position()
+        if not before and cursor.positionInBlock() < len(cursor.block().text()):
+            pos += 1  # p: paste after the character under the cursor, unless the line is empty
+        cursor.setPosition(pos)
+        cursor.insertText(text)
+        cursor.setPosition(pos + len(text) - 1)
+        self.setTextCursor(cursor)
+
+    def _pasteLinewise(self, before, count):
+        if not self.register:
+            return
+        text = self.register * count
+        cursor = self.textCursor()
+        if before:
+            cursor.movePosition(QTextCursor.StartOfBlock)
+            insert_pos = cursor.position()
+            cursor.insertText(text)
+            cursor.setPosition(insert_pos)
+        else:
+            cursor.movePosition(QTextCursor.EndOfBlock)
+            insert_pos = cursor.position()
+            cursor.insertText('\n' + text.rstrip('\n'))
+            cursor.setPosition(insert_pos + 1)
+        self.setTextCursor(cursor)
+
+    def _onNonBlank(self, cursor):
+        ch = str(self.document().characterAt(cursor.position()))
+        return bool(ch) and ch != '\x00' and not ch.isspace()
 
     def _moveByRepeated(self, cursor, motion, mode, count):
         """cursor.movePosition(motion, mode, count) is unreliable for EndOfWord: Qt treats a
@@ -276,6 +447,10 @@ class QVimPlainTextEdit(QPlainTextEdit):
         the only separator, unlike w/b/e which also break on punctuation."""
         text = self.toPlainText()
         pos = self.textCursor().position()
+        # vim special case: cW (unlike dW) acts like cE when starting on a non-blank -
+        # it shouldn't eat the trailing whitespace too
+        if self.pendingOperator == 'c' and key == Key.Key_W and self._onNonBlank(self.textCursor()):
+            key = Key.Key_E
         for _ in range(count):
             if key == Key.Key_W:
                 pos = self._nextWORDStart(text, pos)
@@ -283,17 +458,14 @@ class QVimPlainTextEdit(QPlainTextEdit):
                 pos = self._prevWORDStart(text, pos)
             else:  # Key_E
                 pos = self._endOfWORDPos(text, pos)
-        cursor = self.textCursor()
-        if self.pendingOperator == 'd':
-            origin = cursor.position()
-            cursor.setPosition(min(origin, pos))
-            cursor.setPosition(max(origin, pos), QTextCursor.KeepAnchor)
-            cursor.removeSelectedText()
-            self.pendingOperator = None
+        if self.pendingOperator in ('d', 'c', 'y'):
+            origin = self.textCursor().position()
+            self._finishCharwiseOperator(origin, pos)
         else:
+            cursor = self.textCursor()
             cursor.setPosition(pos)
-        self.setTextCursor(cursor)
-        self.enterMode(VimMode.normal)
+            self.setTextCursor(cursor)
+            self.enterMode(VimMode.normal)
 
     @staticmethod
     def _nextWORDStart(text, pos):
@@ -351,14 +523,11 @@ class QVimPlainTextEdit(QPlainTextEdit):
         # f/t are inclusive-forward, F/T inclusive-backward: the boundary always includes
         # whichever character the motion landed the cursor on
         boundary = target + 1 if forward else target
-        if self.pendingOperator == 'd':
-            origin = cursor.position()
-            cursor.setPosition(min(origin, boundary))
-            cursor.setPosition(max(origin, boundary), QTextCursor.KeepAnchor)
-            cursor.removeSelectedText()
+        if self.pendingOperator in ('d', 'c', 'y'):
+            self._finishCharwiseOperator(cursor.position(), boundary)
         else:
             cursor.setPosition(target)
-        self.setTextCursor(cursor)
+            self.setTextCursor(cursor)
 
     def establishStatus(self, message=''):
         self.statusLine.setFixedWidth(self.width())
