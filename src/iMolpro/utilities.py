@@ -77,6 +77,8 @@ class QVimPlainTextEdit(QPlainTextEdit):
         self.pendingOperator = None
         self.operatorCount = 1
         self.pendingReplace = False
+        self.pendingCharMotion = None
+        self.charMotionTotal = 1
 
         self.statusLine = QLabel(self)
 
@@ -119,6 +121,16 @@ class QVimPlainTextEdit(QPlainTextEdit):
                 self.setTextCursor(cursor)
             return
 
+        if self.pendingCharMotion:
+            motion_type = self.pendingCharMotion
+            total = self.charMotionTotal
+            self.pendingCharMotion = None
+            self.statusLine.hide()
+            if e.text():
+                self.applyCharMotion(motion_type, e.text(), total)
+            self.pendingOperator = None
+            return
+
         if key == Key.Key_Escape:
             self.countBuffer = ''
             self.pendingOperator = None
@@ -141,12 +153,12 @@ class QVimPlainTextEdit(QPlainTextEdit):
         if motion is not None:
             cursor = self.textCursor()
             if self.pendingOperator == 'd':
-                cursor.movePosition(motion, QTextCursor.KeepAnchor, self.operatorCount * repeat)
+                self._moveByRepeated(cursor, motion, QTextCursor.KeepAnchor, self.operatorCount * repeat)
                 cursor.removeSelectedText()
                 self.pendingOperator = None
                 self.statusLine.hide()
             else:
-                cursor.movePosition(motion, QTextCursor.MoveAnchor, repeat)
+                self._moveByRepeated(cursor, motion, QTextCursor.MoveAnchor, repeat)
             self.setTextCursor(cursor)
             return
 
@@ -171,6 +183,14 @@ class QVimPlainTextEdit(QPlainTextEdit):
                 self.pendingOperator = 'd'
                 self.operatorCount = repeat
                 self.establishStatus((str(repeat) if repeat != 1 else '') + 'd')
+            return
+
+        if key == Key.Key_F or key == Key.Key_T:
+            self.pendingCharMotion = ('F' if shift else 'f') if key == Key.Key_F else ('T' if shift else 't')
+            self.charMotionTotal = (self.operatorCount if self.pendingOperator else 1) * repeat
+            prefix = 'd' if self.pendingOperator else ''
+            count = str(repeat) if repeat != 1 else ''
+            self.establishStatus(prefix + count + self.pendingCharMotion)
             return
 
         # any other key aborts a pending operator, same as real vim
@@ -230,6 +250,50 @@ class QVimPlainTextEdit(QPlainTextEdit):
         cursor.setPosition(start)
         cursor.setPosition(end, QTextCursor.KeepAnchor)
         cursor.removeSelectedText()
+        self.setTextCursor(cursor)
+
+    def _moveByRepeated(self, cursor, motion, mode, count):
+        """cursor.movePosition(motion, mode, count) is unreliable for EndOfWord: Qt treats a
+        cursor already sitting at a word's end as a no-op rather than advancing to the next
+        word's end, so repeating it n times can get stuck instead of covering n words."""
+        if motion != QTextCursor.EndOfWord:
+            cursor.movePosition(motion, mode, count)
+            return
+        for _ in range(count):
+            before = cursor.position()
+            cursor.movePosition(QTextCursor.EndOfWord, mode)
+            if cursor.position() == before:
+                cursor.movePosition(QTextCursor.NextWord, mode)
+                cursor.movePosition(QTextCursor.EndOfWord, mode)
+
+    def applyCharMotion(self, motion_type, char, total):
+        """f/t search forward, F/T search backward, on the current line only (as in vim).
+        t/T land one character short of the match, on the near side of it."""
+        cursor = self.textCursor()
+        text = cursor.block().text()
+        forward = motion_type in ('f', 't')
+        idx = cursor.positionInBlock()
+        for _ in range(total):
+            idx = text.find(char, idx + 1) if forward else text.rfind(char, 0, idx)
+            if idx == -1:
+                return  # not found: motion (and any pending operator) does nothing, as in vim
+        block_pos = cursor.block().position()
+        if motion_type in ('f', 'F'):
+            target = block_pos + idx
+        elif motion_type == 't':
+            target = block_pos + idx - 1
+        else:  # 'T'
+            target = block_pos + idx + 1
+        # f/t are inclusive-forward, F/T inclusive-backward: the boundary always includes
+        # whichever character the motion landed the cursor on
+        boundary = target + 1 if forward else target
+        if self.pendingOperator == 'd':
+            origin = cursor.position()
+            cursor.setPosition(min(origin, boundary))
+            cursor.setPosition(max(origin, boundary), QTextCursor.KeepAnchor)
+            cursor.removeSelectedText()
+        else:
+            cursor.setPosition(target)
         self.setTextCursor(cursor)
 
     def establishStatus(self, message=''):
