@@ -68,7 +68,6 @@ class QVimPlainTextEdit(QPlainTextEdit):
 
     def __init__(self, initial_mode=VimMode.normal):
         super().__init__()
-        self.vimMode = initial_mode
         self.lastKey = None
         self.searching = False
         self.searchReverse = False
@@ -81,6 +80,7 @@ class QVimPlainTextEdit(QPlainTextEdit):
         self.charMotionTotal = 1
 
         self.statusLine = QLabel(self)
+        self.enterMode(initial_mode)
 
     def keyPressEvent(self, e):
         # print('key', e.key(), self.vimMode, Key.Key_Enter, Key.Key_Return)
@@ -88,7 +88,7 @@ class QVimPlainTextEdit(QPlainTextEdit):
             if e.key() == Key.Key_Enter or e.key() == Key.Key_Return:
                 self.search_and_move(self.statusLine.text()[1:], self.searchReverse)
                 self.searching = False
-                self.statusLine.hide()
+                self.enterMode(VimMode.normal)
             else:
                 self.statusLine.setText(self.statusLine.text() + e.text())
                 self.statusLine.show()
@@ -112,7 +112,7 @@ class QVimPlainTextEdit(QPlainTextEdit):
 
         if self.pendingReplace:
             self.pendingReplace = False
-            self.statusLine.hide()
+            self.enterMode(VimMode.normal)
             if e.text():
                 cursor = self.textCursor()
                 cursor.deleteChar()
@@ -125,7 +125,7 @@ class QVimPlainTextEdit(QPlainTextEdit):
             motion_type = self.pendingCharMotion
             total = self.charMotionTotal
             self.pendingCharMotion = None
-            self.statusLine.hide()
+            self.enterMode(VimMode.normal)
             if e.text():
                 self.applyCharMotion(motion_type, e.text(), total)
             self.pendingOperator = None
@@ -134,7 +134,7 @@ class QVimPlainTextEdit(QPlainTextEdit):
         if key == Key.Key_Escape:
             self.countBuffer = ''
             self.pendingOperator = None
-            self.statusLine.hide()
+            self.enterMode(VimMode.normal)
             return
 
         # counts: leading digits accumulate; a bare '0' (no count yet) is the "start of line" motion
@@ -161,7 +161,7 @@ class QVimPlainTextEdit(QPlainTextEdit):
                 self._moveByRepeated(cursor, motion, QTextCursor.KeepAnchor, self.operatorCount * repeat)
                 cursor.removeSelectedText()
                 self.pendingOperator = None
-                self.statusLine.hide()
+                self.enterMode(VimMode.normal)
             else:
                 self._moveByRepeated(cursor, motion, QTextCursor.MoveAnchor, repeat)
             self.setTextCursor(cursor)
@@ -173,7 +173,7 @@ class QVimPlainTextEdit(QPlainTextEdit):
                 cursor.movePosition(QTextCursor.EndOfLine, QTextCursor.KeepAnchor)
                 cursor.removeSelectedText()
                 self.pendingOperator = None
-                self.statusLine.hide()
+                self.enterMode(VimMode.normal)
             else:
                 cursor.movePosition(QTextCursor.EndOfLine)
             self.setTextCursor(cursor)
@@ -183,7 +183,7 @@ class QVimPlainTextEdit(QPlainTextEdit):
             if self.pendingOperator == 'd':
                 self.deleteLines(self.operatorCount * repeat)
                 self.pendingOperator = None
-                self.statusLine.hide()
+                self.enterMode(VimMode.normal)
             else:
                 self.pendingOperator = 'd'
                 self.operatorCount = repeat
@@ -200,7 +200,7 @@ class QVimPlainTextEdit(QPlainTextEdit):
 
         # any other key aborts a pending operator, same as real vim
         self.pendingOperator = None
-        self.statusLine.hide()
+        self.enterMode(VimMode.normal)
 
         if key == Key.Key_A:
             self.moveCursor(QTextCursor.EndOfLine if shift else QTextCursor.Right)
@@ -290,7 +290,7 @@ class QVimPlainTextEdit(QPlainTextEdit):
             cursor.setPosition(max(origin, pos), QTextCursor.KeepAnchor)
             cursor.removeSelectedText()
             self.pendingOperator = None
-            self.statusLine.hide()
+            self.enterMode(VimMode.normal)
         else:
             cursor.setPosition(pos)
         self.setTextCursor(cursor)
@@ -372,8 +372,10 @@ class QVimPlainTextEdit(QPlainTextEdit):
 
     def enterMode(self, mode: VimMode):
         self.vimMode = mode
+        self.setCursorWidth(8 if mode == VimMode.normal else 1)
         if mode == VimMode.insert:
             self.establishStatus('-- INSERT --')
+            self.statusLine.setToolTip('Press ESC to enter vim Normal Mode')
         elif mode == VimMode.replace:
             self.establishStatus('-- REPLACE --')
         elif mode == VimMode.visual:
@@ -381,7 +383,8 @@ class QVimPlainTextEdit(QPlainTextEdit):
         elif mode == VimMode.commandline:
             self.establishStatus(':')
         elif mode == VimMode.normal:
-            self.statusLine.hide()
+            self.establishStatus('-- NORMAL --')
+            self.statusLine.setToolTip('Press i to enter vim Insert Mode')
 
     def search_and_move(self, search_string=None, reverse=False):
         if search_string:
