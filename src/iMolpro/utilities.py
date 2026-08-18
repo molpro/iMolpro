@@ -149,6 +149,11 @@ class QVimPlainTextEdit(QPlainTextEdit):
         repeat = int(self.countBuffer) if self.countBuffer else 1
         self.countBuffer = ''
 
+        if shift and key in (Key.Key_W, Key.Key_B, Key.Key_E):
+            total = (self.operatorCount if self.pendingOperator else 1) * repeat
+            self.applyWORDMotion(key, total)
+            return
+
         motion = self._motions.get(key)
         if motion is not None:
             cursor = self.textCursor()
@@ -265,6 +270,65 @@ class QVimPlainTextEdit(QPlainTextEdit):
             if cursor.position() == before:
                 cursor.movePosition(QTextCursor.NextWord, mode)
                 cursor.movePosition(QTextCursor.EndOfWord, mode)
+
+    def applyWORDMotion(self, key, count):
+        """W/B/E: like w/b/e but a WORD is a maximal run of non-blank characters - blanks are
+        the only separator, unlike w/b/e which also break on punctuation."""
+        text = self.toPlainText()
+        pos = self.textCursor().position()
+        for _ in range(count):
+            if key == Key.Key_W:
+                pos = self._nextWORDStart(text, pos)
+            elif key == Key.Key_B:
+                pos = self._prevWORDStart(text, pos)
+            else:  # Key_E
+                pos = self._endOfWORDPos(text, pos)
+        cursor = self.textCursor()
+        if self.pendingOperator == 'd':
+            origin = cursor.position()
+            cursor.setPosition(min(origin, pos))
+            cursor.setPosition(max(origin, pos), QTextCursor.KeepAnchor)
+            cursor.removeSelectedText()
+            self.pendingOperator = None
+            self.statusLine.hide()
+        else:
+            cursor.setPosition(pos)
+        self.setTextCursor(cursor)
+
+    @staticmethod
+    def _nextWORDStart(text, pos):
+        n = len(text)
+        i = pos
+        while i < n and not text[i].isspace():
+            i += 1
+        while i < n and text[i].isspace():
+            i += 1
+        return i
+
+    @staticmethod
+    def _prevWORDStart(text, pos):
+        i = pos
+        while i > 0 and text[i - 1].isspace():
+            i -= 1
+        while i > 0 and not text[i - 1].isspace():
+            i -= 1
+        return i
+
+    @staticmethod
+    def _endOfWORDPos(text, pos):
+        n = len(text)
+        if n == 0:
+            return 0
+        i = min(pos, n - 1)
+        # already on the last character of a WORD: step past it (and the blanks after it)
+        # before searching, so repeated E always advances instead of getting stuck
+        if not text[i].isspace() and (i + 1 >= n or text[i + 1].isspace()):
+            i += 1
+        while i < n and text[i].isspace():
+            i += 1
+        while i + 1 < n and not text[i + 1].isspace():
+            i += 1
+        return min(i + 1, n)
 
     def applyCharMotion(self, motion_type, char, total):
         """f/t search forward, F/T search backward, on the current line only (as in vim).
