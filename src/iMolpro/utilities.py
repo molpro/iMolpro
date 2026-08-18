@@ -161,10 +161,10 @@ class QVimPlainTextEdit(QPlainTextEdit):
                 self._moveByRepeated(cursor, motion, QTextCursor.KeepAnchor, self.operatorCount * repeat)
                 cursor.removeSelectedText()
                 self.pendingOperator = None
-                self.enterMode(VimMode.normal)
             else:
                 self._moveByRepeated(cursor, motion, QTextCursor.MoveAnchor, repeat)
             self.setTextCursor(cursor)
+            self.enterMode(VimMode.normal)
             return
 
         if key == Key.Key_Dollar:
@@ -173,10 +173,10 @@ class QVimPlainTextEdit(QPlainTextEdit):
                 cursor.movePosition(QTextCursor.EndOfLine, QTextCursor.KeepAnchor)
                 cursor.removeSelectedText()
                 self.pendingOperator = None
-                self.enterMode(VimMode.normal)
             else:
                 cursor.movePosition(QTextCursor.EndOfLine)
             self.setTextCursor(cursor)
+            self.enterMode(VimMode.normal)
             return
 
         if key == Key.Key_D:
@@ -290,10 +290,10 @@ class QVimPlainTextEdit(QPlainTextEdit):
             cursor.setPosition(max(origin, pos), QTextCursor.KeepAnchor)
             cursor.removeSelectedText()
             self.pendingOperator = None
-            self.enterMode(VimMode.normal)
         else:
             cursor.setPosition(pos)
         self.setTextCursor(cursor)
+        self.enterMode(VimMode.normal)
 
     @staticmethod
     def _nextWORDStart(text, pos):
