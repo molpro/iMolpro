@@ -57,6 +57,7 @@ if __name__ == '__main__':
 
 & "$cp\python.exe" -m PyInstaller --noconfirm `
   --name iMolpro `
+  --icon=molpro.ico `
   --paths="$PWD\src" `
   --collect-submodules=iMolpro `
   --add-data=src/iMolpro/data/Molpro_Logo_Molpro_Quantum_Chemistry_Software.png:. `
