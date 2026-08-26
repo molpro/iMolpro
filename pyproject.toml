@@ -11,8 +11,8 @@ requires-python = ">=3.9"
 dynamic = ["version"]
 dependencies = [
     "pyside6<6.10",
-    "pymolpro>=1.21.1",
-    "pysjef>=1.45.24",
+    "pymolpro>=1.21.9",
+    "pysjef>=1.45.29",
     "pubchempy>=1",
     "chemspipy>=2",
     "jsonschema>=4",
