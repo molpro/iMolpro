@@ -117,6 +117,7 @@ It should also register as a client (https://docs.microsoft.com/en-us/windows/wi
 !define ASSOC_PROGID "net.molpro.iMolpro"
 !define ASSOC_VERB "iMolpro"
 !define ASSOC_APPEXE "iMolpro.exe"
+!define REGISTER_DEFAULTPROGRAMS
 Section -ShellAssoc
   # Register file type
   WriteRegStr ShCtx "Software\Classes\${ASSOC_PROGID}\DefaultIcon" "" "$InstDir\${ASSOC_APPEXE},0"
@@ -129,15 +130,15 @@ Section -ShellAssoc
   WriteRegNone ShCtx "Software\Classes\${ASSOC_EXT}\OpenWithList" "${ASSOC_APPEXE}" ; Win2000+ [Optional]
   ;WriteRegNone ShCtx "Software\Classes\${ASSOC_EXT}\OpenWithProgids" "${ASSOC_PROGID}" ; WinXP+ [Optional]
   WriteRegStr ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}\shell\open\command" "" '"$InstDir\${ASSOC_APPEXE}" "%1"'
-  WriteRegStr ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}" "FriendlyAppName" "net.molpro.iMolpro App" ; [Optional]
-  WriteRegStr ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}" "ApplicationCompany" "Nullsoft" ; [Optional]
+  WriteRegStr ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}" "FriendlyAppName" "iMolpro" ; [Optional]
+  WriteRegStr ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}" "ApplicationCompany" "Molpro" ; [Optional]
   WriteRegNone ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}\SupportedTypes" "${ASSOC_EXT}" ; [Optional] Only allow "Open With" with specific extension(s) on WinXP+
 
   # Register "Default Programs" [Optional]
   !ifdef REGISTER_DEFAULTPROGRAMS
-  WriteRegStr ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}\Capabilities" "ApplicationDescription" "Shell association example test application"
+  WriteRegStr ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}\Capabilities" "ApplicationDescription" "GUI for Molpro quantum chemistry projects"
   WriteRegStr ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}\Capabilities\FileAssociations" "${ASSOC_EXT}" "${ASSOC_PROGID}"
-  WriteRegStr ShCtx "Software\RegisteredApplications" "net.molpro.iMolpro App" "Software\Classes\Applications\${ASSOC_APPEXE}\Capabilities"
+  WriteRegStr ShCtx "Software\RegisteredApplications" "iMolpro" "Software\Classes\Applications\${ASSOC_APPEXE}\Capabilities"
   !endif
 
   ${NotifyShell_AssocChanged}
@@ -170,7 +171,7 @@ Section -un.ShellAssoc
 
   # Unregister "Default Programs"
   !ifdef REGISTER_DEFAULTPROGRAMS
-  DeleteRegValue ShCtx "Software\RegisteredApplications" "net.molpro.iMolpro App"
+  DeleteRegValue ShCtx "Software\RegisteredApplications" "iMolpro"
   DeleteRegKey ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}\Capabilities"
   DeleteRegKey /IfEmpty ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}"
   !endif
