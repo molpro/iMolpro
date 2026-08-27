@@ -118,6 +118,25 @@ It should also register as a client (https://docs.microsoft.com/en-us/windows/wi
 !define ASSOC_VERB "iMolpro"
 !define ASSOC_APPEXE "iMolpro.exe"
 !define REGISTER_DEFAULTPROGRAMS
+
+; A .molpro project is a directory, so it can never be double-clicked into
+; iMolpro the way a bundle can on macOS -- Explorer always browses into a
+; folder regardless of any file-type registration. The next best thing is
+; to let iMolpro open the individual files inside an already-open project
+; folder, matching the extensions __main__.py already handles as file-open
+; events on macOS. These are common, widely-owned extensions, so (unlike
+; .molpro above) they are only added to "Open With", never made the default.
+!macro RegisterOpenWith EXT
+  WriteRegNone ShCtx "Software\Classes\${EXT}\OpenWithList" "${ASSOC_APPEXE}"
+  WriteRegNone ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}\SupportedTypes" "${EXT}"
+!macroend
+
+!macro UnregisterOpenWith EXT
+  DeleteRegValue ShCtx "Software\Classes\${EXT}\OpenWithList" "${ASSOC_APPEXE}"
+  DeleteRegKey /IfEmpty ShCtx "Software\Classes\${EXT}\OpenWithList"
+  DeleteRegKey /IfEmpty ShCtx "Software\Classes\${EXT}"
+!macroend
+
 Section -ShellAssoc
   # Register file type
   WriteRegStr ShCtx "Software\Classes\${ASSOC_PROGID}\DefaultIcon" "" "$InstDir\${ASSOC_APPEXE},0"
@@ -133,6 +152,13 @@ Section -ShellAssoc
   WriteRegStr ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}" "FriendlyAppName" "iMolpro" ; [Optional]
   WriteRegStr ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}" "ApplicationCompany" "Molpro" ; [Optional]
   WriteRegNone ShCtx "Software\Classes\Applications\${ASSOC_APPEXE}\SupportedTypes" "${ASSOC_EXT}" ; [Optional] Only allow "Open With" with specific extension(s) on WinXP+
+
+  # Also offer iMolpro as an "Open With" option for the individual files
+  # inside a project (input/output/XML), without touching their existing
+  # default associations.
+  !insertmacro RegisterOpenWith ".xml"
+  !insertmacro RegisterOpenWith ".out"
+  !insertmacro RegisterOpenWith ".inp"
 
   # Register "Default Programs" [Optional]
   !ifdef REGISTER_DEFAULTPROGRAMS
@@ -168,6 +194,10 @@ Section -un.ShellAssoc
   DeleteRegValue ShCtx "Software\Classes\${ASSOC_EXT}\OpenWithProgids" "${ASSOC_PROGID}"
   DeleteRegKey /IfEmpty ShCtx "Software\Classes\${ASSOC_EXT}\OpenWithProgids"
   DeleteRegKey /IfEmpty  ShCtx "Software\Classes\${ASSOC_EXT}"
+
+  !insertmacro UnregisterOpenWith ".xml"
+  !insertmacro UnregisterOpenWith ".out"
+  !insertmacro UnregisterOpenWith ".inp"
 
   # Unregister "Default Programs"
   !ifdef REGISTER_DEFAULTPROGRAMS
