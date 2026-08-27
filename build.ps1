@@ -81,6 +81,7 @@ sed -i -e "s/hiddenimports=\[\]/hiddenimports=['scipy._cyutility', 'scipy.sparse
 $descriptor = ($version, 'Windows', $( uname -m )) -join "."
 echo descriptor $descriptor
 & $cp\NSIS\makensis.exe iMolpro.nsi
+if ($LASTEXITCODE -ne 0) { throw "makensis failed (exit $LASTEXITCODE)" }
 If (Test-Path -path iMolpro-$descriptor.exe)
 {
     rm iMolpro-$descriptor.exe
