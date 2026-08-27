@@ -55,7 +55,6 @@ InstallDirRegKey HKCU "${REGPATH_UNINSTSUBKEY}" "UninstallString"
 !include WinMessages.nsh
 !include StrFunc.nsh
 ${Using:StrFunc} StrStr
-${Using:StrFunc} StrRep
 ${Using:StrFunc} UnStrRep
 
 
