@@ -54,8 +54,8 @@ InstallDirRegKey HKCU "${REGPATH_UNINSTSUBKEY}" "UninstallString"
 !include Integration.nsh
 !include WinMessages.nsh
 !include StrFunc.nsh
-${StrStr}
-${StrRep}
+${Using:StrFunc} StrStr
+${Using:StrFunc} UnStrRep
 
 
 Page Directory
@@ -131,9 +131,9 @@ SectionEnd
 Section -un.RemoveFromPath
   ReadRegStr $0 HKCU "Environment" "Path"
   ${If} $0 != ""
-    ${un.StrRep} $0 "$0" "$InstDir;" ""
-    ${un.StrRep} $0 "$0" ";$InstDir" ""
-    ${un.StrRep} $0 "$0" "$InstDir" ""
+    ${UnStrRep} $0 "$0" "$InstDir;" ""
+    ${UnStrRep} $0 "$0" ";$InstDir" ""
+    ${UnStrRep} $0 "$0" "$InstDir" ""
     WriteRegExpandStr HKCU "Environment" "Path" "$0"
     SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
   ${EndIf}
