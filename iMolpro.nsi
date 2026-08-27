@@ -52,6 +52,10 @@ InstallDirRegKey HKCU "${REGPATH_UNINSTSUBKEY}" "UninstallString"
 !include LogicLib.nsh
 !include WinCore.nsh
 !include Integration.nsh
+!include WinMessages.nsh
+!include StrFunc.nsh
+${StrStr}
+${StrRep}
 
 
 Page Directory
@@ -100,6 +104,39 @@ SectionEnd
 
 Section "Start Menu shortcut"
   CreateShortcut /NoWorkingDir "$SMPrograms\${NAME}.lnk" "$InstDir\iMolpro.exe"
+SectionEnd
+
+; Put iMolpro on PATH so it can be launched from the command line, for
+; parity with macOS ("Install command line tool...", see cli_install.py)
+; and Linux (already on PATH via pip/deb/rpm packaging). Unlike the macOS
+; wrapper, this needs no special-case launch logic: Windows already starts
+; a fresh iMolpro process on every launch (Start Menu, file association),
+; so there is no existing single-instance behaviour to preserve here --
+; a plain PATH entry pointing at iMolpro.exe is a complete equivalent.
+; This only takes effect in shells opened after the (un)install; already-open
+; ones won't see the change, same as for any other PATH-modifying installer.
+Section -AddToPath
+  ReadRegStr $0 HKCU "Environment" "Path"
+  ${StrStr} $1 "$0;" "$InstDir;"
+  ${If} $1 == ""
+    ${If} $0 == ""
+      WriteRegExpandStr HKCU "Environment" "Path" "$InstDir"
+    ${Else}
+      WriteRegExpandStr HKCU "Environment" "Path" "$0;$InstDir"
+    ${EndIf}
+    SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
+  ${EndIf}
+SectionEnd
+
+Section -un.RemoveFromPath
+  ReadRegStr $0 HKCU "Environment" "Path"
+  ${If} $0 != ""
+    ${StrRep} $0 "$0" "$InstDir;" ""
+    ${StrRep} $0 "$0" ";$InstDir" ""
+    ${StrRep} $0 "$0" "$InstDir" ""
+    WriteRegExpandStr HKCU "Environment" "Path" "$0"
+    SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
+  ${EndIf}
 SectionEnd
 
 /*
