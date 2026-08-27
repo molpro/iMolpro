@@ -81,8 +81,10 @@ class ProjectWindow(QMainWindow):
     run_finished_signal = pyqtSignal(object, name='runFinishedSignal')
     # Emitted from the background thread that parses the input pane text (see
     # input_text_changed_consequence()); Qt marshals this onto the GUI thread the same way as
-    # run_finished_signal above, since applying the result touches Qt widgets.
-    input_parsed_signal = pyqtSignal(bool, object, name='inputParsedSignal')
+    # run_finished_signal above, since applying the result touches Qt widgets. The third
+    # argument is the generation stamp used to discard stale/superseded results -- see
+    # input_text_changed_consequence().
+    input_parsed_signal = pyqtSignal(bool, object, int, name='inputParsedSignal')
     null_prompt = '- Select -'
     all_qualities = 'All Qualities'
     basis_qualities = [all_qualities, 'SZ', 'DZ', 'TZ', 'QZ', '5Z', '6Z']
@@ -122,6 +124,12 @@ class ProjectWindow(QMainWindow):
                 height = min(height, available.height())
             self.resize(width, height)
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+        # Not reset here deliberately: move_to() reuses __init__ to reinitialize this same live
+        # object, and leaving this counter running across that call is what lets
+        # _apply_parsed_input() recognize and drop a result from a background job that was
+        # still in flight from before the move. See input_text_changed_consequence().
+        if not hasattr(self, '_input_parse_generation'):
+            self._input_parse_generation = 0
         self.initialised_from_input = False
         self._initial_xyz_lock = threading.Lock()
         # Held for the duration of a background job submission (see run()), so StatusBar's
@@ -224,7 +232,13 @@ class ProjectWindow(QMainWindow):
         self.guided_pane = GuidedPane(self)
         self.input_tabs.addTab(self.guided_pane, 'guided')
         self.input_tabs.setTabVisible(self.input_tabs.indexOf(self.guided_pane), False)
-        self.input_text_changed_consequence(0)
+        # Synchronous, not input_text_changed_consequence(): this is the one-off initial
+        # determination (done once per window, not on every keystroke), so there's no GUI-
+        # thread-responsiveness reason to defer it to the background thread pool -- and doing it
+        # synchronously means the guided/freehand tab visibility is correct before the window is
+        # ever shown, instead of flashing to the wrong state until the async round-trip lands.
+        guided, input_specification = self._parse_input_text(self.input_pane.toPlainText())
+        self._apply_parsed_input(guided, input_specification, self._input_parse_generation)
 
         top_layout = QHBoxLayout()
         splitter = QSplitter(Orientation.Horizontal)
@@ -390,14 +404,24 @@ class ProjectWindow(QMainWindow):
         # the GUI responsive while typing, with the result marshalled back via
         # input_parsed_signal since applying it touches Qt widgets (may only be done from the
         # GUI thread; see the analogous comment on run_finished_signal / run()).
+        # self._input_parse_generation is bumped on every call and stamped onto the submitted
+        # job; _apply_parsed_input() drops any result whose stamp doesn't match the *current*
+        # value, so a slower-finishing job for older text can never overwrite a faster one for
+        # newer text (the thread pool has multiple workers, so completion order isn't guaranteed
+        # to match submission order), and a stale job from before a move_to()-triggered
+        # re-__init__ (which doesn't reset this counter -- see move_to()) can never apply its
+        # result to the reinitialized window either.
         input_text = self.input_pane.toPlainText()
-        self.thread_executor.submit(self._parse_input_text_async, input_text)
+        self._input_parse_generation += 1
+        self.thread_executor.submit(self._parse_input_text_async, input_text, self._input_parse_generation)
 
-    def _parse_input_text_async(self, input_text):
+    def _parse_input_text_async(self, input_text, generation):
         guided, input_specification = self._parse_input_text(input_text)
-        self.input_parsed_signal.emit(guided, input_specification)
+        self.input_parsed_signal.emit(guided, input_specification, generation)
 
-    def _apply_parsed_input(self, guided, input_specification):
+    def _apply_parsed_input(self, guided, input_specification, generation):
+        if generation != self._input_parse_generation:
+            return
         if guided:
             self.input_specification = input_specification
         self.input_tabs.setTabVisible(self.input_tabs.indexOf(self.guided_pane), guided)
@@ -918,20 +942,40 @@ class ProjectWindow(QMainWindow):
                                                          'Molpro project (*.molpro)', )
         if file_name:
             self.project.move(file_name)
-            self.close()
-            # close() has now unregistered self from window_manager (via close_signal). __init__
-            # unconditionally reconnects run_finished_signal/input_parsed_signal, and
-            # window_manager.register() below reconnects close_signal/new_signal/chooser_signal
-            # -- disconnect all of them first so re-running this on the same live object doesn't
-            # leave duplicate connections (each of which would otherwise fire its slot twice).
-            self.run_finished_signal.disconnect()
-            self.input_parsed_signal.disconnect()
-            self.close_signal.disconnect()
-            self.new_signal.disconnect()
-            self.chooser_signal.disconnect()
-            self.__init__(file_name, self.window_manager, self.latency)
-            # Re-register, since close() above removed self from window_manager's bookkeeping.
-            self.window_manager.register(self)
+            # Discard any input-text parse still in flight from before the move: it can't be
+            # cancelled once running, but shutting the executor down (a) stops it being confused
+            # with future submissions and (b) means a fresh one is used after __init__ below,
+            # rather than leaking this one's worker threads on every "Move to...". Whatever
+            # in-flight job is still running when this returns is rendered harmless by
+            # _apply_parsed_input()'s generation-stamp check (see input_text_changed_consequence).
+            self.thread_executor.shutdown(wait=False, cancel_futures=True)
+            # Suppress WindowManager's empty/full-window UI actions (eg showing/hiding the
+            # Chooser) for the moment between close() unregistering self below and register()
+            # re-adding it further down, so moving the only open window doesn't flash the
+            # Chooser on screen in between.
+            saved_empty_action = self.window_manager.emptyAction
+            saved_full_action = self.window_manager.fullAction
+            self.window_manager.emptyAction = None
+            self.window_manager.fullAction = None
+            try:
+                self.close()
+                # close() has now unregistered self from window_manager (via close_signal).
+                # __init__ unconditionally reconnects run_finished_signal/input_parsed_signal,
+                # and window_manager.register() below reconnects
+                # close_signal/new_signal/chooser_signal -- disconnect all of them first so
+                # re-running this on the same live object doesn't leave duplicate connections
+                # (each of which would otherwise fire its slot twice).
+                self.run_finished_signal.disconnect()
+                self.input_parsed_signal.disconnect()
+                self.close_signal.disconnect()
+                self.new_signal.disconnect()
+                self.chooser_signal.disconnect()
+                self.__init__(file_name, self.window_manager, self.latency)
+                # Re-register, since close() above removed self from window_manager's bookkeeping.
+                self.window_manager.register(self)
+            finally:
+                self.window_manager.emptyAction = saved_empty_action
+                self.window_manager.fullAction = saved_full_action
 
     def copy_to(self):
         file_name, filter_ = QFileDialog.getSaveFileName(self, 'Copy project to...',

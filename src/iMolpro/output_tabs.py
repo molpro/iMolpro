@@ -223,7 +223,15 @@ class OutputTabWidget(MyTabWidget):
                     self.removeTab(self.indexOfTab(final_structure_tab_label))
                 # print('new tab','final structure', final_structure_tab_label)
                 self.addTab(MoleculeDisplay(final_structure, self.parent), final_structure_tab_label)
-            if initial_structure is not None and final_structure is None and initial_structure != final_structure and (
+            # Whether a final-structure tab exists *right now* -- not final_structure is None
+            # (only this tick's read, which stays None on this run_directory once a final
+            # structure has been read successfully in the past, so wrongly permits an
+            # initial-structure tab alongside a final-structure tab added on an earlier tick;
+            # nor the stale pre-tick tab_names snapshot (only reflects tabs added before this
+            # tick, so wrongly permits both tabs on the very tick the final-structure tab is
+            # first added above).
+            final_structure_tab_present = self.indexOfTab(final_structure_tab_label) != -1
+            if initial_structure is not None and not final_structure_tab_present and initial_structure != final_structure and (
                     not hasattr(self,
                                 'initial_structure') or self.initial_structure != initial_structure or initial_structure_tab_label not in tab_names):
                 self.initial_structure = initial_structure
