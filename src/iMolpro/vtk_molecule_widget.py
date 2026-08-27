@@ -11,7 +11,7 @@ from pymolpro import Orbital
 from .project import Structure
 from .theme import LIGHT_GREY_WINDOW, DARK_GREY_WINDOW, THEMES, theme_manager
 from .settings import settings
-from .utilities import displace_coordinate
+from .utilities import ANGSTROM_TO_BOHR, displace_coordinate
 
 logger = logging.getLogger(__name__)
 
@@ -342,14 +342,23 @@ class MoleculeDisplay(QWidget):
         self._cube_workers.pop(key, None)
         self.cubes[key] = cube_data
         if key == self._pending_cube_key:
-            self._apply_cube(key)
+            try:
+                self._apply_cube(key)
+            except RuntimeError:
+                # This widget (eg its tab was cleared by OutputTabWidget.clear() when the run
+                # directory changed) has already been deleted at the Qt/C++ level while this
+                # background cube computation was still in flight -- nothing left to update.
+                pass
 
     def _on_cube_failed(self, key, message):
         self._cube_workers.pop(key, None)
         print('orbital cube computation failed:', message)
         if key == self._pending_cube_key:
             self._pending_cube_key = None
-            self.right_panel.set_status(f'Failed to compute orbital: {message}')
+            try:
+                self.right_panel.set_status(f'Failed to compute orbital: {message}')
+            except RuntimeError:
+                pass
 
     def _apply_cube(self, key):
         self._pending_cube_key = None
@@ -460,6 +469,13 @@ class MoleculeDisplay(QWidget):
     def showEvent(self, event):
         super().showEvent(event)
         if self.vibration_animating and self._vibration_timer is not None:
+            # Re-baseline the phase against the current (not-yet-reset) clock before
+            # restarting it -- same technique as set_vibration_frequency_scaling -- so the
+            # oscillation continues smoothly instead of jumping/restarting at phase 0, since
+            # hideEvent only paused the timer, not the clock (self._vibration_clock.elapsed()
+            # kept advancing the whole time this widget was hidden).
+            self._vibration_phase0 = self._current_vibration_phase()
+            self._vibration_t0 = 0.0
             self._vibration_clock.start()
             self._vibration_timer.start(self.VIBRATION_FRAME_INTERVAL_MS)
 
@@ -483,12 +499,18 @@ class MoleculeWidget(StyledWidget):
             self.scene.GetRenderWindow().GetInteractor().Render()
 
     def refresh_model(self, source):
-        # print('refresh_model', type(source))
-        # print('self.model', type(self.model))
+        # Switching orbitals only ever changes the contour data, never the underlying
+        # nuclei/bond geometry -- update (or add) the contour actor in place rather than
+        # building a whole new MolecularModel, which used to rebuild (and then discard,
+        # since only the contour was ever re-added to the scene) the full-resolution
+        # nuclei/bond geometry on every single orbital switch.
         if hasattr(self.model, 'contour'):
-            self.scene.Remove(self.model.contour)
-        self.model = MolecularModel(source, )
-        self.scene.Add(self.model.contour)
+            self.model.contour.cube(source)
+        else:
+            self.model.contour = CubeActor(source, contour_value=settings['contour_value'],
+                                           opacity=settings['contour_opacity'])
+            self.model.AddItem(self.model.contour)
+            self.scene.Add(self.model.contour)
         self.scene.GetRenderWindow().GetInteractor().Render()
 
     def show_nucleus_labels(self, show: bool):
@@ -1112,7 +1134,7 @@ class NucleiActor(vtkActor):
     STATIC_SPHERE_RESOLUTION = 100
 
     def set_source(self, source: list[dict] | CubeData):
-        angstrom = 1.8897161646321
+        angstrom = ANGSTROM_TO_BOHR
         # vtkGlyph3D fully regenerates its whole output mesh from scratch on every
         # Update() -- it has no notion of "only positions changed" -- so during
         # vibrational-mode animation, where every atom moves every frame, sphere
@@ -1220,7 +1242,7 @@ class BondActorCollection(vtkActorCollection):
         # -- eg an animation frame -- while keeping the connectivity computed here.
         self.bonds = []
         self.atoms = source
-        angstrom = 1.8897161646321
+        angstrom = ANGSTROM_TO_BOHR
         for i, iatom in enumerate(self.atoms):
             for j, jatom in enumerate(self.atoms[:i]):
                 distance = np.linalg.norm(np.array(iatom['xyz']) - np.array(jatom['xyz']))
@@ -1437,7 +1459,7 @@ def set_bond_transform(transform: vtkTransform, startPoint: list[int], endPoint:
 
 
 def xyz_to_atoms(xyz: str | list[str]):
-    angstrom = 1.8897161646321
+    angstrom = ANGSTROM_TO_BOHR
     if isinstance(xyz, str) and xyz.endswith('.xyz'):
         try:
             with open(xyz, 'r') as f:

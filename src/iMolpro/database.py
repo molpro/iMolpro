@@ -148,7 +148,7 @@ class DatabaseFetchDialog(QDialog):
         https_verify_pop()
 
     def xyz(self, index=None):
-        index_ = index if index else self.chooser.currentIndex()
+        index_ = index if index is not None else self.chooser.currentIndex()
 
         def s(x):
             return f'{x:.8f}'
@@ -174,7 +174,7 @@ class DatabaseFetchDialog(QDialog):
             return xyz
 
     def cid(self, index=None):
-        index_ = index if index else self.chooser.currentIndex()
+        index_ = index if index is not None else self.chooser.currentIndex()
         if self.database == 'PubChem':
             return self.compounds[index_].cid
         elif self.database == 'ChemSpider':

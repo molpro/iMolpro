@@ -22,7 +22,7 @@ try:
             os.environ['CONDA_PREFIX'] = str(app_root())
         os.environ['PATH'] = str(pathlib.Path(os.environ['CONDA_PREFIX']) / 'bin') + os.pathsep + os.environ['PATH']
     elif 'PATH' in os.environ and 'SHELL' in os.environ:
-        os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read() + os.pathsep + \
+        os.environ['PATH'] = os.popen(os.environ['SHELL'] + " -l -c 'echo $PATH'").read().strip() + os.pathsep + \
                              os.environ['PATH']  # make PATH just as if running from shell
     molpro_bin = app_root() / 'molpro' / 'bin'
     if molpro_bin.is_dir():

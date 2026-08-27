@@ -1,5 +1,6 @@
 import os
 import pathlib
+import tempfile
 
 from pymolpro.defbas import periodic_table
 import json
@@ -7,6 +8,20 @@ from collections.abc import MutableMapping
 from typing import Any
 
 import numpy
+
+# Bohr per angstrom (CODATA), used throughout this codebase to convert atomic coordinates
+# between the two units.
+ANGSTROM_TO_BOHR = 1.8897161646321
+
+# XML namespaces used throughout a Molpro XML output file. Shared by the CoordinateSetXML,
+# OrbitalSetXML and VibrationSetXML parsers below, and by Project.structure() in project.py.
+MOLPRO_XML_NAMESPACES = {
+    'molpro-output': 'http://www.molpro.net/schema/molpro-output',
+    'xsd': 'http://www.w3.org/1999/XMLSchema',
+    'cml': 'http://www.xml-cml.org/schema',
+    'stm': 'http://www.xml-cml.org/schema',
+    'xhtml': 'http://www.w3.org/1999/xhtml',
+}
 
 from .cube_data import CubeData
 
@@ -611,9 +626,12 @@ class EditFile(QVimPlainTextEdit):
         self.fileTime = os.path.getmtime(self.filename)
 
     def sync(self):
-        from time import time
         if os.path.isfile(self.filename) and (not self.fileTime or self.fileTime < os.path.getmtime(self.filename)):
-            self.load()
+            if self.toPlainText() == self.savedText:
+                # No local edits pending since the last sync -- safe to pick up the external change.
+                self.load()
+            # else: the file changed on disk while there are local edits not yet written back;
+            # don't clobber them. self.fileTime is refreshed below once those edits are flushed.
         current = self.toPlainText()
         if not current or current[-1] != '\n':
             current += '\n'
@@ -717,17 +735,38 @@ class CoordinateSet:
             self.coordinateSet)
 
 
-def factory_coordinate_set(input: str, file_type=None, instance=-1):
-    implementors = {
-        'xml': CoordinateSetXML,
-        'molden': CoordinateSetMolden,
-    }
+def atoms_from_atom_array_node(atom_array_node) -> list[dict]:
+    r"""Build the iMolpro atom-dict list (xyz in bohr, atomic_number) from a single Molpro XML
+    <cml:atomArray> element. Shared by VibrationSetXML and Project.structure()'s
+    frequency-less fallback (project.py), which both parse geometry out of the same element."""
+    return [
+        {'xyz': [ANGSTROM_TO_BOHR * float(coord.attrib['x3']), ANGSTROM_TO_BOHR * float(coord.attrib['y3']),
+                ANGSTROM_TO_BOHR * float(coord.attrib['z3'])],
+         'atomic_number': periodic_table.index(coord.attrib['elementType']) + 1}
+        for coord in atom_array_node
+    ]
+
+
+def _xml_node_at_instance(nodes, instance, label):
+    r"""Return nodes[instance], raising a descriptive IndexError if instance is out of range.
+    Shared by the XML-backed CoordinateSet/OrbitalSet/VibrationSet parsers below, each of which
+    picks one of possibly several same-named elements (eg one per optimization step) out of a
+    Molpro XML output."""
+    if -len(nodes) > instance or len(nodes) <= instance:
+        raise IndexError(f'instance {instance} out of range for {label} ({len(nodes)} available)')
+    return nodes[instance]
+
+
+def _factory_from_file(implementors: dict, input: str, file_type=None, instance=-1):
     if not file_type:
-        import os
         base, suffix = os.path.splitext(input)
         return implementors[suffix[1:]](open(input, 'r').read(), instance)
     else:
         return implementors[file_type](input, instance)
+
+
+def factory_coordinate_set(input: str, file_type=None, instance=-1):
+    return _factory_from_file({'xml': CoordinateSetXML, 'molden': CoordinateSetMolden}, input, file_type, instance)
 
 
 class CoordinateSetMolden(CoordinateSet):
@@ -742,18 +781,13 @@ class CoordinateSetXML(CoordinateSet):
         super().__init__()
         import lxml
         root = lxml.etree.fromstring(content)
-        namespaces_ = {'molpro-output': 'http://www.molpro.net/schema/molpro-output',
-                       'xsd': 'http://www.w3.org/1999/XMLSchema',
-                       'cml': 'http://www.xml-cml.org/schema',
-                       'stm': 'http://www.xml-cml.org/schema',
-                       'xhtml': 'http://www.w3.org/1999/xhtml'}
+        namespaces_ = MOLPRO_XML_NAMESPACES
         coordinates_node = root.xpath('//cml:atomArray',
                                       namespaces=namespaces_)
-        if -len(coordinates_node) > instance or len(coordinates_node) <= instance:
-            raise IndexError('instance in CoordinateSet')
+        node = _xml_node_at_instance(coordinates_node, instance, 'CoordinateSet')
         self.coordinateSet = 0 + len(
-            coordinates_node[instance].xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
-                                             namespaces=namespaces_))
+            node.xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
+                      namespaces=namespaces_))
 
 
 class OrbitalSet:
@@ -771,16 +805,10 @@ class OrbitalSet:
 
 
 def factory_orbital_set(input: str, file_type=None, instance=-1):
-    implementors = {
+    return _factory_from_file({
         # 'xml': OrbitalSetXML, # this needs a fix in jmol to work properly
         'molden': OrbitalSetMolden,
-    }
-    if not file_type:
-        import os
-        base, suffix = os.path.splitext(input)
-        return implementors[suffix[1:]](open(input, 'r').read(), instance)
-    else:
-        return implementors[file_type](input, instance)
+    }, input, file_type, instance)
 
 
 class OrbitalSetMolden(OrbitalSet):
@@ -819,19 +847,14 @@ class OrbitalSetXML(OrbitalSet):
         super().__init__()
         import lxml
         root = lxml.etree.fromstring(content)
-        namespaces_ = {'molpro-output': 'http://www.molpro.net/schema/molpro-output',
-                       'xsd': 'http://www.w3.org/1999/XMLSchema',
-                       'cml': 'http://www.xml-cml.org/schema',
-                       'stm': 'http://www.xml-cml.org/schema',
-                       'xhtml': 'http://www.w3.org/1999/xhtml'}
+        namespaces_ = MOLPRO_XML_NAMESPACES
         orbitals_node = root.xpath('//molpro-output:orbitals',
                                    namespaces=namespaces_)
-        if -len(orbitals_node) > instance or len(orbitals_node) <= instance:
-            raise IndexError('instance in OrbitalSet')
+        node = _xml_node_at_instance(orbitals_node, instance, 'OrbitalSet')
         self.coordinateSet = 0 + len(
-            orbitals_node[instance].xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
-                                          namespaces=namespaces_))
-        xpath = orbitals_node[instance].xpath('molpro-output:orbital', namespaces=namespaces_)
+            node.xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
+                      namespaces=namespaces_))
+        xpath = node.xpath('molpro-output:orbital', namespaces=namespaces_)
         self.orbitals = [
             {
                 'vector': [float(v) for v in c.text.split()],
@@ -874,16 +897,7 @@ def displace_coordinate(source: list[dict] | CubeData, coordinate: list[float], 
 
 
 def factory_vibration_set(input: str, file_type=None, instance=-1):
-    implementors = {
-        'xml': VibrationSetXML,
-        'molden': VibrationSetMolden,
-    }
-    if not file_type:
-        import os
-        base, suffix = os.path.splitext(input)
-        return implementors[suffix[1:]](open(input, 'r').read(), instance)
-    else:
-        return implementors[file_type](input, instance)
+    return _factory_from_file({'xml': VibrationSetXML, 'molden': VibrationSetMolden}, input, file_type, instance)
 
 
 class VibrationSetMolden(VibrationSet):
@@ -907,31 +921,21 @@ class VibrationSetXML(VibrationSet):
     def __init__(self, content: str, instance=-1):
         super().__init__()
         import lxml
-        try:
-            root = lxml.etree.fromstring(content)
-        except:
-            self.modes = []
-            self.coordinateSet = 0
-            return
-        namespaces_ = {'molpro-output': 'http://www.molpro.net/schema/molpro-output',
-                       'xsd': 'http://www.w3.org/1999/XMLSchema',
-                       'cml': 'http://www.xml-cml.org/schema',
-                       'stm': 'http://www.xml-cml.org/schema',
-                       'xhtml': 'http://www.w3.org/1999/xhtml'}
+        # Let a parse failure (eg content read while Molpro is still mid-write to the XML file)
+        # propagate to the caller rather than silently returning a VibrationSetXML with no
+        # `atoms` attribute set: Project.structure() (the only real caller) already treats any
+        # exception here as "no frequency data available for this read" and degrades
+        # accordingly, retrying on the next refresh tick once the file is fully written.
+        root = lxml.etree.fromstring(content)
+        namespaces_ = MOLPRO_XML_NAMESPACES
         vibrations_node = root.xpath('//molpro-output:vibrations',
                                      namespaces=namespaces_)
-        if -len(vibrations_node) > instance or len(vibrations_node) <= instance:
-            raise IndexError('instance in VibrationSet')
+        node = _xml_node_at_instance(vibrations_node, instance, 'VibrationSet')
         self.coordinateSet = 1 + len(
-            vibrations_node[instance].xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
-                                            namespaces=namespaces_))
-        coords = vibrations_node[instance].xpath('preceding::cml:atomArray[1]', namespaces=namespaces_)
-        self.atoms = []
-        angstrom = 1.8897161646321
-        for coord in coords[0]:
-            self.atoms.append({'xyz': [angstrom * float(coord.attrib['x3']), angstrom * float(coord.attrib['y3']),
-                                       angstrom * float(coord.attrib['z3'])],
-                               'atomic_number': periodic_table.index(coord.attrib['elementType']) + 1})
+            node.xpath('preceding::cml:atomArray | preceding::molpro-output:normalCoordinate',
+                      namespaces=namespaces_))
+        coords = node.xpath('preceding::cml:atomArray[1]', namespaces=namespaces_)
+        self.atoms = atoms_from_atom_array_node(coords[0])
         self.modes = [
             {
                 'vector': [float(v) for v in c.text.split()],
@@ -942,7 +946,7 @@ class VibrationSetXML(VibrationSet):
                 'symmetry': c.attrib['symmetry'],
                 'real_zero_imag': c.attrib['real_zero_imag'],
             }
-            for c in (vibrations_node[instance].xpath(
+            for c in (node.xpath(
                 'molpro-output:normalCoordinate',
                 namespaces=namespaces_))
         ]
@@ -961,24 +965,52 @@ class FileBackedDictionary(MutableMapping):
         self.filename = filename
         self.filetime = 0.0
         self.defaults = {}
+        self.data = {}
         self.refresh()
 
     def add_default(self, key, value):
         self.defaults[key] = value
 
     def refresh(self):
-        if os.path.exists(self.filename) and self.filetime < os.path.getmtime(self.filename) and os.stat(
-                self.filename).st_size > 0:
+        if not os.path.exists(self.filename):
+            self.data = {}
+            self.filetime = 0.0
+            return
+        mtime = os.path.getmtime(self.filename)
+        if mtime <= self.filetime:
+            return
+        if os.stat(self.filename).st_size == 0:
+            # Another process (a second open iMolpro window/instance sharing this same file) may
+            # be midway through writing it -- save() now writes atomically so this shouldn't
+            # happen any more, but keep the in-memory data rather than wiping it just in case,
+            # and retry on the next access.
+            return
+        try:
             with open(self.filename, 'r') as fp:
                 self.data = json.load(fp)
-        else:
-            self.data = {}
+        except (json.JSONDecodeError, OSError):
+            # Corrupt or unreadable on disk -- keep whatever was already in memory rather than
+            # losing it, and retry on the next access.
+            return
+        self.filetime = mtime
 
     def save(self):
-        if not os.path.isdir(os.path.dirname(self.filename)):
-            os.makedirs(os.path.dirname(self.filename))
-        with open(self.filename, 'w') as fp:
-            json.dump(self.data, fp)
+        directory = os.path.dirname(self.filename)
+        if directory and not os.path.isdir(directory):
+            os.makedirs(directory)
+        # Written to a uniquely-named temp file (so two iMolpro processes saving at the same
+        # moment can't write into the same temp file) and atomically renamed into place, so a
+        # concurrent reader in another window/process (all sharing this same file) never
+        # observes a truncated/empty file mid-write.
+        fd, tmp_filename = tempfile.mkstemp(dir=directory or '.', prefix=os.path.basename(self.filename) + '.')
+        try:
+            with os.fdopen(fd, 'w') as fp:
+                json.dump(self.data, fp)
+            os.replace(tmp_filename, self.filename)
+        except BaseException:
+            os.remove(tmp_filename)
+            raise
+        self.filetime = os.path.getmtime(self.filename)
 
     def __getitem__(self, item):
         self.refresh()
@@ -1025,7 +1057,7 @@ def writable_directory(preferred: str = None) -> pathlib.Path:
 
 
 def atoms_from_xyz(initial_xyz: str) -> list[Any]:
-    angstrom = 1.8897161646321
+    angstrom = ANGSTROM_TO_BOHR
     with open(initial_xyz, 'r') as f:
         atoms = []
         f.readline()

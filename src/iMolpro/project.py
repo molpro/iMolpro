@@ -1,12 +1,14 @@
 import glob
+import logging
 import os
 from dataclasses import dataclass
 
 import lxml
 from pymolpro import Project as BaseProject
-from pymolpro.defbas import periodic_table
 
-from .utilities import VibrationSetXML
+from .utilities import MOLPRO_XML_NAMESPACES, VibrationSetXML, atoms_from_atom_array_node
+
+logger = logging.getLogger(__name__)
 
 # Pseudo-suffix for filename(): the output file written by a Slurm batch job. Slurm's naming
 # isn't known to sjef, so unlike the other suffixes it can't be looked up via the normal
@@ -66,17 +68,16 @@ class Project(BaseProject):
 
     def structure(self, require_frequencies=False, run=0, instance=-1) -> Structure:
         r'''
-        Get a structure of the molecule from the output. If require_frequencies is True, then only return a structure if it has frequencies.
-        :param require_frequencies: If True, consider only structures that have associated vibrational frequencies
+        Get a structure of the molecule from the output. If require_frequencies is True, the
+        returned Structure's vibrations attribute is populated when the output has associated
+        vibrational frequency data; otherwise (including when require_frequencies is True but no
+        frequency data is present) a plain-geometry Structure with vibrations=None is returned.
+        :param require_frequencies: If True, populate vibrational frequency data when available
         :param run: The run number for which the output will be analysed.
         :param instance: The instance number in the output of the geometry. If negative, count from the end.
         :return: The structure of the molecule
         '''
-        namespaces_ = {'molpro-output': 'http://www.molpro.net/schema/molpro-output',
-                       'xsd': 'http://www.w3.org/1999/XMLSchema',
-                       'cml': 'http://www.xml-cml.org/schema',
-                       'stm': 'http://www.xml-cml.org/schema',
-                       'xhtml': 'http://www.w3.org/1999/xhtml'}
+        namespaces_ = MOLPRO_XML_NAMESPACES
         if not self.xml:
             return None
         with open(self.filename('xml', run=run), 'r') as f:
@@ -86,20 +87,15 @@ class Project(BaseProject):
         if require_frequencies:
             try:
                 vibrations = VibrationSetXML(xml, instance=instance)
-            except:
-                pass
+            except Exception:
+                logger.debug('No vibrational frequency data available for %s (run=%s, instance=%s)',
+                             self.filename('xml', run=run), run, instance, exc_info=True)
         if vibrations:
             return Structure(vibrations.atoms, vibrations)
         else:
             root = lxml.etree.fromstring(xml)
             coords = root.xpath('(//cml:atomArray)', namespaces=namespaces_)
-            atoms = []
-            angstrom = 1.8897161646321
-            for coord in coords[instance]:
-                atoms.append({'xyz': [angstrom * float(coord.attrib['x3']), angstrom * float(coord.attrib['y3']),
-                                      angstrom * float(coord.attrib['z3'])],
-                              'atomic_number': periodic_table.index(coord.attrib['elementType']) + 1})
-            return Structure(atoms)
+            return Structure(atoms_from_atom_array_node(coords[instance]))
 
 
 if __name__ == '__main__':

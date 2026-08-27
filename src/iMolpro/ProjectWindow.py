@@ -79,6 +79,10 @@ class ProjectWindow(QMainWindow):
     # QTimer.singleShot() which needs an event loop on the *calling* thread to ever fire and so
     # silently never runs when called from a plain background thread.
     run_finished_signal = pyqtSignal(object, name='runFinishedSignal')
+    # Emitted from the background thread that parses the input pane text (see
+    # input_text_changed_consequence()); Qt marshals this onto the GUI thread the same way as
+    # run_finished_signal above, since applying the result touches Qt widgets.
+    input_parsed_signal = pyqtSignal(bool, object, name='inputParsedSignal')
     null_prompt = '- Select -'
     all_qualities = 'All Qualities'
     basis_qualities = [all_qualities, 'SZ', 'DZ', 'TZ', 'QZ', '5Z', '6Z']
@@ -124,6 +128,7 @@ class ProjectWindow(QMainWindow):
         # timer-driven polling doesn't call into the sjef project object concurrently with it.
         self._run_lock = threading.Lock()
         self.run_finished_signal.connect(self._run_submitted)
+        self.input_parsed_signal.connect(self._apply_parsed_input)
         # Cache of (input text, parsed geom) from the last _initial_xyz_staleness() call, so a
         # fresh InputSpecification parse is only done when the input pane text has actually
         # changed since the last check, rather than on every ~1s timer tick.
@@ -188,7 +193,7 @@ class ProjectWindow(QMainWindow):
 
         left_layout = QVBoxLayout()
         self.input_tabs = MyTabWidget(self)
-        self.input_pane.textChanged.connect(lambda: self.thread_executor.submit(self.input_text_changed_consequence))
+        self.input_pane.textChanged.connect(self.input_text_changed_consequence)
         self.input_tabs.currentChanged.connect(self.input_tab_changed_consequence)
         left_layout.addWidget(self.input_tabs)
         self.input_tabs.setMinimumHeight(300)
@@ -380,18 +385,31 @@ class ProjectWindow(QMainWindow):
             self.input_tabs.setCurrentIndex(index)
 
     def input_text_changed_consequence(self, index=0):
-        # logger.debug('input_text_changed_consequence, index=' + str(index))
-        guided = self.guided_possible()
+        # Reading the input pane's text must happen here, synchronously on the GUI thread; the
+        # (potentially slow) parsing of it is then handed to the background thread pool to keep
+        # the GUI responsive while typing, with the result marshalled back via
+        # input_parsed_signal since applying it touches Qt widgets (may only be done from the
+        # GUI thread; see the analogous comment on run_finished_signal / run()).
+        input_text = self.input_pane.toPlainText()
+        self.thread_executor.submit(self._parse_input_text_async, input_text)
+
+    def _parse_input_text_async(self, input_text):
+        guided, input_specification = self._parse_input_text(input_text)
+        self.input_parsed_signal.emit(guided, input_specification)
+
+    def _apply_parsed_input(self, guided, input_specification):
         if guided:
-            self.input_specification = InputSpecification(self.input_pane.toPlainText(),
-                                                          directory=self.project.filename())
+            self.input_specification = input_specification
         self.input_tabs.setTabVisible(self.input_tabs.indexOf(self.guided_pane), guided)
 
-    def guided_possible(self):
-        input_text = self.input_pane.toPlainText()
+    def _parse_input_text(self, input_text):
         if not input_text: input_text = ''
         input_specification = InputSpecification(input_text, directory=self.project.filename())
-        guided = len(input_specification) and molpro_input.equivalent(input_text, input_specification)
+        guided = bool(len(input_specification) and molpro_input.equivalent(input_text, input_specification))
+        return guided, input_specification
+
+    def guided_possible(self):
+        guided, _ = self._parse_input_text(self.input_pane.toPlainText())
         return guided
 
     def input_tab_changed_consequence(self, index=0):
@@ -830,7 +848,7 @@ class ProjectWindow(QMainWindow):
             return None
 
     def convert_xyz_to_zmat(self):
-        if xyzfile := self.input_uses_xyz_file() is not None:
+        if (xyzfile := self.input_uses_xyz_file()) is not None:
             zmat = pymolpro.xyz_to_zmat(self.project.filename('', xyzfile, -1))
             self.input_pane.setPlainText(
                 self.input_pane.toPlainText().replace('geometry=' + xyzfile,
@@ -901,7 +919,19 @@ class ProjectWindow(QMainWindow):
         if file_name:
             self.project.move(file_name)
             self.close()
+            # close() has now unregistered self from window_manager (via close_signal). __init__
+            # unconditionally reconnects run_finished_signal/input_parsed_signal, and
+            # window_manager.register() below reconnects close_signal/new_signal/chooser_signal
+            # -- disconnect all of them first so re-running this on the same live object doesn't
+            # leave duplicate connections (each of which would otherwise fire its slot twice).
+            self.run_finished_signal.disconnect()
+            self.input_parsed_signal.disconnect()
+            self.close_signal.disconnect()
+            self.new_signal.disconnect()
+            self.chooser_signal.disconnect()
             self.__init__(file_name, self.window_manager, self.latency)
+            # Re-register, since close() above removed self from window_manager's bookkeeping.
+            self.window_manager.register(self)
 
     def copy_to(self):
         file_name, filter_ = QFileDialog.getSaveFileName(self, 'Copy project to...',
