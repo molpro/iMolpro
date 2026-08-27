@@ -1,3 +1,4 @@
+import logging
 import os
 
 try:
@@ -22,6 +23,8 @@ except:
 from .draggabletabwidget import DraggableTabWidget
 from .utilities import ViewFile, atoms_from_xyz
 from .vtk_molecule_widget import MoleculeDisplay
+
+logger = logging.getLogger(__name__)
 
 
 class ViewProjectOutput(ViewFile):
@@ -196,9 +199,19 @@ class OutputTabWidget(MyTabWidget):
                 # get final geometry
                 final_structure = self.parent.project.structure(True)
                 initial_structure = self.parent.project.structure(instance=0)
-            except:
+            except Exception as e:
+                # Runs on a 1-second GUI-thread QTimer whenever the xml output file's mtime
+                # changes, so while a job is actively running (output written incrementally) a
+                # parse failure here could otherwise repeat every tick -- log a given failure
+                # once rather than spamming an identical traceback on every retry.
+                error_key = (type(e), str(e))
+                if error_key != getattr(self, '_last_structure_parse_error', None):
+                    self._last_structure_parse_error = error_key
+                    logger.exception('Failed to parse structure(s) from %s', xml_filename)
                 if 'initial_structure' not in locals(): initial_structure = None
                 if 'final_structure' not in locals(): final_structure = None
+            else:
+                self._last_structure_parse_error = None
             # print('initial structure',initial_structure)
             # print('final structure',final_structure)
             final_structure_tab_label = 'final structure'
@@ -210,7 +223,7 @@ class OutputTabWidget(MyTabWidget):
                     self.removeTab(self.indexOfTab(final_structure_tab_label))
                 # print('new tab','final structure', final_structure_tab_label)
                 self.addTab(MoleculeDisplay(final_structure, self.parent), final_structure_tab_label)
-            if initial_structure is not None and final_structure_tab_label not in tab_names and initial_structure != final_structure and (
+            if initial_structure is not None and final_structure is None and initial_structure != final_structure and (
                     not hasattr(self,
                                 'initial_structure') or self.initial_structure != initial_structure or initial_structure_tab_label not in tab_names):
                 self.initial_structure = initial_structure

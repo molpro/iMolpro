@@ -66,7 +66,8 @@ class WindowManager:
         widget.show()
 
     def unregister(self, widget: QWidget):
-        self.openWindows.remove(widget)
+        if widget in self.openWindows:
+            self.openWindows.remove(widget)
         if self.emptyAction and not self.openWindows:
             self.emptyAction()
 

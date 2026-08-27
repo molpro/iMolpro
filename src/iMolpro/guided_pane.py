@@ -389,7 +389,7 @@ class GuidedPane(QWidget):
             if int(value) != old_charge and 'spin' in self.input_specification:
                 self.input_specification.pop('spin')
         elif key == 'spin':
-            if value is not None and int(value) >= 0:
+            if value not in (None, '') and int(value) >= 0:
                 self.input_specification['spin'] = int(value)
             else:
                 if 'spin' in self.input_specification: self.input_specification.pop('spin')
