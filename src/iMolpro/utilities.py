@@ -1,5 +1,6 @@
 import os
 import pathlib
+import stat
 import tempfile
 
 from pymolpro.defbas import periodic_table
@@ -1006,9 +1007,21 @@ class FileBackedDictionary(MutableMapping):
         try:
             with os.fdopen(fd, 'w') as fp:
                 json.dump(self.data, fp)
+            # mkstemp() always creates the temp file mode 0600, and os.replace() (a rename)
+            # keeps the source file's permission bits rather than the destination's -- without
+            # this, every save() would silently tighten self.filename's permissions to 0600,
+            # regardless of what they were before.
+            try:
+                mode = stat.S_IMODE(os.stat(self.filename).st_mode)
+            except FileNotFoundError:
+                mode = 0o644
+            os.chmod(tmp_filename, mode)
             os.replace(tmp_filename, self.filename)
         except BaseException:
-            os.remove(tmp_filename)
+            try:
+                os.remove(tmp_filename)
+            except OSError:
+                pass  # don't let cleanup failure mask the original exception
             raise
         self.filetime = os.path.getmtime(self.filename)
 

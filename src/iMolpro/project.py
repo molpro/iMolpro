@@ -82,29 +82,29 @@ class Project(BaseProject):
             return None
         with open(self.filename('xml', run=run), 'r') as f:
             xml = f.read()
+        try:
+            root = lxml.etree.fromstring(xml)
+        except lxml.etree.XMLSyntaxError:
+            # Molpro is still writing this run's XML output -- it's systematically incomplete
+            # (missing its closing tags) until the job finishes, so this is expected and can
+            # happen on every refresh tick while a job is running, not an error.
+            return None
 
         vibrations = None
         if require_frequencies:
             try:
+                # Reparses xml itself rather than accepting the already-parsed root above, but
+                # since that parse just succeeded on this exact content, this one won't fail
+                # with XMLSyntaxError -- only with a real "no frequency data here" reason (eg
+                # IndexError, no <vibrations> element in a non-FREQ job's output), which the
+                # broad except below is for.
                 vibrations = VibrationSetXML(xml, instance=instance)
-            except lxml.etree.XMLSyntaxError:
-                # Molpro is still writing this run's XML output -- it's systematically
-                # incomplete (missing its closing tags) until the job finishes, so this is
-                # expected and can happen on every refresh tick while a job is running, not an
-                # error. The same content would fail the fallback parse below identically, so
-                # bail out now rather than trying it.
-                return None
             except Exception:
                 logger.debug('No vibrational frequency data available for %s (run=%s, instance=%s)',
                              self.filename('xml', run=run), run, instance, exc_info=True)
         if vibrations:
             return Structure(vibrations.atoms, vibrations)
         else:
-            try:
-                root = lxml.etree.fromstring(xml)
-            except lxml.etree.XMLSyntaxError:
-                # As above: the XML output isn't complete yet.
-                return None
             coords = root.xpath('(//cml:atomArray)', namespaces=namespaces_)
             return Structure(atoms_from_atom_array_node(coords[instance]))
 
