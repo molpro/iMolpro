@@ -262,9 +262,12 @@ class ProjectWindow(QMainWindow):
         # self.minimum_window_size = self.window().size()
 
         if self.input_pane.toPlainText().strip('\n ') == '':
+            # project.name is the project bundle's full path (eg '/path/to/acetamide6.molpro'),
+            # not a bare name -- .stem strips both the directory and the '.molpro' suffix,
+            # leaving just 'acetamide6' as the default geometry file's base name.
             self.input_pane.setPlainText(
                 'geometry={0}.xyz\nbasis=cc-pV(T+d)Z-PP\ndf-rhf'.format(
-                    os.path.basename(self.project.name).replace(' ', '-')))
+                    pathlib.Path(self.project.name).stem.replace(' ', '-')))
             if not os.path.exists(self.project.filename('xyz')):
                 import_structure = ''
                 if QMessageBox.question(self, '',
@@ -274,7 +277,15 @@ class ProjectWindow(QMainWindow):
                 if not import_structure:
                     import_structure = self.database_import_structure()
 
-        self.input_tabs.setCurrentIndex(1 if self.guided_possible() else 0)
+        # Synchronous, not guided_possible(): the block above may have changed the input text
+        # (default geometry placeholder, then possibly again via adopt_structure_file()) without
+        # the async input_text_changed_consequence pipeline necessarily having caught up yet, so
+        # self.input_specification could still be stale here. Resync it before deciding which
+        # tab to show, since switching to the guided tab triggers guided_pane.refresh(), which
+        # reads self.input_specification directly (see the comment in adopt_structure_file()).
+        guided, input_specification = self._parse_input_text(self.input_pane.toPlainText())
+        self._apply_parsed_input(guided, input_specification, self._input_parse_generation)
+        self.input_tabs.setCurrentIndex(1 if guided else 0)
         self.initialised_from_input = True
         self.guided_action.setChecked(self.input_tabs.currentIndex() == 1)
 
@@ -825,10 +836,21 @@ class ProjectWindow(QMainWindow):
             self.project.import_file(filename)
             text = self.input_pane.toPlainText()
             if re.search(r'geometry *= *[-_./\w]+ *[;\n]', text, flags=re.IGNORECASE):
-                self.input_pane.setPlainText(
-                    re.sub('geometry *=.*[\n;]', 'geometry=' + os.path.basename(filename) + '\n', text))
+                new_text = re.sub('geometry *=.*[\n;]', 'geometry=' + os.path.basename(filename) + '\n', text)
             else:
-                self.input_pane.setPlainText('geometry=' + os.path.basename(filename) + '\n' + text)
+                new_text = 'geometry=' + os.path.basename(filename) + '\n' + text
+            self.input_pane.setPlainText(new_text)
+            # Resync self.input_specification with new_text synchronously, rather than leaving
+            # it to the async input_text_changed_consequence pipeline (queued behind whatever
+            # dialogs this was called from -- database_import_structure()'s search dialogs, or
+            # the "import geometry from a file" flow during __init__): a caller like
+            # guided_pane.refresh() (eg triggered by a tab switch immediately after this
+            # returns) reads self.input_specification directly, and if it's still stale --
+            # reflecting whatever text was there before this geometry was adopted -- a
+            # subsequent refresh_input_from_specification() would silently regenerate the input
+            # text from that stale specification, clobbering the geometry filename just set here.
+            guided, input_specification = self._parse_input_text(new_text)
+            self._apply_parsed_input(guided, input_specification, self._input_parse_generation)
             self.xyz_to_zmat_activate_or_not(True)
 
     def database_import_structure(self):
