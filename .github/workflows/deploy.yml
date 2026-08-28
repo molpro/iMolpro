@@ -28,6 +28,7 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: iMolpro-github
+          conda-remove-defaults: 'true'
       - name: Setup temporary installer signing keychain
         uses: apple-actions/import-codesign-certs@v4
         if: ${{ matrix.mac }}

@@ -14,7 +14,7 @@ if [ -z "$NOCONDA" ]; then
 # second, hand-edited copy that can silently drift out of sync.
 conda_requirements=${TMPDIR:-/tmp}/imolpro-conda-requirements.txt
 python3 scripts/generate_conda_requirements.py "$conda_requirements" || exit
-conda install -q -c conda-forge -c defaults -y --file="$conda_requirements" --file=conda-build-tools.txt 'setuptools=80.9' pandoc pip || exit
+conda install -q -c conda-forge -y --file="$conda_requirements" --file=conda-build-tools.txt 'setuptools=80.9' pandoc pip || exit
 python -m pip install --no-build-isolation --no-deps . || exit
 gem install --user-install -n~/bin fpm
 PATH=~/bin:$PATH
