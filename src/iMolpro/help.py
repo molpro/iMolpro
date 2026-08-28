@@ -5,19 +5,22 @@ from typing import Optional
 try:
     from PySide6.QtWidgets import QTextBrowser, QMainWindow, QWidget, QHBoxLayout, QDialog, QVBoxLayout, \
         QDialogButtonBox, QMessageBox, QApplication
-    from PySide6.QtCore import Qt, QUrl
+    from PySide6.QtCore import Qt, QUrl, qVersion
     from PySide6.QtGui import QKeySequence, QDesktopServices, QShortcut, QAction
+    QT_BINDING = 'PySide6'
 except ImportError:
     try:
         from PyQt6.QtWidgets import QTextBrowser, QMainWindow, QWidget, QHBoxLayout, QDialog, QVBoxLayout, \
             QDialogButtonBox, QMessageBox, QApplication
-        from PyQt6.QtCore import Qt, QUrl
+        from PyQt6.QtCore import Qt, QUrl, qVersion
         from PyQt6.QtGui import QKeySequence, QDesktopServices, QShortcut, QAction
+        QT_BINDING = 'PyQt6'
     except ImportError:
         from PyQt5.QtWidgets import QTextBrowser, QMainWindow, QWidget, QHBoxLayout, QDialog, QVBoxLayout, \
             QDialogButtonBox, QShortcut, QMessageBox, QApplication, QAction
-        from PyQt5.QtCore import Qt, QUrl
+        from PyQt5.QtCore import Qt, QUrl, qVersion
         from PyQt5.QtGui import QKeySequence, QDesktopServices
+        QT_BINDING = 'PyQt5'
 
 try:
     AboutRole = QAction.AboutRole
@@ -122,14 +125,18 @@ def help_dialog(file: str, parent=None):
     button_box.accepted.connect(help_window.close)
     help_window.exec()
 
-def _package_version(package_name: str) -> str:
+def _module_version(module_name: str, attr: str = '__version__') -> str:
+    # Deliberately reads the module's own version attribute rather than
+    # going through importlib.metadata: a PyInstaller-frozen build
+    # doesn't bundle dependencies' dist-info/METADATA, so
+    # importlib.metadata.version() finds nothing and reports every
+    # package as 'unknown' in that build, even though the modules
+    # themselves (and their version attributes) are right there.
+    import importlib
     try:
-        from importlib.metadata import version, PackageNotFoundError
-    except ImportError:  # pragma: no cover - Python < 3.8
-        from importlib_metadata import version, PackageNotFoundError
-    try:
-        return version(package_name)
-    except PackageNotFoundError:
+        module = importlib.import_module(module_name)
+        return str(getattr(module, attr))
+    except Exception:
         return 'unknown'
 
 
@@ -140,13 +147,18 @@ def show_about_dialog(parent=None):
     project management and Molpro execution underneath iMolpro.
     """
 
-    def _version_line(name: str, version=None) -> str:
-        return f"{name}: {version if version is not None else _package_version(name)}"
+    def _version_line(name: str, version: str) -> str:
+        return f"{name}: {version}"
 
     text = \
         "<h3>" + _version_line("iMolpro", full_version()) + "</h3>" + \
-        f"Contains<br>" + \
-        "<br>".join([_version_line(name) for name in ["pymolpro", "pysjef", "PySide6", "vtk"]])
+        "Contains<br>" + \
+        "<br>".join([
+            _version_line("pymolpro", _module_version('pymolpro')),
+            _version_line("pysjef", _module_version('pysjef')),
+            _version_line(QT_BINDING, qVersion()),
+            _version_line("vtk", _module_version('vtk', 'VTK_VERSION')),
+        ])
     QMessageBox.about(parent, 'About iMolpro', text)
 
 
