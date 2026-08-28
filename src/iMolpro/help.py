@@ -3,20 +3,30 @@ import pathlib
 from typing import Optional
 
 try:
-    from PySide6.QtWidgets import QTextBrowser, QMainWindow, QWidget, QHBoxLayout, QDialog, QVBoxLayout, QDialogButtonBox
+    from PySide6.QtWidgets import QTextBrowser, QMainWindow, QWidget, QHBoxLayout, QDialog, QVBoxLayout, \
+        QDialogButtonBox, QMessageBox, QApplication
     from PySide6.QtCore import Qt, QUrl
-    from PySide6.QtGui import QKeySequence, QDesktopServices, QShortcut
+    from PySide6.QtGui import QKeySequence, QDesktopServices, QShortcut, QAction
 except ImportError:
     try:
-        from PyQt6.QtWidgets import QTextBrowser, QMainWindow, QWidget, QHBoxLayout, QDialog, QVBoxLayout, QDialogButtonBox
+        from PyQt6.QtWidgets import QTextBrowser, QMainWindow, QWidget, QHBoxLayout, QDialog, QVBoxLayout, \
+            QDialogButtonBox, QMessageBox, QApplication
         from PyQt6.QtCore import Qt, QUrl
-        from PyQt6.QtGui import QKeySequence, QDesktopServices, QShortcut
+        from PyQt6.QtGui import QKeySequence, QDesktopServices, QShortcut, QAction
     except ImportError:
-        from PyQt5.QtWidgets import QTextBrowser, QMainWindow, QWidget, QHBoxLayout, QDialog, QVBoxLayout, QDialogButtonBox, QShortcut
+        from PyQt5.QtWidgets import QTextBrowser, QMainWindow, QWidget, QHBoxLayout, QDialog, QVBoxLayout, \
+            QDialogButtonBox, QShortcut, QMessageBox, QApplication, QAction
         from PyQt5.QtCore import Qt, QUrl
         from PyQt5.QtGui import QKeySequence, QDesktopServices
+
+try:
+    AboutRole = QAction.AboutRole
+except AttributeError:
+    AboutRole = QAction.MenuRole.AboutRole
+
 from .MenuBar import MenuBar
 from ._paths import app_root
+from . import full_version
 
 
 class HelpWindow(QWidget):
@@ -112,6 +122,34 @@ def help_dialog(file: str, parent=None):
     button_box.accepted.connect(help_window.close)
     help_window.exec()
 
+def _package_version(package_name: str) -> str:
+    try:
+        from importlib.metadata import version, PackageNotFoundError
+    except ImportError:  # pragma: no cover - Python < 3.8
+        from importlib_metadata import version, PackageNotFoundError
+    try:
+        return version(package_name)
+    except PackageNotFoundError:
+        return 'unknown'
+
+
+def show_about_dialog(parent=None):
+    """
+    The standard "About" dialog, showing iMolpro's own version alongside
+    those of the pymolpro and sjef (pysjef) packages that actually drive
+    project management and Molpro execution underneath iMolpro.
+    """
+
+    def _version_line(name: str, version=None) -> str:
+        return f"{name}: {version if version is not None else _package_version(name)}"
+
+    text = \
+        "<h3>" + _version_line("iMolpro", full_version()) + "</h3>" + \
+        f"Contains<br>" + \
+        "<br>".join([_version_line(name) for name in ["pymolpro", "pysjef", "PySide6", "vtk"]])
+    QMessageBox.about(parent, 'About iMolpro', text)
+
+
 def help_manager_default(menubar: MenuBar):
     help_manager = HelpManager(menubar)
     help_manager.register('Overview', 'README')
@@ -120,4 +158,12 @@ def help_manager_default(menubar: MenuBar):
     help_manager.register('Runs', 'doc/runs.md')
     help_manager.register('Display', 'doc/display.md')
     help_manager.register_url('Jmol reference', 'https://jmol.sourceforge.net/docs')
+    menubar.addSeparator('Help')
+    about_action = menubar.addAction('About iMolpro', 'Help',
+                                      lambda: show_about_dialog(QApplication.activeWindow()))
+    # AboutRole makes Qt relocate this item to the standard place on each
+    # platform: the application menu on macOS (regardless of which menu
+    # it was added to here), and left in place -- the end of the Help
+    # menu, also the Windows/Linux convention -- everywhere else.
+    about_action.setMenuRole(AboutRole)
     return help_manager

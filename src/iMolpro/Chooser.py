@@ -11,6 +11,7 @@ from .RecentMenu import RecentMenu
 from .help import help_manager_default
 from .utilities import force_suffix
 from ._paths import app_root
+from . import full_version
 
 
 try:
@@ -232,32 +233,9 @@ class Chooser(QMainWindow):
         link_layout.addWidget(manual_button)
 
         # rh_panel.addWidget(QLabel("iMolpro version "+get_versions()['version']+'\n('+get_versions()['date']+')'))
-        def version_():
-            import subprocess
-            import os
-            version = None
-            if os.path.exists(app_root() / '.git'):
-                try:
-                    version = subprocess.check_output(
-                        ['git', '-C', str(app_root()), 'describe', '--tags', '--dirty']).decode('ascii').strip()
-                except Exception:
-                    pass
-                if version:
-                    return version
-            version_file = app_root() / 'VERSION'
-            if os.path.exists(version_file):
-                version = open(version_file, 'r').read().strip()
-            if version:
-                return version
-            try:
-                from importlib.metadata import version as installed_version
-                return installed_version('iMolpro')
-            except Exception:
-                return 'unknown'
-
-        version_label = LinkLabel("iMolpro version " + version_(),
+        version_label = LinkLabel("iMolpro version " + full_version(),
                                   'https://github.com/molpro/iMolpro/tree/' + re.sub('-.*', '',
-                                                                                     version_()) + '/README.md')
+                                                                                     full_version()) + '/README.md')
         version_label.setStyleSheet("font-size: 10px")
         version_label.setAlignment(AlignCenter)
         rh_panel.addWidget(version_label)
