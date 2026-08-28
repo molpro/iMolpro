@@ -169,7 +169,7 @@ def help_manager_default(menubar: MenuBar):
     help_manager.register('Backends', 'doc/backends.md')
     help_manager.register('Runs', 'doc/runs.md')
     help_manager.register('Display', 'doc/display.md')
-    help_manager.register_url('Jmol reference', 'https://jmol.sourceforge.net/docs')
+    help_manager.register_url('Molpro manual', 'https://molpro.net/manual')
     menubar.addSeparator('Help')
     about_action = menubar.addAction('About iMolpro', 'Help',
                                       lambda: show_about_dialog(QApplication.activeWindow()))
