@@ -16,3 +16,4 @@ _pyinstaller_entry.py
 playground
 Package-license.pdf
 Package-license.rtf
+uv.lock
