@@ -42,7 +42,10 @@ class RecentMenu(QMenu):
         self.recentProjects.clear()
         self.clear()
         for i in range(1, max_items+1):
-            f = recent_project('molpro', i)
+            try:
+                f = recent_project('molpro', i)
+            except RuntimeError:  # e.g. project on an unreachable network/cloud filesystem
+                continue
             if f:
                 action = RecentMenuAction(self, self.windowManager, f)
                 self.recentProjects.append((f, action))

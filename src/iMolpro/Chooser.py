@@ -342,7 +342,10 @@ class Chooser(QMainWindow):
                 widget.deleteLater()
         self.recent_project_box.layout().addWidget(QLabel('Open a recently-used project:'), 0, AlignLeft)
         for i in range(1, max_items):
-            f = recent_project('molpro', i)
+            try:
+                f = recent_project('molpro', i)
+            except RuntimeError:  # e.g. project on an unreachable network/cloud filesystem
+                continue
             if f:
                 button = RecentProjectButton(f, i, self)
                 self.recent_project_box.layout().addWidget(button, -1, AlignLeft)
