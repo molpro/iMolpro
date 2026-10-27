@@ -859,7 +859,7 @@ class MoleculeScene(QVTKRenderWindowInteractor):
 
     def Add(self, source):
         if isinstance(source, vtkActor2D):
-            self.renderer.AddActor2D(source)
+            self.renderer.AddViewProp(source)
         elif isinstance(source, vtkActor):
             self.renderer.AddActor(source)
         elif isinstance(source, vtkActorCollection):
