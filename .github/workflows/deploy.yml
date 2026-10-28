@@ -27,6 +27,10 @@ jobs:
            python-version: '3.13'
       - uses: conda-incubator/setup-miniconda@v3
         with:
+          # Miniforge rather than the default Miniconda: with Miniconda, the
+          # conda-forge solve in build.sh ran for the whole 60-minute job
+          # timeout on macos-15-intel.
+          miniforge-version: latest
           activate-environment: iMolpro-github
           conda-remove-defaults: 'true'
       - name: Setup temporary installer signing keychain
