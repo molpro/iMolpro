@@ -14,7 +14,10 @@ if [ -z "$NOCONDA" ]; then
 # second, hand-edited copy that can silently drift out of sync.
 conda_requirements=${TMPDIR:-/tmp}/imolpro-conda-requirements.txt
 python3 scripts/generate_conda_requirements.py "$conda_requirements" || exit
-conda install -q -c conda-forge -y --file="$conda_requirements" --file=conda-build-tools.txt 'setuptools=80.9' pandoc pip || exit
+# Pin python: left free, the solver has to consider every python version at
+# once, and on osx-64 (with __osx=15.7, as on macos-15-intel) that solve took
+# 16 minutes locally and over an hour on the runner; pinned, it takes seconds.
+conda install -q -c conda-forge -y --file="$conda_requirements" --file=conda-build-tools.txt 'setuptools=80.9' pandoc pip python=3.14 || exit
 python -m pip install --no-build-isolation --no-deps . || exit
 gem install --user-install -n~/bin fpm
 PATH=~/bin:$PATH
