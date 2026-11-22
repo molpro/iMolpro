@@ -163,6 +163,11 @@ class OutputTabWidget(MyTabWidget):
         self.suffixes.remove(suffix)
 
     def refresh(self):
+        # Keep the Runs menus in step with the project's run directories. (This is the only
+        # periodic hook; the menus don't exist yet while this widget is first constructed.)
+        run_directory_menus = getattr(self.parent, 'run_directory_menus', None)
+        if run_directory_menus is not None:
+            run_directory_menus.refresh()
         tab_names = [self.tabText(i) for i in range(self.count())]
         if self.run_directory != self.parent.project.run_directory:
             self.clear()
