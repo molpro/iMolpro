@@ -145,6 +145,10 @@ class ProjectWindow(QMainWindow):
         # (initial_xyz_async() retries roughly every second while the input stays invalid).
         self._last_geometry_error = None
         self._last_geometry_exception = None
+        # Key (see _initial_xyz_input_key()) of the input for which the last background attempt to
+        # regenerate the input-structure preview failed, or None. While the input is unchanged the
+        # attempt is not repeated: it would only fail again, and every attempt launches Molpro.
+        self._initial_xyz_failed_key = None
 
         self.normal_geometry = self.normalGeometry()
 
@@ -647,6 +651,23 @@ class ProjectWindow(QMainWindow):
              self.geometry_files()]))
         return stale, xyz_file, geom
 
+    def _initial_xyz_input_key(self, geom):
+        """
+        Identifies the input that the initial-geometry preview is generated from: the input text,
+        its geometry specification, and the modification time and size of the input file and of any
+        external geometry files. Two equal keys mean a failed attempt would simply fail again.
+        """
+        files = [self.project.filename('inp', run=-1)] + [self.project.filename('', gfile[1], run=-1) for gfile in
+                                                           self.geometry_files()]
+        states = []
+        for file in files:
+            try:
+                status = os.stat(file)
+                states.append((file, status.st_mtime_ns, status.st_size))
+            except OSError:
+                states.append((file, None, None))
+        return self.input_pane.toPlainText(), geom, tuple(states)
+
     def initial_xyz(self) -> str:
         """
         Generates or retrieves the XYZ file for the initial geometry configuration.
@@ -696,12 +717,22 @@ class ProjectWindow(QMainWindow):
             none has been computed yet).
         """
         stale, xyz_file, geom = self._initial_xyz_staleness()
+        # A failed attempt leaves no xyz file, so the preview stays 'stale' for as long as it keeps
+        # failing -- eg whenever Molpro cannot report the geometry for this input. Without this
+        # check that relaunched Molpro on every tick, indefinitely. The key is taken before the
+        # attempt starts, so an edit made while it is running still triggers a fresh attempt.
+        input_key = self._initial_xyz_input_key(geom) if stale else None
+        if stale and input_key == self._initial_xyz_failed_key:
+            stale = False
         if stale and self._initial_xyz_lock.acquire(blocking=False):
             def recompute():
                 try:
-                    self._compute_initial_xyz(xyz_file)
+                    produced = self._compute_initial_xyz(xyz_file)
                     self._last_geometry_exception = None
+                    # '' means Molpro ran but gave no geometry (already logged by _compute_initial_xyz)
+                    self._initial_xyz_failed_key = None if produced else input_key
                 except Exception as e:
+                    self._initial_xyz_failed_key = input_key
                     # This runs on a background thread via thread_executor and nothing ever
                     # calls .result() on the submitted future, so without this except clause
                     # any exception here (eg project.run() failing) would vanish silently -
