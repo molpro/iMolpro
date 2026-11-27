@@ -157,6 +157,19 @@ class ItemLayout(QGridLayout):
         return self.row - 1
 
 
+
+def orbital_label(orbital) -> str:
+    r"""Selector label for an orbital: its ID, with a minus sign marking beta-spin orbitals
+    (eg. '-1.1' is the lowest beta orbital of symmetry 1, '1.1' the alpha one), so that
+    alpha and beta sets can be shown together. Molpro's XML already writes beta IDs with
+    the leading minus, but it is added here if absent."""
+    label = str(orbital.ID)
+    parent = orbital.node.getparent()
+    if parent is not None and str(parent.get('spin', '')).lower() == 'beta' and not label.startswith('-'):
+        label = '-' + label
+    return label
+
+
 class _CubeWorkerSignals(QObject):
     # (key, CubeData) / (key, error message) -- key identifies which (orbital,
     # grid_points, contour_value) request this result belongs to, so the
@@ -371,7 +384,7 @@ class MoleculeDisplay(QWidget):
 
     def set_orbital(self, orbital_id):
         # print('set_orbital', orbital_id)
-        self.orbital = self.orbitals[[orbital.ID for orbital in self.orbitals].index(orbital_id)]
+        self.orbital = self.orbitals[[orbital_label(orbital) for orbital in self.orbitals].index(orbital_id)]
         self.right_panel.refresh()
         self._request_cube(settings['contour_value'])
 
@@ -489,7 +502,7 @@ class MoleculeDisplay(QWidget):
         grid_points = max(self.GRID_POINTS_MINIMUM, min(self.GRID_POINTS_MAXIMUM, grid_points))
 
         self.grid_points = grid_points
-        self.set_orbital(self.orbital.ID)
+        self.set_orbital(orbital_label(self.orbital))
 
 
 class MoleculeWidget(StyledWidget):
@@ -723,7 +736,7 @@ class ControlPanel(QWidget):
         if hasattr(self.parent, 'orbitals'):
             orbital_selector = QComboBox()
             for orbital in self.parent.orbitals[::-1]:
-                orbital_selector.addItem(str(orbital.ID))
+                orbital_selector.addItem(orbital_label(orbital))
             orbital_selector.currentTextChanged.connect(self.parent.set_orbital)
             # orbital_selector.setBackgroundColor(QColor(*self.background_colour))
             # palette = self.palette()
