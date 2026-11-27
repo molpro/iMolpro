@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout branch "master"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: 'master'
           token: ${{ secrets.PAT }}
@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Delete old latest releases
         uses: dev-drprasad/delete-older-releases@v0.3.2
         with:
