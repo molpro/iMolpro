@@ -16,21 +16,24 @@ from .utilities import ANGSTROM_TO_BOHR, displace_coordinate
 logger = logging.getLogger(__name__)
 
 try:
-    from PySide6.QtGui import QColor, QPalette, QIcon, QPixmap, QPainter, QPen
+    from PySide6.QtGui import QColor, QPalette, QIcon, QPixmap, QPainter, QPen, QFontDatabase
     from PySide6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
-        QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton, QDoubleSpinBox
+        QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton, QDoubleSpinBox, \
+        QListWidget, QListWidgetItem, QAbstractItemView
     from PySide6.QtCore import Qt, QSize, QTimer, QElapsedTimer, QObject, QRunnable, QThreadPool, \
         Signal as pyqtSignal
 except ImportError:
     try:
-        from PyQt6.QtGui import QColor, QPalette, QIcon, QPixmap, QPainter, QPen
+        from PyQt6.QtGui import QColor, QPalette, QIcon, QPixmap, QPainter, QPen, QFontDatabase
         from PyQt6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
-            QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton, QDoubleSpinBox
+            QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton, QDoubleSpinBox, \
+            QListWidget, QListWidgetItem, QAbstractItemView
         from PyQt6.QtCore import Qt, QSize, QTimer, QElapsedTimer, QObject, QRunnable, QThreadPool, pyqtSignal
     except ImportError:
-        from PyQt5.QtGui import QColor, QPalette, QIcon, QPixmap, QPainter, QPen
+        from PyQt5.QtGui import QColor, QPalette, QIcon, QPixmap, QPainter, QPen, QFontDatabase
         from PyQt5.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
-            QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton, QDoubleSpinBox
+            QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton, QDoubleSpinBox, \
+            QListWidget, QListWidgetItem, QAbstractItemView
         from PyQt5.QtCore import Qt, QSize, QTimer, QElapsedTimer, QObject, QRunnable, QThreadPool, pyqtSignal
 
 try:
@@ -156,6 +159,47 @@ class ItemLayout(QGridLayout):
         self.row += 1
         return self.row - 1
 
+    def add_wide(self, title, content: QWidget):
+        r"""A title on its own row, followed by `content` spanning both columns below it."""
+        self.addWidget(FixedLabel(title + ':'), self.row, 0, 1, 2)
+        self.addWidget(content, self.row + 1, 0, 1, 2)
+        self.row += 2
+        return self.row - 1
+
+
+_USER_ROLE = getattr(Qt, 'ItemDataRole', Qt).UserRole
+
+
+class OrbitalList(QListWidget):
+    r"""Scrollable list of orbitals, about `visible_rows` lines high, one line per orbital
+    (see orbital_label) in a fixed-width font so the columns line up. Each line carries the
+    orbital's key (see orbital_key) as item data, and an icon slot used to mark orbitals already computed."""
+
+    def __init__(self, orbitals: list, parent=None, visible_rows: int = 10):
+        super().__init__(parent)
+        self.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.setIconSize(QSize(12, 12))
+        id_width = max((len(orbital_key(orbital)) for orbital in orbitals), default=0)
+        for orbital in orbitals:
+            item = QListWidgetItem(_check_mark_icon(False), orbital_label(orbital, id_width))
+            item.setData(_USER_ROLE, orbital_key(orbital))
+            self.addItem(item)
+        row_height = self.sizeHintForRow(0) if orbitals else self.fontMetrics().height()
+        frame = 2 * self.frameWidth()
+        self.setFixedHeight(row_height * min(visible_rows, max(len(orbitals), 1)) + frame)
+        self.setMinimumWidth(self.sizeHintForColumn(0) + self.verticalScrollBar().sizeHint().width() + frame + 4)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+    def orbital_id(self, row: int):
+        item = self.item(row)
+        return None if item is None else item.data(_USER_ROLE)
+
+    def set_marked(self, row: int, marked: bool):
+        self.item(row).setIcon(_check_mark_icon(marked))
+
 
 
 def orbital_key(orbital) -> str:
@@ -212,11 +256,12 @@ def orbitals_in_display_order(orbitals: list) -> list:
                                                  -getattr(orbital, 'energy', 0.0)))
 
 
-def orbital_label(orbital) -> str:
+def orbital_label(orbital, id_width: int = 0) -> str:
     r"""Text for an orbital in the selector, eg. '102.1 [1.307] (-0.2921)': its ID
-    (number.symmetry, see :func:`orbital_key`), [occupation] and (energy in hartree), each part
-    only if known."""
-    label = orbital_key(orbital)
+    (number.symmetry, see :func:`orbital_key`), [occupation] and (energy in hartree), each
+    part only if known. The ID is padded to `id_width` characters, so that in a fixed-width font the
+    occupations of a list of orbitals line up."""
+    label = orbital_key(orbital).ljust(id_width)
     occupation = getattr(orbital, 'occupation', None)
     if occupation is not None:
         label += f' [{occupation:.3f}]'
@@ -781,9 +826,8 @@ class ControlPanel(QWidget):
         resolution and contour value, ie. that will show without waiting."""
         if not hasattr(self, 'orbital_selector') or not hasattr(self.parent, 'cubes'):
             return
-        for index, orbital in enumerate(self.orbital_order):
-            self.orbital_selector.setItemIcon(index,
-                                              _check_mark_icon(self.parent.cached_cube_key(orbital) is not None))
+        for row, orbital in enumerate(self.orbital_order):
+            self.orbital_selector.set_marked(row, self.parent.cached_cube_key(orbital) is not None)
 
     def set_status(self, text: str | None):
         r"""Shows/hides a status line (eg. while an orbital cube is being computed
@@ -843,26 +887,17 @@ class ControlPanel(QWidget):
             speed_slider.valueChanged.connect(self.parent.set_vibration_frequency_scaling)
             self.control_layout.add('Speed', speed_slider)
         if hasattr(self.parent, 'orbitals'):
-            orbital_selector = QComboBox()
-            self.orbital_selector = orbital_selector
             self.orbital_order = orbitals_in_display_order(self.parent.orbitals)
-            for orbital in self.orbital_order:
-                orbital_selector.addItem(_check_mark_icon(False), orbital_label(orbital), orbital_key(orbital))
+            orbital_selector = OrbitalList(self.orbital_order, self)
+            self.orbital_selector = orbital_selector
             orbital_selector.setToolTip('Orbital (number.symmetry, beta spin marked by a minus sign), [occupation]'
-                                        ' and (energy in hartree), sorted'
-                                        ' by increasing occupation, then decreasing energy; a check mark means'
-                                        ' it is already computed and shows without waiting')
-            orbital_selector.setCurrentIndex(self.orbital_order.index(self.parent.orbital))
-            orbital_selector.currentIndexChanged.connect(
-                lambda index: self.parent.set_orbital(orbital_selector.itemData(index)))
-            # orbital_selector.setBackgroundColor(QColor(*self.background_colour))
-            # palette = self.palette()
-            # palette.setColor(QPalette.Base, QColor(*self.background_colour))
-            # palette.setColor(QPalette.Base, QColor('Red'))
-            # orbital_selector.setPalette(palette)
-            # orbital_selector.setAutoFillBackground(True)
-            orbital_selector.setMinimumWidth(orbital_selector.minimumSizeHint().width())
-            self.control_layout.add('Orbital', orbital_selector)
+                                        ' and (energy in hartree), sorted by increasing occupation, then decreasing energy; click a line to show'
+                                        ' that orbital. A check mark means it is already computed and shows'
+                                        ' without waiting')
+            orbital_selector.setCurrentRow(self.orbital_order.index(self.parent.orbital))
+            orbital_selector.currentRowChanged.connect(
+                lambda row: row >= 0 and self.parent.set_orbital(orbital_selector.orbital_id(row)))
+            self.control_layout.add_wide('Orbitals', orbital_selector)
 
             if hasattr(self.parent.orbital, 'occupation'):
                 row = self.control_layout.add('Occupation', QLabel(str(self.parent.orbital.occupation)))
@@ -877,7 +912,7 @@ class ControlPanel(QWidget):
             # in step with signals blocked, so that moving one doesn't feed back through the other
             # (which would also round a typed value to the nearest slider step).
             molecule_widget = self.parent.molecule_widget
-            slider_width = max(60, orbital_selector.minimumSizeHint().width() - 75)
+            slider_width = max(60, orbital_selector.minimumWidth() - 75)
 
             contour_slider = mySlider(self)
             contour_slider.setMaximumWidth(slider_width)
@@ -944,7 +979,7 @@ class ControlPanel(QWidget):
             if False:
                 resolution_slider = mySlider(self)
                 resolution_slider.valueChanged.connect(self.parent.set_grid_points)
-                resolution_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
+                resolution_slider.setMaximumWidth(orbital_selector.minimumWidth())
                 resolution_slider.setValue(self.parent.grid_points)
                 resolution_label = FixedLabel('Resolution:')
                 self.control_layout.addWidget(resolution_label, row, 0)
