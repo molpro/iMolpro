@@ -90,7 +90,7 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: iMolpro-github
-          auto-activate-base: false
+          auto-activate: false
           conda-remove-defaults: 'true'
       - uses: milliewalky/setup-7-zip@v2
       - name: Build
