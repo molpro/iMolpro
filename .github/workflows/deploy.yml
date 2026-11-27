@@ -99,7 +99,7 @@ jobs:
         shell: pwsh
         run: .\build.ps1
       - name: Azure Trusted Signing
-        uses: azure/trusted-signing-action@v0.4.0
+        uses: azure/trusted-signing-action@v2.0.0
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -129,10 +129,13 @@ jobs:
           prerelease: true
 
       - name: Delete old latest releases
-        uses: dev-drprasad/delete-older-releases@v0.3.2
-        with:
-          keep_latest: 1
-          delete_tag_pattern: 'latest*'
-          delete_tags: true
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # keep only the newest release whose tag contains "latest"
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName,createdAt \
+            --jq '[.[] | select(.tagName | test("latest"))] | sort_by(.createdAt) | reverse | .[1:] | .[].tagName' |
+          while read -r tag; do
+            gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+          done
