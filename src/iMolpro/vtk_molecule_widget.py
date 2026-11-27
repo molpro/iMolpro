@@ -50,6 +50,7 @@ from vtkmodules.vtkCommonTransforms import vtkTransform
 from vtkmodules.vtkFiltersCore import vtkGlyph3D, vtkContourFilter
 from vtk import vtkActor
 from .QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+from .opengl_check import warn_if_opengl_unavailable
 
 from enum import Enum
 
@@ -845,6 +846,7 @@ class ControlPanel(QWidget):
 class MoleculeScene(QVTKRenderWindowInteractor):
 
     def __init__(self, parent=None):
+        warn_if_opengl_unavailable(parent)
         QVTKRenderWindowInteractor.__init__(self, parent)
         self.renderer = vtkRenderer()
         self.renderer.AutomaticLightCreationOff()
