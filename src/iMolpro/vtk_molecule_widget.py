@@ -203,23 +203,32 @@ def _grid_resolution(orbital, grid_points: int, border: float = GRID_BORDER) -> 
     return float(extent.max()) / grid_points
 
 
-def orbitals_by_energy(orbitals: list) -> list:
-    r"""`orbitals` sorted by increasing energy, keeping the given order among equal energies
-    (eg. natural orbitals, whose energies are all missing, ie. 0.0)."""
-    return sorted(orbitals, key=lambda orbital: getattr(orbital, 'energy', 0.0))
+def orbitals_in_display_order(orbitals: list) -> list:
+    r"""`orbitals` in the order of the selector: by increasing occupation, and among equal
+    occupations by decreasing energy -- so for a set of doubly occupied canonical orbitals the
+    HOMO comes first, and for natural orbitals the least occupied one. Orbitals equal in both
+    keep their given order."""
+    return sorted(orbitals, key=lambda orbital: (getattr(orbital, 'occupation', 0.0),
+                                                 -getattr(orbital, 'energy', 0.0)))
 
 
 def orbital_label(orbital) -> str:
-    r"""Text for an orbital in the selector: its ID (number.symmetry) and energy in hartree."""
+    r"""Text for an orbital in the selector, eg. '102.1 [1.307] (-0.2921)': its ID
+    (number.symmetry, see :func:`orbital_key`), [occupation] and (energy in hartree), each part
+    only if known."""
+    label = orbital_key(orbital)
+    occupation = getattr(orbital, 'occupation', None)
+    if occupation is not None:
+        label += f' [{occupation:.3f}]'
     energy = getattr(orbital, 'energy', None)
-    key = orbital_key(orbital)
-    return key if energy is None else f'{key}   ({energy:.4f})'
+    if energy is not None:
+        label += f' ({energy:.4f})'
+    return label
 
 
 def initial_orbital(orbitals: list):
-    r"""The orbital shown first: the highest in energy (the HOMO for a set of occupied orbitals),
-    or the last one if the energies don't distinguish them."""
-    return max(reversed(orbitals), key=lambda orbital: getattr(orbital, 'energy', 0.0))
+    r"""The orbital shown first: the one at the top of the selector (see orbitals_in_display_order)."""
+    return orbitals_in_display_order(orbitals)[0]
 
 
 def contour_cube_key_usable(key, orbital, grid_points, contour_value) -> bool:
@@ -307,7 +316,7 @@ class MoleculeDisplay(QWidget):
     # for large molecules. Min/max clamp what the '+'/'-' buttons (see
     # set_grid_points) can reach, so repeated clicks can't reintroduce an
     # unbounded grid for a large molecule.
-    GRID_POINTS_DEFAULT = 60
+    GRID_POINTS_DEFAULT = 38
     GRID_POINTS_MINIMUM = 15
     GRID_POINTS_MAXIMUM = 150
 
@@ -836,11 +845,13 @@ class ControlPanel(QWidget):
         if hasattr(self.parent, 'orbitals'):
             orbital_selector = QComboBox()
             self.orbital_selector = orbital_selector
-            self.orbital_order = orbitals_by_energy(self.parent.orbitals)
+            self.orbital_order = orbitals_in_display_order(self.parent.orbitals)
             for orbital in self.orbital_order:
                 orbital_selector.addItem(_check_mark_icon(False), orbital_label(orbital), orbital_key(orbital))
-            orbital_selector.setToolTip('Orbital (number.symmetry) and its energy in hartree, sorted by energy;'
-                                        ' a check mark means it is already computed and shows without waiting')
+            orbital_selector.setToolTip('Orbital (number.symmetry, beta spin marked by a minus sign), [occupation]'
+                                        ' and (energy in hartree), sorted'
+                                        ' by increasing occupation, then decreasing energy; a check mark means'
+                                        ' it is already computed and shows without waiting')
             orbital_selector.setCurrentIndex(self.orbital_order.index(self.parent.orbital))
             orbital_selector.currentIndexChanged.connect(
                 lambda index: self.parent.set_orbital(orbital_selector.itemData(index)))

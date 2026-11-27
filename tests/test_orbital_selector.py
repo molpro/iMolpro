@@ -1,27 +1,37 @@
 from types import SimpleNamespace
 
-from iMolpro.vtk_molecule_widget import orbitals_by_energy, orbital_label, initial_orbital, contour_cube_key_usable
+from iMolpro.vtk_molecule_widget import orbitals_in_display_order, orbital_label, initial_orbital, \
+    contour_cube_key_usable
 
 
-def _orbital(ID, energy):
-    return SimpleNamespace(ID=ID, energy=energy)
+def _orbital(ID, energy, occupation=2.0):
+    return SimpleNamespace(ID=ID, energy=energy, occupation=occupation)
 
 
-def test_orbitals_sorted_by_energy_stable_for_ties():
-    a, b, c, d = _orbital('1.1', -11.2), _orbital('3.7', -0.19), _orbital('2.1', -1.0), _orbital('1.2', -1.0)
-    assert orbitals_by_energy([b, c, a, d]) == [a, c, d, b]
+def test_display_order_occupation_ascending_then_energy_descending():
+    core, homo, mid = _orbital('1.1', -11.2), _orbital('3.7', -0.19), _orbital('2.1', -1.0)
+    assert orbitals_in_display_order([core, homo, mid]) == [homo, mid, core]
+    weak, strong = _orbital('102.1', 0.0, 0.02), _orbital('5.1', 0.0, 1.95)
+    single = _orbital('4.1', -0.3, 1.0)
+    assert orbitals_in_display_order([strong, core, single, weak]) == [weak, single, strong, core]
 
 
-def test_orbital_label_shows_id_and_energy():
-    assert orbital_label(_orbital('3.7', -0.191234)) == '3.7   (-0.1912)'
+def test_display_order_stable_for_full_ties():
+    natural = [_orbital(f'{i}.1', 0.0, 1.0) for i in range(1, 4)]
+    assert orbitals_in_display_order(natural) == natural
+
+
+def test_orbital_label_shows_id_occupation_and_energy():
+    assert orbital_label(_orbital('102.1', -0.29214, 1.30712)) == '102.1 [1.307] (-0.2921)'
+    assert orbital_label(SimpleNamespace(ID='4.1', energy=-0.5)) == '4.1 (-0.5000)'
     assert orbital_label(SimpleNamespace(ID='4.1')) == '4.1'
 
 
-def test_initial_orbital_is_highest_energy_or_last_on_ties():
+def test_initial_orbital_is_top_of_selector():
     homo = _orbital('3.7', -0.19)
     assert initial_orbital([_orbital('1.1', -11.2), homo, _orbital('2.1', -1.0)]) is homo
-    natural = [_orbital(f'{i}.1', 0.0) for i in range(1, 4)]
-    assert initial_orbital(natural) is natural[-1]
+    weak = _orbital('9.1', 0.0, 0.05)
+    assert initial_orbital([_orbital('5.1', 0.0, 1.9), weak]) is weak
 
 
 def test_cached_cube_reusable_only_for_same_orbital_grid_and_not_lower_contour():
