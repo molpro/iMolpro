@@ -9,7 +9,7 @@ import time
 
 from pymolpro.elements import periodic_table
 
-from .project import Project, Structure
+from .project import Project, Structure, with_sidecar_files
 
 try:
     import pwd
@@ -163,13 +163,16 @@ class ProjectWindow(QMainWindow):
                     self.project = Project(files=filename, **kwargs)
                 else:
                     self.project = Project(location=(writable_directory(preferred=pathlib.Path(filename[0]).parent)),
-                                           files=filename, **kwargs)
+                                           files=with_sidecar_files(filename), **kwargs)
             elif pathlib.Path(filename).suffix == '.molpro':
                 self.project = Project(filename, **kwargs)
             else:
+                # An .xml output may keep its orbitals in a separate sidecar file; every way of
+                # opening a file (dialog, Finder, command line) hands over just the .xml, so
+                # bring its sidecar along or the orbitals can't be read in the new project.
                 self.project = Project(
                     location=(writable_directory(preferred=pathlib.Path(filename).parent)),
-                    files=[filename], **kwargs)
+                    files=with_sidecar_files([filename]), **kwargs)
             logger.debug('Initialised Project input filename {}. Project bundle at {}'.format(filename,
                                                                                               self.project.filename('',
                                                                                                                     '',

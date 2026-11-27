@@ -16,6 +16,54 @@ logger = logging.getLogger(__name__)
 SLURM_OUTPUT_SUFFIX = 'slurm_out'
 
 
+def sidecar_files(xml_file) -> list[str]:
+    r"""
+    Sidecar files referenced by a Molpro XML output file.
+
+    Newer Molpro versions can write orbital coefficients to a binary sidecar file next to the
+    XML instead of inline (``<orbitals sidecar="name.xml-sidecar">`` with a ``sidecar_offset``
+    on each ``<orbital>``). The sidecar is looked up relative to the XML's directory, so it
+    must be imported into a project together with the XML or the orbitals can't be read.
+
+    :param xml_file: path to a Molpro XML output file
+    :return: paths of the referenced sidecar files that exist next to it, in document order,
+        without duplicates. Unreadable or non-XML input gives an empty list.
+    """
+    import pathlib
+    from lxml import etree
+    xml_path = pathlib.Path(xml_file)
+    try:
+        names = etree.parse(str(xml_path)).xpath("//*[local-name()='orbitals']/@sidecar")
+    except (OSError, etree.Error):
+        return []
+    result = []
+    for name in names:
+        name = str(name)
+        # Only plain file names: pymolpro resolves the attribute against the project's run
+        # directory, so anything with a directory part couldn't be found there anyway.
+        if not name or pathlib.Path(name).name != name:
+            continue
+        candidate = xml_path.parent / name
+        if candidate.is_file() and str(candidate) not in result:
+            result.append(str(candidate))
+    return result
+
+
+def with_sidecar_files(files: list[str]) -> list[str]:
+    r"""
+    `files` with the sidecar files of any Molpro XML output among them appended (see
+    :func:`sidecar_files`), so that importing them into a project keeps the orbitals readable.
+    The original files keep their order, in particular the first one, which names the project.
+    """
+    result = list(files)
+    for file in files:
+        if isinstance(file, (str, os.PathLike)) and str(file).endswith('.xml') and os.path.isfile(file):
+            for sidecar in sidecar_files(file):
+                if sidecar not in result:
+                    result.append(sidecar)
+    return result
+
+
 @dataclass
 class Structure:
     atoms: list[dict]
