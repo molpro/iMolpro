@@ -53,7 +53,7 @@ def _make_window(tmp_path, compute):
     def staleness():
         return True, str(xyz_file), 'he'
 
-    def compute_initial_xyz(path):
+    def compute_initial_xyz(path, geom=""):
         window.launches += 1
         return compute(window, path)
 
@@ -116,3 +116,24 @@ def test_successful_preview_clears_the_failure(tmp_path):
     window.input_pane.text = 'geometry={ne}\nhf\n'
     window.initial_xyz_async()
     assert window._initial_xyz_failed_key is None
+
+
+def _direct(tmp_path, geom, content=None):
+    if content is not None:
+        (tmp_path / 'm.xyz').write_text(content)
+    window = types.SimpleNamespace(project=types.SimpleNamespace(
+        filename=lambda *args, **kwargs: str(tmp_path / geom)))
+    return ProjectWindow._direct_xyz_atoms(window, geom)
+
+
+def test_direct_xyz_reads_more_atoms_than_the_teaching_limit(tmp_path):
+    atoms = ''.join('C %d.0 0.0 0.5\n' % i for i in range(24))
+    result = _direct(tmp_path, 'm.xyz', '24\ncomment\n' + atoms)
+    assert len(result) == 24 and result[3] == ('C', ('3.0', '0.0', '0.5'))
+
+
+def test_direct_xyz_rejects_other_geometries_and_bad_files(tmp_path):
+    assert _direct(tmp_path, '{he}') is None
+    assert _direct(tmp_path, 'm.xyz', '2\nc\nH 0 0 0\n') is None  # too few atoms
+    assert _direct(tmp_path, 'm.xyz', '1\nc\nH 0 0 x\n') is None  # not a number
+    assert _direct(tmp_path, 'missing.xyz') is None
