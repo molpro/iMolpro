@@ -182,7 +182,7 @@ class OrbitalList(QListWidget):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.setIconSize(QSize(12, 12))
-        id_width = max((len(orbital_key(orbital)) for orbital in orbitals), default=0)
+        id_width = max((len(orbital_name(orbital)) for orbital in orbitals), default=0)
         for orbital in orbitals:
             item = QListWidgetItem(_check_mark_icon(False), orbital_label(orbital, id_width))
             item.setData(_USER_ROLE, orbital_key(orbital))
@@ -208,11 +208,32 @@ def orbital_key(orbital) -> str:
     alpha and beta sets can be shown together. Molpro's XML already writes beta IDs with
     the leading minus, but it is added here if absent."""
     label = str(orbital.ID)
-    node = getattr(orbital, 'node', None)
-    parent = node.getparent() if node is not None else None
-    if parent is not None and str(parent.get('spin', '')).lower() == 'beta' and not label.startswith('-'):
+    if orbital_spin(orbital) == 'beta' and not label.startswith('-'):
         label = '-' + label
     return label
+
+
+def orbital_spin(orbital):
+    r"""'alpha' or 'beta' for an orbital of a spin-resolved (eg. UHF) orbital set, taken from the
+    `spin` attribute of its <orbitals> node; None otherwise, including spin-free sets such as UHF
+    natural orbitals (spin="closed")."""
+    node = getattr(orbital, 'node', None)
+    parent = node.getparent() if node is not None else None
+    spin = str(parent.get('spin', '')).lower() if parent is not None else ''
+    return spin if spin in ('alpha', 'beta') else None
+
+
+_SPIN_SUFFIX = {'alpha': '\u03b1', 'beta': '\u03b2'}  # Greek alpha, beta
+
+
+def orbital_name(orbital) -> str:
+    r"""Name of an orbital as shown in the selector. For spin-resolved orbitals it is the ID
+    followed by a Greek alpha or beta, eg. '3.1α' and '3.1β', without the minus sign that
+    :func:`orbital_key` uses to tell beta orbitals apart; otherwise it is just the key."""
+    spin = orbital_spin(orbital)
+    if spin is None:
+        return orbital_key(orbital)
+    return str(orbital.ID).lstrip('-') + _SPIN_SUFFIX[spin]
 
 
 class _CubeWorkerSignals(QObject):
@@ -257,11 +278,11 @@ def orbitals_in_display_order(orbitals: list) -> list:
 
 
 def orbital_label(orbital, id_width: int = 0) -> str:
-    r"""Text for an orbital in the selector, eg. '102.1 [1.307] (-0.2921)': its ID
-    (number.symmetry, see :func:`orbital_key`), [occupation] and (energy in hartree), each
+    r"""Text for an orbital in the selector, eg. '102.1 [1.307] (-0.2921)': its name
+    (number.symmetry, plus spin if resolved, see :func:`orbital_name`), [occupation] and (energy in hartree), each
     part only if known. The ID is padded to `id_width` characters, so that in a fixed-width font the
     occupations of a list of orbitals line up."""
-    label = orbital_key(orbital).ljust(id_width)
+    label = orbital_name(orbital).ljust(id_width)
     occupation = getattr(orbital, 'occupation', None)
     if occupation is not None:
         label += f' [{occupation:.3f}]'
@@ -890,7 +911,7 @@ class ControlPanel(QWidget):
             self.orbital_order = orbitals_in_display_order(self.parent.orbitals)
             orbital_selector = OrbitalList(self.orbital_order, self)
             self.orbital_selector = orbital_selector
-            orbital_selector.setToolTip('Orbital (number.symmetry, beta spin marked by a minus sign), [occupation]'
+            orbital_selector.setToolTip('Orbital (number.symmetry; \u03b1/\u03b2 for alpha/beta spin), [occupation]'
                                         ' and (energy in hartree), sorted by increasing occupation, then decreasing energy; click a line to show'
                                         ' that orbital. A check mark means it is already computed and shows'
                                         ' without waiting')

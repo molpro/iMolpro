@@ -68,17 +68,27 @@ def test_orbital_list_rows_data_marks_and_height(qtbot):
     assert short.height() < 4 * short.sizeHintForRow(0)
 
 
-def test_beta_orbitals_keep_minus_sign_in_label_and_list(qtbot):
+def test_beta_orbitals_keyed_with_minus_but_named_with_beta(qtbot):
     from lxml import etree
-    from iMolpro.vtk_molecule_widget import OrbitalList, orbital_key
+    from iMolpro.vtk_molecule_widget import OrbitalList, orbital_key, orbital_name
     root = etree.fromstring('<m><orbitals spin="alpha"><orbital/></orbitals>'
                             '<orbitals spin="beta"><orbital/></orbitals></m>')
     alpha_node, beta_node = root.xpath('//orbital')
     alpha = SimpleNamespace(ID='1.1', energy=-0.5, occupation=1.0, node=alpha_node)
     beta = SimpleNamespace(ID='1.1', energy=-0.4, occupation=1.0, node=beta_node)
     assert orbital_key(alpha) == '1.1' and orbital_key(beta) == '-1.1'
-    assert orbital_label(beta) == '-1.1 [1.000] (-0.4000)'
+    assert orbital_name(alpha) == '1.1\u03b1' and orbital_name(beta) == '1.1\u03b2'
+    assert orbital_label(beta) == '1.1\u03b2 [1.000] (-0.4000)'
     widget = OrbitalList(orbitals_in_display_order([alpha, beta]))
     qtbot.addWidget(widget)
     assert [widget.orbital_id(row) for row in range(2)] == ['-1.1', '1.1']
-    assert widget.item(1).text().startswith('1.1  [1.000]')
+    assert widget.item(1).text() == '1.1\u03b1 [1.000] (-0.5000)'
+
+
+def test_spin_free_orbitals_get_no_spin_letter():
+    from lxml import etree
+    from iMolpro.vtk_molecule_widget import orbital_name
+    node = etree.fromstring('<m><orbitals spin="closed" type="NATURAL"><orbital/></orbitals></m>').xpath('//orbital')[0]
+    natural = SimpleNamespace(ID='3.1', energy=0.0, occupation=1.0, node=node)
+    assert orbital_name(natural) == '3.1'
+    assert orbital_label(natural) == '3.1 [1.000] (0.0000)'
