@@ -16,6 +16,7 @@ try:
 except ImportError:
     pass
 import shutil
+import tempfile
 import subprocess
 import sys
 import re
@@ -54,6 +55,7 @@ except:
 from pymolpro import molpro_input
 from pymolpro.molpro_input import InputSpecification
 from .database import database_choose_structure
+from . import babel
 from .utilities import EditFile, writable_directory
 from .backend import configure_backend, BackendConfigurationEditor
 from .settings import settings
@@ -853,18 +855,30 @@ class ProjectWindow(QMainWindow):
         _dir = settings['geometry_directory'] if 'geometry_directory' in settings else (
             settings['import_directory'] if 'import_directory' in settings else os.path.dirname(
                 self.project.filename(run=-1)))
-        filename, junk = QFileDialog.getOpenFileName(self, 'Import xyz file into project',
+        filename, junk = QFileDialog.getOpenFileName(self, 'Import geometry file into project',
                                                      str(pathlib.Path(_dir) / '*'),
-                                                     "Geometry (*.xyz)",
+                                                     babel.file_dialog_filter(),
                                                      options=QFileDialog.DontResolveSymlinks)
         if os.path.isfile(filename):
             settings['geometry_directory'] = os.path.dirname(filename)
-            self.adopt_structure_file(filename)
-            return filename
+            if self.adopt_structure_file(filename):
+                return filename
 
     def adopt_structure_file(self, filename):
         if os.path.exists(filename):
-            self.project.import_file(filename)
+            if os.path.splitext(filename)[1].lower() != '.xyz':
+                # Any other format is converted to xyz, which is what Molpro's geometry= reads
+                try:
+                    with tempfile.TemporaryDirectory() as directory:
+                        xyz_filename = babel.to_xyz(filename, directory)
+                        self.project.import_file(xyz_filename)
+                except Exception as e:
+                    logger.exception('Could not convert %s to xyz', filename)
+                    QMessageBox.warning(self, 'Import structure', f'Could not read geometry from {filename}:\n{e}')
+                    return False
+                filename = xyz_filename
+            else:
+                self.project.import_file(filename)
             text = self.input_pane.toPlainText()
             if re.search(r'geometry *= *[-_./\w]+ *[;\n]', text, flags=re.IGNORECASE):
                 new_text = re.sub('geometry *=.*[\n;]', 'geometry=' + os.path.basename(filename) + '\n', text)
@@ -883,6 +897,8 @@ class ProjectWindow(QMainWindow):
             guided, input_specification = self._parse_input_text(new_text)
             self._apply_parsed_input(guided, input_specification, self._input_parse_generation)
             self.xyz_to_zmat_activate_or_not(True)
+            return True
+        return False
 
     def database_import_structure(self):
         if filename := database_choose_structure():

@@ -35,4 +35,5 @@ licensed under the [GNU LGPL v3](https://opensource.org/license/lgpl-3-0).
 * [pymolpro](https://github.com/molpro/pymolpro)
 * [PubChemPy](https://github.com/mcs07/PubChemPy), licensed under the MIT license.
 * [ChemSpiPy](https://github.com/mcs07/ChemSpiPy), licensed under the MIT license.
+* [Open Babel](https://openbabel.org), used (as a separate program, `obabel`, not linked into iMolpro) to import geometries from other file formats, licensed under the [GNU GPL v2](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html). The source code is at https://github.com/openbabel/openbabel; the distributed apps contain the licence text in their `licenses` directory.
 * [DraggableTabWidget](https://github.com/akihito-takeuchi/qt-draggable-tab-widget), licensed under the MIT license.
