@@ -8,3 +8,8 @@ pyinstaller>=6
 git>=2
 certifi>=2024.8.30
 openssl>=3.5.3
+# Optional runtime dependency (geometry import from any file format, see
+# src/iMolpro/babel.py) that is bundled into the distributed apps. It is not
+# in pyproject.toml's dependencies because its PyPI name differs from its
+# conda name; pip users get it through the "openbabel" extra instead.
+openbabel>=3.1.1
