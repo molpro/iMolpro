@@ -45,6 +45,10 @@ def _environment():
     environment = dict(os.environ)
     base = _bundle_directory()
     if base is not None:
+        # obabel is in a subdirectory of the bundle, but the libraries it needs (and that its plugins
+        # need) are collected at the top level. Unlike on macOS, where PyInstaller rewrites the library
+        # paths, on Windows they are only found next to the program or on PATH.
+        environment['PATH'] = base + os.pathsep + environment.get('PATH', '')
         for variable, directory in (('BABEL_LIBDIR', 'openbabel_plugins'), ('BABEL_DATADIR', 'openbabel_data')):
             path = os.path.join(base, directory)
             if os.path.isdir(path):
@@ -70,11 +74,15 @@ def suffixes() -> tuple:
     result = ['xyz']
     if available():
         try:
-            for line in _run(['-L', 'formats', 'read']).stdout.splitlines():
+            completed = _run(['-L', 'formats', 'read'])
+            for line in completed.stdout.splitlines():
                 if ' -- ' in line:
                     suffix = line.split(' -- ')[0].strip()
                     if suffix and suffix not in result:
                         result.append(suffix)
+            if len(result) == 1:
+                logger.warning('obabel (%s) listed no formats: exit code %s, stderr: %s', executable(),
+                               completed.returncode, completed.stderr.strip())
         except (OSError, subprocess.SubprocessError):
             logger.exception('Could not list the formats obabel can read')
             return ('xyz',)
@@ -94,10 +102,15 @@ def to_xyz(filename, destination_directory) -> str:
         raise RuntimeError('Open Babel (obabel) is not available, so only xyz files can be imported')
     path = pathlib.Path(filename).resolve()
     suffix = path.suffix[1:]
-    if suffix not in suffixes():
+    if len(suffixes()) > 1 and suffix not in suffixes():
         raise ValueError(f'Open Babel cannot read files with suffix .{suffix}')
+    # (if the list of formats could not be obtained, let obabel itself report what is wrong)
     result = pathlib.Path(destination_directory) / (path.stem + '.xyz')
-    completed = _run([f'-i{suffix}', str(path), '-oxyz', '-O', str(result), '-f', '1', '-l', '1'])
+    try:
+        completed = _run([f'-i{suffix}', str(path), '-oxyz', '-O', str(result), '-f', '1', '-l', '1'])
+    except (OSError, subprocess.SubprocessError) as e:
+        raise RuntimeError(f'Could not run Open Babel ({executable()}): {e}') from e
     if completed.returncode != 0 or not result.is_file() or result.stat().st_size == 0:
-        raise RuntimeError('Open Babel could not convert the file: ' + (completed.stderr.strip() or 'no output'))
+        raise RuntimeError(f'Open Babel could not convert the file (exit code {completed.returncode}): '
+                           + (completed.stderr.strip() or 'no output'))
     return str(result)

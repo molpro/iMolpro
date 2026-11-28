@@ -59,8 +59,9 @@ if __name__ == '__main__':
 # bundled as a separate program (obabel.exe), not imported. It finds its format plugins and data
 # files in the prefix it was built for, so they have to be bundled explicitly too; babel.py points
 # BABEL_LIBDIR and BABEL_DATADIR at these directories in the frozen app.
-$openbabel_version = (Get-ChildItem "$cp\Library\share\openbabel" -Directory | Select-Object -First 1).Name
-if (-not $openbabel_version -or -not (Test-Path "$cp\Library\bin\formats_misc.obf") -or -not (Test-Path "$cp\Library\bin\obabel.exe")) {
+# (On Windows the conda-forge package keeps the data files directly in share\openbabel; the
+# versioned Library\share\openbabel\<version> directory holds only a splash image.)
+if (-not (Test-Path "$cp\share\openbabel\atomtyp.txt") -or -not (Test-Path "$cp\Library\bin\formats_misc.obf") -or -not (Test-Path "$cp\Library\bin\obabel.exe")) {
   throw "Open Babel plugins/data not found in $cp (conda package openbabel)"
 }
 
@@ -75,7 +76,7 @@ if (-not $openbabel_version -or -not (Test-Path "$cp\Library\bin\formats_misc.ob
             --add-data="$versionfile":. `
             --add-binary="$cp\Library\bin\obabel.exe:openbabel_bin" `
             --add-binary="$cp\Library\bin\*.obf:openbabel_plugins" `
-            --add-data="$cp\Library\share\openbabel\${openbabel_version}:openbabel_data" `
+            --add-data="$cp\share\openbabel:openbabel_data" `
             --add-data=src/iMolpro/data/licenses:.\licenses `
             --add-data ${molpro_root}:.\molpro `
             --add-data=$cp\Library\usr\bin\nohup.exe:. `
