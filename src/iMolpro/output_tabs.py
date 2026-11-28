@@ -22,7 +22,7 @@ except:
 
 from .draggabletabwidget import DraggableTabWidget
 from .utilities import ViewFile, atoms_from_xyz
-from .vtk_molecule_widget import MoleculeDisplay
+from .vtk_molecule_widget import MoleculeDisplay, orbital_key
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,41 @@ class ViewProjectOutput(ViewFile):
                               ''.join(['M' for k in range(
                                   self.character_width)])).width() + contingency < self.size().width():
                 break
+
+
+def _orbital_set_identity(orbitals, metadata):
+    r"""What two orbital sets must share for one to stand in for the other: method, type and
+    state, and the geometry of the molecule they belong to."""
+    try:
+        geometry = tuple(tuple(round(x, 5) for x in atom['xyz']) for atom in orbitals[0].atoms)
+    except Exception:
+        geometry = None
+    return metadata.get('method'), metadata.get('type'), metadata.get('stateID'), geometry
+
+
+def _orbital_signatures(orbitals) -> frozenset:
+    return frozenset((orbital_key(orbital), round(getattr(orbital, 'energy', 0.0), 6),
+                      round(getattr(orbital, 'occupation', 0.0), 6)) for orbital in orbitals)
+
+
+def drop_contained_orbital_sets(sets: list) -> list:
+    r"""
+    `sets` (each a list starting with [orbitals, metadata, ...]) without those whose orbitals are
+    all contained in another set of the same method, type, state and geometry.
+
+    Molpro can write the same orbitals more than once, eg. the occupied orbitals of an SCF
+    jobstep and, from a later ``put,xml``, the same orbitals together with the virtual ones. Only
+    the most complete copy is kept (of identical copies, the first), in its original place.
+    """
+    described = [(_orbital_set_identity(s[0], s[1]), _orbital_signatures(s[0])) for s in sets]
+
+    def contained(i):
+        identity, signatures = described[i]
+        return any(j != i and other_identity == identity and signatures <= other_signatures
+                   and (len(signatures) < len(other_signatures) or j < i)
+                   for j, (other_identity, other_signatures) in enumerate(described))
+
+    return [s for i, s in enumerate(sets) if not contained(i)]
 
 
 class LazyOrbitalTab(QWidget):
@@ -284,7 +319,9 @@ class OutputTabWidget(MyTabWidget):
             def collect(instance):
                 for index in range(10000):  # get orbital sets of this molecule node
                     try:
-                        orbitals = self.parent.project.orbitals(instance, orbital_instance=index)
+                        # every orbital, including virtual and weakly occupied ones
+                        orbitals = self.parent.project.orbitals(instance, orbital_instance=index,
+                                                                minocc=float('-inf'))
                     except (IndexError, AttributeError):
                         break
                     if not orbitals:
@@ -313,6 +350,7 @@ class OutputTabWidget(MyTabWidget):
             except Exception as e:
                 if not isinstance(e, (IndexError, AttributeError)):
                     print('Orbitals except', str(e) + ' ' + str(type(e)))
+            sets = drop_contained_orbital_sets(sets)
             # spin-resolved (UHF) orbitals first, so they are what is shown by default
             sets.sort(key=lambda s: s[1].get('type') not in ('ALPHA', 'BETA', 'ALPHA+BETA'))
             for orbitals, metadata, _ in sets:

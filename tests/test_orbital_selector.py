@@ -27,11 +27,15 @@ def test_orbital_label_shows_id_occupation_and_energy():
     assert orbital_label(SimpleNamespace(ID='4.1')) == '4.1'
 
 
-def test_initial_orbital_is_top_of_selector():
+def test_initial_orbital_is_highest_occupied():
     homo = _orbital('3.7', -0.19)
-    assert initial_orbital([_orbital('1.1', -11.2), homo, _orbital('2.1', -1.0)]) is homo
-    weak = _orbital('9.1', 0.0, 0.05)
-    assert initial_orbital([_orbital('5.1', 0.0, 1.9), weak]) is weak
+    lumo, virtual = _orbital('4.1', 0.05, 0.0), _orbital('5.1', 0.9, 0.0)
+    assert initial_orbital([_orbital('1.1', -11.2), homo, _orbital('2.1', -1.0), lumo, virtual]) is homo
+    somo = _orbital('2.2', -0.45, 1.0)
+    assert initial_orbital([homo, somo, lumo]) is somo
+    strong, weak = _orbital('5.1', 0.0, 1.9), _orbital('9.1', 0.0, 0.05)
+    assert initial_orbital([strong, weak]) is strong
+    assert initial_orbital([virtual, lumo]) is virtual
 
 
 def test_cached_cube_reusable_only_for_same_orbital_grid_and_not_lower_contour():
@@ -92,3 +96,14 @@ def test_spin_free_orbitals_get_no_spin_letter():
     natural = SimpleNamespace(ID='3.1', energy=0.0, occupation=1.0, node=node)
     assert orbital_name(natural) == '3.1'
     assert orbital_label(natural) == '3.1 [1.000] (0.0000)'
+
+
+def test_orbital_list_select_row_scrolls_selection_into_view(qtbot):
+    from iMolpro.vtk_molecule_widget import OrbitalList
+    widget = OrbitalList([_orbital(f'{i}.1', -1.0 / i) for i in range(1, 41)], visible_rows=10)
+    qtbot.addWidget(widget)
+    widget.select_row(30)
+    widget.show()
+    qtbot.waitExposed(widget)
+    assert widget.currentRow() == 30
+    assert widget.viewport().rect().contains(widget.visualItemRect(widget.item(30)))

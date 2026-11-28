@@ -200,6 +200,24 @@ class OrbitalList(QListWidget):
     def set_marked(self, row: int, marked: bool):
         self.item(row).setIcon(_check_mark_icon(marked))
 
+    def select_row(self, row: int):
+        r"""Make `row` the current line and scroll it to the middle of the list."""
+        self.setCurrentRow(row)
+        self._scroll_to_current()
+
+    def _scroll_to_current(self):
+        item = self.currentItem()
+        if item is not None:
+            self.scrollToItem(item, QAbstractItemView.ScrollHint.PositionAtCenter)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # The viewport only gets its final size once the list is first shown, so the selection
+        # is scrolled into the middle again then; later showings keep the user's scrolling.
+        if not getattr(self, '_shown', False):
+            self._shown = True
+            self._scroll_to_current()
+
 
 
 def orbital_key(orbital) -> str:
@@ -234,6 +252,30 @@ def orbital_name(orbital) -> str:
     if spin is None:
         return orbital_key(orbital)
     return str(orbital.ID).lstrip('-') + _SPIN_SUFFIX[spin]
+
+
+def evaluable_at_any_occupation(orbital):
+    r"""
+    `orbital`, made able to evaluate itself on a grid whatever its occupation.
+
+    pymolpro's Orbital.evaluate() (as of 1.21.16) finds its orbital again through
+    grid.evaluateOrbitals() without passing its occupation cut, so that function's default
+    (minocc=1e-10) applies and an unoccupied (virtual) orbital isn't found -- it fails with a bare
+    AssertionError. For such an orbital, evaluate() is replaced on this instance by the same call
+    with no occupation cut; occupied orbitals are left alone.
+    """
+    node = getattr(orbital, 'node', None)
+    if node is None or getattr(orbital, 'occupation', 1.0) >= 1.0e-10:
+        return orbital
+    import pymolpro.grid
+
+    def evaluate(points, values=False):
+        return pymolpro.grid.evaluateOrbitals(node.xpath('./parent::*/parent::*')[-1], points, ID=orbital.ID,
+                                              values=values, directory=orbital.directory,
+                                              orbital_set=node.getparent(), minocc=float('-inf'))
+
+    orbital.evaluate = evaluate
+    return orbital
 
 
 class _CubeWorkerSignals(QObject):
@@ -292,9 +334,19 @@ def orbital_label(orbital, id_width: int = 0) -> str:
     return label
 
 
+FRONTIER_OCCUPATION = 0.5
+
+
 def initial_orbital(orbitals: list):
-    r"""The orbital shown first: the one at the top of the selector (see orbitals_in_display_order)."""
-    return orbitals_in_display_order(orbitals)[0]
+    r"""The orbital shown first: the highest occupied one, ie. the first in the selector's order
+    (see orbitals_in_display_order) whose occupation is at least FRONTIER_OCCUPATION. That is the
+    HOMO (or SOMO) of canonical orbitals, the higher-energy one of the alpha and beta HOMOs of UHF
+    orbitals, and the least occupied of the strongly occupied natural orbitals; virtual and weakly
+    occupied orbitals, at the top of the selector, are skipped. If there is no such orbital, the
+    top one."""
+    ordered = orbitals_in_display_order(orbitals)
+    return next((orbital for orbital in ordered
+                 if getattr(orbital, 'occupation', 0.0) >= FRONTIER_OCCUPATION), ordered[0])
 
 
 def contour_cube_key_usable(key, orbital, grid_points, contour_value) -> bool:
@@ -347,6 +399,7 @@ class _CubeWorker(QRunnable):
 
     def run(self):
         try:
+            evaluable_at_any_occupation(self.orbital)
             resolution = _grid_resolution(self.orbital, self.grid_points)
             try:
                 cube_data = self.orbital.cube_data(resolution=resolution, threshold=self.contour_value * .1,
@@ -371,7 +424,7 @@ class _CubeWorker(QRunnable):
                 f'{np.prod(cube_data.dimensions):,}')
             self.signals.finished.emit(self.key, cube_data)
         except Exception as e:
-            self.signals.failed.emit(self.key, str(e))
+            self.signals.failed.emit(self.key, f'{type(e).__name__}: {e}')
 
 
 class MoleculeDisplay(QWidget):
@@ -915,7 +968,7 @@ class ControlPanel(QWidget):
                                         ' and (energy in hartree), sorted by increasing occupation, then decreasing energy; click a line to show'
                                         ' that orbital. A check mark means it is already computed and shows'
                                         ' without waiting')
-            orbital_selector.setCurrentRow(self.orbital_order.index(self.parent.orbital))
+            orbital_selector.select_row(self.orbital_order.index(self.parent.orbital))
             orbital_selector.currentRowChanged.connect(
                 lambda row: row >= 0 and self.parent.set_orbital(orbital_selector.orbital_id(row)))
             self.control_layout.add_wide('Orbitals', orbital_selector)
