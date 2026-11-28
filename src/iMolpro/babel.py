@@ -60,8 +60,10 @@ def _run(arguments):
     kwargs = {}
     if os.name == 'nt':  # do not flash a console window from the windowed app
         kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+    # stdin must be given explicitly: a windowed (no-console) frozen app has no valid stdin handle to inherit,
+    # and on Windows CreateProcess then fails with WinError 50 / 6
     return subprocess.run([executable()] + arguments, capture_output=True, text=True, timeout=_TIMEOUT,
-                          env=_environment(), **kwargs)
+                          stdin=subprocess.DEVNULL, env=_environment(), **kwargs)
 
 
 def available() -> bool:
