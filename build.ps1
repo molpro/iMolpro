@@ -75,7 +75,7 @@ if (-not $openbabel_version -or -not (Test-Path "$cp\Library\bin\formats_misc.ob
             --add-data="$versionfile":. `
             --add-binary="$cp\Library\bin\obabel.exe:openbabel_bin" `
             --add-binary="$cp\Library\bin\*.obf:openbabel_plugins" `
-            --add-data="$cp\Library\share\openbabel\$openbabel_version:openbabel_data" `
+            --add-data="$cp\Library\share\openbabel\${openbabel_version}:openbabel_data" `
             --add-data=src/iMolpro/data/licenses:.\licenses `
             --add-data ${molpro_root}:.\molpro `
             --add-data=$cp\Library\usr\bin\nohup.exe:. `
