@@ -700,7 +700,7 @@ class ProjectWindow(QMainWindow):
                 # recomputation (see initial_xyz_async()) already brought it up to date
                 stale, xyz_file, geom = self._initial_xyz_staleness()
                 if stale:
-                    xyz_file = self._compute_initial_xyz(xyz_file)
+                    xyz_file = self._compute_initial_xyz(xyz_file, geom)
         return xyz_file
 
     def initial_xyz_async(self) -> str:
@@ -729,7 +729,7 @@ class ProjectWindow(QMainWindow):
         if stale and self._initial_xyz_lock.acquire(blocking=False):
             def recompute():
                 try:
-                    produced = self._compute_initial_xyz(xyz_file)
+                    produced = self._compute_initial_xyz(xyz_file, geom)
                     self._last_geometry_exception = None
                     # '' means Molpro ran but gave no geometry (already logged by _compute_initial_xyz)
                     self._initial_xyz_failed_key = None if produced else input_key
@@ -752,7 +752,32 @@ class ProjectWindow(QMainWindow):
             self.thread_executor.submit(recompute)
         return xyz_file if os.path.isfile(xyz_file) else ''
 
-    def _compute_initial_xyz(self, xyz_file) -> str:
+    def _direct_xyz_atoms(self, geom):
+        """
+        Reads the atoms of the geometry directly, if the input's geometry is a single xyz file
+        in the project. Returns a list of (element, (x, y, z)) with the coordinates as strings
+        (angstrom, as in the file), or None if that is not the case or the file cannot be read.
+        """
+        if not isinstance(geom, str) or not geom.strip().lower().endswith('.xyz'):
+            return None
+        try:
+            with open(self.project.filename('', geom.strip(), run=-1), 'r') as f:
+                lines = f.read().splitlines()
+            count = int(lines[0].split()[0])
+            atoms = []
+            for line in lines[2:2 + count]:
+                fields = line.split()
+                if len(fields) < 4 or not fields[0].isalpha():
+                    return None
+                for c in fields[1:4]:
+                    float(c)
+                atoms.append((fields[0], tuple(fields[1:4])))
+            return atoms if count > 0 and len(atoms) == count else None
+        except Exception:
+            logger.debug('Could not read xyz geometry directly', exc_info=True)
+            return None
+
+    def _compute_initial_xyz(self, xyz_file, geom='') -> str:
         """
         Does the actual (expensive, Molpro-invoking) work of regenerating xyz_file. Safe to call
         from a background thread: it only touches the filesystem and Project/pymolpro objects,
@@ -788,6 +813,17 @@ class ProjectWindow(QMainWindow):
                 # print(f"Error occurred while fetching geometry: {e}")
                 geometry = None
             if not geometry:
+                # Molpro could not report the geometry (eg the teaching version refuses more than
+                # 20 atoms). If the geometry is simply an xyz file, it can be read directly.
+                direct = self._direct_xyz_atoms(geom)
+                if direct:
+                    with open(xyz_file, 'w') as f:
+                        f.write(str(len(direct)) + '\n\n')
+                        for element, coordinates in direct:
+                            f.write(element + ''.join(' ' + c for c in coordinates) + '\n')
+                    logger.info('Molpro could not report the input geometry; '
+                                'showing the geometry read directly from ' + str(geom))
+                    return xyz_file
                 detail = ''
                 for suffix in ['stdout', 'stderr', 'out']:
                     try:
