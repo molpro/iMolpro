@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from iMolpro import babel
@@ -66,3 +68,24 @@ def test_unreadable_content(tmp_path):
     source.write_text('this is not a structure\n')
     with pytest.raises(RuntimeError):
         babel.to_xyz(source, tmp_path)
+
+
+def test_frozen_environment(monkeypatch, tmp_path):
+    (tmp_path / 'openbabel_plugins').mkdir()
+    (tmp_path / 'openbabel_data').mkdir()
+    monkeypatch.setattr(babel, '_bundle_directory', lambda: str(tmp_path))
+    monkeypatch.setenv('PATH', '/somewhere/else')
+    environment = babel._environment()
+    # the libraries obabel and its plugins need are at the top of the bundle
+    assert environment['PATH'].split(os.pathsep)[0] == str(tmp_path)
+    assert environment['BABEL_LIBDIR'] == str(tmp_path / 'openbabel_plugins')
+    assert environment['BABEL_DATADIR'] == str(tmp_path / 'openbabel_data')
+
+
+@needs_obabel
+def test_conversion_attempted_when_format_list_unavailable(monkeypatch, tmp_path):
+    monkeypatch.setattr(babel, 'suffixes', lambda: ('xyz',))
+    source = tmp_path / 'water.pdb'
+    source.write_text(WATER_PDB)
+    result = babel.to_xyz(source, tmp_path)
+    assert open(result).read().split()[0] == '3'
