@@ -24,10 +24,6 @@ dependencies = [
     "pikepdf",
 ]
 
-[project.optional-dependencies]
-# Import of geometries from any file format (otherwise only xyz). conda-forge calls this "openbabel".
-openbabel = ["openbabel-wheel>=3.1.1"]
-
 [project.scripts]
 iMolpro = "iMolpro.__main__:main"
 

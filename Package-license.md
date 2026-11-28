@@ -3,6 +3,8 @@ iMolpro is
 licensed under the [GNU LGPL v3](https://opensource.org/license/lgpl-3-0)
  ([source code](https://github.com/molpro/iMolpro)). It uses several additional open-source libraries: [further details](https://github.com/molpro/iMolpro/blob/master/README.md#acknowledgements).
 
+The installed package also contains the [Open Babel](https://openbabel.org) program `obabel`, which iMolpro runs as a separate program to read geometries in other file formats. Open Babel is licensed under the [GNU GPL v2](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html) (licence text in the `licenses` directory of the package; [source code](https://github.com/openbabel/openbabel)), and is not part of iMolpro.
+
 The installed package also contains a reduced-function installation of [Molpro](https://www.molpro.net) to support educational use of iMolpro, and installation or use of the package implies acceptance of the following conditions for using the embedded Molpro.
 
 1. Only educational use is permitted.

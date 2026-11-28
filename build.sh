@@ -82,12 +82,13 @@ from iMolpro.__main__ import main
 if __name__ == '__main__':
     main()
 PYEOF
-# Open Babel (geometry import from any file format, see src/iMolpro/babel.py) finds its format
-# plugins and data files in the prefix it was built for, so they have to be bundled explicitly.
-# babel.py points BABEL_LIBDIR and BABEL_DATADIR at these directories in the frozen app.
+# Open Babel (geometry import from any file format, see src/iMolpro/babel.py) is GPL v2, so it is
+# bundled as a separate program (obabel), not imported. It finds its format plugins and data files
+# in the prefix it was built for, so they have to be bundled explicitly too; babel.py points
+# BABEL_LIBDIR and BABEL_DATADIR at these directories in the frozen app.
 openbabel_version=$(ls "$CONDA_PREFIX/lib/openbabel" 2>/dev/null | head -1)
-if [ -z "$openbabel_version" ] || [ ! -d "$CONDA_PREFIX/share/openbabel/$openbabel_version" ]; then
-  echo "ERROR: Open Babel plugins/data not found in $CONDA_PREFIX (conda package openbabel)"
+if [ -z "$openbabel_version" ] || [ ! -d "$CONDA_PREFIX/share/openbabel/$openbabel_version" ] || [ ! -x "$CONDA_PREFIX/bin/obabel" ]; then
+  echo "ERROR: Open Babel (obabel, plugins, data) not found in $CONDA_PREFIX (conda package openbabel)"
   exit 1
 fi
 PATH=/usr/bin:$PATH pyi-makespec \
@@ -98,8 +99,10 @@ PATH=/usr/bin:$PATH pyi-makespec \
   --add-data src/iMolpro/data/README.md:. \
   --add-data src/iMolpro/data/doc:./doc \
   --add-data "${versionfile}":. \
+  --add-binary "$CONDA_PREFIX/bin/obabel:openbabel_bin" \
   --add-binary "$CONDA_PREFIX/lib/openbabel/$openbabel_version/*:openbabel_plugins" \
   --add-data "$CONDA_PREFIX/share/openbabel/$openbabel_version:openbabel_data" \
+  --add-data src/iMolpro/data/licenses:./licenses \
   --add-data $builddir/molpro:./molpro \
   --add-data $CONDA_PREFIX/lib/python$(python --version|sed -e 's/.* //' -e 's/\.[0-9]*$//')/site-packages/pymolpro/molpro_input.json:./pymolpro \
   $pyinstaller_opt \

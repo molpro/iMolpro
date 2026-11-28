@@ -8,8 +8,9 @@ pyinstaller>=6
 git>=2
 certifi>=2024.8.30
 openssl>=3.5.3
-# Optional runtime dependency (geometry import from any file format, see
-# src/iMolpro/babel.py) that is bundled into the distributed apps. It is not
-# in pyproject.toml's dependencies because its PyPI name differs from its
-# conda name; pip users get it through the "openbabel" extra instead.
+# Open Babel (geometry import from any file format, see src/iMolpro/babel.py).
+# It is GPL v2, so it is bundled into the distributed apps as a separate
+# program (obabel) rather than being imported by iMolpro, and is therefore not
+# in pyproject.toml's dependencies. Users of a pip install can import non-xyz
+# geometries if an obabel program is on their PATH.
 openbabel>=3.1.1
