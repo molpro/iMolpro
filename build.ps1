@@ -58,7 +58,10 @@ if __name__ == '__main__':
 # Open Babel (geometry import from any file format, see src/iMolpro/babel.py) is GPL v2, so it is
 # bundled as a separate program (obabel.exe), not imported. It finds its format plugins and data
 # files in the prefix it was built for, so they have to be bundled explicitly too; babel.py points
-# BABEL_LIBDIR and BABEL_DATADIR at these directories in the frozen app.
+# BABEL_DATADIR at the data directory in the frozen app.
+# On Windows, obabel ignores BABEL_LIBDIR: it only loads its plugins (*.obf) from the directory
+# containing openbabel-3.dll, so they are bundled at the top level of the bundle, next to that dll,
+# not in a subdirectory.
 # (On Windows the conda-forge package keeps the data files directly in share\openbabel; the
 # versioned Library\share\openbabel\<version> directory holds only a splash image.)
 if (-not (Test-Path "$cp\share\openbabel\atomtyp.txt") -or -not (Test-Path "$cp\Library\bin\formats_misc.obf") -or -not (Test-Path "$cp\Library\bin\obabel.exe")) {
@@ -75,7 +78,7 @@ if (-not (Test-Path "$cp\share\openbabel\atomtyp.txt") -or -not (Test-Path "$cp\
           --add-data=src/iMolpro/data/doc:.\doc `
             --add-data="$versionfile":. `
             --add-binary="$cp\Library\bin\obabel.exe:openbabel_bin" `
-            --add-binary="$cp\Library\bin\*.obf:openbabel_plugins" `
+            --add-binary="$cp\Library\bin\*.obf:." `
             --add-data="$cp\share\openbabel:openbabel_data" `
             --add-data=src/iMolpro/data/licenses:.\licenses `
             --add-data ${molpro_root}:.\molpro `

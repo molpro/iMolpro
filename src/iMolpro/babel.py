@@ -8,9 +8,9 @@ process, so that iMolpro and Open Babel remain separate programs.
 Open Babel is optional: if `obabel` cannot be found, only xyz files can be imported.
 
 In a PyInstaller bundle, build.sh/build.ps1 copy `obabel` into `openbabel_bin`, its
-format plugins into `openbabel_plugins`, and its data files into `openbabel_data`;
-`obabel` is pointed at those with BABEL_LIBDIR/BABEL_DATADIR (Open Babel otherwise
-looks in the prefix it was built for).
+format plugins into `openbabel_plugins` (on Windows, the top level of the bundle instead, next to
+openbabel-3.dll), and its data files into `openbabel_data`; `obabel` is pointed at those with
+BABEL_LIBDIR/BABEL_DATADIR (Open Babel otherwise looks in the prefix it was built for).
 """
 import functools
 import logging
@@ -49,6 +49,8 @@ def _environment():
         # need) are collected at the top level. Unlike on macOS, where PyInstaller rewrites the library
         # paths, on Windows they are only found next to the program or on PATH.
         environment['PATH'] = base + os.pathsep + environment.get('PATH', '')
+        # (On Windows BABEL_LIBDIR is ignored: obabel loads the plugins from the directory of openbabel-3.dll,
+        # the top level of the bundle, where build.ps1 puts them.)
         for variable, directory in (('BABEL_LIBDIR', 'openbabel_plugins'), ('BABEL_DATADIR', 'openbabel_data')):
             path = os.path.join(base, directory)
             if os.path.isdir(path):
