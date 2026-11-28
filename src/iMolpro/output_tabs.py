@@ -277,24 +277,53 @@ class OutputTabWidget(MyTabWidget):
 
         if xml_exists and xml_changed:
             labels = {}
-            try:
-                for index in range(10000):  # get orbital sets
-                    orbitals = self.parent.project.orbitals(index)
+            # Collect the orbital sets first: for UHF the alpha and beta orbitals arrive as two
+            # separate <orbitals> nodes, which are shown together in a single tab.
+            sets = []  # [orbitals, metadata, (instance, spin, method, stateID) while awaiting a partner, else None]
+
+            def collect(instance):
+                for index in range(10000):  # get orbital sets of this molecule node
+                    try:
+                        orbitals = self.parent.project.orbitals(instance, orbital_instance=index)
+                    except (IndexError, AttributeError):
+                        break
+                    if not orbitals:
+                        continue
                     orbitals_node = orbitals[0].node.getparent()
-                    label = orbitals_node.attrib['method'] + '/' + orbitals_node.attrib['type'] + ' orbitals'
-                    if label in labels:
-                        labels[label] += 1
-                        label = label + ': ' + str(labels[label])
+                    metadata = dict(orbitals_node.attrib)
+                    spin = metadata.get('spin', '').lower()
+                    if spin in ('alpha', 'beta'):
+                        key = (instance, spin, metadata.get('method'), metadata.get('stateID'))
+                        partner = next((s for s in sets if s[2] is not None and s[2][0] == instance
+                                        and s[2][1] != spin and s[2][2:] == key[2:]), None)
+                        if partner is not None:
+                            # beta first, so that the alpha orbitals are the default (last) selection
+                            partner[0] = orbitals + partner[0] if spin == 'beta' else partner[0] + orbitals
+                            partner[1]['type'] = 'ALPHA+BETA'
+                            partner[1].pop('spin', None)
+                            partner[2] = None
+                            continue
+                        sets.append([orbitals, metadata, key])
                     else:
-                        labels[label] = 1
-                    # print('found','orbital set', label)
-                    if label not in tab_names:
-                        # print('new tab','orbital set', label)
-                        self.addTab(LazyOrbitalTab(orbitals, self, metadata=orbitals_node.attrib), label)
+                        sets.append([orbitals, metadata, None])
+
+            try:
+                for instance in range(len(self.parent.project.xpath('//*/molecule'))):
+                    collect(instance)
             except Exception as e:
-                if not isinstance(e, (IndexError)) and not isinstance(e, (AttributeError)):
+                if not isinstance(e, (IndexError, AttributeError)):
                     print('Orbitals except', str(e) + ' ' + str(type(e)))
-                pass
+            # spin-resolved (UHF) orbitals first, so they are what is shown by default
+            sets.sort(key=lambda s: s[1].get('type') not in ('ALPHA', 'BETA', 'ALPHA+BETA'))
+            for orbitals, metadata, _ in sets:
+                label = metadata['method'] + '/' + metadata['type'] + ' orbitals'
+                if label in labels:
+                    labels[label] += 1
+                    label = label + ': ' + str(labels[label])
+                else:
+                    labels[label] = 1
+                if label not in tab_names:
+                    self.addTab(LazyOrbitalTab(orbitals, self, metadata=metadata), label)
 
     def label(self, suffix: str) -> str:
         return os.path.basename(self.parent.project.filename(suffix, run=(self.parent.project.run_directory)))
