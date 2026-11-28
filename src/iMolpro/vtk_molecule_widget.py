@@ -16,21 +16,24 @@ from .utilities import ANGSTROM_TO_BOHR, displace_coordinate
 logger = logging.getLogger(__name__)
 
 try:
-    from PySide6.QtGui import QColor, QPalette
+    from PySide6.QtGui import QColor, QPalette, QIcon, QPixmap, QPainter, QPen, QFontDatabase
     from PySide6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
-        QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
+        QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton, QDoubleSpinBox, \
+        QListWidget, QListWidgetItem, QAbstractItemView
     from PySide6.QtCore import Qt, QSize, QTimer, QElapsedTimer, QObject, QRunnable, QThreadPool, \
         Signal as pyqtSignal
 except ImportError:
     try:
-        from PyQt6.QtGui import QColor, QPalette
+        from PyQt6.QtGui import QColor, QPalette, QIcon, QPixmap, QPainter, QPen, QFontDatabase
         from PyQt6.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
-            QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
+            QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton, QDoubleSpinBox, \
+            QListWidget, QListWidgetItem, QAbstractItemView
         from PyQt6.QtCore import Qt, QSize, QTimer, QElapsedTimer, QObject, QRunnable, QThreadPool, pyqtSignal
     except ImportError:
-        from PyQt5.QtGui import QColor, QPalette
+        from PyQt5.QtGui import QColor, QPalette, QIcon, QPixmap, QPainter, QPen, QFontDatabase
         from PyQt5.QtWidgets import QFileDialog, QPushButton, QColorDialog, QWidget, QLabel, QGridLayout, QHBoxLayout, \
-            QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton
+            QVBoxLayout, QSlider, QSizePolicy, QComboBox, QLayout, QCheckBox, QToolButton, QDoubleSpinBox, \
+            QListWidget, QListWidgetItem, QAbstractItemView
         from PyQt5.QtCore import Qt, QSize, QTimer, QElapsedTimer, QObject, QRunnable, QThreadPool, pyqtSignal
 
 try:
@@ -156,18 +159,123 @@ class ItemLayout(QGridLayout):
         self.row += 1
         return self.row - 1
 
+    def add_wide(self, title, content: QWidget):
+        r"""A title on its own row, followed by `content` spanning both columns below it."""
+        self.addWidget(FixedLabel(title + ':'), self.row, 0, 1, 2)
+        self.addWidget(content, self.row + 1, 0, 1, 2)
+        self.row += 2
+        return self.row - 1
 
 
-def orbital_label(orbital) -> str:
-    r"""Selector label for an orbital: its ID, with a minus sign marking beta-spin orbitals
+_USER_ROLE = getattr(Qt, 'ItemDataRole', Qt).UserRole
+
+
+class OrbitalList(QListWidget):
+    r"""Scrollable list of orbitals, about `visible_rows` lines high, one line per orbital
+    (see orbital_label) in a fixed-width font so the columns line up. Each line carries the
+    orbital's key (see orbital_key) as item data, and an icon slot used to mark orbitals already computed."""
+
+    def __init__(self, orbitals: list, parent=None, visible_rows: int = 10):
+        super().__init__(parent)
+        self.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.setIconSize(QSize(12, 12))
+        id_width = max((len(orbital_name(orbital)) for orbital in orbitals), default=0)
+        for orbital in orbitals:
+            item = QListWidgetItem(_check_mark_icon(False), orbital_label(orbital, id_width))
+            item.setData(_USER_ROLE, orbital_key(orbital))
+            self.addItem(item)
+        row_height = self.sizeHintForRow(0) if orbitals else self.fontMetrics().height()
+        frame = 2 * self.frameWidth()
+        self.setFixedHeight(row_height * min(visible_rows, max(len(orbitals), 1)) + frame)
+        self.setMinimumWidth(self.sizeHintForColumn(0) + self.verticalScrollBar().sizeHint().width() + frame + 4)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+    def orbital_id(self, row: int):
+        item = self.item(row)
+        return None if item is None else item.data(_USER_ROLE)
+
+    def set_marked(self, row: int, marked: bool):
+        self.item(row).setIcon(_check_mark_icon(marked))
+
+    def select_row(self, row: int):
+        r"""Make `row` the current line and scroll it to the middle of the list."""
+        self.setCurrentRow(row)
+        self._scroll_to_current()
+
+    def _scroll_to_current(self):
+        item = self.currentItem()
+        if item is not None:
+            self.scrollToItem(item, QAbstractItemView.ScrollHint.PositionAtCenter)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # The viewport only gets its final size once the list is first shown, so the selection
+        # is scrolled into the middle again then; later showings keep the user's scrolling.
+        if not getattr(self, '_shown', False):
+            self._shown = True
+            self._scroll_to_current()
+
+
+
+def orbital_key(orbital) -> str:
+    r"""Identifier of an orbital in the selector: its ID, with a minus sign marking beta-spin orbitals
     (eg. '-1.1' is the lowest beta orbital of symmetry 1, '1.1' the alpha one), so that
     alpha and beta sets can be shown together. Molpro's XML already writes beta IDs with
     the leading minus, but it is added here if absent."""
     label = str(orbital.ID)
-    parent = orbital.node.getparent()
-    if parent is not None and str(parent.get('spin', '')).lower() == 'beta' and not label.startswith('-'):
+    if orbital_spin(orbital) == 'beta' and not label.startswith('-'):
         label = '-' + label
     return label
+
+
+def orbital_spin(orbital):
+    r"""'alpha' or 'beta' for an orbital of a spin-resolved (eg. UHF) orbital set, taken from the
+    `spin` attribute of its <orbitals> node; None otherwise, including spin-free sets such as UHF
+    natural orbitals (spin="closed")."""
+    node = getattr(orbital, 'node', None)
+    parent = node.getparent() if node is not None else None
+    spin = str(parent.get('spin', '')).lower() if parent is not None else ''
+    return spin if spin in ('alpha', 'beta') else None
+
+
+_SPIN_SUFFIX = {'alpha': '\u03b1', 'beta': '\u03b2'}  # Greek alpha, beta
+
+
+def orbital_name(orbital) -> str:
+    r"""Name of an orbital as shown in the selector. For spin-resolved orbitals it is the ID
+    followed by a Greek alpha or beta, eg. '3.1α' and '3.1β', without the minus sign that
+    :func:`orbital_key` uses to tell beta orbitals apart; otherwise it is just the key."""
+    spin = orbital_spin(orbital)
+    if spin is None:
+        return orbital_key(orbital)
+    return str(orbital.ID).lstrip('-') + _SPIN_SUFFIX[spin]
+
+
+def evaluable_at_any_occupation(orbital):
+    r"""
+    `orbital`, made able to evaluate itself on a grid whatever its occupation.
+
+    pymolpro's Orbital.evaluate() (as of 1.21.16) finds its orbital again through
+    grid.evaluateOrbitals() without passing its occupation cut, so that function's default
+    (minocc=1e-10) applies and an unoccupied (virtual) orbital isn't found -- it fails with a bare
+    AssertionError. For such an orbital, evaluate() is replaced on this instance by the same call
+    with no occupation cut; occupied orbitals are left alone.
+    """
+    node = getattr(orbital, 'node', None)
+    if node is None or getattr(orbital, 'occupation', 1.0) >= 1.0e-10:
+        return orbital
+    import pymolpro.grid
+
+    def evaluate(points, values=False):
+        return pymolpro.grid.evaluateOrbitals(node.xpath('./parent::*/parent::*')[-1], points, ID=orbital.ID,
+                                              values=values, directory=orbital.directory,
+                                              orbital_set=node.getparent(), minocc=float('-inf'))
+
+    orbital.evaluate = evaluate
+    return orbital
 
 
 class _CubeWorkerSignals(QObject):
@@ -202,6 +310,78 @@ def _grid_resolution(orbital, grid_points: int, border: float = GRID_BORDER) -> 
     return float(extent.max()) / grid_points
 
 
+def orbitals_in_display_order(orbitals: list) -> list:
+    r"""`orbitals` in the order of the selector: by increasing occupation, and among equal
+    occupations by decreasing energy -- so for a set of doubly occupied canonical orbitals the
+    HOMO comes first, and for natural orbitals the least occupied one. Orbitals equal in both
+    keep their given order."""
+    return sorted(orbitals, key=lambda orbital: (getattr(orbital, 'occupation', 0.0),
+                                                 -getattr(orbital, 'energy', 0.0)))
+
+
+def orbital_label(orbital, id_width: int = 0) -> str:
+    r"""Text for an orbital in the selector, eg. '102.1 [1.307] (-0.2921)': its name
+    (number.symmetry, plus spin if resolved, see :func:`orbital_name`), [occupation] and (energy in hartree), each
+    part only if known. The ID is padded to `id_width` characters, so that in a fixed-width font the
+    occupations of a list of orbitals line up."""
+    label = orbital_name(orbital).ljust(id_width)
+    occupation = getattr(orbital, 'occupation', None)
+    if occupation is not None:
+        label += f' [{occupation:.3f}]'
+    energy = getattr(orbital, 'energy', None)
+    if energy is not None:
+        label += f' ({energy:.4f})'
+    return label
+
+
+FRONTIER_OCCUPATION = 0.5
+
+
+def initial_orbital(orbitals: list):
+    r"""The orbital shown first: the highest occupied one, ie. the first in the selector's order
+    (see orbitals_in_display_order) whose occupation is at least FRONTIER_OCCUPATION. That is the
+    HOMO (or SOMO) of canonical orbitals, the higher-energy one of the alpha and beta HOMOs of UHF
+    orbitals, and the least occupied of the strongly occupied natural orbitals; virtual and weakly
+    occupied orbitals, at the top of the selector, are skipped. If there is no such orbital, the
+    top one."""
+    ordered = orbitals_in_display_order(orbitals)
+    return next((orbital for orbital in ordered
+                 if getattr(orbital, 'occupation', 0.0) >= FRONTIER_OCCUPATION), ordered[0])
+
+
+def contour_cube_key_usable(key, orbital, grid_points, contour_value) -> bool:
+    r"""Whether a cube computed for `key` = (orbital, grid_points, contour value) can be reused to
+    display `orbital` at `grid_points` and `contour_value`. A cube's box is trimmed to where the
+    orbital exceeds a tenth of the contour value it was computed for (see _CubeWorker), so it
+    also contains the (smaller) surface of any higher contour value, but not that of a lower one."""
+    cube_orbital, cube_grid_points, cube_contour_value = key
+    return (cube_orbital is orbital and cube_grid_points == grid_points
+            and cube_contour_value <= contour_value * (1 + 1e-9))
+
+
+_check_mark_icons = {}
+
+
+def _check_mark_icon(visible: bool) -> QIcon:
+    r"""A small, light green check mark (or a blank of the same size, so labels stay aligned)
+    for marking orbitals whose cube is already computed."""
+    if visible not in _check_mark_icons:
+        size = 12
+        pixmap = QPixmap(size, size)
+        pixmap.fill(QColor(0, 0, 0, 0))
+        if visible:
+            painter = QPainter(pixmap)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            pen = QPen(QColor(110, 190, 110))
+            pen.setWidthF(1.6)
+            painter.setPen(pen)
+            painter.drawLine(2, 6, 5, 9)
+            painter.drawLine(5, 9, 10, 3)
+            painter.end()
+        _check_mark_icons[visible] = QIcon(pixmap)
+    return _check_mark_icons[visible]
+
+
 class _CubeWorker(QRunnable):
     r"""Computes Orbital.cube_data() -- pure numpy/Python, no Qt or VTK objects
     touched -- on a QThreadPool worker thread, so evaluating the orbital on
@@ -219,6 +399,7 @@ class _CubeWorker(QRunnable):
 
     def run(self):
         try:
+            evaluable_at_any_occupation(self.orbital)
             resolution = _grid_resolution(self.orbital, self.grid_points)
             try:
                 cube_data = self.orbital.cube_data(resolution=resolution, threshold=self.contour_value * .1,
@@ -243,7 +424,7 @@ class _CubeWorker(QRunnable):
                 f'{np.prod(cube_data.dimensions):,}')
             self.signals.finished.emit(self.key, cube_data)
         except Exception as e:
-            self.signals.failed.emit(self.key, str(e))
+            self.signals.failed.emit(self.key, f'{type(e).__name__}: {e}')
 
 
 class MoleculeDisplay(QWidget):
@@ -254,7 +435,7 @@ class MoleculeDisplay(QWidget):
     # for large molecules. Min/max clamp what the '+'/'-' buttons (see
     # set_grid_points) can reach, so repeated clicks can't reintroduce an
     # unbounded grid for a large molecule.
-    GRID_POINTS_DEFAULT = 60
+    GRID_POINTS_DEFAULT = 38
     GRID_POINTS_MINIMUM = 15
     GRID_POINTS_MAXIMUM = 150
 
@@ -307,7 +488,7 @@ class MoleculeDisplay(QWidget):
             self.cubes = {}
             self.orbitals = source
             self.grid_points = grid_points
-            self.orbital = source[-1]
+            self.orbital = initial_orbital(source)
             self._pending_cube_key = None
             # Keep in-flight workers referenced -- QThreadPool.start() does not
             # protect a QRunnable's Python wrapper (and its signals QObject)
@@ -342,8 +523,9 @@ class MoleculeDisplay(QWidget):
         result is cached for later reuse -- but is not applied to the display."""
         key = (self.orbital, self.grid_points, contour_value)
         self._pending_cube_key = key
-        if key in self.cubes:
-            self._apply_cube(key)
+        cached_key = self.cached_cube_key(self.orbital, contour_value)
+        if cached_key is not None:
+            self._apply_cube(cached_key)
             return
         self.right_panel.set_status('Computing orbital …')
         worker = _CubeWorker(self.orbital, self.grid_points, contour_value, key)
@@ -352,17 +534,28 @@ class MoleculeDisplay(QWidget):
         self._cube_workers[key] = worker
         QThreadPool.globalInstance().start(worker)
 
+    def cached_cube_key(self, orbital, contour_value=None):
+        r"""Key of an already computed cube that can display `orbital` at the current grid and
+        `contour_value` (default: the current setting), or None."""
+        if contour_value is None:
+            contour_value = settings['contour_value']
+        for key in self.cubes:
+            if contour_cube_key_usable(key, orbital, self.grid_points, contour_value):
+                return key
+        return None
+
     def _on_cube_ready(self, key, cube_data):
         self._cube_workers.pop(key, None)
         self.cubes[key] = cube_data
-        if key == self._pending_cube_key:
-            try:
+        try:
+            if key == self._pending_cube_key:
                 self._apply_cube(key)
-            except RuntimeError:
-                # This widget (eg its tab was cleared by OutputTabWidget.clear() when the run
-                # directory changed) has already been deleted at the Qt/C++ level while this
-                # background cube computation was still in flight -- nothing left to update.
-                pass
+            self.right_panel.update_computed_marks()
+        except RuntimeError:
+            # This widget (eg its tab was cleared by OutputTabWidget.clear() when the run
+            # directory changed) has already been deleted at the Qt/C++ level while this
+            # background cube computation was still in flight -- nothing left to update.
+            pass
 
     def _on_cube_failed(self, key, message):
         self._cube_workers.pop(key, None)
@@ -384,7 +577,7 @@ class MoleculeDisplay(QWidget):
 
     def set_orbital(self, orbital_id):
         # print('set_orbital', orbital_id)
-        self.orbital = self.orbitals[[orbital_label(orbital) for orbital in self.orbitals].index(orbital_id)]
+        self.orbital = self.orbitals[[orbital_key(orbital) for orbital in self.orbitals].index(orbital_id)]
         self.right_panel.refresh()
         self._request_cube(settings['contour_value'])
 
@@ -502,7 +695,7 @@ class MoleculeDisplay(QWidget):
         grid_points = max(self.GRID_POINTS_MINIMUM, min(self.GRID_POINTS_MAXIMUM, grid_points))
 
         self.grid_points = grid_points
-        self.set_orbital(orbital_label(self.orbital))
+        self.set_orbital(orbital_key(self.orbital))
 
 
 class MoleculeWidget(StyledWidget):
@@ -594,7 +787,10 @@ class MoleculeWidget(StyledWidget):
         return self.model.contour.opacity
 
     def set_contour_opacity(self, value):
-        opacity = value * 0.01
+        r"""Slider handler: `value` in 0..100."""
+        self.apply_contour_opacity(value * 0.01)
+
+    def apply_contour_opacity(self, opacity: float):
         # Guard for the interval before the first orbital cube has arrived
         # (model is atoms-only, no contour yet): just remember the value in
         # settings, which MolecularModel reads when the contour is built.
@@ -608,8 +804,18 @@ class MoleculeWidget(StyledWidget):
         return self.model.contour_value
 
     def set_contour_value(self, value):
-        contour_value = self.contour_slider_minimum * math.exp(
-            value * 0.01 * math.log(self.contour_slider_maximum / self.contour_slider_minimum))
+        r"""Slider handler: `value` in 0..100, mapped logarithmically onto
+        contour_slider_minimum..contour_slider_maximum."""
+        self.apply_contour_value(self.contour_slider_minimum * math.exp(
+            value * 0.01 * math.log(self.contour_slider_maximum / self.contour_slider_minimum)))
+
+    def contour_slider_position(self, contour_value: float) -> int:
+        r"""Inverse of the mapping in set_contour_value(), clamped to the slider's range."""
+        position = round(100 * math.log(contour_value / self.contour_slider_minimum) /
+                         math.log(self.contour_slider_maximum / self.contour_slider_minimum))
+        return max(0, min(100, position))
+
+    def apply_contour_value(self, contour_value: float):
         if hasattr(self.model, 'contour'):
             self.model.set_contour_value(contour_value)
             self.scene.GetRenderWindow().GetInteractor().Render()
@@ -678,7 +884,24 @@ class ControlPanel(QWidget):
                 self.occupation_widget.setText(str(self.parent.orbital.occupation))
             else:
                 self.occupation_widget.setText('None')
-        pass
+        if hasattr(self, 'resolution_widget'):
+            grid_points = self.parent.grid_points
+            self.resolution_widget.setText(str(grid_points))
+            tooltip = f'{grid_points} grid points along the longest axis of the molecule'
+            try:
+                tooltip += f' (spacing {_grid_resolution(self.parent.orbital, grid_points):.3f} bohr)'
+            except Exception:
+                pass
+            self.resolution_widget.setToolTip(tooltip)
+        self.update_computed_marks()
+
+    def update_computed_marks(self):
+        r"""Marks the orbitals in the selector whose cube is already computed for the current
+        resolution and contour value, ie. that will show without waiting."""
+        if not hasattr(self, 'orbital_selector') or not hasattr(self.parent, 'cubes'):
+            return
+        for row, orbital in enumerate(self.orbital_order):
+            self.orbital_selector.set_marked(row, self.parent.cached_cube_key(orbital) is not None)
 
     def set_status(self, text: str | None):
         r"""Shows/hides a status line (eg. while an orbital cube is being computed
@@ -687,6 +910,10 @@ class ControlPanel(QWidget):
         appearing/disappearing would shift every row beneath it -- so toggling it
         only grows/shrinks the empty space above it, leaving the rest of the
         panel still."""
+        # Plain orange is hard to read on a light background; use a darker shade there and
+        # keep the brighter one for dark themes. Decided on each call, so it follows theme changes.
+        dark_background = self.palette().color(ColorRole.Window).lightness() < 128
+        self.status_widget.setStyleSheet('color: orange;' if dark_background else 'color: rgb(190, 90, 0);')
         self.status_widget.setText(text or '')
         self.status_widget.setVisible(bool(text))
 
@@ -734,18 +961,17 @@ class ControlPanel(QWidget):
             speed_slider.valueChanged.connect(self.parent.set_vibration_frequency_scaling)
             self.control_layout.add('Speed', speed_slider)
         if hasattr(self.parent, 'orbitals'):
-            orbital_selector = QComboBox()
-            for orbital in self.parent.orbitals[::-1]:
-                orbital_selector.addItem(orbital_label(orbital))
-            orbital_selector.currentTextChanged.connect(self.parent.set_orbital)
-            # orbital_selector.setBackgroundColor(QColor(*self.background_colour))
-            # palette = self.palette()
-            # palette.setColor(QPalette.Base, QColor(*self.background_colour))
-            # palette.setColor(QPalette.Base, QColor('Red'))
-            # orbital_selector.setPalette(palette)
-            # orbital_selector.setAutoFillBackground(True)
-            orbital_selector.setMinimumWidth(orbital_selector.minimumSizeHint().width())
-            self.control_layout.add('Orbital', orbital_selector)
+            self.orbital_order = orbitals_in_display_order(self.parent.orbitals)
+            orbital_selector = OrbitalList(self.orbital_order, self)
+            self.orbital_selector = orbital_selector
+            orbital_selector.setToolTip('Orbital (number.symmetry; \u03b1/\u03b2 for alpha/beta spin), [occupation]'
+                                        ' and (energy in hartree), sorted by increasing occupation, then decreasing energy; click a line to show'
+                                        ' that orbital. A check mark means it is already computed and shows'
+                                        ' without waiting')
+            orbital_selector.select_row(self.orbital_order.index(self.parent.orbital))
+            orbital_selector.currentRowChanged.connect(
+                lambda row: row >= 0 and self.parent.set_orbital(orbital_selector.orbital_id(row)))
+            self.control_layout.add_wide('Orbitals', orbital_selector)
 
             if hasattr(self.parent.orbital, 'occupation'):
                 row = self.control_layout.add('Occupation', QLabel(str(self.parent.orbital.occupation)))
@@ -756,27 +982,78 @@ class ControlPanel(QWidget):
                 self.energy_widget = self.control_layout.itemAtPosition(row, 1).widget()
 
             # self.control_layout.addWidget(FixedLabel('Contour:'), row, 0)
+            # Each slider has a number box beside it for entering an exact value. The two are kept
+            # in step with signals blocked, so that moving one doesn't feed back through the other
+            # (which would also round a typed value to the nearest slider step).
+            molecule_widget = self.parent.molecule_widget
+            slider_width = max(60, orbital_selector.minimumWidth() - 75)
+
             contour_slider = mySlider(self)
-            self.contour_slider_minimum = 0.003
-            self.contour_slider_maximum = 0.5
-            contour_slider.valueChanged.connect(self.parent.molecule_widget.set_contour_value)
-            contour_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
-            contour_slider.setValue(
-                int(100 * math.log(
-                    float(settings['contour_value']) / self.contour_slider_minimum) / math.log(
-                    self.contour_slider_maximum / self.contour_slider_minimum)))
-            self.control_layout.add('Contour value', contour_slider)
+            contour_slider.setMaximumWidth(slider_width)
+            contour_slider.setValue(molecule_widget.contour_slider_position(float(settings['contour_value'])))
+            contour_box = QDoubleSpinBox(self)
+            contour_box.setDecimals(4)
+            contour_box.setRange(0.0005, 1.0)
+            contour_box.setSingleStep(0.005)
+            contour_box.setKeyboardTracking(False)
+            contour_box.setValue(float(settings['contour_value']))
+            contour_box.setToolTip('Value of the orbital at its contour surface')
+
+            def contour_from_slider(position):
+                molecule_widget.set_contour_value(position)
+                contour_box.blockSignals(True)
+                contour_box.setValue(float(settings['contour_value']))
+                contour_box.blockSignals(False)
+                self.update_computed_marks()
+
+            def contour_from_box(value):
+                molecule_widget.apply_contour_value(value)
+                contour_slider.blockSignals(True)
+                contour_slider.setValue(molecule_widget.contour_slider_position(value))
+                contour_slider.blockSignals(False)
+                self.update_computed_marks()
+
+            contour_slider.valueChanged.connect(contour_from_slider)
+            contour_box.valueChanged.connect(contour_from_box)
+            contour_layout = QHBoxLayout()
+            contour_layout.addWidget(contour_slider)
+            contour_layout.addWidget(contour_box)
+            self.control_layout.add('Contour value', contour_layout)
 
             opacity_slider = mySlider(self)
-            opacity_slider.valueChanged.connect(self.parent.molecule_widget.set_contour_opacity)
-            opacity_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
-            opacity_slider.setValue(int(float(settings['contour_opacity']) * 100))
-            self.control_layout.add('Opacity', opacity_slider)
+            opacity_slider.setMaximumWidth(slider_width)
+            opacity_slider.setValue(round(float(settings['contour_opacity']) * 100))
+            opacity_box = QDoubleSpinBox(self)
+            opacity_box.setDecimals(2)
+            opacity_box.setRange(0.0, 1.0)
+            opacity_box.setSingleStep(0.05)
+            opacity_box.setKeyboardTracking(False)
+            opacity_box.setValue(float(settings['contour_opacity']))
+            opacity_box.setToolTip('Opacity of the contour surface, from 0 (transparent) to 1 (opaque)')
+
+            def opacity_from_slider(position):
+                molecule_widget.set_contour_opacity(position)
+                opacity_box.blockSignals(True)
+                opacity_box.setValue(position * 0.01)
+                opacity_box.blockSignals(False)
+
+            def opacity_from_box(value):
+                molecule_widget.apply_contour_opacity(value)
+                opacity_slider.blockSignals(True)
+                opacity_slider.setValue(round(value * 100))
+                opacity_slider.blockSignals(False)
+
+            opacity_slider.valueChanged.connect(opacity_from_slider)
+            opacity_box.valueChanged.connect(opacity_from_box)
+            opacity_layout = QHBoxLayout()
+            opacity_layout.addWidget(opacity_slider)
+            opacity_layout.addWidget(opacity_box)
+            self.control_layout.add('Opacity', opacity_layout)
 
             if False:
                 resolution_slider = mySlider(self)
                 resolution_slider.valueChanged.connect(self.parent.set_grid_points)
-                resolution_slider.setMaximumWidth(orbital_selector.minimumSizeHint().width())
+                resolution_slider.setMaximumWidth(orbital_selector.minimumWidth())
                 resolution_slider.setValue(self.parent.grid_points)
                 resolution_label = FixedLabel('Resolution:')
                 self.control_layout.addWidget(resolution_label, row, 0)
@@ -789,6 +1066,11 @@ class ControlPanel(QWidget):
             coarser_button = QPushButton('-')
             resolution_layout.addWidget(coarser_button)
             coarser_button.clicked.connect(lambda: self.parent.set_grid_points('-'))
+            # The current number of grid points (see MoleculeDisplay.GRID_POINTS_DEFAULT);
+            # set by refresh(), which also puts the grid spacing in its tooltip.
+            self.resolution_widget = QLabel('', alignment=Qt.AlignCenter)
+            self.resolution_widget.setMinimumWidth(30)
+            resolution_layout.addWidget(self.resolution_widget)
             finer_button = QPushButton('+')
             resolution_layout.addWidget(finer_button)
             finer_button.clicked.connect(lambda: self.parent.set_grid_points('+'))
